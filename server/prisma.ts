@@ -129,3 +129,67 @@ export async function ensureAssessmentSchema() {
   return assessmentSchemaPromise;
 }
 
+let learnerSchemaPromise: Promise<void> | null = null;
+
+async function createLearnerSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS learner_mastery (
+      id TEXT PRIMARY KEY NOT NULL,
+      userId TEXT NOT NULL,
+      courseId TEXT,
+      topic TEXT NOT NULL,
+      subtopic TEXT,
+      masteryProbability REAL NOT NULL DEFAULT 0.0,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      correctCount INTEGER NOT NULL DEFAULT 0,
+      incorrectCount INTEGER NOT NULL DEFAULT 0,
+      confidence REAL NOT NULL DEFAULT 0.0,
+      status TEXT NOT NULL DEFAULT 'unassessed',
+      lastAssessedAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS learner_mastery_user_topic_idx ON learner_mastery(userId, topic)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS learner_mastery_user_status_idx ON learner_mastery(userId, status)',
+  );
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS learner_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      userId TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      subtopic TEXT,
+      eventType TEXT NOT NULL,
+      sourceId TEXT,
+      priorMastery REAL NOT NULL,
+      posteriorMastery REAL NOT NULL,
+      isCorrect BOOLEAN,
+      difficulty TEXT,
+      parametersJson TEXT,
+      evidenceDetails TEXT,
+      timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS learner_events_user_time_idx ON learner_events(userId, timestamp)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS learner_events_user_topic_idx ON learner_events(userId, topic)',
+  );
+}
+
+export async function ensureLearnerSchema() {
+  if (!learnerSchemaPromise) {
+    learnerSchemaPromise = createLearnerSchema();
+  }
+
+  return learnerSchemaPromise;
+}
+
+

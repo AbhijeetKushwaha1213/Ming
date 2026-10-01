@@ -13,6 +13,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { useProjects } from '@/hooks/useProjects';
 import { useSkills, getSkillCategory, parseSkillDetails } from '@/hooks/useSkills';
 import { useUserStats } from '@/hooks/useUserStats';
+import { LearnerMasteryCard } from './LearnerMasteryCard';
 
 
 export const CollegeDashboard = () => {
@@ -277,6 +278,9 @@ export const CollegeDashboard = () => {
           </div>
         )}
       </Card>
+
+      {/* Real BKT Learner Knowledge Mastery (Phase 4) */}
+      <LearnerMasteryCard />
 
       {/* Skills Progress */}
       <Card className="p-6">

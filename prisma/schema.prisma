@@ -75,3 +75,44 @@ model AssessmentAttempt {
   @@map("assessment_attempts")
 }
 
+model LearnerMastery {
+  id                 String    @id @default(cuid())
+  userId             String
+  courseId           String?
+  topic              String
+  subtopic           String?
+  masteryProbability Float     @default(0.0)
+  attempts           Int       @default(0)
+  correctCount       Int       @default(0)
+  incorrectCount     Int       @default(0)
+  confidence         Float     @default(0.0)
+  status             String    @default("unassessed")
+  lastAssessedAt     DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([userId, topic])
+  @@index([userId, status])
+  @@map("learner_mastery")
+}
+
+model LearnerEvent {
+  id               String   @id @default(cuid())
+  userId           String
+  topic            String
+  subtopic         String?
+  eventType        String
+  sourceId         String?
+  priorMastery     Float
+  posteriorMastery Float
+  isCorrect        Boolean?
+  difficulty       String?
+  parametersJson   String?
+  evidenceDetails  String?
+  timestamp        DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([userId, topic])
+  @@map("learner_events")
+}
+

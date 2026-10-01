@@ -27,7 +27,8 @@ function mockRes() {
 }
 
 async function runTests() {
-  console.log('🧪 Starting RAG API Handler Integration Tests...\n');
+  const TEST_USER = 'test_student_' + Date.now();
+  console.log(`🧪 Starting RAG API Handler Integration Tests (User: ${TEST_USER})...\n`);
 
   // Test 1: Ingest Lecture Content (Text / Source)
   console.log('1️⃣ Testing POST /api/rag/ingest...');
@@ -36,13 +37,14 @@ async function runTests() {
     url: '/api/rag/ingest',
     headers: {},
     body: {
-      userId: 'test_student_42',
+      userId: TEST_USER,
       title: 'Operating Systems - Concurrency & Deadlocks',
       topic: 'Operating Systems',
       subtopic: 'Banker Algorithm',
       sourceType: 'TEXT',
       text: 'A deadlock occurs when processes are waiting for resources held by each other. The four Coffman conditions for deadlock are mutual exclusion, hold and wait, no preemption, and circular wait. The Banker algorithm tests for safety by simulating the allocation of predetermined maximum possible amounts of all resources.',
     }
+
   };
   const res1 = mockRes();
   await ragHandler(ingestReq, res1);
@@ -130,7 +132,7 @@ async function runTests() {
     headers: {},
     body: {
       query: 'What are the four Coffman conditions for deadlock?',
-      userId: 'test_student_42',
+      userId: TEST_USER,
       topic: 'Operating Systems'
     }
   };
@@ -153,7 +155,7 @@ async function runTests() {
     headers: {},
     body: {
       query: 'How do you bake a triple chocolate fudge cake from scratch?',
-      userId: 'test_student_42',
+      userId: TEST_USER,
       topic: 'Culinary'
     }
   };
@@ -199,7 +201,7 @@ async function runTests() {
     url: '/api/rag/assessment/generate',
     headers: {},
     body: {
-      userId: 'test_student_42',
+      userId: TEST_USER,
       topic: 'Operating Systems',
       subtopic: 'Banker Algorithm',
       difficulty: 'medium',
@@ -242,7 +244,7 @@ async function runTests() {
     url: '/api/rag/assessment/submit',
     headers: {},
     body: {
-      userId: 'test_student_42',
+      userId: TEST_USER,
       title: 'Operating Systems Assessment 1',
       topic: 'Operating Systems',
       difficulty: 'medium',
@@ -275,12 +277,12 @@ async function runTests() {
   // Verified that the previously generated fingerprint is not re-served as a duplicate
 
   // Test 12: Assessment History Retrieval
-  console.log('\n1️⃣2️⃣ Testing GET /api/rag/assessment/history?userId=test_student_42...');
+  console.log(`\n1️⃣2️⃣ Testing GET /api/rag/assessment/history?userId=${TEST_USER}...`);
   const histReq1 = {
     method: 'GET',
     url: '/api/rag/assessment/history',
     headers: {},
-    query: { userId: 'test_student_42' }
+    query: { userId: TEST_USER }
   };
   const res12 = mockRes();
   await ragHandler(histReq1, res12);
@@ -309,11 +311,121 @@ async function runTests() {
   }
 
   console.log('\n🎉 ALL 13 RAG, TUTOR & ADAPTIVE ASSESSMENT INTEGRATION TESTS PASSED SUCCESSFULLY!');
+
+  // ============================================================
+  // Phase 4 Tests: Learner Model & BKT Mastery Tracking
+  // ============================================================
+
+  // Test 14: Cold-Start Mastery Query (Zero / Unassessed Baseline)
+  console.log('\n1️⃣4️⃣ Testing GET /api/learner/mastery (Cold-Start Inactive Student)...');
+  const coldStartReq = {
+    method: 'GET',
+    url: '/api/learner/mastery',
+    headers: {},
+    query: { userId: 'brand_new_coldstart_user' }
+  };
+  const res14 = mockRes();
+  await ragHandler(coldStartReq, res14);
+  const coldStartData = res14.getData();
+  console.log('Status code:', res14.getStatusCode());
+  console.log('Cold start mastery count:', coldStartData?.mastery?.length);
+  if (!coldStartData?.mastery || coldStartData.mastery.length !== 0) {
+    throw new Error('Cold start failed: New user should have 0 mastery records');
+  }
+
+  // Test 15: Post-Assessment Mastery Auto-Update (BKT Bayes Rule)
+  console.log(`\n1️⃣5️⃣ Testing GET /api/learner/mastery?userId=${TEST_USER} (Auto-Updated from Assessment)...`);
+  const assessedMasteryReq = {
+    method: 'GET',
+    url: '/api/learner/mastery',
+    headers: {},
+    query: { userId: TEST_USER }
+  };
+  const res15 = mockRes();
+  await ragHandler(assessedMasteryReq, res15);
+  const assessedMasteryData = res15.getData();
+  console.log('Status code:', res15.getStatusCode());
+  console.log('Updated mastery records count:', assessedMasteryData?.mastery?.length);
+  if (!assessedMasteryData?.mastery || assessedMasteryData.mastery.length === 0) {
+    throw new Error(`BKT mastery auto-update failed: Expected mastery records for ${TEST_USER}`);
+  }
+  const topRec = assessedMasteryData.mastery[0];
+  console.log('Topic:', topRec.topic);
+  console.log('BKT Mastery Probability:', topRec.masteryProbability);
+  console.log('Attempts:', topRec.attempts);
+  console.log('Confidence:', topRec.confidence);
+  console.log('Status category:', topRec.status);
+
+  // Test 16: Diagnostic Initialization API (P(L0) calibration)
+  console.log('\n1️⃣6️⃣ Testing POST /api/learner/diagnostic/init (Cold-Start Diagnostic Calibration)...');
+  const diagReq = {
+    method: 'POST',
+    url: '/api/learner/diagnostic/init',
+    headers: {},
+    body: {
+      userId: 'test_diagnostic_user',
+      topic: 'Computer Networks',
+      score: 4,
+      totalQuestions: 5
+    }
+  };
+  const res16 = mockRes();
+  await ragHandler(diagReq, res16);
+  const diagData = res16.getData();
+  console.log('Status code:', res16.getStatusCode());
+  console.log('Calibrated initial mastery P(L0):', diagData?.diagnosticInit?.masteryProbability);
+  console.log('Status:', diagData?.diagnosticInit?.status);
+  console.log('Confidence:', diagData?.diagnosticInit?.confidence);
+  if (diagData?.diagnosticInit?.masteryProbability !== 0.8) {
+    throw new Error(`Diagnostic initialization failed: Expected 0.8, got ${diagData?.diagnosticInit?.masteryProbability}`);
+  }
+
+  // Test 17: Auditable Event History (Learner Events)
+  console.log(`\n1️⃣7️⃣ Testing GET /api/learner/events?userId=${TEST_USER} (Audit Log Verification)...`);
+  const eventsReq = {
+    method: 'GET',
+    url: '/api/learner/events',
+    headers: {},
+    query: { userId: TEST_USER }
+  };
+  const res17 = mockRes();
+  await ragHandler(eventsReq, res17);
+  const eventsData = res17.getData();
+  console.log('Status code:', res17.getStatusCode());
+  console.log('Recorded events count:', eventsData?.events?.length);
+  if (!eventsData?.events || eventsData.events.length === 0) {
+    throw new Error('Audit trail failed: Expected recorded BKT events');
+  }
+  const sampleEvent = eventsData.events[0];
+  console.log('Sample event type:', sampleEvent.eventType);
+  console.log('Prior mastery:', sampleEvent.priorMastery);
+  console.log('Posterior mastery:', sampleEvent.posteriorMastery);
+  console.log('BKT parameters logged:', JSON.stringify(sampleEvent.parameters));
+
+  // Test 18: Authenticated User Isolation on Mastery
+  console.log('\n1️⃣8️⃣ Testing User Isolation on Learner Mastery...');
+  const isoReq = {
+    method: 'GET',
+    url: '/api/learner/mastery',
+    headers: {},
+    query: { userId: 'different_unrelated_user' }
+  };
+  const res18 = mockRes();
+  await ragHandler(isoReq, res18);
+  const isoData = res18.getData();
+  console.log('Status code:', res18.getStatusCode());
+  console.log('Isolated student mastery count (must be 0):', isoData?.mastery?.length);
+  if (isoData?.mastery?.length !== 0) {
+    throw new Error('User isolation failed: Learner mastery leaked across students');
+  }
+
+  console.log('\n🎉 ALL 18 RAG, TUTOR, ASSESSMENT & BKT LEARNER MODEL INTEGRATION TESTS PASSED SUCCESSFULLY!');
 }
 
 runTests().catch(err => {
   console.error('\n❌ Test execution failed:', err);
   process.exit(1);
 });
+
 
 

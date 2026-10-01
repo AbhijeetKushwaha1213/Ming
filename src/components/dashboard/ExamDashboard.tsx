@@ -16,6 +16,7 @@ import { RevisionLogModal } from '../exam/RevisionLogModal';
 import { useSubjects } from '@/hooks/useSubjects';
 import { useDailyStats } from '@/hooks/useDailyStats';
 import { AddSubjectDialog } from '../subjects/AddSubjectDialog';
+import { LearnerMasteryCard } from './LearnerMasteryCard';
 
 
 export const ExamDashboard = () => {
@@ -222,6 +223,9 @@ export const ExamDashboard = () => {
             </Button>
           </div>
         </Card>
+
+        {/* Real BKT Learner Knowledge Mastery (Phase 4) */}
+        <LearnerMasteryCard />
 
         {/* Progress Overview */}
         <Card className="p-6">

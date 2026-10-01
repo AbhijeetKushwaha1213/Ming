@@ -3,7 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
-import { prisma, ensureResourceSchema, ensureAssessmentSchema } from './prisma.ts';
+import { prisma, ensureResourceSchema, ensureAssessmentSchema, ensureLearnerSchema } from './prisma.ts';
+import { updateMasteryFromEvidence } from './bktService.ts';
+import { learnerHandler } from './learnerHandler.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -541,6 +543,26 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         console.warn('Could not persist assessment attempt into database:', dbErr);
       }
 
+      // Automatically update BKT learner model for each answered question (Phase 4)
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        const ev = evaluatedResults[i];
+        try {
+          await updateMasteryFromEvidence({
+            userId,
+            topic: q.topic || topic,
+            subtopic: q.subtopic || null,
+            isCorrect: ev?.isCorrect ?? false,
+            difficulty: q.difficulty || difficulty,
+            sourceId: attemptId,
+            eventType: 'ASSESSMENT_ANSWER',
+            evidenceDetails: `Assessment: ${q.question?.slice(0, 60)}... (${ev?.isCorrect ? 'Correct' : 'Incorrect'})`,
+          });
+        } catch (masteryErr) {
+          console.warn('Could not update learner mastery for question:', masteryErr);
+        }
+      }
+
       res.status(200).json({
         success: true,
         attemptId,
@@ -591,6 +613,18 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     }
   }
 
+  // 10. Phase 4: Learner Model & Mastery Tracking APIs
+  if (pathname.startsWith('/api/learner') || pathname.startsWith('/api/rag/learner')) {
+    // Normalize url if it was prefixed with /api/rag/learner
+    const normalizedReq = {
+      ...req,
+      url: req.url?.replace('/api/rag/learner', '/api/learner'),
+    };
+    await learnerHandler(normalizedReq, res);
+    return;
+  }
+
   res.status(404).json({ error: `RAG endpoint not found: ${method} ${pathname}` });
 
 }
+

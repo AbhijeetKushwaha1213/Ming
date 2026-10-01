@@ -14,6 +14,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useSkills, getSkillCategory, parseSkillDetails } from '@/hooks/useSkills';
 import { useUserStats } from '@/hooks/useUserStats';
 import { LearnerMasteryCard } from './LearnerMasteryCard';
+import { AIStudyAgentPanel } from './AIStudyAgentPanel';
 
 
 export const CollegeDashboard = () => {
@@ -278,6 +279,9 @@ export const CollegeDashboard = () => {
           </div>
         )}
       </Card>
+
+      {/* Real AI Study Agent & Personalized Daily Planning (Phase 5) */}
+      <AIStudyAgentPanel />
 
       {/* Real BKT Learner Knowledge Mastery (Phase 4) */}
       <LearnerMasteryCard />

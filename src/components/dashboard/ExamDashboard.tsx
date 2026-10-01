@@ -17,6 +17,7 @@ import { useSubjects } from '@/hooks/useSubjects';
 import { useDailyStats } from '@/hooks/useDailyStats';
 import { AddSubjectDialog } from '../subjects/AddSubjectDialog';
 import { LearnerMasteryCard } from './LearnerMasteryCard';
+import { AIStudyAgentPanel } from './AIStudyAgentPanel';
 
 
 export const ExamDashboard = () => {
@@ -223,6 +224,9 @@ export const ExamDashboard = () => {
             </Button>
           </div>
         </Card>
+
+        {/* Real AI Study Agent & Personalized Daily Planning (Phase 5) */}
+        <AIStudyAgentPanel />
 
         {/* Real BKT Learner Knowledge Mastery (Phase 4) */}
         <LearnerMasteryCard />

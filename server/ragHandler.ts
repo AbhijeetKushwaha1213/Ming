@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { prisma, ensureResourceSchema, ensureAssessmentSchema, ensureLearnerSchema } from './prisma.ts';
 import { updateMasteryFromEvidence } from './bktService.ts';
 import { learnerHandler } from './learnerHandler.ts';
+import { studyAgentHandler } from './studyAgentHandler.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -621,6 +622,16 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       url: req.url?.replace('/api/rag/learner', '/api/learner'),
     };
     await learnerHandler(normalizedReq, res);
+    return;
+  }
+
+  // 11. Phase 5: AI Study Agent & Personalized Planning APIs
+  if (pathname.startsWith('/api/agent') || pathname.startsWith('/api/rag/agent')) {
+    const normalizedReq = {
+      ...req,
+      url: req.url?.replace('/api/rag/agent', '/api/agent'),
+    };
+    await studyAgentHandler(normalizedReq, res);
     return;
   }
 

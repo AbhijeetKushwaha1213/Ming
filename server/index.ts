@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import resourcesHandler from '../api/resources.ts';
 import { ragHandler } from './ragHandler.ts';
 import { learnerHandler } from './learnerHandler.ts';
+import { studyAgentHandler } from './studyAgentHandler.ts';
 
 const PORT = Number(process.env.API_PORT || 3001);
 const HOST = process.env.API_HOST || '127.0.0.1';
@@ -13,7 +14,7 @@ type HeaderValue = string | string[] | undefined;
 function setCorsHeaders(res: ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || 'http://localhost:8080');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
 }
 
 async function readBody(req: IncomingMessage) {
@@ -101,6 +102,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   if (url.pathname.startsWith('/api/learner')) {
     const body = await readBody(req);
     await learnerHandler(
+      {
+        method: req.method,
+        headers: req.headers as Record<string, HeaderValue>,
+        query: Object.fromEntries(url.searchParams.entries()),
+        url: url.toString(),
+        body,
+      },
+      createRouteResponse(res),
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/agent')) {
+    const body = await readBody(req);
+    await studyAgentHandler(
       {
         method: req.method,
         headers: req.headers as Record<string, HeaderValue>,

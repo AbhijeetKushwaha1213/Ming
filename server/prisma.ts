@@ -192,4 +192,71 @@ export async function ensureLearnerSchema() {
   return learnerSchemaPromise;
 }
 
+let studyPlanSchemaPromise: Promise<void> | null = null;
+
+async function createStudyPlanSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS study_plans (
+      id TEXT PRIMARY KEY NOT NULL,
+      userId TEXT NOT NULL,
+      planDate TEXT NOT NULL,
+      title TEXT NOT NULL,
+      targetMinutes INTEGER NOT NULL DEFAULT 60,
+      status TEXT NOT NULL DEFAULT 'active',
+      summary TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS study_plans_user_date_idx ON study_plans(userId, planDate)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS study_plans_user_status_idx ON study_plans(userId, status)',
+  );
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS study_plan_items (
+      id TEXT PRIMARY KEY NOT NULL,
+      planId TEXT NOT NULL,
+      userId TEXT NOT NULL,
+      priority INTEGER NOT NULL,
+      priorityScore REAL NOT NULL,
+      topic TEXT NOT NULL,
+      subtopic TEXT,
+      activityType TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      estimatedMinutes INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      expectedOutcome TEXT NOT NULL,
+      sourceId TEXT,
+      chunkId TEXT,
+      sourceTitle TEXT,
+      sourceCoordinate TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      completedAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS study_plan_items_user_plan_idx ON study_plan_items(userId, planId)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS study_plan_items_user_status_idx ON study_plan_items(userId, status)',
+  );
+}
+
+export async function ensureStudyPlanSchema() {
+  if (!studyPlanSchemaPromise) {
+    studyPlanSchemaPromise = createStudyPlanSchema();
+  }
+
+  return studyPlanSchemaPromise;
+}
+
+
 

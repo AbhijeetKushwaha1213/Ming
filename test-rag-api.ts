@@ -419,7 +419,188 @@ async function runTests() {
     throw new Error('User isolation failed: Learner mastery leaked across students');
   }
 
-  console.log('\n🎉 ALL 18 RAG, TUTOR, ASSESSMENT & BKT LEARNER MODEL INTEGRATION TESTS PASSED SUCCESSFULLY!');
+  // =========================================================================
+  // Phase 5: AI Study Agent & Personalized Study Planning Integration Tests
+  // =========================================================================
+
+  // Test 19: Deterministic Priority Engine (No Hallucinations)
+  console.log('\n1️⃣9️⃣ Testing GET /api/agent/priorities (Deterministic Multi-Factor Priority Engine)...');
+  const prioReq = {
+    method: 'GET',
+    url: '/api/agent/priorities',
+    headers: {},
+    query: {
+      userId: TEST_USER,
+      examDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 days away
+      availableMinutes: '60',
+    },
+  };
+  const res19 = mockRes();
+  await ragHandler(prioReq, res19);
+  const prioData = res19.getData();
+  console.log('Status code:', res19.getStatusCode());
+  console.log('Priorities calculated count:', prioData?.priorities?.length);
+  if (!prioData?.priorities || prioData.priorities.length === 0) {
+    throw new Error('Deterministic priority engine failed: No priorities computed');
+  }
+  const topPrio = prioData.priorities[0];
+  console.log('Top priority topic:', topPrio.topic);
+  console.log('Overall score:', topPrio.overallScore);
+  console.log('Factors breakdown:', JSON.stringify(topPrio.factors));
+  if (topPrio.factors.masteryDeficit === undefined || topPrio.factors.confidenceDeficit === undefined) {
+    throw new Error('Deterministic factors missing from priority score breakdown');
+  }
+
+  // Test 20: Generate Personalized Daily Study Plan Grounded in Course Evidence
+  console.log('\n2️⃣0️⃣ Testing POST /api/agent/plan/generate (Personalized Daily Study Plan Generation)...');
+  const genPlanReq = {
+    method: 'POST',
+    url: '/api/agent/plan/generate',
+    headers: {},
+    body: {
+      userId: TEST_USER,
+      targetMinutes: 60,
+      forceRegenerate: true,
+    },
+  };
+  const res20 = mockRes();
+  await ragHandler(genPlanReq, res20);
+  const genPlanData = res20.getData();
+  console.log('Status code:', res20.getStatusCode());
+  console.log('Plan ID:', genPlanData?.plan?.id);
+  console.log('Planned items count:', genPlanData?.plan?.items?.length);
+  console.log('Total planned minutes:', genPlanData?.plan?.totalPlannedMinutes);
+  if (!genPlanData?.plan?.items || genPlanData.plan.items.length === 0) {
+    throw new Error('Daily study plan generation failed: No items generated');
+  }
+  const firstItem = genPlanData.plan.items[0];
+  console.log('Item #1 Activity:', firstItem.activityType);
+  console.log('Item #1 Title:', firstItem.title);
+  console.log('Item #1 Reason ("Why this?"):', firstItem.reason);
+  console.log('Item #1 Expected Outcome:', firstItem.expectedOutcome);
+  if (!firstItem.reason || !firstItem.reason.includes('Mastery')) {
+    throw new Error('Study plan item missing grounded explainability reason');
+  }
+
+  // Test 21: Daily Plan Persistence Across Logins/Sessions
+  console.log('\n2️⃣1️⃣ Testing GET /api/agent/plan (Plan Persistence Across Sessions)...');
+  const getPlanReq = {
+    method: 'GET',
+    url: '/api/agent/plan',
+    headers: {},
+    query: { userId: TEST_USER },
+  };
+  const res21 = mockRes();
+  await ragHandler(getPlanReq, res21);
+  const retrievedPlan = res21.getData();
+  console.log('Status code:', res21.getStatusCode());
+  console.log('Retrieved Plan ID:', retrievedPlan?.plan?.id);
+  console.log('Retrieved items count:', retrievedPlan?.plan?.items?.length);
+  if (retrievedPlan?.plan?.id !== genPlanData.plan.id) {
+    throw new Error('Plan persistence failed: Retrieved plan ID does not match generated plan');
+  }
+
+  // Test 22: Update Plan Item Status & Feed into Learner Events
+  console.log('\n2️⃣2️⃣ Testing POST /api/agent/plan/item/status (Completion Tracking & Learner Events Feed)...');
+  const updateItemReq = {
+    method: 'POST',
+    url: '/api/agent/plan/item/status',
+    headers: {},
+    body: {
+      userId: TEST_USER,
+      itemId: firstItem.id,
+      status: 'completed',
+    },
+  };
+  const res22 = mockRes();
+  await ragHandler(updateItemReq, res22);
+  const updateData = res22.getData();
+  console.log('Status code:', res22.getStatusCode());
+  console.log('Updated item status:', updateData?.item?.status);
+  console.log('Completed at timestamp:', updateData?.item?.completedAt);
+  if (updateData?.item?.status !== 'completed' || !updateData?.item?.completedAt) {
+    throw new Error('Plan item status update failed');
+  }
+
+  // Verify learner event was logged for task completion
+  const eventCheckReq = {
+    method: 'GET',
+    url: '/api/learner/events',
+    headers: {},
+    query: { userId: TEST_USER, limit: '10' },
+  };
+  const res22Event = mockRes();
+  await ragHandler(eventCheckReq, res22Event);
+  const eventCheckData = res22Event.getData();
+  const completedTaskEvent = eventCheckData?.events?.find((e: any) => e.sourceId === firstItem.id);
+  console.log('Learner event logged for completed task:', completedTaskEvent?.evidenceDetails);
+  if (!completedTaskEvent) {
+    throw new Error('Completion tracking failed: No corresponding learner event found');
+  }
+
+  // Test 23: Conversational Study Agent Entry Point
+  console.log('\n2️⃣3️⃣ Testing POST /api/agent/chat (Conversational Study Agent Queries)...');
+  const chatQueries = [
+    'What should I study today?',
+    'What am I weak at?',
+    'Why are you recommending this?',
+  ];
+
+  for (const q of chatQueries) {
+    console.log(`Asking agent: "${q}"`);
+    const chatReq = {
+      method: 'POST',
+      url: '/api/agent/chat',
+      headers: {},
+      body: {
+        userId: TEST_USER,
+        query: q,
+      },
+    };
+    const res23 = mockRes();
+    await ragHandler(chatReq, res23);
+    const chatData = res23.getData();
+    console.log('Agent reply preview:', chatData?.reply?.slice(0, 100) + '...');
+    if (!chatData?.reply) {
+      throw new Error(`Conversational agent failed on query: "${q}"`);
+    }
+  }
+
+  // Test 24: Cold-Start New Student Handling (Diagnostic Recommendation)
+  console.log('\n2️⃣4️⃣ Testing Cold-Start Handling for Brand New Student...');
+  const COLD_USER = 'new_onboarding_student_' + Date.now();
+  const coldReq = {
+    method: 'GET',
+    url: '/api/agent/priorities',
+    headers: {},
+    query: { userId: COLD_USER },
+  };
+  const res24 = mockRes();
+  await ragHandler(coldReq, res24);
+  const coldData = res24.getData();
+  console.log('Cold start detected:', coldData?.isColdStart);
+  if (coldData?.isColdStart !== true) {
+    throw new Error('Cold-start detection failed: isColdStart must be true for new student');
+  }
+
+  const coldChatReq = {
+    method: 'POST',
+    url: '/api/agent/chat',
+    headers: {},
+    body: {
+      userId: COLD_USER,
+      query: 'What should I study today?',
+    },
+  };
+  const res24Chat = mockRes();
+  await ragHandler(coldChatReq, res24Chat);
+  const coldChatData = res24Chat.getData();
+  console.log('Cold start agent advice:', coldChatData?.reply?.slice(0, 120) + '...');
+  if (!coldChatData?.reply?.includes('Diagnostic Assessment') && !coldChatData?.reply?.includes('diagnostic')) {
+    throw new Error('Cold-start agent failed to recommend diagnostic baseline assessment');
+  }
+
+  console.log('\n🎉 ALL 24 PHASE 1-5 MULTIMODAL RAG, TUTOR, ADAPTIVE ASSESSMENT, BKT & STUDY AGENT INTEGRATION TESTS PASSED SUCCESSFULLY!');
 }
 
 runTests().catch(err => {

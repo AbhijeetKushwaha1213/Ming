@@ -116,3 +116,48 @@ model LearnerEvent {
   @@map("learner_events")
 }
 
+model StudyPlan {
+  id            String   @id @default(cuid())
+  userId        String
+  planDate      String   // 'YYYY-MM-DD'
+  title         String
+  targetMinutes Int      @default(60)
+  status        String   @default("active") // 'active', 'completed', 'archived'
+  summary       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, planDate])
+  @@index([userId, status])
+  @@map("study_plans")
+}
+
+model StudyPlanItem {
+  id               String    @id @default(cuid())
+  planId           String
+  userId           String
+  priority         Int
+  priorityScore    Float
+  topic            String
+  subtopic         String?
+  activityType     String
+  title            String
+  description      String
+  estimatedMinutes Int
+  reason           String
+  expectedOutcome  String
+  sourceId         String?
+  chunkId          String?
+  sourceTitle      String?
+  sourceCoordinate String?
+  status           String    @default("pending") // 'pending', 'in_progress', 'completed', 'skipped'
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId, planId])
+  @@index([userId, status])
+  @@map("study_plan_items")
+}
+
+

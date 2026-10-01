@@ -122,10 +122,77 @@ async function runTests() {
   console.log('Status code:', res5.getStatusCode());
   console.log('Source location data:', JSON.stringify(locData, null, 2));
 
-  console.log('\n🎉 ALL 5 RAG API TESTS PASSED SUCCESSFULLY!');
+  // Test 6: Source-Grounded AI Tutor Chat (Phase 2)
+  console.log('\n6️⃣ Testing POST /api/rag/chat (Grounded Question)...');
+  const chatReq1 = {
+    method: 'POST',
+    url: '/api/rag/chat',
+    headers: {},
+    body: {
+      query: 'What are the four Coffman conditions for deadlock?',
+      userId: 'test_student_42',
+      topic: 'Operating Systems'
+    }
+  };
+  const res6 = mockRes();
+  await ragHandler(chatReq1, res6);
+  const chatData1 = res6.getData();
+  console.log('Status code:', res6.getStatusCode());
+  console.log('Grounded response text:', chatData1?.response?.slice(0, 160) + '...');
+  console.log('Is grounded:', chatData1?.grounded);
+  console.log('Citations count:', chatData1?.citations?.length);
+  if (!chatData1?.grounded || !chatData1?.citations?.length) {
+    throw new Error('Grounded chat failed: expected grounded response with citations');
+  }
+
+  // Test 7: Off-material / Insufficient Evidence Question
+  console.log('\n7️⃣ Testing POST /api/rag/chat (Unsupported / Off-Material Question)...');
+  const chatReq2 = {
+    method: 'POST',
+    url: '/api/rag/chat',
+    headers: {},
+    body: {
+      query: 'How do you bake a triple chocolate fudge cake from scratch?',
+      userId: 'test_student_42',
+      topic: 'Culinary'
+    }
+  };
+  const res7 = mockRes();
+  await ragHandler(chatReq2, res7);
+  const chatData2 = res7.getData();
+  console.log('Status code:', res7.getStatusCode());
+  console.log('Insufficient evidence detected:', chatData2?.insufficient_evidence);
+  console.log('Refusal response:', chatData2?.response);
+  if (!chatData2?.insufficient_evidence) {
+    throw new Error('Off-material test failed: Expected insufficient_evidence to be true');
+  }
+
+  // Test 8: Authenticated User Isolation
+  console.log('\n8️⃣ Testing POST /api/rag/chat (User Isolation: unpermitted user)...');
+  const chatReq3 = {
+    method: 'POST',
+    url: '/api/rag/chat',
+    headers: {},
+    body: {
+      query: 'What are the four Coffman conditions for deadlock?',
+      userId: 'unauthorized_different_user',
+      topic: 'Operating Systems'
+    }
+  };
+  const res8 = mockRes();
+  await ragHandler(chatReq3, res8);
+  const chatData3 = res8.getData();
+  console.log('Status code:', res8.getStatusCode());
+  console.log('User isolation preserved (different user receives no private chunks):', chatData3?.insufficient_evidence);
+  if (!chatData3?.insufficient_evidence) {
+    throw new Error('User isolation failed: Different user should not access private user chunks');
+  }
+
+  console.log('\n🎉 ALL 8 RAG API & GROUNDED TUTOR INTEGRATION TESTS PASSED SUCCESSFULLY!');
 }
 
 runTests().catch(err => {
   console.error('\n❌ Test execution failed:', err);
   process.exit(1);
 });
+

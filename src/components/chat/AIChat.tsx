@@ -4,11 +4,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, User, Loader2, Maximize2, Minimize2, Save, History, Copy, Check } from 'lucide-react';
+import { Send, Bot, User, Loader2, Maximize2, Minimize2, Save, History, Copy, Check, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { useChatHistory, ChatSession } from '@/hooks/useChatHistory';
 import { ChatHistoryPanel } from './ChatHistoryPanel';
+import { Citation } from './Citation';
+import { askGroundedTutor, CitationData } from '@/api/ragAPI';
 import { format } from 'date-fns';
 
 interface Message {
@@ -16,6 +18,9 @@ interface Message {
   text: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+  citations?: CitationData[];
+  grounded?: boolean;
+  insufficientEvidence?: boolean;
 }
 
 interface AIChatProps {
@@ -32,11 +37,12 @@ export const AIChat = ({
   expandable = false
 }: AIChatProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { saveChatSession } = useChatHistory();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hi! I'm your AI ${context}. How can I help you today?`,
+      text: `Hi! I'm your AI ${context}. How can I help you today? Ask questions about your uploaded textbooks, lecture slides, or class videos!`,
       sender: 'ai',
       timestamp: new Date()
     }
@@ -91,37 +97,41 @@ export const AIChat = ({
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input.trim();
     setInput('');
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
-        body: {
-          message: input.trim(),
-          context: context,
-          conversationHistory: messages.slice(-10)
-        }
-      });
+      const conversationHistory = messages.slice(-6).map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }));
 
-      if (error) {
-        console.error('AI Assistant Error:', error);
-        throw error;
-      }
+      // Retrieve from Chroma knowledge base and ground through Gemini using authenticated user_id
+      const tutorResult = await askGroundedTutor({
+        message: currentInput,
+        userId: user?.user_id || user?.id || 'default_user',
+        topic: currentTopic || context,
+        conversationHistory
+      });
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.response || "I'm sorry, I couldn't process your request right now.",
+        text: tutorResult.response || "The uploaded course materials do not contain sufficient information to answer this question.",
         sender: 'ai',
-        timestamp: new Date()
+        timestamp: new Date(),
+        citations: tutorResult.citations || [],
+        grounded: tutorResult.grounded,
+        insufficientEvidence: tutorResult.insufficient_evidence
       };
 
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
-      console.error('Error calling AI assistant:', error);
+      console.error('Error in Grounded AI Tutor:', error);
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+        text: "I'm sorry, I'm having trouble retrieving course materials right now. Please try again later.",
         sender: 'ai',
         timestamp: new Date()
       };
@@ -130,7 +140,7 @@ export const AIChat = ({
       
       toast({
         title: "Connection Error",
-        description: "Unable to reach AI assistant. Please try again.",
+        description: "Unable to query knowledge base. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -282,8 +292,37 @@ export const AIChat = ({
                         <User className="w-4 h-4 mt-0.5 text-white" />
                       )}
                       <div className="flex-1">
-                        <p className="text-sm whitespace-pre-wrap">{message.text}</p>
-                        <div className="flex items-center justify-between mt-1 space-x-4">
+                        {message.sender === 'ai' && message.grounded && (
+                          <div className="mb-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            <span>Grounded in Course Material</span>
+                          </div>
+                        )}
+                        {message.sender === 'ai' && message.insufficientEvidence && (
+                          <div className="mb-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-700 border border-amber-500/20">
+                            <AlertCircle className="w-3 h-3 text-amber-600" />
+                            <span>Insufficient Uploaded Material</span>
+                          </div>
+                        )}
+
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+
+                        {/* Verified Sources Shelf */}
+                        {message.sender === 'ai' && message.citations && message.citations.length > 0 && (
+                          <div className="mt-3 pt-2.5 border-t border-border/40">
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground mb-1.5">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                              <span>Verified Sources Cited ({message.citations.length})</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {message.citations.map((citation, cIdx) => (
+                                <Citation key={`${message.id}-cit-${cIdx}`} citation={citation} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between mt-2 space-x-4">
                           <p className={`text-xs ${
                             message.sender === 'user' ? 'text-white/70' : 'text-muted-foreground'
                           }`}>

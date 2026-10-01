@@ -236,5 +236,28 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     return;
   }
 
+  // 6. Source-Grounded AI Tutor Chat
+  // POST /api/rag/chat or GET /api/rag/chat
+  if ((method === 'POST' || method === 'GET') && pathname === '/api/rag/chat') {
+    const query = method === 'POST' ? (req.body?.query || req.body?.message) : (req.query?.query || req.query?.q);
+    if (!query) {
+      res.status(400).json({ error: 'Query or message string is required' });
+      return;
+    }
+
+    const userId = method === 'POST' ? (req.body?.userId || req.body?.user_id) : req.query?.userId;
+    const topic = method === 'POST' ? req.body?.topic : req.query?.topic;
+    const history = method === 'POST' ? (req.body?.conversationHistory || req.body?.history) : undefined;
+
+    const args = ['chat', '--query', String(query)];
+    if (userId) args.push('--user-id', String(userId));
+    if (topic) args.push('--topic', String(topic));
+    if (history) args.push('--history', JSON.stringify(history));
+
+    const chatResponse = await runPythonCli(args);
+    res.status(200).json(chatResponse);
+    return;
+  }
+
   res.status(404).json({ error: `RAG endpoint not found: ${method} ${pathname}` });
 }

@@ -81,3 +81,25 @@ export interface RagJobStatus {
   chunk_count?: number;
   error?: string;
 }
+
+export interface CitationData {
+  chunk_id: string;
+  source_id?: string;
+  document_id?: string;
+  source_type: string;
+  page_number?: number | null;
+  slide_number?: number | null;
+  timestamp_start?: number | null;
+  timestamp_end?: number | null;
+  citation_label: string;
+  snippet?: string;
+}
+
+export interface GroundedChatResponse {
+  response: string;
+  citations: CitationData[];
+  grounded: boolean;
+  insufficient_evidence: boolean;
+  retrieved_count?: number;
+}
+

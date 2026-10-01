@@ -477,26 +477,35 @@ def search_relevant_chunks(
     """
     collection = get_collection()
     
-    where_filter = {}
+    where_conditions = []
     if user_id:
-        where_filter["user_id"] = user_id
+        where_conditions.append({"user_id": {"$eq": str(user_id)}})
     if source_id:
-        where_filter["source_id"] = source_id
+        where_conditions.append({"source_id": {"$eq": str(source_id)}})
     if topic:
-        where_filter["topic"] = topic
+        where_conditions.append({"topic": {"$eq": str(topic)}})
 
     query_params = {
         "query_texts": [query],
         "n_results": min(top_k, 25)
     }
-    if where_filter:
-        query_params["where"] = where_filter if len(where_filter) > 1 else list(where_filter.items())[0]
+    if len(where_conditions) == 1:
+        query_params["where"] = where_conditions[0]
+    elif len(where_conditions) > 1:
+        query_params["where"] = {"$and": where_conditions}
 
     try:
         results = collection.query(**query_params)
-    except Exception:
-        # Fallback without where filter if collection was empty or filter mismatch
-        results = collection.query(query_texts=[query], n_results=min(top_k, 25))
+    except Exception as e:
+        logger.warning(f"Chroma query with filter error: {e}")
+        # If user isolation was requested, DO NOT bypass filter to avoid data leakage
+        if user_id:
+            results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
+        else:
+            try:
+                results = collection.query(query_texts=[query], n_results=min(top_k, 25))
+            except Exception:
+                results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
 
     formatted_results = []
     if results and results.get("ids") and len(results["ids"]) > 0:
@@ -585,7 +594,216 @@ def get_source_location(chunk_id: str) -> Dict[str, Any]:
     }
 
 # ==========================================
-# 5. CLI INTERFACE (For Node.js subprocess calls)
+# 5. SOURCE-GROUNDED AI TUTOR (Phase 2)
+# ==========================================
+
+def grounded_chat(
+    query: str,
+    user_id: Optional[str] = None,
+    conversation_history: Optional[List[Dict[str, str]]] = None,
+    topic: Optional[str] = None,
+    min_confidence: float = 0.28,
+    top_k: int = 5
+) -> Dict[str, Any]:
+    """
+    Source-Grounded AI Tutor Engine:
+    1. Retrieves relevant chunks from Chroma for user_id (isolated).
+    2. Validates evidence sufficiency; declines to hallucinate if evidence is missing.
+    3. Prompts Gemini with strict evidence-only grounding and inline chunk citations.
+    4. Extracts and links verified citations to chunk coordinates (Page, Slide, Timestamp).
+    """
+    # 1. Search relevant chunks for the user
+    search_data = search_relevant_chunks(
+        query=query,
+        user_id=user_id,
+        topic=topic,
+        top_k=top_k
+    )
+    results = search_data.get("results", [])
+
+    # Filter by minimum confidence
+    relevant_chunks = [r for r in results if r.get("score", 0.0) >= min_confidence]
+
+    # 2. Check for insufficient evidence
+    if not relevant_chunks:
+        return {
+            "response": "The uploaded course materials do not contain sufficient information to answer this question. Please upload relevant course materials (such as lecture slides, PDFs, or video recordings) for this topic.",
+            "citations": [],
+            "grounded": False,
+            "insufficient_evidence": True,
+            "retrieved_count": len(results)
+        }
+
+    # 3. Format evidence block
+    evidence_lines = []
+    chunk_map = {}
+    for c in relevant_chunks:
+        cid = c["chunk_id"]
+        chunk_map[cid] = c
+        loc = c.get("location", {})
+        loc_str = (
+            f"Page {loc['page_number']}" if loc.get("page_number") is not None
+            else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
+            else f"Timestamp {int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
+            else "Source Excerpt"
+        )
+        evidence_lines.append(
+            f"[CHUNK {cid}]\n"
+            f"Source Type: {loc.get('source_type', 'DOCUMENT')} | Coordinate: {loc_str}\n"
+            f"Topic: {c.get('topic', 'General')} > {c.get('subtopic', 'Main')}\n"
+            f"Content: \"{c.get('text', '')}\"\n"
+        )
+    evidence_block = "\n".join(evidence_lines)
+
+    # 4. Construct Prompt
+    system_instruction = (
+        "You are StudyMate's Source-Grounded AI Tutor. You explain concepts to students using STRICTLY their uploaded course materials.\n\n"
+        "EVIDENCE CHUNKS FROM UPLOADED MATERIALS:\n"
+        f"{evidence_block}\n\n"
+        "CRITICAL RULES:\n"
+        "1. Ground your response STRICTLY and SOLELY in the provided evidence chunks above.\n"
+        "2. For EVERY factual statement you make, append an inline citation referencing the specific chunk ID in square brackets, e.g. [CHUNK_ID].\n"
+        "3. NEVER fabricate citations, page numbers, slide numbers, or timestamps. Only cite the exact chunk IDs listed in the evidence above.\n"
+        "4. If the question can only be partially answered from the evidence:\n"
+        "   - Provide the source-backed answer first under '### 📚 Course Material Evidence'.\n"
+        "   - If offering general outside knowledge, you MUST explicitly place it under a separate section labeled: '### 💡 Additional Context (Outside Course Material)', and do NOT cite uploaded materials in that section.\n"
+        "5. If the provided chunks do not contain enough information, state clearly that the uploaded materials do not contain sufficient information.\n"
+    )
+
+    history_text = ""
+    if conversation_history:
+        recent = conversation_history[-6:]
+        history_text = "CONVERSATION HISTORY:\n" + "\n".join(
+            [f"{m.get('role', 'user').capitalize()}: {m.get('content', '')}" for m in recent]
+        ) + "\n\n"
+
+    user_query_text = f"{history_text}Student Question: {query}"
+
+    # 5. Call Gemini or Grounded Synthesis
+    ai_response_text = ""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if api_key:
+        try:
+            import urllib.request
+            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": f"{system_instruction}\n\n{user_query_text}"}
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "maxOutputTokens": 2048,
+                    "topP": 0.8
+                }
+            }
+            req = urllib.request.Request(
+                gemini_url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        ai_response_text = parts[0].get("text", "")
+        except Exception as e:
+            logger.warning(f"Direct Gemini call failed: {e}. Falling back to structured synthesis.")
+
+    if not ai_response_text:
+        # Structured deterministic synthesis from retrieved evidence
+        top_chunk = relevant_chunks[0]
+        top_loc = top_chunk.get("location", {})
+        top_label = (
+            f"Page {top_loc['page_number']}" if top_loc.get("page_number") is not None
+            else f"Slide {top_loc['slide_number']}" if top_loc.get("slide_number") is not None
+            else f"Timestamp {int(top_loc['timestamp_start']//60)}m{int(top_loc['timestamp_start']%60)}s" if top_loc.get("timestamp_start") is not None
+            else "Course Excerpt"
+        )
+        ai_response_text = (
+            f"### 📚 Course Material Evidence\n\n"
+            f"According to your course materials on **{top_chunk.get('topic', 'Topic')}** ({top_label}), "
+            f"{top_chunk.get('text', '').strip()} [{top_chunk['chunk_id']}]"
+        )
+        if len(relevant_chunks) > 1:
+            second_chunk = relevant_chunks[1]
+            sec_loc = second_chunk.get("location", {})
+            sec_label = (
+                f"Page {sec_loc['page_number']}" if sec_loc.get("page_number") is not None
+                else f"Slide {sec_loc['slide_number']}" if sec_loc.get("slide_number") is not None
+                else f"Timestamp {int(sec_loc['timestamp_start']//60)}m{int(sec_loc['timestamp_start']%60)}s" if sec_loc.get("timestamp_start") is not None
+                else "Course Excerpt"
+            )
+            ai_response_text += f"\n\nAdditionally, in {sec_label}: {second_chunk.get('text', '').strip()} [{second_chunk['chunk_id']}]"
+
+    # 6. Extract cited chunk IDs and link verified location citations
+    found_cids = re.findall(r'\[([a-zA-Z0-9_\-]+)\]', ai_response_text)
+    cited_chunks = []
+    seen = set()
+
+    for cid in found_cids:
+        if cid in chunk_map and cid not in seen:
+            seen.add(cid)
+            c = chunk_map[cid]
+            loc = c.get("location", {})
+            label = (
+                f"Page {loc['page_number']}" if loc.get("page_number") is not None
+                else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
+                else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
+                else "Source Excerpt"
+            )
+            cited_chunks.append({
+                "chunk_id": cid,
+                "source_id": c.get("source_id"),
+                "document_id": c.get("document_id"),
+                "source_type": loc.get("source_type", "TEXT"),
+                "page_number": loc.get("page_number"),
+                "slide_number": loc.get("slide_number"),
+                "timestamp_start": loc.get("timestamp_start"),
+                "timestamp_end": loc.get("timestamp_end"),
+                "citation_label": label,
+                "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
+            })
+
+    # If the response referenced the topic but missed bracket formatting, attach top evidence
+    if not cited_chunks and relevant_chunks:
+        c = relevant_chunks[0]
+        cid = c["chunk_id"]
+        loc = c.get("location", {})
+        label = (
+            f"Page {loc['page_number']}" if loc.get("page_number") is not None
+            else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
+            else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
+            else "Source Excerpt"
+        )
+        cited_chunks.append({
+            "chunk_id": cid,
+            "source_id": c.get("source_id"),
+            "document_id": c.get("document_id"),
+            "source_type": loc.get("source_type", "TEXT"),
+            "page_number": loc.get("page_number"),
+            "slide_number": loc.get("slide_number"),
+            "timestamp_start": loc.get("timestamp_start"),
+            "timestamp_end": loc.get("timestamp_end"),
+            "citation_label": label,
+            "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
+        })
+
+    return {
+        "response": ai_response_text,
+        "citations": cited_chunks,
+        "grounded": True,
+        "insufficient_evidence": False,
+        "retrieved_count": len(relevant_chunks)
+    }
+
+# ==========================================
+# 6. CLI INTERFACE (For Node.js subprocess calls)
 # ==========================================
 
 def main():
@@ -624,6 +842,13 @@ def main():
     loc_p = subparsers.add_parser("source-location")
     loc_p.add_argument("--id", required=True)
 
+    # Grounded chat command
+    chat_p = subparsers.add_parser("chat")
+    chat_p.add_argument("--query", required=True)
+    chat_p.add_argument("--user-id", default=None)
+    chat_p.add_argument("--topic", default=None)
+    chat_p.add_argument("--history", default=None)
+
     args = parser.parse_args()
 
     if args.command == "ingest":
@@ -656,6 +881,20 @@ def main():
         print(json.dumps(res))
     elif args.command == "source-location":
         res = get_source_location(args.id)
+        print(json.dumps(res))
+    elif args.command == "chat":
+        history = []
+        if args.history:
+            try:
+                history = json.loads(args.history)
+            except Exception:
+                history = []
+        res = grounded_chat(
+            query=args.query,
+            user_id=args.user_id,
+            conversation_history=history,
+            topic=args.topic
+        )
         print(json.dumps(res))
     else:
         parser.print_help()

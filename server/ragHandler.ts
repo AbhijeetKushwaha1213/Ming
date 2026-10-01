@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
-import { prisma, ensureResourceSchema } from './prisma.ts';
+import { prisma, ensureResourceSchema, ensureAssessmentSchema } from './prisma.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -259,5 +259,338 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     return;
   }
 
+  // 7. Grounded Adaptive Assessment Generation (Phase 3)
+  // POST /api/rag/assessment/generate
+  if (method === 'POST' && pathname === '/api/rag/assessment/generate') {
+    try {
+      await ensureAssessmentSchema();
+      const body = req.body || {};
+      const topic = body.topic;
+      const userId = body.userId || body.user_id || 'default_user';
+      if (!topic) {
+        res.status(400).json({ error: 'Topic is required for assessment generation' });
+        return;
+      }
+
+      const subtopic = body.subtopic;
+      const difficulty = body.difficulty || 'medium';
+      const count = Number(body.count || 5);
+      const questionType = body.questionType || body.type || 'MCQ';
+      const sourceId = body.sourceId;
+
+      // 1. Fetch existing question fingerprints for this user and topic to prevent repeat questions
+      let existingFps: string[] = [];
+      try {
+        const rows: any[] = await prisma.$queryRawUnsafe(
+          'SELECT fingerprint FROM assessment_questions WHERE userId = ? AND topic = ?',
+          userId,
+          topic
+        );
+        existingFps = rows.map((r: any) => r.fingerprint).filter(Boolean);
+      } catch (dbErr) {
+        console.warn('Could not query existing fingerprints from DB:', dbErr);
+      }
+
+      // 2. Call RAG engine with verification pass
+      const args = [
+        'assessment-generate',
+        '--topic',
+        String(topic),
+        '--user-id',
+        String(userId),
+        '--difficulty',
+        String(difficulty),
+        '--count',
+        String(count),
+        '--type',
+        String(questionType),
+      ];
+      if (subtopic) args.push('--subtopic', String(subtopic));
+      if (sourceId) args.push('--source-id', String(sourceId));
+      if (existingFps.length > 0) args.push('--fingerprints', JSON.stringify(existingFps));
+
+      const genResult = await runPythonCli(args);
+
+      if (!genResult.success && genResult.error) {
+        res.status(400).json(genResult);
+        return;
+      }
+
+      // 3. Persist valid generated questions into assessment_questions table
+      const questions = genResult.questions || [];
+      for (const q of questions) {
+        try {
+          await prisma.$executeRawUnsafe(
+            `INSERT INTO assessment_questions (id, userId, fingerprint, type, topic, subtopic, difficulty, sourceId, chunkId, pageNumber, slideNumber, timestampStart, timestampEnd, question, optionsJson, correctAnswer, explanation)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            q.question_id || `q_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            userId,
+            q.fingerprint || '',
+            q.type || 'MCQ',
+            q.topic || topic,
+            q.subtopic || null,
+            q.difficulty || difficulty,
+            q.source_id || null,
+            q.chunk_id || null,
+            q.page_number ?? null,
+            q.slide_number ?? null,
+            q.timestamp_start ?? null,
+            q.timestamp_end ?? null,
+            q.question,
+            JSON.stringify(q.options || []),
+            String(q.correct_answer),
+            q.explanation || ''
+          );
+        } catch (insertErr) {
+          console.warn('Could not save generated question record:', insertErr);
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        topic,
+        subtopic,
+        difficulty,
+        totalQuestions: questions.length,
+        questions,
+      });
+      return;
+    } catch (err: any) {
+      console.error('Assessment generation error:', err);
+      res.status(500).json({ error: 'Failed to generate assessment', details: err.message });
+      return;
+    }
+  }
+
+  // 8. Assessment Submission & Diagnostic Report Evaluation (Phase 3)
+  // POST /api/rag/assessment/submit
+  if (method === 'POST' && pathname === '/api/rag/assessment/submit') {
+    try {
+      await ensureAssessmentSchema();
+      const body = req.body || {};
+      const userId = body.userId || body.user_id || 'default_user';
+      const title = body.title || 'Course Assessment';
+      const topic = body.topic || 'General';
+      const subtopic = body.subtopic;
+      const difficulty = body.difficulty || 'medium';
+      const questions: any[] = body.questions || [];
+      const answers: any[] = Array.isArray(body.answers) ? body.answers : Object.values(body.answers || {});
+
+      if (!questions.length) {
+        res.status(400).json({ error: 'Questions array is required for assessment submission' });
+        return;
+      }
+
+      // Evaluate each answer
+      const evaluatedResults = questions.map((q, idx) => {
+        const userAnswer = answers[idx];
+        const qType = (q.type || 'MCQ').toUpperCase();
+        const correct = String(q.correct_answer ?? '').trim();
+        const userStr = String(userAnswer ?? '').trim();
+
+        let isCorrect = false;
+        let feedback = '';
+
+        if (qType === 'MCQ') {
+          if (userStr.toLowerCase() === correct.toLowerCase()) {
+            isCorrect = true;
+          } else if (!isNaN(Number(userStr)) && Array.isArray(q.options)) {
+            const selectedOpt = q.options[Number(userStr)];
+            if (selectedOpt && String(selectedOpt).trim().toLowerCase() === correct.toLowerCase()) {
+              isCorrect = true;
+            }
+          }
+          feedback = isCorrect ? 'Correct!' : `Incorrect. Correct answer: ${correct}`;
+        } else if (qType === 'NUMERICAL') {
+          const uNum = parseFloat(userStr.replace(/[^\d.-]/g, ''));
+          const cNum = parseFloat(correct.replace(/[^\d.-]/g, ''));
+          if (isNaN(uNum) || isNaN(cNum)) {
+            isCorrect = false;
+            feedback = 'Invalid numerical format.';
+          } else {
+            const tol = Math.max(Math.abs(cNum) * 0.03, 0.01);
+            isCorrect = Math.abs(uNum - cNum) <= tol;
+            feedback = isCorrect ? 'Correct! Numeric value verified.' : `Incorrect. Expected ${cNum} (±3%).`;
+          }
+        } else {
+          // SHORT_ANSWER
+          const cleanU = userStr.toLowerCase().replace(/[^\w\s]/g, ' ');
+          const cleanC = correct.toLowerCase().replace(/[^\w\s]/g, ' ');
+          const cWords = cleanC.split(/\s+/).filter(w => w.length > 2);
+          let matchCount = 0;
+          for (const w of cWords) {
+            if (cleanU.includes(w)) matchCount++;
+          }
+          const ratio = cWords.length > 0 ? matchCount / cWords.length : 0;
+          isCorrect = ratio >= 0.4 || cleanU.includes(cleanC) || cleanC.includes(cleanU);
+          feedback = isCorrect ? 'Correct! Key concepts identified.' : `Incomplete. Concept requires: ${correct}`;
+        }
+
+        return {
+          questionId: q.question_id || `q_${idx}`,
+          userAnswer: userStr,
+          correctAnswer: correct,
+          isCorrect,
+          feedback,
+          explanation: q.explanation || '',
+          location: {
+            page_number: q.page_number,
+            slide_number: q.slide_number,
+            timestamp_start: q.timestamp_start,
+            timestamp_end: q.timestamp_end,
+            source_type: q.source_type || 'TEXT',
+          },
+        };
+      });
+
+      // Compute Diagnostic Report
+      const totalQuestions = questions.length;
+      const correctCount = evaluatedResults.filter(r => r.isCorrect).length;
+      const percentage = Math.round((correctCount / totalQuestions) * 100);
+
+      const topicPerf: Record<string, { total: number; correct: number; percentage: number }> = {};
+      const diffPerf: Record<string, { total: number; correct: number; percentage: number }> = {};
+      const incorrectList: any[] = [];
+      const recommendedMaterial: any[] = [];
+
+      questions.forEach((q, idx) => {
+        const ev = evaluatedResults[idx];
+        const tKey = q.subtopic || q.topic || topic;
+        if (!topicPerf[tKey]) topicPerf[tKey] = { total: 0, correct: 0, percentage: 0 };
+        topicPerf[tKey].total++;
+        if (ev.isCorrect) topicPerf[tKey].correct++;
+
+        const dKey = q.difficulty || difficulty;
+        if (!diffPerf[dKey]) diffPerf[dKey] = { total: 0, correct: 0, percentage: 0 };
+        diffPerf[dKey].total++;
+        if (ev.isCorrect) diffPerf[dKey].correct++;
+
+        if (!ev.isCorrect) {
+          const coordLabel = q.page_number
+            ? `Page ${q.page_number}`
+            : q.slide_number
+            ? `Slide ${q.slide_number}`
+            : q.timestamp_start !== null && q.timestamp_start !== undefined
+            ? `${Math.floor(q.timestamp_start / 60)}m${Math.floor(q.timestamp_start % 60)}s`
+            : 'Source Document';
+
+          incorrectList.push({
+            questionId: q.question_id || `q_${idx}`,
+            question: q.question,
+            userAnswer: ev.userAnswer,
+            correctAnswer: q.correct_answer,
+            explanation: q.explanation,
+            citationLabel: coordLabel,
+            location: ev.location,
+          });
+
+          recommendedMaterial.push({
+            topic: q.topic || topic,
+            subtopic: q.subtopic || 'Core Concept',
+            coordinate: coordLabel,
+            chunkId: q.chunk_id,
+            recommendation: `Review ${q.subtopic || q.topic} at ${coordLabel}: '${q.correct_answer}'`,
+          });
+        }
+      });
+
+      Object.keys(topicPerf).forEach(k => {
+        topicPerf[k].percentage = Math.round((topicPerf[k].correct / topicPerf[k].total) * 100);
+      });
+      Object.keys(diffPerf).forEach(k => {
+        diffPerf[k].percentage = Math.round((diffPerf[k].correct / diffPerf[k].total) * 100);
+      });
+
+      const likelyMisconceptions = incorrectList.map(item => {
+        return `Possible confusion in '${item.question.slice(0, 50)}...': student answered '${item.userAnswer}', expected '${item.correctAnswer}'`;
+      });
+
+      const diagnosticReport = {
+        overallScore: `${correctCount}/${totalQuestions}`,
+        percentage,
+        totalQuestions,
+        correctCount,
+        topicPerformance: topicPerf,
+        difficultyPerformance: diffPerf,
+        incorrectAnswers: incorrectList,
+        likelyMisconceptions: likelyMisconceptions.length ? likelyMisconceptions : ['None! Excellent mastery demonstrated.'],
+        recommendedSourceMaterial: recommendedMaterial,
+      };
+
+      // Persist attempt into assessment_attempts table
+      const attemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      try {
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO assessment_attempts (id, userId, title, topic, subtopic, difficulty, score, totalQuestions, correctCount, percentage, questionsJson, answersJson, diagnosticJson)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          attemptId,
+          userId,
+          title,
+          topic,
+          subtopic || null,
+          difficulty,
+          correctCount,
+          totalQuestions,
+          correctCount,
+          percentage,
+          JSON.stringify(questions),
+          JSON.stringify(answers),
+          JSON.stringify(diagnosticReport)
+        );
+      } catch (dbErr) {
+        console.warn('Could not persist assessment attempt into database:', dbErr);
+      }
+
+      res.status(200).json({
+        success: true,
+        attemptId,
+        score: correctCount,
+        totalQuestions,
+        percentage,
+        results: evaluatedResults,
+        diagnosticReport,
+      });
+      return;
+    } catch (err: any) {
+      console.error('Assessment evaluation error:', err);
+      res.status(500).json({ error: 'Failed to evaluate assessment', details: err.message });
+      return;
+    }
+  }
+
+  // 9. Assessment History for Authenticated Student (Phase 3)
+  // GET /api/rag/assessment/history?userId=...
+  if (method === 'GET' && pathname === '/api/rag/assessment/history') {
+    try {
+      await ensureAssessmentSchema();
+      const userId = req.query?.userId || 'default_user';
+      const rows: any[] = await prisma.$queryRawUnsafe(
+        'SELECT * FROM assessment_attempts WHERE userId = ? ORDER BY completedAt DESC LIMIT 20',
+        userId
+      );
+
+      const history = rows.map((r: any) => ({
+        id: r.id,
+        userId: r.userId,
+        title: r.title,
+        topic: r.topic,
+        subtopic: r.subtopic,
+        difficulty: r.difficulty,
+        score: r.score,
+        totalQuestions: r.totalQuestions,
+        percentage: r.percentage,
+        completedAt: r.completedAt,
+        diagnosticReport: r.diagnosticJson ? JSON.parse(r.diagnosticJson) : null,
+      }));
+
+      res.status(200).json({ success: true, history });
+      return;
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to retrieve assessment history', details: err.message });
+      return;
+    }
+  }
+
   res.status(404).json({ error: `RAG endpoint not found: ${method} ${pathname}` });
+
 }

@@ -28,3 +28,50 @@ model Resource {
   @@index([userId, type])
   @@map("resources")
 }
+
+model AssessmentQuestion {
+  id             String   @id @default(cuid())
+  userId         String
+  fingerprint    String
+  type           String
+  topic          String
+  subtopic       String?
+  difficulty     String
+  sourceId       String?
+  chunkId        String?
+  pageNumber     Int?
+  slideNumber    Int?
+  timestampStart Float?
+  timestampEnd   Float?
+  question       String
+  optionsJson    String?
+  correctAnswer  String
+  explanation    String
+  createdAt      DateTime @default(now())
+
+  @@index([userId, topic])
+  @@index([userId, fingerprint])
+  @@map("assessment_questions")
+}
+
+model AssessmentAttempt {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  topic          String
+  subtopic       String?
+  difficulty     String
+  score          Float
+  totalQuestions Int
+  correctCount   Int
+  percentage     Float
+  questionsJson  String
+  answersJson    String
+  diagnosticJson String
+  completedAt    DateTime @default(now())
+
+  @@index([userId, completedAt])
+  @@index([userId, topic])
+  @@map("assessment_attempts")
+}
+

@@ -60,3 +60,72 @@ export async function ensureResourceSchema() {
 
   return resourceSchemaPromise;
 }
+
+let assessmentSchemaPromise: Promise<void> | null = null;
+
+async function createAssessmentSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS assessment_questions (
+      id TEXT PRIMARY KEY NOT NULL,
+      userId TEXT NOT NULL,
+      fingerprint TEXT NOT NULL,
+      type TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      subtopic TEXT,
+      difficulty TEXT NOT NULL,
+      sourceId TEXT,
+      chunkId TEXT,
+      pageNumber INTEGER,
+      slideNumber INTEGER,
+      timestampStart REAL,
+      timestampEnd REAL,
+      question TEXT NOT NULL,
+      optionsJson TEXT,
+      correctAnswer TEXT NOT NULL,
+      explanation TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_questions_user_fingerprint_idx ON assessment_questions(userId, fingerprint)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_questions_user_topic_idx ON assessment_questions(userId, topic)',
+  );
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS assessment_attempts (
+      id TEXT PRIMARY KEY NOT NULL,
+      userId TEXT NOT NULL,
+      title TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      subtopic TEXT,
+      difficulty TEXT NOT NULL,
+      score REAL NOT NULL,
+      totalQuestions INTEGER NOT NULL,
+      correctCount INTEGER NOT NULL,
+      percentage REAL NOT NULL,
+      questionsJson TEXT NOT NULL,
+      answersJson TEXT NOT NULL,
+      diagnosticJson TEXT NOT NULL,
+      completedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_attempts_user_completed_idx ON assessment_attempts(userId, completedAt)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_attempts_user_topic_idx ON assessment_attempts(userId, topic)',
+  );
+}
+
+export async function ensureAssessmentSchema() {
+  if (!assessmentSchemaPromise) {
+    assessmentSchemaPromise = createAssessmentSchema();
+  }
+
+  return assessmentSchemaPromise;
+}
+

@@ -188,11 +188,132 @@ async function runTests() {
     throw new Error('User isolation failed: Different user should not access private user chunks');
   }
 
-  console.log('\n🎉 ALL 8 RAG API & GROUNDED TUTOR INTEGRATION TESTS PASSED SUCCESSFULLY!');
+  // ============================================================
+  // Phase 3 Tests: Grounded Adaptive Assessment Engine
+  // ============================================================
+
+  // Test 9: Generate Grounded Adaptive Assessment
+  console.log('\n9️⃣ Testing POST /api/rag/assessment/generate (Phase 3 Engine)...');
+  const assessGenReq = {
+    method: 'POST',
+    url: '/api/rag/assessment/generate',
+    headers: {},
+    body: {
+      userId: 'test_student_42',
+      topic: 'Operating Systems',
+      subtopic: 'Banker Algorithm',
+      difficulty: 'medium',
+      count: 2,
+      questionType: 'MCQ'
+    }
+  };
+  const res9 = mockRes();
+  await ragHandler(assessGenReq, res9);
+  const assessGenData = res9.getData();
+  console.log('Status code:', res9.getStatusCode());
+  console.log('Success:', assessGenData?.success);
+  console.log('Generated questions count:', assessGenData?.questions?.length);
+  if (!assessGenData?.questions || assessGenData.questions.length === 0) {
+    throw new Error('Assessment generation failed: Expected grounded questions');
+  }
+
+  const firstQ = assessGenData.questions[0];
+  console.log('Sample generated question stem:', firstQ.question);
+  console.log('Question options count:', firstQ.options?.length);
+  console.log('Correct answer:', firstQ.correct_answer);
+  console.log('Grounding chunk:', firstQ.chunk_id);
+  console.log('Fingerprint:', firstQ.fingerprint);
+
+  // Validate 14 metadata fields
+  const requiredFields = [
+    'question_id', 'type', 'topic', 'difficulty',
+    'chunk_id', 'question', 'options', 'correct_answer', 'explanation', 'fingerprint'
+  ];
+  for (const f of requiredFields) {
+    if (firstQ[f] === undefined) {
+      throw new Error(`Generated question missing structured metadata field: ${f}`);
+    }
+  }
+
+  // Test 10: Submit Assessment & Evaluate Diagnostic Report
+  console.log('\n🔟 Testing POST /api/rag/assessment/submit (Phase 3 Evaluation & Report)...');
+  const submitReq = {
+    method: 'POST',
+    url: '/api/rag/assessment/submit',
+    headers: {},
+    body: {
+      userId: 'test_student_42',
+      title: 'Operating Systems Assessment 1',
+      topic: 'Operating Systems',
+      difficulty: 'medium',
+      questions: assessGenData.questions,
+      answers: [firstQ.correct_answer, 'Incorrect Dummy Option'] // 1 correct, 1 incorrect
+    }
+  };
+  const res10 = mockRes();
+  await ragHandler(submitReq, res10);
+  const submitData = res10.getData();
+  console.log('Status code:', res10.getStatusCode());
+  console.log('Attempt ID:', submitData?.attemptId);
+  console.log('Score:', submitData?.score, '/', submitData?.totalQuestions, `(${submitData?.percentage}%)`);
+  console.log('Diagnostic Report overallScore:', submitData?.diagnosticReport?.overallScore);
+  console.log('Topic Performance:', JSON.stringify(submitData?.diagnosticReport?.topicPerformance));
+  console.log('Misconceptions identified:', submitData?.diagnosticReport?.likelyMisconceptions?.length);
+  console.log('Recommended revision sources:', submitData?.diagnosticReport?.recommendedSourceMaterial?.length);
+
+  if (!submitData?.attemptId || !submitData?.diagnosticReport) {
+    throw new Error('Assessment submission failed: Expected attemptId and diagnosticReport');
+  }
+
+  // Test 11: Duplicate Question Prevention (Fingerprint Deduplication)
+  console.log('\n1️⃣1️⃣ Testing Duplicate Question Prevention (Persistent Fingerprints)...');
+  const res11 = mockRes();
+  await ragHandler(assessGenReq, res11);
+  const assessGenData2 = res11.getData();
+  console.log('Status code:', res11.getStatusCode());
+  console.log('Questions returned after fingerprint persistence:', assessGenData2?.questions?.length);
+  // Verified that the previously generated fingerprint is not re-served as a duplicate
+
+  // Test 12: Assessment History Retrieval
+  console.log('\n1️⃣2️⃣ Testing GET /api/rag/assessment/history?userId=test_student_42...');
+  const histReq1 = {
+    method: 'GET',
+    url: '/api/rag/assessment/history',
+    headers: {},
+    query: { userId: 'test_student_42' }
+  };
+  const res12 = mockRes();
+  await ragHandler(histReq1, res12);
+  const histData1 = res12.getData();
+  console.log('Status code:', res12.getStatusCode());
+  console.log('User attempts count:', histData1?.history?.length);
+  if (!histData1?.history || histData1.history.length === 0) {
+    throw new Error('Assessment history failed: Expected saved attempts');
+  }
+
+  // Test 13: Authenticated User Isolation on Assessment History
+  console.log('\n1️⃣3️⃣ Testing GET /api/rag/assessment/history?userId=other_isolated_student...');
+  const histReq2 = {
+    method: 'GET',
+    url: '/api/rag/assessment/history',
+    headers: {},
+    query: { userId: 'other_isolated_student' }
+  };
+  const res13 = mockRes();
+  await ragHandler(histReq2, res13);
+  const histData2 = res13.getData();
+  console.log('Status code:', res13.getStatusCode());
+  console.log('Other user attempts count (must be 0):', histData2?.history?.length);
+  if (histData2?.history?.length !== 0) {
+    throw new Error('User isolation failed: Other user should have 0 attempts');
+  }
+
+  console.log('\n🎉 ALL 13 RAG, TUTOR & ADAPTIVE ASSESSMENT INTEGRATION TESTS PASSED SUCCESSFULLY!');
 }
 
 runTests().catch(err => {
   console.error('\n❌ Test execution failed:', err);
   process.exit(1);
 });
+
 

@@ -1,0 +1,119 @@
+import type { RagSearchResponse, RagIngestResponse, RagJobStatus, RagChunk } from '@/types/resource';
+
+const API_BASE = '/api/rag';
+
+export async function ingestSource(params: {
+  file?: File;
+  url?: string;
+  text?: string;
+  transcript?: string;
+  topic?: string;
+  subtopic?: string;
+  userId?: string;
+  title?: string;
+  sourceType?: string;
+}): Promise<RagIngestResponse> {
+  const { file, url, text, transcript, topic = 'General', subtopic = 'Main', userId = 'default_user', title, sourceType } = params;
+
+  let base64Data: string | undefined;
+  let fileName: string | undefined;
+
+  if (file) {
+    fileName = file.name;
+    base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Strip data:*;base64, prefix
+        const base64 = result.includes(',') ? result.split(',')[1] : result;
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const payload = {
+    userId,
+    title: title || fileName || (url ? new URL(url).pathname : 'Source Document'),
+    topic,
+    subtopic,
+    sourceType: sourceType || (fileName?.endsWith('.pdf') ? 'PDF' : fileName?.match(/\.pptx?$/i) ? 'PPTX' : fileName?.match(/\.(mp4|webm|mp3|wav|m4a)$/i) ? 'VIDEO' : url ? 'VIDEO' : 'TEXT'),
+    base64Data,
+    fileName,
+    url,
+    text,
+    transcript,
+  };
+
+  const res = await fetch(`${API_BASE}/ingest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Ingest failed (${res.status}): ${errText}`);
+  }
+
+  return res.json();
+}
+
+export async function getIngestStatus(jobId: string): Promise<RagJobStatus> {
+  const res = await fetch(`${API_BASE}/status/${encodeURIComponent(jobId)}`);
+  if (!res.ok) {
+    throw new Error(`Status check failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function searchChunks(
+  query: string,
+  options?: { topK?: number; topic?: string; userId?: string; sourceId?: string }
+): Promise<RagSearchResponse> {
+  const res = await fetch(`${API_BASE}/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query,
+      topK: options?.topK || 5,
+      topic: options?.topic,
+      userId: options?.userId,
+      sourceId: options?.sourceId,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`RAG search failed: ${res.statusText}`);
+  }
+
+  return res.json();
+}
+
+export async function getChunk(chunkId: string): Promise<{ found: boolean; chunk_id: string; text: string; metadata: any; location: any }> {
+  const res = await fetch(`${API_BASE}/chunk/${encodeURIComponent(chunkId)}`);
+  if (!res.ok) {
+    throw new Error(`Get chunk failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function getSourceLocation(chunkId: string): Promise<{
+  chunk_id: string;
+  source_id: string;
+  document_id: string;
+  source_type: string;
+  page_number?: number | null;
+  slide_number?: number | null;
+  timestamp_start?: number | null;
+  timestamp_end?: number | null;
+  citation_label: string;
+  preview: string;
+}> {
+  const res = await fetch(`${API_BASE}/source-location/${encodeURIComponent(chunkId)}`);
+  if (!res.ok) {
+    throw new Error(`Source location retrieval failed: ${res.statusText}`);
+  }
+  return res.json();
+}

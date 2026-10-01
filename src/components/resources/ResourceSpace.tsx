@@ -13,13 +13,41 @@ import {
   deleteResource,
   listResources,
   uploadPdfResource,
+import {
+  createPdfSignedUrl,
+  createResource,
+  deletePdfResource,
+  deleteResource,
+  listResources,
+  uploadPdfResource,
 } from '@/api/resourceAPI';
-import type { CreateResourceInput, ResourceItem, ResourceType } from '@/types/resource';
-import { Plus, Search, Filter, FileText, Link as LinkIcon, StickyNote, Folder, X, Trash2, Loader2, Upload, ExternalLink } from 'lucide-react';
+import { ingestSource, searchChunks } from '@/api/ragAPI';
+import type { CreateResourceInput, ResourceItem, ResourceType, RagChunk } from '@/types/resource';
+import {
+  Plus,
+  Search,
+  Filter,
+  FileText,
+  Link as LinkIcon,
+  StickyNote,
+  Folder,
+  X,
+  Trash2,
+  Loader2,
+  Upload,
+  ExternalLink,
+  Presentation,
+  Video,
+  Database,
+  Sparkles,
+  CheckCircle2,
+  Clock,
+  BookOpen,
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 
-const RESOURCE_TYPE_OPTIONS: ResourceType[] = ['NOTE', 'LINK', 'PDF'];
+const RESOURCE_TYPE_OPTIONS: ResourceType[] = ['NOTE', 'LINK', 'PDF', 'PPTX', 'VIDEO'];
 
 const emptyForm = {
   title: '',
@@ -45,6 +73,35 @@ export const ResourceSpace = () => {
   const [newResource, setNewResource] = useState(emptyForm);
   const [newTag, setNewTag] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Multimodal RAG State
+  const [ragQuery, setRagQuery] = useState('');
+  const [ragResults, setRagResults] = useState<RagChunk[]>([]);
+  const [isSearchingRag, setIsSearchingRag] = useState(false);
+  const [activeTab, setActiveTab] = useState<'vault' | 'rag'>('vault');
+
+  const handleRagSearch = async () => {
+    if (!ragQuery.trim()) return;
+    setIsSearchingRag(true);
+    try {
+      const res = await searchChunks(ragQuery, { userId: user?.user_id, topK: 6 });
+      setRagResults(res.results || []);
+      if (!res.results || res.results.length === 0) {
+        toast({
+          title: 'No vector matches found',
+          description: 'Try searching for different terms or ingest more lecture documents.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Search error',
+        description: err.message || 'Failed to search vector store',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSearchingRag(false);
+    }
+  };
 
   const folders = useMemo(
     () =>
@@ -183,6 +240,15 @@ export const ResourceSpace = () => {
 
       if (newResource.type === 'NOTE') {
         payload.noteContent = newResource.noteContent.trim();
+        // Index note in background
+        ingestSource({
+          text: newResource.noteContent.trim(),
+          topic: newResource.folder || 'General',
+          subtopic: newResource.title,
+          userId: user.user_id,
+          title: newResource.title,
+          sourceType: 'TEXT',
+        }).catch(err => console.warn('Note vector indexing:', err));
       }
 
       if (newResource.type === 'LINK') {
@@ -198,6 +264,53 @@ export const ResourceSpace = () => {
         uploadedStoragePath = upload.storagePath;
         payload.fileUrl = upload.fileUrl;
         payload.storagePath = upload.storagePath;
+
+        // Ingest into ChromaDB with page-by-page coordinates
+        ingestSource({
+          file: selectedFile,
+          topic: newResource.folder || 'General',
+          subtopic: newResource.title,
+          userId: user.user_id,
+          title: newResource.title,
+          sourceType: 'PDF',
+        }).catch(err => console.warn('PDF vector indexing:', err));
+      }
+
+      if (newResource.type === 'PPTX') {
+        if (!selectedFile) {
+          throw new Error('Choose a PPTX / PPT slide deck file before saving.');
+        }
+
+        // Ingest into ChromaDB with slide-by-slide coordinates
+        await ingestSource({
+          file: selectedFile,
+          topic: newResource.folder || 'General',
+          subtopic: newResource.title,
+          userId: user.user_id,
+          title: newResource.title,
+          sourceType: 'PPTX',
+        });
+      }
+
+      if (newResource.type === 'VIDEO') {
+        if (!selectedFile && !newResource.linkUrl.trim()) {
+          throw new Error('Provide a video/audio file or enter a YouTube/lecture link.');
+        }
+
+        if (newResource.linkUrl.trim()) {
+          payload.linkUrl = newResource.linkUrl.trim();
+        }
+
+        // Ingest into ChromaDB with timestamp coordinates
+        await ingestSource({
+          file: selectedFile || undefined,
+          url: newResource.linkUrl.trim() || undefined,
+          topic: newResource.folder || 'General',
+          subtopic: newResource.title,
+          userId: user.user_id,
+          title: newResource.title,
+          sourceType: 'VIDEO',
+        });
       }
 
       const resource = await createResource(payload);
@@ -431,8 +544,8 @@ export const ResourceSpace = () => {
 
               {newResource.type === 'PDF' && (
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">PDF File</label>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 p-4">
+                  <label className="block text-sm font-medium">PDF File (Textbook / Chapter / Paper)</label>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 p-4 hover:border-indigo-400">
                     <Upload className="h-5 w-5 text-gray-500" />
                     <span className="text-sm text-gray-600">
                       {selectedFile ? selectedFile.name : 'Choose a PDF up to 10MB'}
@@ -440,6 +553,56 @@ export const ResourceSpace = () => {
                     <input
                       type="file"
                       accept="application/pdf,.pdf"
+                      className="hidden"
+                      onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+                    />
+                  </label>
+                </div>
+              )}
+
+              {newResource.type === 'PPTX' && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Slide Deck File (PPTX / PPT)</label>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 p-4 hover:border-amber-400">
+                    <Presentation className="h-5 w-5 text-amber-500" />
+                    <span className="text-sm text-gray-600">
+                      {selectedFile ? selectedFile.name : 'Choose a PPTX / PPT slide deck'}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pptx,.ppt"
+                      className="hidden"
+                      onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+                    />
+                  </label>
+                </div>
+              )}
+
+              {newResource.type === 'VIDEO' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Lecture Video URL (YouTube / Video Stream)</label>
+                    <Input
+                      value={newResource.linkUrl}
+                      onChange={(event) =>
+                        setNewResource((current) => ({ ...current, linkUrl: event.target.value }))
+                      }
+                      placeholder="https://youtube.com/watch?v=... or direct video link"
+                    />
+                  </div>
+                  <div className="relative flex py-1 items-center">
+                    <div className="flex-grow border-t border-gray-200"></div>
+                    <span className="flex-shrink mx-3 text-xs text-gray-400 uppercase">Or upload media file</span>
+                    <div className="flex-grow border-t border-gray-200"></div>
+                  </div>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 p-4 hover:border-purple-400">
+                    <Video className="h-5 w-5 text-purple-500" />
+                    <span className="text-sm text-gray-600">
+                      {selectedFile ? selectedFile.name : 'Upload MP4, WebM, MP3, WAV lecture file'}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".mp4,.webm,.mp3,.wav,.m4a"
                       className="hidden"
                       onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
                     />
@@ -504,129 +667,323 @@ export const ResourceSpace = () => {
         </Dialog>
       </div>
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-gray-500" />
-            <Input
-              placeholder="Search resources"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="w-64"
-            />
-          </div>
+      {/* View Switcher: Document Vault vs Multimodal Knowledge Base (Chroma RAG) */}
+      <div className="flex items-center gap-3 border-b border-border pb-3">
+        <Button
+          variant={activeTab === 'vault' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveTab('vault')}
+          className="gap-2"
+        >
+          <Folder className="w-4 h-4" />
+          Document Vault ({resources.length})
+        </Button>
+        <Button
+          variant={activeTab === 'rag' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveTab('rag')}
+          className="gap-2"
+        >
+          <Database className="w-4 h-4 text-primary" />
+          Multimodal Knowledge Base (Chroma RAG)
+          <Badge variant="secondary" className="ml-1 text-[10px] bg-primary/10 text-primary">
+            Vector Store
+          </Badge>
+        </Button>
+      </div>
 
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-40">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="NOTE">Notes</SelectItem>
-              <SelectItem value="LINK">Links</SelectItem>
-              <SelectItem value="PDF">PDFs</SelectItem>
-            </SelectContent>
-          </Select>
+      {activeTab === 'rag' ? (
+        <div className="space-y-6">
+          {/* Knowledge Base Search Banner */}
+          <Card className="p-6 bg-gradient-to-br from-primary/5 via-card to-background border-primary/20">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Database className="w-5 h-5 text-primary" />
+                  <h2 className="text-lg font-bold text-foreground">Vector Knowledge Base Search</h2>
+                  <Badge variant="outline" className="text-xs">ChromaDB</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Semantically query textbook pages, PPTX slides, and lecture video transcripts with exact source origin coordinates.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setNewResource({ ...emptyForm, type: 'PDF' });
+                  setShowAddDialog(true);
+                }}
+                className="gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Ingest New Source
+              </Button>
+            </div>
 
-          {folders.length > 0 && (
-            <Select value={selectedFolder} onValueChange={setSelectedFolder}>
-              <SelectTrigger className="w-40">
-                <Folder className="w-4 h-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Folders</SelectItem>
-                {folders.map((folder) => (
-                  <SelectItem key={folder} value={folder}>
-                    {folder}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={ragQuery}
+                  onChange={(e) => setRagQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleRagSearch();
+                    }
+                  }}
+                  placeholder="Ask a question or enter a topic (e.g. 'Banker algorithm safe state', 'Coffman conditions')..."
+                  className="pl-10"
+                />
+              </div>
+              <Button onClick={handleRagSearch} disabled={isSearchingRag} className="gap-2">
+                {isSearchingRag ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Semantic Search
+              </Button>
+            </div>
+
+            {/* Quick Suggestions */}
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50 text-xs text-muted-foreground flex-wrap">
+              <span>Try queries:</span>
+              {['Banker algorithm safe state', 'Coffman conditions deadlock', 'Operating systems'].map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => {
+                    setRagQuery(q);
+                  }}
+                  className="underline hover:text-primary transition-colors"
+                >
+                  "{q}"
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {/* Search Results */}
+          {ragResults.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <span>Retrieved Knowledge Chunks</span>
+                  <Badge variant="secondary">{ragResults.length} matches</Badge>
+                </h3>
+                <span className="text-xs text-muted-foreground">Ranked by Cosine Similarity</span>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {ragResults.map((chunk) => {
+                  const loc = chunk.location;
+                  const isPdf = loc?.source_type === 'PDF' || loc?.page_number !== null;
+                  const isSlide = loc?.source_type === 'SLIDE' || loc?.slide_number !== null;
+                  const isVideo = loc?.source_type === 'VIDEO' || loc?.timestamp_start !== null;
+
+                  return (
+                    <Card key={chunk.chunk_id} className="p-5 flex flex-col justify-between border-border hover:border-primary/40 transition-colors">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            {isPdf && (
+                              <Badge variant="outline" className="gap-1 border-indigo-500/30 text-indigo-600 bg-indigo-50/50">
+                                <BookOpen className="w-3 h-3" />
+                                {loc.page_number ? `Page ${loc.page_number}` : 'PDF'}
+                              </Badge>
+                            )}
+                            {isSlide && (
+                              <Badge variant="outline" className="gap-1 border-amber-500/30 text-amber-600 bg-amber-50/50">
+                                <Presentation className="w-3 h-3" />
+                                {loc.slide_number ? `Slide ${loc.slide_number}` : 'Slide'}
+                              </Badge>
+                            )}
+                            {isVideo && (
+                              <Badge variant="outline" className="gap-1 border-purple-500/30 text-purple-600 bg-purple-50/50">
+                                <Clock className="w-3 h-3" />
+                                {loc.timestamp_start !== null ? `${Math.floor(Number(loc.timestamp_start) / 60)}m${Math.floor(Number(loc.timestamp_start) % 60)}s` : 'Video'}
+                              </Badge>
+                            )}
+                            {chunk.topic && (
+                              <Badge variant="secondary" className="text-xs">
+                                {chunk.topic}
+                              </Badge>
+                            )}
+                          </div>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/30">
+                            {Math.round(chunk.score * 100)}% Match
+                          </Badge>
+                        </div>
+
+                        {chunk.subtopic && (
+                          <div className="text-xs font-medium text-muted-foreground">
+                            Section: {chunk.subtopic}
+                          </div>
+                        )}
+
+                        <p className="text-sm text-foreground/90 leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/40 font-mono text-xs">
+                          {chunk.text}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 mt-3 border-t border-border text-xs text-muted-foreground">
+                        <span className="font-mono text-[11px] truncate max-w-[180px]">
+                          ID: {chunk.chunk_id}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const citationTag = isPdf
+                              ? `[[cite:textbook|${chunk.source_id || 'doc'}|page=${loc.page_number || 1}]]`
+                              : isSlide
+                              ? `[[cite:slide|${chunk.source_id || 'deck'}|slide=${loc.slide_number || 1}]]`
+                              : `[[cite:video|${chunk.source_id || 'vid'}|t=${Math.floor(Number(loc.timestamp_start || 0))}s]]`;
+                            navigator.clipboard.writeText(citationTag);
+                            toast({
+                              title: 'Citation copied',
+                              description: citationTag,
+                            });
+                          }}
+                          className="h-7 text-xs gap-1"
+                        >
+                          Copy Citation Tag
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
-      </Card>
-
-      {resourceApiError ? (
-        <Card className="border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm text-amber-900">
-            {resourceApiError}
-          </p>
-        </Card>
-      ) : null}
-
-      {filteredResources.length === 0 ? (
-        <Card className="p-8 text-center">
-          <FileText className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-          <h3 className="mb-2 text-lg font-semibold text-gray-900">No resources yet</h3>
-          <p className="mb-4 text-gray-600">
-            Save notes, links, and PDFs here. PDF files go to Supabase Storage and the metadata goes to Turso.
-          </p>
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Resource
-          </Button>
-        </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredResources.map((resource) => (
-            <Card key={resource.id} className="flex h-full flex-col gap-4 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-lg bg-gray-100 p-2 text-gray-700">
-                    {getResourceIcon(resource.type)}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{resource.title}</h3>
-                    <p className="text-sm text-gray-500">{resource.type}</p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-gray-500"
-                  onClick={() => handleDeleteResource(resource)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+        <>
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-gray-500" />
+                <Input
+                  placeholder="Search resources"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="w-64"
+                />
               </div>
 
-              {resource.description ? (
-                <p className="text-sm text-gray-600">{resource.description}</p>
-              ) : null}
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-40">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="NOTE">Notes</SelectItem>
+                  <SelectItem value="LINK">Links</SelectItem>
+                  <SelectItem value="PDF">PDFs</SelectItem>
+                  <SelectItem value="PPTX">Slides (PPTX)</SelectItem>
+                  <SelectItem value="VIDEO">Videos</SelectItem>
+                </SelectContent>
+              </Select>
 
-              {resource.type === 'NOTE' && resource.noteContent ? (
-                <p className="line-clamp-5 text-sm text-gray-700">{resource.noteContent}</p>
-              ) : null}
+              {folders.length > 0 && (
+                <Select value={selectedFolder} onValueChange={setSelectedFolder}>
+                  <SelectTrigger className="w-40">
+                    <Folder className="w-4 h-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Folders</SelectItem>
+                    {folders.map((folder) => (
+                      <SelectItem key={folder} value={folder}>
+                        {folder}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </Card>
 
-              {resource.type === 'LINK' && resource.linkUrl ? (
-                <p className="truncate text-sm text-blue-600">{resource.linkUrl}</p>
-              ) : null}
-
-              <div className="mt-auto space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {resource.folder ? <Badge variant="outline">{resource.folder}</Badge> : null}
-                  {resource.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      #{tag}
-                    </Badge>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
-                    {new Date(resource.createdAt).toLocaleDateString()}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={() => handleOpenResource(resource)}>
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open
-                  </Button>
-                </div>
-              </div>
+          {resourceApiError ? (
+            <Card className="border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm text-amber-900">
+                {resourceApiError}
+              </p>
             </Card>
-          ))}
-        </div>
+          ) : null}
+
+          {filteredResources.length === 0 ? (
+            <Card className="p-8 text-center">
+              <FileText className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">No resources yet</h3>
+              <p className="mb-4 text-gray-600">
+                Save notes, links, and PDFs here. PDF files go to Supabase Storage and the metadata goes to Turso.
+              </p>
+              <Button onClick={() => setShowAddDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Resource
+              </Button>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredResources.map((resource) => (
+                <Card key={resource.id} className="flex h-full flex-col gap-4 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-lg bg-gray-100 p-2 text-gray-700">
+                        {getResourceIcon(resource.type)}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{resource.title}</h3>
+                        <p className="text-sm text-gray-500">{resource.type}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-gray-500"
+                      onClick={() => handleDeleteResource(resource)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {resource.description ? (
+                    <p className="text-sm text-gray-600">{resource.description}</p>
+                  ) : null}
+
+                  {resource.type === 'NOTE' && resource.noteContent ? (
+                    <p className="line-clamp-5 text-sm text-gray-700">{resource.noteContent}</p>
+                  ) : null}
+
+                  {resource.type === 'LINK' && resource.linkUrl ? (
+                    <p className="truncate text-sm text-blue-600">{resource.linkUrl}</p>
+                  ) : null}
+
+                  <div className="mt-auto space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {resource.folder ? <Badge variant="outline">{resource.folder}</Badge> : null}
+                      {resource.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary">
+                          #{tag}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">
+                        {new Date(resource.createdAt).toLocaleDateString()}
+                      </span>
+                      <Button variant="outline" size="sm" onClick={() => handleOpenResource(resource)}>
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

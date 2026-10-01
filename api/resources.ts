@@ -21,7 +21,7 @@ export const config = {
   runtime: 'nodejs',
 };
 
-const RESOURCE_TYPES = new Set(['NOTE', 'LINK', 'PDF']);
+const RESOURCE_TYPES = new Set(['NOTE', 'LINK', 'PDF', 'PPTX', 'VIDEO', 'AUDIO']);
 
 function json(res: ApiResponse, status: number, body: unknown) {
   res.status(status).json(body);

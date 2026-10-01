@@ -2,6 +2,7 @@ import 'dotenv/config';
 import http from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import resourcesHandler from '../api/resources.ts';
+import { ragHandler } from './ragHandler.ts';
 
 const PORT = Number(process.env.API_PORT || 3001);
 const HOST = process.env.API_HOST || '127.0.0.1';
@@ -78,6 +79,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   if (req.method === 'GET' && url.pathname === '/api/health') {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/rag')) {
+    const body = await readBody(req);
+    await ragHandler(
+      {
+        method: req.method,
+        headers: req.headers as Record<string, HeaderValue>,
+        query: Object.fromEntries(url.searchParams.entries()),
+        url: url.toString(),
+        body,
+      },
+      createRouteResponse(res),
+    );
     return;
   }
 

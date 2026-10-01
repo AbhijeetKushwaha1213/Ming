@@ -1,0 +1,199 @@
+/* Block Editor Styles */
+.block-editor {
+  @apply w-full min-h-[65vh];
+  cursor: text;
+}
+
+.block-editor .ProseMirror {
+  @apply outline-none;
+  cursor: text;
+  min-height: 2rem;
+}
+
+.block-editor .ProseMirror p.is-editor-empty:first-child::before {
+  @apply text-muted-foreground;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Block styles with smooth transitions */
+.block-content {
+  @apply rounded-sm transition-all duration-200 ease-in-out;
+  pointer-events: auto;
+}
+
+.block-content:hover {
+  @apply bg-accent/50;
+}
+
+.block-content:focus-within {
+  @apply bg-accent;
+}
+
+/* Block insertion/deletion animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.block-enter {
+  animation: slideIn 0.2s ease-out;
+}
+
+.block-exit {
+  animation: slideOut 0.2s ease-out;
+}
+
+/* Drag and drop feedback */
+.block-dragging {
+  @apply opacity-50 scale-95 transition-all duration-150;
+}
+
+.block-drag-over {
+  @apply border-t-2 border-primary transition-all duration-150;
+}
+
+/* Rich text formatting */
+.ProseMirror strong {
+  @apply font-bold;
+}
+
+.ProseMirror em {
+  @apply italic;
+}
+
+.ProseMirror u {
+  @apply underline;
+}
+
+.ProseMirror s {
+  @apply line-through;
+}
+
+.ProseMirror code {
+  @apply bg-muted px-1 py-0.5 rounded text-sm font-mono;
+}
+
+.ProseMirror a {
+  @apply text-primary underline cursor-pointer transition-colors duration-150 hover:text-primary/80;
+}
+
+/* Headings with smooth transitions */
+.ProseMirror h1 {
+  @apply text-3xl font-bold mt-6 mb-4 transition-all duration-200;
+}
+
+.ProseMirror h2 {
+  @apply text-2xl font-bold mt-5 mb-3 transition-all duration-200;
+}
+
+.ProseMirror h3 {
+  @apply text-xl font-bold mt-4 mb-2 transition-all duration-200;
+}
+
+/* Lists */
+.ProseMirror ul {
+  @apply list-disc list-inside my-2;
+}
+
+.ProseMirror ol {
+  @apply list-decimal list-inside my-2;
+}
+
+.ProseMirror li {
+  @apply my-1 transition-all duration-150;
+}
+
+/* Code blocks */
+.ProseMirror pre {
+  @apply bg-muted p-4 rounded-md my-4 overflow-x-auto transition-all duration-200;
+}
+
+.ProseMirror pre code {
+  @apply bg-transparent p-0;
+}
+
+/* Blockquotes */
+.ProseMirror blockquote {
+  @apply border-l-4 border-primary pl-4 my-4 italic transition-all duration-200;
+}
+
+/* Tables */
+.ProseMirror table {
+  @apply border-collapse w-full my-4;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  @apply border border-border p-2 min-w-[100px] transition-colors duration-150;
+}
+
+.ProseMirror th {
+  @apply bg-muted font-semibold;
+}
+
+.ProseMirror td:hover {
+  @apply bg-accent/30;
+}
+
+/* Divider */
+.ProseMirror hr {
+  @apply my-4 border-border;
+}
+
+/* Images with smooth loading */
+.ProseMirror img {
+  @apply max-w-full h-auto rounded-md my-4 transition-all duration-300;
+}
+
+.ProseMirror img:hover {
+  @apply shadow-lg;
+}
+
+/* Page transition animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.page-content-enter {
+  animation: fadeIn 0.2s ease-out;
+}

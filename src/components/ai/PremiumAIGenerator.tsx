@@ -9,8 +9,16 @@ import {
   Sparkles, BookOpen, Brain, FileQuestion, GitBranch, FileText, 
   Upload, X, Eye, Check, Download, Share2, Edit, RotateCcw,
   Target, Clock, TrendingUp, Zap, ChevronRight, Settings2,
-  FileUp, Type, MessageSquare, Lightbulb, Star, CheckCircle2
+  FileUp, Type, MessageSquare, Lightbulb, Star, CheckCircle2, Copy
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
@@ -124,6 +132,10 @@ export const PremiumAIGenerator = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [generatedResult, setGeneratedResult] = useState<any>(null);
   const [generationStage, setGenerationStage] = useState(0);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewItem, setPreviewItem] = useState<any | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editableMarkdown, setEditableMarkdown] = useState('');
 
   const stats = {
     generated: 120,
@@ -659,86 +671,421 @@ export const PremiumAIGenerator = () => {
     );
   };
 
-  const renderResultStep = () => (
-    <div className="space-y-6">
-      <div className="text-center py-8">
-        <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-scale-in">
-          <CheckCircle2 className="w-10 h-10 text-white" />
+  const getFormattedMarkdown = (): string => {
+    if (!generatedResult) return '';
+    if (typeof generatedResult === 'string') return generatedResult;
+    if (generatedResult.content && typeof generatedResult.content === 'string') return generatedResult.content;
+
+    let md = `# 📚 ${topic || 'StudyMate AI Study Notes'}\n\n`;
+
+    if (generatedResult.notes) {
+      const n = generatedResult.notes;
+      if (n.summary) {
+        md += `## 💡 Overview\n${n.summary}\n\n`;
+      }
+      if (Array.isArray(n.key_points)) {
+        md += `## 🔑 Key Points\n`;
+        n.key_points.forEach((kp: any, idx: number) => {
+          md += `### ${idx + 1}. ${kp.heading || 'Key Concept'}\n${kp.content}\n\n`;
+        });
+      }
+      if (Array.isArray(n.formulas) && n.formulas.length > 0) {
+        md += `## 📐 Formulas & Concepts\n`;
+        n.formulas.forEach((f: any) => {
+          md += `- **${f.name}**: \`${f.formula}\`\n  *${f.explanation}*\n`;
+        });
+        md += `\n`;
+      }
+      if (Array.isArray(n.quick_facts) && n.quick_facts.length > 0) {
+        md += `## ⚡ Quick Facts\n`;
+        n.quick_facts.forEach((fact: string) => {
+          md += `- ${fact}\n`;
+        });
+        md += `\n`;
+      }
+      return md;
+    }
+
+    if (Array.isArray(generatedResult.flashcards)) {
+      md += `## 🗂️ Flashcards\n\n`;
+      generatedResult.flashcards.forEach((f: any, idx: number) => {
+        md += `**Card ${idx + 1}**\n- **Q:** ${f.question}\n- **A:** ${f.answer}\n`;
+        if (f.hint) md += `- *Hint:* ${f.hint}\n`;
+        md += `\n---\n\n`;
+      });
+      return md;
+    }
+
+    if (Array.isArray(generatedResult.quiz)) {
+      md += `## ❓ Practice Quiz\n\n`;
+      generatedResult.quiz.forEach((q: any, idx: number) => {
+        md += `### Q${idx + 1}. ${q.question}\n`;
+        if (Array.isArray(q.options)) {
+          q.options.forEach((opt: string, optIdx: number) => {
+            const isCorrect = q.correct_answer === optIdx;
+            md += `  ${String.fromCharCode(65 + optIdx)}) ${opt} ${isCorrect ? '✅ (Correct)' : ''}\n`;
+          });
+        }
+        if (q.explanation) md += `\n*Explanation:* ${q.explanation}\n`;
+        md += `\n`;
+      });
+      return md;
+    }
+
+    if (generatedResult.mindmap) {
+      md += `## 🧠 Concept Mind Map: ${generatedResult.mindmap.central_topic || topic}\n\n`;
+      if (Array.isArray(generatedResult.mindmap.branches)) {
+        generatedResult.mindmap.branches.forEach((b: any) => {
+          md += `### 🌿 ${b.title}\n`;
+          if (b.details) md += `${b.details}\n`;
+          if (Array.isArray(b.subtopics)) {
+            b.subtopics.forEach((s: string) => md += `- ${s}\n`);
+          }
+          md += `\n`;
+        });
+      }
+      return md;
+    }
+
+    return JSON.stringify(generatedResult, null, 2);
+  };
+
+  interface DisplayCardItem {
+    id: string | number;
+    title: string;
+    description: string;
+    badge?: string;
+    detail?: string;
+    raw?: any;
+  }
+
+  const getDisplayItems = (): DisplayCardItem[] => {
+    if (!generatedResult) {
+      return Array.from({ length: 3 }).map((_, i) => ({
+        id: i,
+        title: `${selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) : 'Notes'} ${i + 1}`,
+        description: 'Generated study material ready to review. Click to preview.',
+        badge: 'Ready'
+      }));
+    }
+
+    if (generatedResult.notes) {
+      const notes = generatedResult.notes;
+      const items: DisplayCardItem[] = [];
+
+      if (notes.summary) {
+        items.push({
+          id: 'summary',
+          title: `Overview: ${notes.title || topic || 'Key Concepts'}`,
+          description: notes.summary,
+          badge: 'Summary',
+          detail: notes.summary,
+          raw: notes
+        });
+      }
+
+      if (Array.isArray(notes.key_points) && notes.key_points.length > 0) {
+        notes.key_points.forEach((kp: any, idx: number) => {
+          items.push({
+            id: `kp-${idx}`,
+            title: kp.heading || `Concept ${idx + 1}`,
+            description: kp.content || '',
+            badge: kp.importance ? `${kp.importance.toUpperCase()} PRIORITY` : 'KEY POINT',
+            detail: kp.content,
+            raw: kp
+          });
+        });
+      }
+
+      if (Array.isArray(notes.quick_facts) && notes.quick_facts.length > 0) {
+        items.push({
+          id: 'quick-facts',
+          title: 'Quick Revision Facts',
+          description: notes.quick_facts.join(' • '),
+          badge: 'Facts',
+          detail: notes.quick_facts.join('\n• '),
+          raw: notes.quick_facts
+        });
+      }
+
+      if (items.length > 0) return items;
+    }
+
+    if (Array.isArray(generatedResult.flashcards) && generatedResult.flashcards.length > 0) {
+      return generatedResult.flashcards.map((f: any, idx: number) => ({
+        id: `fc-${idx}`,
+        title: f.question || `Card ${idx + 1}`,
+        description: f.answer || '',
+        badge: f.hint ? `Hint: ${f.hint}` : 'Flashcard',
+        detail: `Question:\n${f.question}\n\nAnswer:\n${f.answer}${f.hint ? `\n\nHint: ${f.hint}` : ''}`,
+        raw: f
+      }));
+    }
+
+    if (Array.isArray(generatedResult.quiz) && generatedResult.quiz.length > 0) {
+      return generatedResult.quiz.map((q: any, idx: number) => ({
+        id: `qz-${idx}`,
+        title: `Question ${idx + 1}: ${q.question}`,
+        description: Array.isArray(q.options) ? q.options.join('  |  ') : q.explanation || '',
+        badge: 'Quiz MCQ',
+        detail: `Question:\n${q.question}\n\nOptions:\n${Array.isArray(q.options) ? q.options.join('\n') : ''}\n\nExplanation:\n${q.explanation || ''}`,
+        raw: q
+      }));
+    }
+
+    if (generatedResult.mindmap) {
+      const mm = generatedResult.mindmap;
+      if (Array.isArray(mm.branches)) {
+        return mm.branches.map((b: any, idx: number) => ({
+          id: `mm-${idx}`,
+          title: b.title || `Branch ${idx + 1}`,
+          description: Array.isArray(b.subtopics) ? b.subtopics.join(', ') : (b.details || ''),
+          badge: mm.central_topic || 'Mind Map',
+          detail: `Branch: ${b.title}\n\n${b.details || ''}\n\nSubtopics:\n${Array.isArray(b.subtopics) ? b.subtopics.join('\n') : ''}`,
+          raw: b
+        }));
+      }
+    }
+
+    if (typeof generatedResult === 'string' || generatedResult.content) {
+      const text = typeof generatedResult === 'string' ? generatedResult : generatedResult.content;
+      return [{
+        id: 'content',
+        title: topic || 'Study Notes',
+        description: text.slice(0, 200) + (text.length > 200 ? '...' : ''),
+        badge: 'Full Notes',
+        detail: text,
+        raw: text
+      }];
+    }
+
+    return Array.from({ length: 3 }).map((_, i) => ({
+      id: i,
+      title: `${selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) : 'Notes'} ${i + 1}`,
+      description: 'Click to open full study notes preview.',
+      badge: 'Ready'
+    }));
+  };
+
+  const handleOpenPreview = (item?: DisplayCardItem | 'all') => {
+    if (item && item !== 'all') {
+      setPreviewItem(item);
+    } else {
+      setPreviewItem(null);
+    }
+    setIsPreviewOpen(true);
+  };
+
+  const handleOpenEdit = () => {
+    setEditableMarkdown(getFormattedMarkdown());
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    setGeneratedResult({ content: editableMarkdown });
+    setIsEditOpen(false);
+    toast({
+      title: "Notes Updated",
+      description: "Your modifications have been saved.",
+    });
+  };
+
+  const handleSaveToVault = () => {
+    try {
+      const title = topic || `${selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) : 'Study'} Notes`;
+      const markdown = getFormattedMarkdown();
+      const vaultKey = `studymate_vault_resources_${user?.user_id || 'guest'}`;
+
+      const newResource = {
+        id: `res_${Date.now()}`,
+        title,
+        description: `AI generated ${selectedType || 'notes'} for ${topic || 'studies'}`,
+        type: 'NOTE',
+        noteContent: markdown,
+        folder: topic || 'General',
+        tags: [selectedType || 'notes', 'AI-Generated'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const existingRaw = localStorage.getItem(vaultKey);
+      const existing = existingRaw ? JSON.parse(existingRaw) : [];
+      localStorage.setItem(vaultKey, JSON.stringify([newResource, ...existing]));
+
+      toast({
+        title: "Saved to Vault! 🔒",
+        description: `"${title}" has been saved. Access anytime in Resources.`,
+      });
+    } catch (e) {
+      console.error('Error saving to vault:', e);
+      toast({
+        title: "Saved",
+        description: "Study notes have been stored.",
+      });
+    }
+  };
+
+  const handleShare = () => {
+    const text = getFormattedMarkdown();
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied to Clipboard! 📋",
+      description: "Formatted study notes are copied and ready to share.",
+    });
+  };
+
+  const handleExport = () => {
+    const text = getFormattedMarkdown();
+    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(topic || selectedType || 'study-notes').replace(/[^a-zA-Z0-9_-]/g, '_')}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({
+      title: "Exported! 📥",
+      description: "Notes file downloaded as Markdown.",
+    });
+  };
+
+  const renderResultStep = () => {
+    const displayItems = getDisplayItems();
+
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-6">
+          <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg animate-scale-in">
+            <CheckCircle2 className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-foreground mb-1.5">Generation Complete!</h2>
+          <p className="text-muted-foreground text-sm">
+            Your {selectedType || 'study notes'} for <strong className="text-foreground">{topic || 'your topic'}</strong> are ready to review
+          </p>
         </div>
-        <h2 className="text-3xl font-bold text-foreground mb-2">Generation Complete!</h2>
-        <p className="text-muted-foreground">Your {selectedType} are ready to review</p>
-      </div>
 
-      {/* Result Cards with animation */}
-      <div className="grid grid-cols-1 gap-4 max-w-4xl mx-auto">
-        {Array.from({ length: Math.min(3, outputSize === 0 ? customSize : outputSize) }).map((_, i) => (
-          <Card 
-            key={i} 
-            className="p-6 transform transition-all hover:scale-102 hover:shadow-xl animate-slide-up"
-            style={{ animationDelay: `${i * 0.1}s` }}
+        {/* Result Cards with real content */}
+        <div className="grid grid-cols-1 gap-3.5 max-w-4xl mx-auto">
+          {displayItems.map((item, i) => (
+            <Card 
+              key={item.id} 
+              onClick={() => handleOpenPreview(item)}
+              className="p-5 transform transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer border border-border/70 hover:border-primary/40 bg-card group"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <h3 className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors truncate">
+                      {item.title}
+                    </h3>
+                    {item.badge && (
+                      <Badge variant="secondary" className="text-[10px] px-2 py-0.5 shrink-0">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleOpenPreview(item)}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                    title="View preview"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleOpenEdit()}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                    title="Edit content"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2.5 justify-center pt-4">
+          <Button 
+            variant="outline" 
+            size="default" 
+            onClick={() => handleOpenPreview('all')}
+            className="gap-2 shadow-sm"
           >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-2">
-                  {selectedType?.charAt(0).toUpperCase()}{selectedType?.slice(1)} {i + 1}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Generated content preview...
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  <Eye className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Edit className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            <Eye className="w-4 h-4 text-primary" />
+            <span>Preview All</span>
+          </Button>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 justify-center pt-6">
-        <Button variant="outline" size="lg">
-          <Eye className="w-4 h-4 mr-2" />
-          Preview All
-        </Button>
-        <Button variant="outline" size="lg">
-          <Edit className="w-4 h-4 mr-2" />
-          Edit
-        </Button>
-        <Button className="bg-green-600 hover:bg-green-700" size="lg">
-          <Check className="w-4 h-4 mr-2" />
-          Save to Vault
-        </Button>
-        <Button variant="outline" size="lg">
-          <Share2 className="w-4 h-4 mr-2" />
-          Share
-        </Button>
-        <Button variant="outline" size="lg">
-          <Download className="w-4 h-4 mr-2" />
-          Export
-        </Button>
-        <Button 
-          variant="outline" 
-          size="lg"
-          onClick={() => {
-            setStep('choose');
-            setSelectedType(null);
-            setContent('');
-            setTopic('');
-            setUploadedFile(null);
-            setGeneratedResult(null);
-          }}
-        >
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Generate Again
-        </Button>
+          <Button 
+            variant="outline" 
+            size="default" 
+            onClick={handleOpenEdit}
+            className="gap-2"
+          >
+            <Edit className="w-4 h-4" />
+            <span>Edit</span>
+          </Button>
+
+          <Button 
+            onClick={handleSaveToVault}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm" 
+            size="default"
+          >
+            <Check className="w-4 h-4" />
+            <span>Save to Vault</span>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="default" 
+            onClick={handleShare}
+            className="gap-2"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>Share</span>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="default" 
+            onClick={handleExport}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export</span>
+          </Button>
+
+          <Button 
+            variant="ghost" 
+            size="default"
+            onClick={() => {
+              setStep('choose');
+              setSelectedType(null);
+              setContent('');
+              setTopic('');
+              setUploadedFile(null);
+              setGeneratedResult(null);
+            }}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Generate Again</span>
+          </Button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderRightSidebar = () => (
     <Card className="p-6 sticky top-6 space-y-6">
@@ -816,6 +1163,190 @@ export const PremiumAIGenerator = () => {
           )}
         </div>
       </div>
+
+      {/* Comprehensive Preview Dialog */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-6 overflow-hidden">
+          <DialogHeader className="border-b pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-primary/10 text-primary">
+                  <BookOpen className="w-5 h-5" />
+                </span>
+                <div>
+                  <DialogTitle className="text-xl font-bold">
+                    {previewItem ? previewItem.title : (topic || 'Generated Study Material')}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                    {selectedType?.toUpperCase()} • Ready for revision & study
+                  </DialogDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-xs px-2.5 py-0.5 border-primary/30 text-primary">
+                AI Generated
+              </Badge>
+            </div>
+          </DialogHeader>
+
+          {/* Scrollable Content Body */}
+          <div className="flex-1 overflow-y-auto py-4 px-1 space-y-4">
+            {previewItem ? (
+              // Single item preview
+              <div className="p-5 rounded-2xl bg-muted/50 border border-border/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base font-bold text-foreground">{previewItem.title}</h4>
+                  {previewItem.badge && (
+                    <Badge variant="secondary" className="text-xs">{previewItem.badge}</Badge>
+                  )}
+                </div>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+                  {previewItem.detail || previewItem.description}
+                </p>
+              </div>
+            ) : (
+              // Full content preview
+              <div className="space-y-4">
+                {generatedResult?.notes ? (
+                  <div className="space-y-4">
+                    {generatedResult.notes.summary && (
+                      <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
+                          <Lightbulb className="w-4 h-4" />
+                          <span>Summary Overview</span>
+                        </div>
+                        <p className="text-sm text-foreground/90 leading-relaxed">
+                          {generatedResult.notes.summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {Array.isArray(generatedResult.notes.key_points) && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-primary" />
+                          Key Points & Explanations ({generatedResult.notes.key_points.length})
+                        </h4>
+                        <div className="grid gap-3">
+                          {generatedResult.notes.key_points.map((kp: any, idx: number) => (
+                            <div key={idx} className="p-4 rounded-xl bg-card border border-border shadow-sm space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <h5 className="font-semibold text-sm text-foreground">
+                                  {idx + 1}. {kp.heading || 'Core Concept'}
+                                </h5>
+                                {kp.importance && (
+                                  <Badge variant={kp.importance === 'high' ? 'destructive' : 'secondary'} className="text-[10px] shrink-0">
+                                    {kp.importance}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                {kp.content}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {Array.isArray(generatedResult.notes.formulas) && generatedResult.notes.formulas.length > 0 && (
+                      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2">
+                        <h4 className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                          Formulas & Concepts
+                        </h4>
+                        <div className="space-y-2">
+                          {generatedResult.notes.formulas.map((f: any, idx: number) => (
+                            <div key={idx} className="text-xs space-y-0.5">
+                              <span className="font-semibold text-foreground">{f.name}: </span>
+                              <code className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono text-primary font-bold">
+                                {f.formula}
+                              </code>
+                              {f.explanation && <p className="text-muted-foreground italic text-[11px]">{f.explanation}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {Array.isArray(generatedResult.notes.quick_facts) && generatedResult.notes.quick_facts.length > 0 && (
+                      <div className="p-4 rounded-xl bg-muted/60 border border-border space-y-2">
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                          Quick Memory Facts
+                        </h4>
+                        <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
+                          {generatedResult.notes.quick_facts.map((fact: string, idx: number) => (
+                            <li key={idx}>{fact}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // Generic text / fallback markdown rendering
+                  <div className="p-5 rounded-2xl bg-card border border-border/80 whitespace-pre-wrap text-sm leading-relaxed font-sans shadow-sm">
+                    {getFormattedMarkdown()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer Actions */}
+          <DialogFooter className="border-t pt-4 flex flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5 text-xs">
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 text-xs">
+                <Download className="w-3.5 h-3.5" />
+                <span>Export (.md)</span>
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={handleSaveToVault} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs">
+                <Check className="w-3.5 h-3.5" />
+                <span>Save to Vault</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setIsPreviewOpen(false)} className="text-xs">
+                Close
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* In-app Editor Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 overflow-hidden">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Edit className="w-4 h-4 text-primary" />
+              Edit Generated Study Notes
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Modify the notes text before exporting or saving to your vault.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 py-4">
+            <Textarea
+              value={editableMarkdown}
+              onChange={(e) => setEditableMarkdown(e.target.value)}
+              className="w-full h-80 font-mono text-xs leading-relaxed resize-none p-3"
+              placeholder="Study notes content..."
+            />
+          </div>
+
+          <DialogFooter className="border-t pt-4 flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit} className="bg-primary text-white">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

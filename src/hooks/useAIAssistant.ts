@@ -141,7 +141,7 @@ export const useAIAssistant = () => {
       // Validate count and difficulty
       const validCount = Math.max(1, Math.min(count, 20)); // Limit to max 20 items
       const validDifficulty = ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium';
-      const validContentType = ['flashcards', 'mindmaps', 'quizzes', 'summaries'].includes(contentType) ? contentType : 'flashcards';
+      const validContentType = ['flashcards', 'mindmaps', 'quizzes', 'summaries', 'notes', 'diagrams', 'summary', 'revision'].includes(contentType) ? contentType : 'notes';
 
       let responseText = '';
       try {
@@ -265,6 +265,23 @@ export const useAIAssistant = () => {
             correct_answer: 0,
             explanation: `Explanation for question ${i + 1} about ${topic}.`
           }))
+        };
+      case 'notes':
+      case 'summary':
+      case 'revision':
+        return {
+          notes: {
+            title: topic || 'Study Notes',
+            summary: response.length > 250 ? response.slice(0, 250) + '...' : response,
+            key_points: [
+              {
+                heading: `Overview of ${topic || 'Key Concepts'}`,
+                content: response,
+                importance: 'high'
+              }
+            ],
+            quick_facts: [`Study material generated for ${topic || 'selected topic'}`]
+          }
         };
       default:
         return { content: response };

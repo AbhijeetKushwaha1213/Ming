@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { validateAIInput, sanitizeHtml, checkRateLimit, createSafeError } from '@/lib/security';
 import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 import { geminiClient } from '@/utils/geminiClient';
+import { cleanAiResponseToReadableNotes } from '@/utils/notesFormatter';
 
 export interface ChatMessage {
   id: string;
@@ -88,11 +89,12 @@ export const useAIAssistant = () => {
         responseText = directRes.response;
       }
 
-      // Sanitize AI response before displaying
+      // Format notes into readable markdown if returned as JSON, then sanitize before displaying
+      const formattedResponse = cleanAiResponseToReadableNotes(responseText || 'No response received');
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: sanitizeHtml(responseText || 'No response received'),
+        content: sanitizeHtml(formattedResponse),
         timestamp: new Date(),
       };
 

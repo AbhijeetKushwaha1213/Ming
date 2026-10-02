@@ -14,6 +14,7 @@ import { useAIAssistant } from '@/hooks/useAIAssistant';
 import { FlashcardViewer } from '@/components/flashcards/FlashcardViewer';
 import { QuizViewer } from '@/components/flashcards/QuizViewer';
 import { MindMapViewer } from '@/components/flashcards/MindMapViewer';
+import { StudyNotesViewer } from '@/components/flashcards/StudyNotesViewer';
 import { useFlashcards } from '@/hooks/useFlashcards';
 
 type MaterialType = 'flashcards' | 'mindmaps' | 'quizzes' | 'diagrams' | 'notes';
@@ -481,23 +482,17 @@ export const AIStudyMaterialGenerator = () => {
         );
       default:
         return (
-          <div className="space-y-6">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setViewingMaterial(null);
-                setViewerType('');
-              }}
-            >
-              ← Back to Generator
-            </Button>
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">{viewingMaterial.title}</h3>
-              <pre className="whitespace-pre-wrap text-sm">
-                {JSON.stringify(viewingMaterial.content, null, 2)}
-              </pre>
-            </Card>
-          </div>
+          <StudyNotesViewer
+            notes={viewingMaterial.content}
+            title={viewingMaterial.title}
+            topic={viewingMaterial.topic}
+            difficulty={viewingMaterial.difficulty}
+            materialId={viewingMaterial.id}
+            onClose={() => {
+              setViewingMaterial(null);
+              setViewerType('');
+            }}
+          />
         );
     }
   }

@@ -1,5 +1,6 @@
 import { getAllPages, createPage, updatePage, deletePage, movePage } from '@/api/pageAPI';
 import { copyVaultItemToResources, markdownToBlocks } from '@/utils/vaultToResources';
+import { cleanAiResponseToReadableNotes } from '@/utils/notesFormatter';
 import { localStore } from '@/utils/localStore';
 import { pageKeys } from '@/hooks/usePages';
 import type { Page, Block } from '@/types/notion';
@@ -96,6 +97,15 @@ CAPABILITIES & ACTIONS:
    - Copy any generated quiz, flashcard deck, or notes from the Vault into Resources.
 7. Academic Tutoring:
    - Explain concepts, answer questions, and generate study aids with verified accuracy.
+8. PROPER STUDY NOTES FORMAT (CRITICAL):
+   - When the user asks for short notes, study notes, summaries, or concept breakdowns, NEVER respond in raw JSON or raw object notation!
+   - Format notes directly in beautiful, ready-to-read structured Markdown notes with clear sections:
+     # 📌 [Topic Title]
+     ## 💡 Executive Summary
+     ## 🔑 Key Concepts & Deep Dive (numbered with clear headings and bullet points)
+     ## 📐 Essential Formulas & Rules (if applicable)
+     ## ⚡ High-Yield Exam Facts & Takeaways
+     ## 🎯 Exam Tips & Pitfalls
 
 ACTION PROTOCOL:
 When the user asks you to perform ANY workspace action (edit content, modify a page, delete a page, rename, organize, create a folder, copy from vault), explain what you did in a helpful, conversational response first, and then append an action block in this EXACT JSON format at the VERY END of your response:
@@ -151,6 +161,9 @@ export function parseAgentActions(responseText: string): { cleanText: string; ac
       }
     }
   }
+
+  // Ensure any JSON notes returned in the conversational text are transformed into clean, ready-to-read notes
+  cleanText = cleanAiResponseToReadableNotes(cleanText);
 
   return { cleanText, actions };
 }

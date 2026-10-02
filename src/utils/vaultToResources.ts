@@ -1,5 +1,6 @@
 import { createPage } from '@/api/pageAPI';
 import type { Block, TextBlock, HeadingBlock, BulletListBlock, CalloutBlock, CodeBlock, DividerBlock } from '@/types/notion';
+import { normalizeNotesContent } from '@/utils/notesFormatter';
 
 export interface VaultItemLike {
   id?: string;
@@ -162,64 +163,39 @@ export function convertVaultItemToBlocks(item: VaultItemLike, explicitType?: str
     icon = '📝';
     blocks.push(makeCallout(`📝 Study Notes • ${metaParts.join(' • ')}`, '📝'));
 
-    const noteSummary =
-      item.content?.summary ||
-      item.content?.notes?.summary ||
-      item.content?.overview;
-    if (noteSummary) {
+    const structured = normalizeNotesContent(item.content, title);
+
+    if (structured.summary) {
       blocks.push(makeHeading('Executive Summary', 'heading2'));
-      blocks.push(makeCallout(noteSummary, '📌'));
+      blocks.push(makeCallout(structured.summary, '💡'));
     }
 
-    const keyPoints =
-      item.content?.key_points ||
-      item.content?.notes?.key_points ||
-      item.content?.keyConcepts;
-    if (Array.isArray(keyPoints) && keyPoints.length > 0) {
-      blocks.push(makeHeading('Key Concepts', 'heading2'));
-      keyPoints.forEach((kp: any) => {
-        if (typeof kp === 'string') {
-          blocks.push(makeText(`• ${kp}`));
-        } else {
-          blocks.push(makeHeading(kp.heading || kp.title || 'Concept', 'heading3'));
-          blocks.push(makeText(kp.content || kp.description || ''));
+    if (structured.key_points && structured.key_points.length > 0) {
+      blocks.push(makeHeading('Key Concepts & Deep Dive', 'heading2'));
+      structured.key_points.forEach(kp => {
+        blocks.push(makeHeading(kp.heading || 'Concept', 'heading3'));
+        if (kp.importance && kp.importance !== 'medium') {
+          blocks.push(makeCallout(`Priority: ${kp.importance.toUpperCase()}`, '⭐'));
         }
+        blocks.push(makeText(kp.content || ''));
       });
     }
 
-    const quickFacts =
-      item.content?.quick_facts ||
-      item.content?.notes?.quick_facts ||
-      item.content?.facts;
-    if (Array.isArray(quickFacts) && quickFacts.length > 0) {
-      blocks.push(makeHeading('Quick Facts', 'heading2'));
-      blocks.push(makeBulletList(quickFacts.map((f: any) => typeof f === 'string' ? f : JSON.stringify(f))));
+    if (structured.formulas && structured.formulas.length > 0) {
+      blocks.push(makeHeading('Essential Formulas & Rules', 'heading2'));
+      structured.formulas.forEach(f => {
+        blocks.push(makeCallout(`📐 ${f.name}: ${f.formula}${f.explanation ? `\nUsage: ${f.explanation}` : ''}`, '📐'));
+      });
     }
 
-    const rawText =
-      typeof item.content?.content === 'string'
-        ? item.content.content
-        : typeof item.content === 'string'
-        ? item.content
-        : null;
+    if (structured.quick_facts && structured.quick_facts.length > 0) {
+      blocks.push(makeHeading('High-Yield Quick Facts', 'heading2'));
+      blocks.push(makeBulletList(structured.quick_facts));
+    }
 
-    if (rawText) {
-      blocks.push(makeHeading('Detailed Content', 'heading2'));
-      const paragraphs = rawText.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
-      for (const para of paragraphs) {
-        if (para.startsWith('# ')) {
-          blocks.push(makeHeading(para.replace(/^#\s+/, ''), 'heading1'));
-        } else if (para.startsWith('## ')) {
-          blocks.push(makeHeading(para.replace(/^##\s+/, ''), 'heading2'));
-        } else if (para.startsWith('### ')) {
-          blocks.push(makeHeading(para.replace(/^###\s+/, ''), 'heading3'));
-        } else if (para.startsWith('- ') || para.startsWith('* ')) {
-          const lines = para.split('\n').map(l => l.replace(/^[-*]\s+/, '').trim()).filter(Boolean);
-          blocks.push(makeBulletList(lines));
-        } else {
-          blocks.push(makeText(para));
-        }
-      }
+    if (structured.exam_tips && structured.exam_tips.length > 0) {
+      blocks.push(makeHeading('Exam Tips & Strategy', 'heading2'));
+      blocks.push(makeBulletList(structured.exam_tips));
     }
   }
 

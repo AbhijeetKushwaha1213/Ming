@@ -23,6 +23,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
 import { useFlashcards } from '@/hooks/useFlashcards';
+import { convertAnyContentToMarkdown } from '@/utils/notesFormatter';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -749,7 +750,7 @@ export const PremiumAIGenerator = () => {
       return md;
     }
 
-    return JSON.stringify(generatedResult, null, 2);
+    return convertAnyContentToMarkdown(generatedResult, topic || 'Study Notes');
   };
 
   interface DisplayCardItem {

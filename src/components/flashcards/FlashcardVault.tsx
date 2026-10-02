@@ -5,14 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Brain, FileQuestion, GitBranch, FileText, Search, Filter, Play, Trash2, Calendar } from 'lucide-react';
+import { BookOpen, Brain, FileQuestion, GitBranch, FileText, Search, Filter, Play, Trash2, Calendar, FolderPlus, ExternalLink, Loader2 } from 'lucide-react';
 import { useFlashcards } from '@/hooks/useFlashcards';
 import { FlashcardViewer } from './FlashcardViewer';
 import { QuizViewer } from './QuizViewer';
 import { MindMapViewer } from './MindMapViewer';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { copyVaultItemToResources } from '@/utils/vaultToResources';
+import { navigateToTab } from '@/utils/navigation';
+import { pageKeys } from '@/hooks/usePages';
 
 export const FlashcardVault = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { 
     flashcards, 
     studyMaterials, 
@@ -26,6 +33,38 @@ export const FlashcardVault = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [viewingContent, setViewingContent] = useState<any>(null);
   const [viewerType, setViewerType] = useState<string>('');
+  const [copyingId, setCopyingId] = useState<string | null>(null);
+
+  const handleCopyToResources = async (item: any, type: string) => {
+    try {
+      setCopyingId(item.id || 'current');
+      const page = await copyVaultItemToResources(item, type);
+      await queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      toast({
+        title: 'Copied to Resources! 📚',
+        description: `"${page.title}" is now available in your Resources workspace.`,
+        action: (
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => navigateToTab('resources', undefined, { pageId: page.id })}
+            className="text-xs"
+          >
+            Open Resources
+          </Button>
+        ),
+      });
+    } catch (err: any) {
+      console.error('Failed to copy to resources:', err);
+      toast({
+        title: 'Error Copying to Resources',
+        description: err.message || 'Could not copy item to Resources.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCopyingId(null);
+    }
+  };
 
 
   const materialIcons = {
@@ -166,6 +205,21 @@ export const FlashcardVault = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => handleCopyToResources(item, type)}
+            disabled={copyingId === (item.id || 'current')}
+            className="text-xs text-primary hover:text-primary hover:bg-primary/10"
+            title="Copy this item to your Resources workspace"
+          >
+            {copyingId === (item.id || 'current') ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+            ) : (
+              <FolderPlus className="w-3.5 h-3.5 mr-1" />
+            )}
+            To Resources
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => handleDelete(item.id, type)}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
             title="Delete item"
@@ -254,6 +308,20 @@ export const FlashcardVault = () => {
                 ← Back to Vault
               </Button>
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyToResources(viewingContent, viewerType)}
+                  disabled={copyingId === (viewingContent.id || 'current')}
+                  className="text-primary hover:text-primary hover:bg-primary/10"
+                >
+                  {copyingId === (viewingContent.id || 'current') ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                  ) : (
+                    <FolderPlus className="w-4 h-4 mr-1.5" />
+                  )}
+                  Save to Resources
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

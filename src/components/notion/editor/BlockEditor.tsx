@@ -402,6 +402,8 @@ export function BlockEditor({
                       setSlashMenuPosition(position);
                       setSlashMenuBlockId(block.id);
                     }}
+                    onInsertAfter={(type) => handleInsertBlock(type || 'text', index + 1)}
+                    onDeleteBlock={() => handleBlockDelete(block.id)}
                   />
                   
                   {editable && (

@@ -3,7 +3,8 @@ import { PageSidebar } from './PageSidebar';
 import { PageView } from './PageView';
 import { Button } from '@/components/ui/button';
 import { Plus, FileText } from 'lucide-react';
-import { usePages } from '@/hooks/usePages';
+import { usePages, pageKeys } from '@/hooks/usePages';
+import { useQueryClient } from '@tanstack/react-query';
 import { createPage } from '@/api/pageAPI';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../auth/AuthProvider';
@@ -18,9 +19,39 @@ import type { Page } from '@/types/notion';
 export function NotionResourceManager() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: pages, isLoading, error: pagesError } = usePages();
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [isCreatingPage, setIsCreatingPage] = useState(false);
+
+  // Listen for cross-component navigation and selection
+  useEffect(() => {
+    const handleSelectPage = (e: any) => {
+      if (e.detail?.pageId) {
+        setSelectedPageId(e.detail.pageId);
+        queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      }
+    };
+    const handleNavigate = (e: any) => {
+      if (e.detail?.tab === 'resources' && e.detail?.params?.pageId) {
+        setSelectedPageId(e.detail.params.pageId);
+        queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      }
+    };
+    const handlePageCreated = () => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+    };
+
+    window.addEventListener('studymate-select-resource-page', handleSelectPage);
+    window.addEventListener('studymate-navigate', handleNavigate);
+    window.addEventListener('studymate-page-created', handlePageCreated);
+
+    return () => {
+      window.removeEventListener('studymate-select-resource-page', handleSelectPage);
+      window.removeEventListener('studymate-navigate', handleNavigate);
+      window.removeEventListener('studymate-page-created', handlePageCreated);
+    };
+  }, [queryClient]);
 
   // Log errors for debugging
   useEffect(() => {

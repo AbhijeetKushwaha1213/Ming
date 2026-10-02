@@ -288,6 +288,36 @@ export async function getPageChildren(parentId: string | null): Promise<Page[]> 
 }
 
 /**
+ * Get all active pages for the current user
+ */
+export async function getAllPages(): Promise<Page[]> {
+  if (isLocalMode()) {
+    const cached = await cacheService.getCachedPages('local-dev-user-id');
+    return cached.filter(p => !p.deleted_at).sort((a, b) => a.position - b.position);
+  }
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    const cached = await cacheService.getCachedPages('local-dev-user-id');
+    return cached.filter(p => !p.deleted_at);
+  }
+
+  const { data: pages, error } = await supabase
+    .from('pages')
+    .select('*')
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+    .order('position', { ascending: true });
+
+  if (error) {
+    const cached = await cacheService.getCachedPages(user.id);
+    return cached.filter(p => !p.deleted_at);
+  }
+
+  return (pages || []) as Page[];
+}
+
+/**
  * Get ancestors of a page (for breadcrumb navigation)
  * Returns array from root to immediate parent
  */

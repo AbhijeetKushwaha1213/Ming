@@ -16,15 +16,25 @@ import { getFile, uploadFile } from '@/api/fileAPI';
 import { Trash2, Upload, Download, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface BlockRendererProps {
+export interface BlockRendererProps {
   pageId: string;
   block: Block;
   editable: boolean;
   onUpdate: (updates: Partial<Block>) => void;
   onSlashCommand?: (position: { x: number; y: number }) => void;
+  onInsertAfter?: (type?: Block['type']) => void;
+  onDeleteBlock?: () => void;
 }
 
-export function BlockRenderer({ pageId, block, editable, onUpdate, onSlashCommand }: BlockRendererProps) {
+export function BlockRenderer({
+  pageId,
+  block,
+  editable,
+  onUpdate,
+  onSlashCommand,
+  onInsertAfter,
+  onDeleteBlock,
+}: BlockRendererProps) {
   const [isEditing, setIsEditing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +59,16 @@ export function BlockRenderer({ pageId, block, editable, onUpdate, onSlashComman
 
   // Render list blocks
   if (block.type === 'bulletList' || block.type === 'numberedList') {
-    return <ListBlockRenderer pageId={pageId} block={block} editable={editable} onUpdate={onUpdate} />;
+    return (
+      <ListBlockRenderer
+        pageId={pageId}
+        block={block}
+        editable={editable}
+        onUpdate={onUpdate}
+        onInsertAfter={onInsertAfter}
+        onDeleteBlock={onDeleteBlock}
+      />
+    );
   }
 
   // Render checkbox block
@@ -258,7 +277,9 @@ function TextBlockRenderer({ block, editable, onUpdate, onSlashCommand }: BlockR
 }
 
 // List block renderer
-function ListBlockRenderer({ block, editable, onUpdate }: Omit<BlockRendererProps, 'onSlashCommand'>) {
+interface ListBlockRendererProps extends Omit<BlockRendererProps, 'onSlashCommand'> {}
+
+function ListBlockRenderer({ block, editable, onUpdate, onInsertAfter, onDeleteBlock }: ListBlockRendererProps) {
   if (block.type !== 'bulletList' && block.type !== 'numberedList') return null;
 
   const ListTag = block.type === 'bulletList' ? 'ul' : 'ol';
@@ -277,14 +298,42 @@ function ListBlockRenderer({ block, editable, onUpdate }: Omit<BlockRendererProp
   };
 
   const handleDeleteItem = (index: number) => {
-    if (items.length === 1) return; // Keep at least one item
+    if (items.length === 1) {
+      if (onDeleteBlock) {
+        onDeleteBlock();
+      } else {
+        onUpdate({ type: 'text', content: { text: '', marks: [] } } as any);
+      }
+      return;
+    }
     const newItems = items.filter((_, i) => i !== index);
     onUpdate({ items: newItems } as Partial<Block>);
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    const currentText = (typeof items[index] === 'string' ? items[index] : items[index]?.text || '').trim();
+
     if (e.key === 'Enter') {
       e.preventDefault();
+
+      // If current item is empty, BREAK OUT of list into a new text block
+      if (currentText === '') {
+        if (items.length > 1) {
+          const newItems = items.filter((_, i) => i !== index);
+          onUpdate({ items: newItems } as Partial<Block>);
+        } else {
+          // If this was the only bullet, convert current block to text
+          onUpdate({
+            type: 'text',
+            content: { text: '', marks: [] }
+          } as any);
+        }
+        if (onInsertAfter) {
+          onInsertAfter('text');
+        }
+        return;
+      }
+
       // Add new item after current
       const newItems = [
         ...items.slice(0, index + 1),
@@ -297,15 +346,23 @@ function ListBlockRenderer({ block, editable, onUpdate }: Omit<BlockRendererProp
         const nextInput = e.currentTarget.parentElement?.nextElementSibling?.querySelector('input');
         nextInput?.focus();
       }, 10);
-    } else if (e.key === 'Backspace' && items[index].text === '' && items.length > 1) {
+    } else if (e.key === 'Backspace' && currentText === '') {
       e.preventDefault();
-      handleDeleteItem(index);
-      // Focus previous item
-      if (index > 0) {
-        setTimeout(() => {
-          const prevInput = e.currentTarget.parentElement?.previousElementSibling?.querySelector('input');
-          prevInput?.focus();
-        }, 10);
+      if (items.length > 1) {
+        handleDeleteItem(index);
+        // Focus previous item
+        if (index > 0) {
+          setTimeout(() => {
+            const prevInput = e.currentTarget.parentElement?.previousElementSibling?.querySelector('input');
+            prevInput?.focus();
+          }, 10);
+        }
+      } else {
+        // If it's the only bullet and it's empty, convert to regular text block
+        onUpdate({
+          type: 'text',
+          content: { text: '', marks: [] }
+        } as any);
       }
     }
   };
@@ -323,7 +380,7 @@ function ListBlockRenderer({ block, editable, onUpdate }: Omit<BlockRendererProp
                   onChange={(e) => handleItemChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   className="flex-1 bg-transparent outline-none focus:bg-accent/20 px-1 py-0.5 rounded transition-colors"
-                  placeholder="List item..."
+                  placeholder="List item... (Press Enter on empty line to exit list)"
                 />
                 {items.length > 1 && (
                   <button
@@ -343,12 +400,32 @@ function ListBlockRenderer({ block, editable, onUpdate }: Omit<BlockRendererProp
         ))}
       </ListTag>
       {editable && (
-        <button
-          onClick={handleAddItem}
-          className="mt-2 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-        >
-          <span>+ Add item</span>
-        </button>
+        <div className="mt-2 flex flex-wrap items-center gap-2 pt-1 border-t border-border/30">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleAddItem}
+            className="text-xs h-6 px-2 text-muted-foreground hover:text-foreground"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Add list item
+          </Button>
+          <span className="text-muted-foreground/30 text-xs">|</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onInsertAfter?.('text')}
+            className="text-xs h-6 px-2 text-primary hover:text-primary/80 hover:bg-primary/10"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            New Block Below (Break out)
+          </Button>
+          <span className="text-[10px] text-muted-foreground/60 ml-auto hidden sm:inline">
+            Press Enter on empty line to exit list
+          </span>
+        </div>
       )}
     </div>
   );
@@ -502,15 +579,29 @@ function ImageBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRen
     if (!file) return;
 
     setIsUploading(true);
+
+    // Read locally via data URL immediately so image is saved and visible right away
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setPreviewUrl(dataUrl);
+      onUpdate({
+        url: dataUrl,
+        caption: block.caption || file.name,
+      } as Partial<Block>);
+    };
+    reader.readAsDataURL(file);
+
     try {
       const metadata = await uploadFile(file, pageId);
-      onUpdate({
-        file_id: metadata.id,
-        url: '',
-        caption: block.caption || metadata.filename,
-      } as Partial<Block>);
+      if (metadata?.id) {
+        onUpdate({
+          file_id: metadata.id,
+          caption: block.caption || metadata.filename,
+        } as Partial<Block>);
+      }
     } catch (error) {
-      console.error('Failed to upload image:', error);
+      console.warn('Remote file upload fallback to local storage:', error);
     } finally {
       setIsUploading(false);
     }
@@ -519,53 +610,55 @@ function ImageBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRen
   return (
     <div className="block-content my-2 space-y-3">
       {previewUrl ? (
-        <img
-          src={previewUrl}
-          alt={block.caption}
-          className="max-w-full h-auto rounded-md border"
-          style={{ width: block.width || undefined, height: block.height || undefined }}
-        />
+        <div className="space-y-1">
+          <img
+            src={previewUrl}
+            alt={block.caption || 'Uploaded image'}
+            className="max-w-full h-auto rounded-md border shadow-xs max-h-[500px] object-contain"
+            style={{ width: block.width || undefined, height: block.height || undefined }}
+          />
+          {block.caption && (
+            <div className="text-xs text-muted-foreground text-center">{block.caption}</div>
+          )}
+        </div>
       ) : (
         editable && (
-          <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-            Upload an image or paste an image URL.
+          <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground flex flex-col items-center justify-center gap-1.5 text-center">
+            <Upload className="w-5 h-5 text-muted-foreground/60" />
+            <span>Upload an image from your computer or paste an image URL below.</span>
           </div>
         )
       )}
 
       {editable && (
         <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex">
+          <label className="inline-flex cursor-pointer">
             <input
               type="file"
               accept="image/*"
               className="hidden"
               onChange={(e) => void handleUpload(e.target.files?.[0])}
             />
-            <Button type="button" variant="outline" disabled={isUploading} asChild>
-              <span>
-                <Upload className="mr-2 h-4 w-4" />
-                {isUploading ? 'Uploading...' : 'Upload image'}
+            <Button type="button" variant="outline" size="sm" disabled={isUploading} asChild>
+              <span className="cursor-pointer">
+                <Upload className="mr-2 h-3.5 w-3.5" />
+                {isUploading ? 'Uploading...' : 'Upload Image'}
               </span>
             </Button>
           </label>
           <Input
-            value={block.url}
+            value={block.url || ''}
             onChange={(e) => onUpdate({ url: e.target.value, file_id: undefined } as Partial<Block>)}
             placeholder="Or paste image URL"
-            className="min-w-64 flex-1"
+            className="min-w-56 flex-1 h-8 text-xs"
           />
           <Input
-            value={block.caption}
+            value={block.caption || ''}
             onChange={(e) => onUpdate({ caption: e.target.value } as Partial<Block>)}
             placeholder="Caption"
-            className="min-w-48 flex-1"
+            className="min-w-40 flex-1 h-8 text-xs"
           />
         </div>
-      )}
-
-      {!editable && block.caption && (
-        <div className="text-sm text-muted-foreground text-center mt-2">{block.caption}</div>
       )}
     </div>
   );
@@ -577,7 +670,8 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
 
   const [isUploading, setIsUploading] = useState(false);
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return 'File';
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -587,22 +681,45 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
     if (!file) return;
 
     setIsUploading(true);
+
+    // Read locally via data URL immediately
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      onUpdate({
+        url: dataUrl,
+        filename: file.name,
+        file_type: file.type || 'application/octet-stream',
+        file_size: file.size,
+      } as Partial<Block>);
+    };
+    reader.readAsDataURL(file);
+
     try {
       const metadata = await uploadFile(file, pageId);
-      onUpdate({
-        file_id: metadata.id,
-        filename: metadata.filename,
-        file_type: metadata.file_type,
-        file_size: metadata.file_size,
-      } as Partial<Block>);
+      if (metadata?.id) {
+        onUpdate({
+          file_id: metadata.id,
+          filename: metadata.filename,
+          file_type: metadata.file_type,
+          file_size: metadata.file_size,
+        } as Partial<Block>);
+      }
     } catch (error) {
-      console.error('Failed to upload file:', error);
+      console.warn('Remote file upload fallback to local storage:', error);
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleDownload = async () => {
+    if (block.url) {
+      const link = document.createElement('a');
+      link.href = block.url;
+      link.download = block.filename || 'download';
+      link.click();
+      return;
+    }
     if (!block.file_id) return;
 
     try {
@@ -618,43 +735,54 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
     }
   };
 
+  const hasFile = Boolean(block.file_id || block.filename || block.url);
+
   return (
-    <div className="block-content px-3 py-3 border border-border rounded-md flex flex-col gap-3">
-      {block.file_id ? (
-        <div className="flex items-center gap-2">
-          <div className="flex-1">
-            <div className="font-medium">{block.filename}</div>
-            <div className="text-sm text-muted-foreground">
-              {block.file_type || 'Unknown type'} • {formatFileSize(block.file_size)}
+    <div className="block-content px-3 py-3 border border-border rounded-md flex flex-col gap-3 my-2 bg-card/60">
+      {hasFile ? (
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+              <Download className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-xs truncate">{block.filename || 'Attached File'}</div>
+              <div className="text-[11px] text-muted-foreground truncate">
+                {block.file_type || 'Document'} • {formatFileSize(block.file_size)}
+              </div>
             </div>
           </div>
-          <Button type="button" variant="outline" onClick={() => void handleDownload()}>
-            <Download className="mr-2 h-4 w-4" />
+          <Button type="button" variant="outline" size="sm" onClick={() => void handleDownload()} className="text-xs h-7 px-2.5">
+            <Download className="mr-1.5 h-3.5 w-3.5" />
             Download
           </Button>
         </div>
       ) : (
-        <div className="text-sm text-muted-foreground">Upload a file attachment.</div>
+        <div className="text-xs text-muted-foreground">Upload a file attachment (PDF, slides, documents, etc.)</div>
       )}
 
       {editable && (
-        <label className="inline-flex">
-          <input
-            type="file"
-            className="hidden"
-            onChange={(e) => void handleUpload(e.target.files?.[0])}
-          />
-          <Button type="button" variant="outline" disabled={isUploading} asChild>
-            <span>
-              <Upload className="mr-2 h-4 w-4" />
-              {isUploading ? 'Uploading...' : 'Choose file'}
-            </span>
-          </Button>
-        </label>
+        <div className="flex items-center gap-2">
+          <label className="inline-flex cursor-pointer">
+            <input
+              type="file"
+              className="hidden"
+              onChange={(e) => void handleUpload(e.target.files?.[0])}
+            />
+            <Button type="button" variant="outline" size="sm" disabled={isUploading} asChild>
+              <span className="cursor-pointer text-xs h-7 px-2.5">
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                {isUploading ? 'Uploading...' : hasFile ? 'Replace File' : 'Choose File to Upload'}
+              </span>
+            </Button>
+          </label>
+        </div>
       )}
     </div>
   );
 }
+
+
 
 // Embed block renderer
 function EmbedBlockRenderer({ block, editable, onUpdate }: Omit<BlockRendererProps, 'onSlashCommand'>) {

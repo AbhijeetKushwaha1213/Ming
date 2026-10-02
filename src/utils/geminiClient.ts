@@ -10,6 +10,8 @@ export interface GeminiRequest {
   topic?: string;
   difficulty?: string;
   count?: number;
+  systemPrompt?: string;
+  inlineData?: { mimeType: string; data: string };
 }
 
 export interface GeminiResponse {
@@ -192,16 +194,16 @@ Rules:
       }
     };
 
-    const systemPrompt = contentType ? getSystemPrompt(contentType) : 
-      `You are StudyMate AI, an expert, versatile, and friendly educational AI study assistant and tutor.
+    const effectiveSystemPrompt = req.systemPrompt || (contentType ? getSystemPrompt(contentType) : 
+      `You are StudyMate AI, an expert, versatile, and friendly educational AI study assistant and workspace orchestrator.
       
       You help students with:
-      - Answering all academic, educational, and general knowledge questions clearly and accurately
+      - Answering academic, educational, and general knowledge questions clearly and accurately
       - Explaining complex concepts in intuitive, easy-to-understand ways with helpful examples
       - Providing study advice, exam preparation tips, summaries, and practice problems
-      - Assisting with coursework and uploaded notes
+      - Organizing notes, files, resources, and vault materials
       
-      Always be helpful, encouraging, accurate, and concise. Never refuse general study or knowledge questions. Format key points cleanly with markdown.`;
+      Always be helpful, encouraging, accurate, and concise. Format key points cleanly with markdown.`);
 
     const userPrompt = contentType ? 
       `Topic: ${topic || message}
@@ -214,7 +216,17 @@ Rules:
     const historyParts = context && context.length > 0 
       ? "\n\nConversation History:\n" + context.map(c => `${c.role === 'user' ? 'User' : 'Assistant'}: ${c.content}`).join("\n") + "\n"
       : "";
-    const geminiPrompt = `${systemPrompt}${historyParts}\nUser Request:\n${userPrompt}`;
+    const geminiPrompt = `${effectiveSystemPrompt}${historyParts}\nUser Request:\n${userPrompt}`;
+
+    const promptParts: any[] = [{ text: geminiPrompt }];
+    if (req.inlineData && req.inlineData.data) {
+      promptParts.push({
+        inline_data: {
+          mime_type: req.inlineData.mimeType,
+          data: req.inlineData.data
+        }
+      });
+    }
 
     try {
       const preferredModel = (import.meta.env as any).VITE_GEMINI_MODEL || 'gemini-2.5-flash';
@@ -234,9 +246,7 @@ Rules:
             },
             body: JSON.stringify({
               contents: [{
-                parts: [{
-                  text: geminiPrompt
-                }]
+                parts: promptParts
               }],
               generationConfig: {
                 temperature: 0.1,
@@ -257,11 +267,13 @@ Rules:
           const data = await response.json();
           let aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't generate a response.";
           
-          // Clean up markdown blocks
-          if (aiResponse.includes('```json')) {
-            aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-          } else if (aiResponse.includes('```')) {
-            aiResponse = aiResponse.replace(/```\s*/g, '');
+          // Only clean raw markdown fences when generating structured format files (flashcards/notes/quizzes/etc.)
+          if (contentType) {
+            if (aiResponse.includes('```json')) {
+              aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+            } else if (aiResponse.includes('```')) {
+              aiResponse = aiResponse.replace(/```\s*/g, '');
+            }
           }
           
           aiResponse = aiResponse.trim();

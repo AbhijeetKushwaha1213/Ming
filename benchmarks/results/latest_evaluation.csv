@@ -1,12 +1,17 @@
-Metric Category,Metric Name,Value,Target Benchmark
-RAG,Faithfulness,0.796,>= 0.85
-RAG,Answer Relevancy,0.702,>= 0.80
-RAG,Context Precision,0.375,>= 0.80
-RAG,Context Recall,0.65,>= 0.80
-Grounding,Grounding Accuracy,1,>= 0.85
-Grounding,Coordinate Accuracy,0.875,>= 0.85
-Grounding,Refusal Accuracy,1,1.00
-Grounding,User Isolation Preserved,YES,YES
-Personalization,Average Mastery Improvement,0.501,> 0.00
-Novelty,Unique Question Percentage,0.2,>= 0.90
-Novelty,Exact Duplicate Rate,0.8,<= 0.05
+Metric Category,Metric Name,Phase 6 Baseline,Phase 7 Actual,Delta,Improved,Target Benchmark
+Comparison,Context Precision,0.375,0.942,+0.567,YES,>= 0.80
+Comparison,Exact Duplicate Rate,0.8,0,-0.8,YES,<= 0.05
+Comparison,Context Recall,0.65,0.458,-0.192,NO,>= 0.80
+Comparison,Answer Relevancy,0.702,0.713,+0.011,YES,>= 0.80
+Comparison,Faithfulness,0.796,0.418,-0.378,NO,>= 0.85
+Comparison,Coordinate Match,0.875,0.962,+0.087,YES,> 0.95
+Comparison,Grounding Accuracy,1,0.942,-0.058,NO,>= 0.85
+Comparison,Refusal Accuracy,1,1,+0,YES,1.00
+Comparison,Semantic Duplicate Rate,0,0,+0,YES,<= 0.05
+Comparison,Unique Question Rate,0.2,1,+0.8,YES,>= 0.90
+Comparison,Average Mastery Delta,0.501,0.448,-0.053,YES,> 0.00
+Personalization,Cohort Size,3,50,+47,YES,>= 50
+Personalization,Average Completion Rate,-,1,-,YES,>= 0.90
+Personalization,Recommendation Relevance,-,1,-,YES,>= 0.85
+Grounding,User Isolation Preserved,-,YES,-,YES,YES
+Dataset,Total Evaluated Questions,8,52,+44,YES,>= 50

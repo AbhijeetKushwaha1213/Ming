@@ -273,13 +273,91 @@ export const EvaluationDashboard: React.FC = () => {
           </div>
 
           {/* Detailed Breakdown Tabs */}
-          <Tabs defaultValue="simulation" className="w-full space-y-6">
-            <TabsList className="grid grid-cols-4 max-w-xl">
-              <TabsTrigger value="simulation">Student Simulation</TabsTrigger>
-              <TabsTrigger value="questions">RAG & Grounding</TabsTrigger>
-              <TabsTrigger value="novelty">Question Novelty</TabsTrigger>
-              <TabsTrigger value="raw">Raw Data & JSON</TabsTrigger>
+          <Tabs defaultValue="comparison" className="w-full space-y-6">
+            <TabsList className="grid grid-cols-5 max-w-2xl">
+              <TabsTrigger value="comparison">Phase 6 vs 7</TabsTrigger>
+              <TabsTrigger value="simulation">Cohort ({report.personalizationMetrics.simulatedStudentsCount})</TabsTrigger>
+              <TabsTrigger value="questions">RAG ({report.perQuestionResults.length})</TabsTrigger>
+              <TabsTrigger value="novelty">Deduplication</TabsTrigger>
+              <TabsTrigger value="raw">Raw JSON</TabsTrigger>
             </TabsList>
+
+            {/* Tab 0: Phase 6 vs Phase 7 Comparison */}
+            <TabsContent value="comparison" className="space-y-4">
+              <Card className="p-6 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+                  <div>
+                    <h3 className="text-base font-bold flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      Empirical Phase 6 vs Phase 7 Comparison
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Addressing Phase 6 weaknesses: Context Precision (37.5%) & Exact Duplicate Rate (80.0%) with candidate reranking, threshold filtering, and persistent fingerprinting.
+                    </p>
+                  </div>
+                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-300 text-xs">
+                    Empirically Evaluated
+                  </Badge>
+                </div>
+
+                {report.phaseComparison && report.phaseComparison.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-border">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-muted/60 text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border">
+                        <tr>
+                          <th className="px-4 py-3">Evaluation Metric</th>
+                          <th className="px-4 py-3">Phase 6 Baseline</th>
+                          <th className="px-4 py-3">Phase 7 Actual</th>
+                          <th className="px-4 py-3">Delta</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Target Benchmark</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {report.phaseComparison.map((row, idx) => {
+                          const isKeyFocus = row.metric === 'Context Precision' || row.metric === 'Exact Duplicate Rate';
+                          return (
+                            <tr key={idx} className={`hover:bg-muted/30 transition-colors ${isKeyFocus ? 'bg-primary/5 font-medium' : ''}`}>
+                              <td className="px-4 py-3 flex items-center gap-2">
+                                {isKeyFocus && <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/30">KEY FOCUS</Badge>}
+                                <span>{row.metric}</span>
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground">
+                                {pct(row.phase6Value)}
+                              </td>
+                              <td className="px-4 py-3 font-bold text-foreground">
+                                {pct(row.phase7Value)}
+                              </td>
+                              <td className={`px-4 py-3 font-semibold ${row.improved ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600'}`}>
+                                {row.delta >= 0 ? `+${(row.delta * 100).toFixed(1)}%` : `${(row.delta * 100).toFixed(1)}%`}
+                              </td>
+                              <td className="px-4 py-3">
+                                {row.improved ? (
+                                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-300 text-[10px]">
+                                    PASSED ✓
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px]">
+                                    ATTN ⚠️
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground font-mono">
+                                {row.targetBenchmark}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground text-xs">
+                    Comparison metrics will be calculated on the next benchmark run.
+                  </div>
+                )}
+              </Card>
+            </TabsContent>
 
             {/* Tab 1: Student Simulation */}
             <TabsContent value="simulation" className="space-y-4">
@@ -298,6 +376,17 @@ export const EvaluationDashboard: React.FC = () => {
                     {report.personalizationMetrics.students.length} Profiles Evaluated
                   </Badge>
                 </div>
+
+                {report.personalizationMetrics.cohortArchetypeDistribution && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 pb-2">
+                    {Object.entries(report.personalizationMetrics.cohortArchetypeDistribution).map(([arch, cnt]) => (
+                      <div key={arch} className="p-2.5 rounded-lg border border-border/80 bg-muted/20 text-center">
+                        <div className="text-[10px] text-muted-foreground capitalize">{arch.replace(/_/g, ' ')}</div>
+                        <div className="text-base font-black text-foreground">{cnt}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {report.personalizationMetrics.students.map((student, idx) => (

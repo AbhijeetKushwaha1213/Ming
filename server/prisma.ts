@@ -68,7 +68,9 @@ async function createAssessmentSchema() {
     CREATE TABLE IF NOT EXISTS assessment_questions (
       id TEXT PRIMARY KEY NOT NULL,
       userId TEXT NOT NULL,
+      assessmentId TEXT,
       fingerprint TEXT NOT NULL,
+      normalizedQuestion TEXT,
       type TEXT NOT NULL,
       topic TEXT NOT NULL,
       subtopic TEXT,
@@ -87,11 +89,21 @@ async function createAssessmentSchema() {
     )
   `);
 
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE assessment_questions ADD COLUMN assessmentId TEXT');
+  } catch {}
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE assessment_questions ADD COLUMN normalizedQuestion TEXT');
+  } catch {}
+
   await prisma.$executeRawUnsafe(
     'CREATE INDEX IF NOT EXISTS assessment_questions_user_fingerprint_idx ON assessment_questions(userId, fingerprint)',
   );
   await prisma.$executeRawUnsafe(
     'CREATE INDEX IF NOT EXISTS assessment_questions_user_topic_idx ON assessment_questions(userId, topic)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_questions_assessment_id_idx ON assessment_questions(assessmentId)',
   );
 
   await prisma.$executeRawUnsafe(`

@@ -149,7 +149,7 @@ describe('Phase 6: StudyMate Evaluation & Benchmarking Tests', () => {
   // =========================================================================
   describe('5. Student Simulation Framework', () => {
     it('runs simulated students through multi-session priority study loops on isolated IDs', async () => {
-      const sim = await runStudentSimulation();
+      const sim = await runStudentSimulation(3);
       expect(sim.personalizationMetrics).toBeDefined();
       expect(sim.personalizationMetrics.simulatedStudentsCount).toBe(3);
       expect(sim.personalizationMetrics.totalCompletedActivities).toBeGreaterThan(0);
@@ -168,7 +168,7 @@ describe('Phase 6: StudyMate Evaluation & Benchmarking Tests', () => {
   // =========================================================================
   describe('6. Mastery Improvement Calculation', () => {
     it('verifies non-negative mastery gains computed from real BKT updates', async () => {
-      const sim = await runStudentSimulation();
+      const sim = await runStudentSimulation(3);
       const avgDelta = sim.personalizationMetrics.averageMasteryImprovement;
       expect(avgDelta).toBeGreaterThan(0.0);
 

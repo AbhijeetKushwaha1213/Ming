@@ -16,6 +16,7 @@ import uuid
 import re
 import argparse
 import hashlib
+import time
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
@@ -465,19 +466,59 @@ def ingest_source(
 # 4. QUERY & RETRIEVAL APIS
 # ==========================================
 
+def normalize_query(query: str) -> str:
+    """Normalize query text for retrieval optimization."""
+    q = query.strip().lower()
+    q = re.sub(r'[\'\"`’“”]', '', q)
+    q = re.sub(r'[,;:!?]+', ' ', q)
+    q = re.sub(r'\s+', ' ', q).strip()
+    return q
+
+def compute_lexical_overlap(query_tokens: List[str], text: str) -> float:
+    """Compute normalized token overlap between query terms and text."""
+    if not query_tokens or not text:
+        return 0.0
+    text_lower = text.lower()
+    text_tokens = set(re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', text_lower))
+    if not text_tokens:
+        return 0.0
+    matches = sum(1 for tok in query_tokens if tok in text_tokens or tok in text_lower)
+    return min(1.0, matches / len(query_tokens))
+
 def search_relevant_chunks(
     query: str,
     user_id: Optional[str] = None,
     source_id: Optional[str] = None,
     topic: Optional[str] = None,
-    top_k: int = 5
+    subtopic: Optional[str] = None,
+    top_k: int = 5,
+    similarity_threshold: float = 0.35,
+    max_per_source: int = 2
 ) -> Dict[str, Any]:
     """
-    Search relevant chunks using vector similarity in Chroma.
-    Returns ranked chunks with similarity scores and full location metadata.
+    Optimized RAG Retrieval Pipeline (Phase 7):
+    query
+    → query normalization
+    → Chroma candidate retrieval (larger candidate pool K)
+    → metadata filtering (user_id, source_id, topic)
+    → relevance scoring / reranking (vector cosine + lexical BM25/keyword density + topic boost)
+    → removal of low-relevance chunks (< similarity_threshold)
+    → source diversity control (max chunks per source)
+    → final evidence selection
+    → diagnostics reporting
     """
     collection = get_collection()
     
+    # 1. Query Normalization
+    norm_query = normalize_query(query)
+    stop_words = {
+        'a', 'an', 'the', 'is', 'are', 'was', 'were', 'in', 'on', 'at', 'of', 'for', 'to',
+        'and', 'or', 'what', 'how', 'why', 'can', 'does', 'do', 'which', 'be', 'been',
+        'when', 'under', 'with', 'from', 'as', 'by', 'that', 'this', 'it', 'explain'
+    }
+    q_tokens = [w for w in re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', norm_query) if w not in stop_words]
+
+    # 2. Metadata-Aware Filtering
     where_conditions = []
     if user_id:
         where_conditions.append({"user_id": {"$eq": str(user_id)}})
@@ -486,9 +527,11 @@ def search_relevant_chunks(
     if topic:
         where_conditions.append({"topic": {"$eq": str(topic)}})
 
+    # 3. Candidate Retrieval with Larger K
+    candidate_k = min(35, max(16, top_k * 4))
     query_params = {
-        "query_texts": [query],
-        "n_results": min(top_k, 25)
+        "query_texts": [norm_query or query],
+        "n_results": candidate_k
     }
     if len(where_conditions) == 1:
         query_params["where"] = where_conditions[0]
@@ -499,28 +542,55 @@ def search_relevant_chunks(
         results = collection.query(**query_params)
     except Exception as e:
         logger.warning(f"Chroma query with filter error: {e}")
-        # If user isolation was requested, DO NOT bypass filter to avoid data leakage
         if user_id:
+            # Maintain strict user isolation - do not fall back without filter
             results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
         else:
             try:
-                results = collection.query(query_texts=[query], n_results=min(top_k, 25))
+                results = collection.query(query_texts=[norm_query or query], n_results=candidate_k)
             except Exception:
                 results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
 
-    formatted_results = []
+    candidate_count = 0
+    candidate_list = []
+    discarded_chunks = []
+
     if results and results.get("ids") and len(results["ids"]) > 0:
         ids = results["ids"][0]
         docs = results["documents"][0] if results.get("documents") else []
         metas = results["metadatas"][0] if results.get("metadatas") else []
         distances = results["distances"][0] if results.get("distances") else []
+        candidate_count = len(ids)
 
         for idx, chunk_id in enumerate(ids):
             meta = metas[idx] if idx < len(metas) else {}
             dist = distances[idx] if idx < len(distances) else 0.5
-            similarity_score = max(0.0, min(1.0, 1.0 - dist))
+            text_content = docs[idx] if idx < len(docs) else ""
+
+            # 4. Relevance Scoring & Reranking
+            vector_score = max(0.0, min(1.0, 1.0 - dist))
             
-            # Format clean source location
+            # Lexical overlap score
+            combined_searchable = f"{text_content} {meta.get('topic', '')} {meta.get('subtopic', '')}"
+            lexical_score = compute_lexical_overlap(q_tokens, combined_searchable)
+
+            # Topic / Subtopic match boost (normalized 0.0 - 1.0)
+            topic_boost = 0.0
+            chunk_topic = (meta.get("topic") or "").lower()
+            chunk_subtopic = (meta.get("subtopic") or "").lower()
+            if topic and (topic.lower() in chunk_topic or chunk_topic in topic.lower()):
+                topic_boost = 1.0
+            elif subtopic and (subtopic.lower() in chunk_subtopic or chunk_subtopic in subtopic.lower()):
+                topic_boost = 0.8
+            elif any(tok in chunk_topic or tok in chunk_subtopic for tok in q_tokens):
+                topic_boost = 0.6
+
+            composite_score = round(
+                0.50 * vector_score + 0.35 * lexical_score + 0.15 * topic_boost,
+                4
+            )
+
+            # Location formatting
             location = {
                 "source_type": meta.get("source_type", "UNKNOWN"),
                 "page_number": meta.get("page_number") if meta.get("page_number", -1) != -1 else None,
@@ -528,23 +598,86 @@ def search_relevant_chunks(
                 "timestamp_start": meta.get("timestamp_start") if meta.get("timestamp_start", -1.0) != -1.0 else None,
                 "timestamp_end": meta.get("timestamp_end") if meta.get("timestamp_end", -1.0) != -1.0 else None,
             }
-            
-            formatted_results.append({
+
+            candidate_item = {
                 "chunk_id": chunk_id,
-                "score": round(similarity_score, 4),
-                "text": docs[idx] if idx < len(docs) else "",
+                "score": composite_score,
+                "vector_score": round(vector_score, 4),
+                "lexical_score": round(lexical_score, 4),
+                "topic_boost": round(topic_boost, 4),
+                "text": text_content,
+                "snippet": text_content[:240],
                 "topic": meta.get("topic"),
                 "subtopic": meta.get("subtopic"),
                 "source_id": meta.get("source_id"),
                 "document_id": meta.get("document_id"),
                 "user_id": meta.get("user_id"),
+                "source_type": location["source_type"],
+                "page_number": location["page_number"],
+                "slide_number": location["slide_number"],
+                "timestamp_start": location["timestamp_start"],
+                "timestamp_end": location["timestamp_end"],
                 "location": location
+            }
+
+            # 5. Removal of Low-Relevance Chunks
+            if composite_score < similarity_threshold:
+                discarded_chunks.append({
+                    "chunk_id": chunk_id,
+                    "score": composite_score,
+                    "reason": f"Below similarity threshold ({composite_score} < {similarity_threshold})"
+                })
+            else:
+                candidate_list.append(candidate_item)
+
+    # Sort remaining candidates by composite score descending
+    candidate_list.sort(key=lambda c: c["score"], reverse=True)
+
+    # 6. Source Diversity Control & Final Evidence Selection
+    final_results = []
+    source_counts = {}
+
+    for item in candidate_list:
+        src = item.get("source_id") or item.get("document_id") or "unknown_source"
+        current_src_count = source_counts.get(src, 0)
+
+        if current_src_count >= max_per_source and len(final_results) >= 2:
+            discarded_chunks.append({
+                "chunk_id": item["chunk_id"],
+                "score": item["score"],
+                "reason": f"Source diversity cap reached ({max_per_source} chunks for source {src})"
             })
+            continue
+
+        final_results.append(item)
+        source_counts[src] = current_src_count + 1
+
+        if len(final_results) >= top_k:
+            break
+
+    # If strict diversity left us below top_k and we have remaining candidates, fill up
+    if len(final_results) < top_k and len(candidate_list) > len(final_results):
+        selected_cids = {c["chunk_id"] for c in final_results}
+        for item in candidate_list:
+            if item["chunk_id"] not in selected_cids:
+                final_results.append(item)
+                selected_cids.add(item["chunk_id"])
+                if len(final_results) >= top_k:
+                    break
+
+    selected_source_ids = list(dict.fromkeys(r["source_id"] for r in final_results if r.get("source_id")))
+    similarity_scores = [r["score"] for r in final_results]
 
     return {
         "query": query,
-        "total_results": len(formatted_results),
-        "results": formatted_results
+        "normalized_query": norm_query,
+        "candidate_count": candidate_count,
+        "final_evidence_count": len(final_results),
+        "similarity_scores": similarity_scores,
+        "selected_source_ids": selected_source_ids,
+        "discarded_chunks": discarded_chunks,
+        "total_results": len(final_results),
+        "results": final_results
     }
 
 def get_chunk_metadata(chunk_id: str) -> Dict[str, Any]:
@@ -807,11 +940,31 @@ def grounded_chat(
 # 6. GROUNDED ADAPTIVE ASSESSMENT ENGINE (Phase 3)
 # ==========================================
 
+def normalize_question_stem(question_text: str) -> str:
+    """Normalize question text for deduplication comparison."""
+    q = question_text.lower().strip()
+    q = re.sub(r'^(according to course materials on [^,]+,\s*|\s*based on the uploaded material,?\s*)', '', q)
+    q = re.sub(r'[^\w\s]', '', q)
+    q = re.sub(r'\s+', ' ', q).strip()
+    return q
+
 def compute_question_fingerprint(question_text: str, topic: str) -> str:
     """Compute deterministic SHA-256 fingerprint for question to prevent repeats."""
-    norm_q = re.sub(r'\s+', ' ', re.sub(r'[^\w\s]', '', question_text.lower())).strip()
+    norm_q = normalize_question_stem(question_text)
     norm_t = topic.lower().strip()
     return hashlib.sha256(f"{norm_q}::{norm_t}".encode('utf-8')).hexdigest()
+
+def compute_stem_similarity(stem_a: str, stem_b: str) -> float:
+    """Compute token Jaccard similarity between two normalized question stems."""
+    tokens_a = set(re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', stem_a.lower()))
+    tokens_b = set(re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', stem_b.lower()))
+    if not tokens_a and not tokens_b:
+        return 1.0
+    if not tokens_a or not tokens_b:
+        return 0.0
+    intersection = len(tokens_a.intersection(tokens_b))
+    union = len(tokens_a.union(tokens_b))
+    return intersection / union if union > 0 else 0.0
 
 def verify_question(q: Dict[str, Any], chunk: Dict[str, Any]) -> Tuple[bool, List[str]]:
     """
@@ -909,13 +1062,17 @@ def generate_grounded_assessment(
     count: int = 5,
     question_type: str = "MCQ",
     existing_fingerprints: Optional[List[str]] = None,
-    source_id: Optional[str] = None
+    existing_questions: Optional[List[str]] = None,
+    source_id: Optional[str] = None,
+    assessment_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Generate an adaptive course assessment strictly grounded in Chroma course materials.
-    Includes automated verification pass and duplicate question prevention.
+    Includes automated verification pass and persistent exact & semantic duplicate prevention.
     """
-    existing_fps = set(existing_fingerprints or [])
+    count = int(count) if count is not None else 5
+    used_fps = set(existing_fingerprints or [])
+    seen_stems = [normalize_question_stem(q) for q in (existing_questions or []) if q]
 
     # 1. Retrieve Chroma chunks for authenticated user
     search_res = search_relevant_chunks(
@@ -923,7 +1080,7 @@ def generate_grounded_assessment(
         user_id=user_id,
         source_id=source_id,
         topic=topic,
-        top_k=max(count * 3, 10)
+        top_k=max(count * 4, 15)
     )
 
     results = search_res.get("results", [])
@@ -935,19 +1092,39 @@ def generate_grounded_assessment(
         }
 
     validated_questions = []
-    used_fps = set(existing_fps)
+    asmt_id = assessment_id or f"asmt_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
 
     # Question types to cycle through if MIXED
     types_cycle = ["MCQ", "SHORT_ANSWER", "NUMERICAL"] if question_type.upper() == "MIXED" else [question_type.upper()]
 
-    for idx, r in enumerate(results):
+    # Distractor templates for varied generation
+    distractor_templates = [
+        "Inversely proportional to system clock frequency",
+        "Requires global system reset without preservation",
+        "Applicable only in non-preemptive single-user environments",
+        "Handled exclusively by peripheral bus arbitration controller",
+        "Causes indefinite priority inversion in real-time tasks",
+        "Bounded by maximum TLB cache miss penalty",
+        "Violates safety invariants and produces deadlock states",
+        "Calculated dynamically using unweighted round-robin slices"
+    ]
+
+    # Multiple question stem templates for semantic variety
+    stem_templates_mcq = [
+        ("According to course materials on {subtopic}, {lead}?", "lead"),
+        ("In {topic} ({subtopic}), which principle accurately governs {lead}?", "lead"),
+        ("Which of the following statements correctly describes {lead} in {subtopic}?", "lead"),
+        ("How does the system enforce safety regarding {lead} in {subtopic}?", "lead"),
+        ("What core requirement distinguishes {lead} in {topic} course materials?", "lead"),
+    ]
+
+    for chunk_idx, r in enumerate(results):
         if len(validated_questions) >= count:
             break
 
-        q_type = types_cycle[idx % len(types_cycle)]
         loc = r.get("location", {})
         chunk_text = r.get("text", "")
-        cid = r.get("chunk_id", f"c_{idx}")
+        cid = r.get("chunk_id", f"c_{chunk_idx}")
         meta = {
             "page_number": loc.get("page_number"),
             "slide_number": loc.get("slide_number"),
@@ -962,73 +1139,102 @@ def generate_grounded_assessment(
             "metadata": meta
         }
 
-        # Generate candidates from chunk text
-        candidates = []
-        sentences = [s.strip() for s in re.split(r'[.!?]+', chunk_text) if len(s.strip()) > 20]
+        raw_sentences = [s.strip() for s in re.split(r'[.!?]+', chunk_text) if len(s.strip()) > 15]
+        if not raw_sentences:
+            raw_sentences = [chunk_text[:120].strip()]
 
-        if sentences:
-            s_lead = sentences[0]
+        # Generate candidates from each available sentence and template variation
+        for s_idx, s_lead in enumerate(raw_sentences):
+            if len(validated_questions) >= count:
+                break
+
+            q_type = types_cycle[(len(validated_questions)) % len(types_cycle)]
+            cur_subtopic = r.get("subtopic") or subtopic or "Core Principles"
+
+            candidates_for_sentence = []
+
             if q_type == "MCQ":
-                # Create grounded MCQ
-                q_text = f"According to course materials on {r.get('subtopic') or topic}, {s_lead[:120].strip()}?"
-                if not q_text.endswith("?"):
-                    q_text += "?"
-                
-                corr_ans = sentences[1][:60].strip() if len(sentences) > 1 else s_lead.split()[-1]
-                distractor1 = f"Inversely proportional to {s_lead.split()[0] if s_lead.split() else 'variable'}"
-                distractor2 = f"Requires global system reset without {topic}"
-                distractor3 = f"Applicable only in non-preemptive single-user environments"
+                for tmpl_idx, (tmpl, _) in enumerate(stem_templates_mcq):
+                    q_text = tmpl.format(
+                        topic=r.get("topic") or topic,
+                        subtopic=cur_subtopic,
+                        lead=s_lead[:110].strip()
+                    )
+                    if not q_text.endswith("?"):
+                        q_text += "?"
 
-                candidate = {
-                    "question_id": f"q_{uuid.uuid4().hex[:10]}",
-                    "type": "MCQ",
-                    "topic": r.get("topic") or topic,
-                    "subtopic": r.get("subtopic") or subtopic or "Core Concepts",
-                    "difficulty": difficulty,
-                    "source_id": r.get("source_id"),
-                    "chunk_id": cid,
-                    "page_number": loc.get("page_number"),
-                    "slide_number": loc.get("slide_number"),
-                    "timestamp_start": loc.get("timestamp_start"),
-                    "timestamp_end": loc.get("timestamp_end"),
-                    "question": q_text,
-                    "options": [corr_ans, distractor1, distractor2, distractor3],
-                    "correct_answer": corr_ans,
-                    "explanation": f"Based on verified course evidence in {cid}: {chunk_text[:160]}..."
-                }
-                candidates.append(candidate)
+                    # Form distinct answers and distractors
+                    corr_ans = raw_sentences[(s_idx + 1) % len(raw_sentences)][:60].strip() if len(raw_sentences) > 1 else s_lead.split()[-1]
+                    d_offset = (chunk_idx * 2 + s_idx * 3 + tmpl_idx) % len(distractor_templates)
+                    d1 = distractor_templates[d_offset]
+                    d2 = distractor_templates[(d_offset + 2) % len(distractor_templates)]
+                    d3 = distractor_templates[(d_offset + 4) % len(distractor_templates)]
+
+                    options = [corr_ans, d1, d2, d3]
+                    # Ensure options are distinct
+                    if len(set(o.lower() for o in options)) != 4:
+                        d3 = f"Restricted strictly to user-mode space without {topic}"
+                        options = [corr_ans, d1, d2, d3]
+
+                    candidate = {
+                        "question_id": f"q_{uuid.uuid4().hex[:10]}",
+                        "assessment_id": asmt_id,
+                        "type": "MCQ",
+                        "topic": r.get("topic") or topic,
+                        "subtopic": cur_subtopic,
+                        "difficulty": difficulty,
+                        "source_id": r.get("source_id"),
+                        "chunk_id": cid,
+                        "page_number": loc.get("page_number"),
+                        "slide_number": loc.get("slide_number"),
+                        "timestamp_start": loc.get("timestamp_start"),
+                        "timestamp_end": loc.get("timestamp_end"),
+                        "question": q_text,
+                        "options": options,
+                        "correct_answer": corr_ans,
+                        "explanation": f"Based on verified course evidence in {cid}: {chunk_text[:160]}..."
+                    }
+                    candidates_for_sentence.append(candidate)
 
             elif q_type == "SHORT_ANSWER":
-                q_text = f"Explain the key concept discussed regarding {r.get('subtopic') or topic} in your course material?"
-                candidate = {
-                    "question_id": f"q_{uuid.uuid4().hex[:10]}",
-                    "type": "SHORT_ANSWER",
-                    "topic": r.get("topic") or topic,
-                    "subtopic": r.get("subtopic") or subtopic or "Core Concepts",
-                    "difficulty": difficulty,
-                    "source_id": r.get("source_id"),
-                    "chunk_id": cid,
-                    "page_number": loc.get("page_number"),
-                    "slide_number": loc.get("slide_number"),
-                    "timestamp_start": loc.get("timestamp_start"),
-                    "timestamp_end": loc.get("timestamp_end"),
-                    "question": q_text,
-                    "options": [],
-                    "correct_answer": s_lead[:80].strip(),
-                    "explanation": f"Refer to course text: {chunk_text[:160]}..."
-                }
-                candidates.append(candidate)
+                for v_idx in range(3):
+                    if v_idx == 0:
+                        q_text = f"Explain the key concept discussed regarding {cur_subtopic} in your course material?"
+                    elif v_idx == 1:
+                        q_text = f"In {r.get('topic') or topic}, describe the operational role of {s_lead[:80].strip()}?"
+                    else:
+                        q_text = f"According to verified course materials, what mechanism governs {cur_subtopic} ({s_lead[:60].strip()})?"
+
+                    candidate = {
+                        "question_id": f"q_{uuid.uuid4().hex[:10]}",
+                        "assessment_id": asmt_id,
+                        "type": "SHORT_ANSWER",
+                        "topic": r.get("topic") or topic,
+                        "subtopic": cur_subtopic,
+                        "difficulty": difficulty,
+                        "source_id": r.get("source_id"),
+                        "chunk_id": cid,
+                        "page_number": loc.get("page_number"),
+                        "slide_number": loc.get("slide_number"),
+                        "timestamp_start": loc.get("timestamp_start"),
+                        "timestamp_end": loc.get("timestamp_end"),
+                        "question": q_text,
+                        "options": [],
+                        "correct_answer": s_lead[:80].strip(),
+                        "explanation": f"Refer to course text: {chunk_text[:160]}..."
+                    }
+                    candidates_for_sentence.append(candidate)
 
             elif q_type == "NUMERICAL":
-                # Look for numbers in chunk text or create numeric evaluation question
                 nums = re.findall(r'\b\d+(?:\.\d+)?\b', chunk_text)
-                target_num = nums[0] if nums else "4"
-                q_text = f"In {r.get('subtopic') or topic}, calculate the value associated with this principle based on your course material:"
+                target_num = nums[s_idx % len(nums)] if nums else str((s_idx + 1) * 4)
+                q_text = f"In {cur_subtopic}, calculate the parameter value associated with {s_lead[:60].strip()} based on course materials:"
                 candidate = {
                     "question_id": f"q_{uuid.uuid4().hex[:10]}",
+                    "assessment_id": asmt_id,
                     "type": "NUMERICAL",
                     "topic": r.get("topic") or topic,
-                    "subtopic": r.get("subtopic") or subtopic or "Quantitative Analysis",
+                    "subtopic": cur_subtopic,
                     "difficulty": difficulty,
                     "source_id": r.get("source_id"),
                     "chunk_id": cid,
@@ -1041,35 +1247,52 @@ def generate_grounded_assessment(
                     "correct_answer": target_num,
                     "explanation": f"According to course material, the stated parameter is {target_num}. ({chunk_text[:120]}...)"
                 }
-                candidates.append(candidate)
+                candidates_for_sentence.append(candidate)
 
-        # Verification pass for each candidate
-        for cand in candidates:
-            fp = compute_question_fingerprint(cand["question"], cand["topic"])
-            cand["fingerprint"] = fp
+            # Deduplication & Verification Pass
+            for cand in candidates_for_sentence:
+                fp = compute_question_fingerprint(cand["question"], cand["topic"])
+                norm_stem = normalize_question_stem(cand["question"])
+                cand["fingerprint"] = fp
+                cand["normalized_question"] = norm_stem
 
-            # Check duplicate question prevention
-            if fp in used_fps:
-                continue
+                # 1. Exact fingerprint collision check
+                if fp in used_fps:
+                    continue
 
-            # Check verification rules
-            is_valid, issues = verify_question(cand, chunk_obj)
-            if is_valid:
-                used_fps.add(fp)
-                validated_questions.append(cand)
-                if len(validated_questions) >= count:
-                    break
-            else:
-                logger.warning(f"Question rejected in verification pass: {issues}")
+                # 2. Semantic similarity collision check against previous questions
+                is_semantic_duplicate = False
+                for prev in seen_stems:
+                    if compute_stem_similarity(norm_stem, prev) >= 0.75:
+                        is_semantic_duplicate = True
+                        break
+
+                if is_semantic_duplicate:
+                    continue
+
+                # 3. Verification rules pass
+                is_valid, issues = verify_question(cand, chunk_obj)
+                if is_valid:
+                    used_fps.add(fp)
+                    seen_stems.append(norm_stem)
+                    validated_questions.append(cand)
+                    break  # Take one successful candidate per sentence slot
+                else:
+                    logger.warning(f"Question rejected in verification pass: {issues}")
 
     return {
         "success": True,
         "topic": topic,
         "subtopic": subtopic,
         "difficulty": difficulty,
+        "assessment_id": asmt_id,
         "total_generated": len(validated_questions),
         "questions": validated_questions
     }
+
+def Date_timestamp() -> str:
+    import time
+    return str(int(time.time() * 1000))
 
 # ==========================================
 # 7. CLI INTERFACE (For Node.js subprocess calls)
@@ -1102,7 +1325,10 @@ def main():
     search_p.add_argument("--user-id", default=None)
     search_p.add_argument("--source-id", default=None)
     search_p.add_argument("--topic", default=None)
+    search_p.add_argument("--subtopic", default=None)
     search_p.add_argument("--top-k", type=int, default=5)
+    search_p.add_argument("--similarity-threshold", type=float, default=0.55)
+    search_p.add_argument("--max-per-source", type=int, default=2)
 
     # Chunk command
     chunk_p = subparsers.add_parser("chunk")
@@ -1128,7 +1354,9 @@ def main():
     assess_p.add_argument("--count", type=int, default=5)
     assess_p.add_argument("--type", default="MCQ")
     assess_p.add_argument("--fingerprints", default=None)
+    assess_p.add_argument("--existing-questions", default=None)
     assess_p.add_argument("--source-id", default=None)
+    assess_p.add_argument("--assessment-id", default=None)
 
     args = parser.parse_args()
 
@@ -1154,7 +1382,10 @@ def main():
             user_id=args.user_id,
             source_id=args.source_id,
             topic=args.topic,
-            top_k=args.top_k
+            subtopic=args.subtopic,
+            top_k=args.top_k,
+            similarity_threshold=args.similarity_threshold,
+            max_per_source=args.max_per_source
         )
         print(json.dumps(res))
     elif args.command == "chunk":
@@ -1184,6 +1415,12 @@ def main():
                 fps = json.loads(args.fingerprints)
             except Exception:
                 fps = []
+        prev_qs = []
+        if args.existing_questions:
+            try:
+                prev_qs = json.loads(args.existing_questions)
+            except Exception:
+                prev_qs = []
         res = generate_grounded_assessment(
             topic=args.topic,
             user_id=args.user_id,
@@ -1192,7 +1429,9 @@ def main():
             count=args.count,
             question_type=args.type,
             existing_fingerprints=fps,
-            source_id=args.source_id
+            existing_questions=prev_qs,
+            source_id=args.source_id,
+            assessment_id=args.assessment_id
         )
         print(json.dumps(res))
     else:

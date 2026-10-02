@@ -35,10 +35,22 @@ export interface SimulatedStudentResult {
   sessionSteps: StudentSimulationStep[];
 }
 
+export interface MetricComparison {
+  metric: string;
+  phase6Value: number;
+  phase7Value: number;
+  delta: number;
+  improved: boolean;
+  targetBenchmark: string;
+}
+
 export interface PersonalizationMetrics {
   simulatedStudentsCount: number;
   averageMasteryImprovement: number;
   totalCompletedActivities: number;
+  averageCompletionRate?: number;
+  averageRecommendationRelevance?: number;
+  cohortArchetypeDistribution?: Record<string, number>;
   students: SimulatedStudentResult[];
 }
 
@@ -79,6 +91,7 @@ export interface EvaluationReport {
   noveltyMetrics: NoveltyMetrics;
   perQuestionResults: PerQuestionResult[];
   failuresAndErrors: string[];
+  phaseComparison?: MetricComparison[];
 }
 
 export async function getLatestEvaluation(): Promise<{ success: boolean; report: EvaluationReport | null }> {

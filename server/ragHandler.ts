@@ -200,15 +200,38 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     const userId = method === 'POST' ? req.body?.userId : req.query?.userId;
     const sourceId = method === 'POST' ? req.body?.sourceId : req.query?.sourceId;
     const topic = method === 'POST' ? req.body?.topic : req.query?.topic;
+    const subtopic = method === 'POST' ? req.body?.subtopic : req.query?.subtopic;
     const topK = method === 'POST' ? (req.body?.topK || 5) : (Number(req.query?.topK || 5));
+    const similarityThreshold = method === 'POST' 
+      ? (req.body?.similarityThreshold ?? req.body?.minScore)
+      : (req.query?.similarityThreshold ?? req.query?.minScore);
+    const maxPerSource = method === 'POST' ? req.body?.maxPerSource : req.query?.maxPerSource;
 
     const args = ['search', '--query', String(query), '--top-k', String(topK)];
     if (userId) args.push('--user-id', String(userId));
     if (sourceId) args.push('--source-id', String(sourceId));
     if (topic) args.push('--topic', String(topic));
+    if (subtopic) args.push('--subtopic', String(subtopic));
+    if (similarityThreshold !== undefined && similarityThreshold !== null) {
+      args.push('--similarity-threshold', String(similarityThreshold));
+    }
+    if (maxPerSource !== undefined && maxPerSource !== null) {
+      args.push('--max-per-source', String(maxPerSource));
+    }
 
     const searchResults = await runPythonCli(args);
-    res.status(200).json(searchResults);
+    
+    // Provide both snake_case and camelCase diagnostics
+    const augmentedResults = {
+      ...searchResults,
+      candidateCount: searchResults?.candidate_count ?? searchResults?.results?.length ?? 0,
+      finalEvidenceCount: searchResults?.final_evidence_count ?? searchResults?.results?.length ?? 0,
+      similarityScores: searchResults?.similarity_scores ?? (searchResults?.results || []).map((r: any) => r.score),
+      selectedSourceIds: searchResults?.selected_source_ids ?? [],
+      discardedChunks: searchResults?.discarded_chunks ?? [],
+    };
+
+    res.status(200).json(augmentedResults);
     return;
   }
 
@@ -263,7 +286,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     return;
   }
 
-  // 7. Grounded Adaptive Assessment Generation (Phase 3)
+  // 7. Grounded Adaptive Assessment Generation (Phase 3 & 7 Deduplication)
   // POST /api/rag/assessment/generate
   if (method === 'POST' && pathname === '/api/rag/assessment/generate') {
     try {
@@ -281,21 +304,24 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       const count = Number(body.count || 5);
       const questionType = body.questionType || body.type || 'MCQ';
       const sourceId = body.sourceId;
+      const assessmentId = body.assessmentId || body.assessment_id || `asmt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
-      // 1. Fetch existing question fingerprints for this user and topic to prevent repeat questions
+      // 1. Fetch existing question fingerprints and stems across all past assessments
       let existingFps: string[] = [];
+      let existingQuestions: string[] = [];
       try {
         const rows: any[] = await prisma.$queryRawUnsafe(
-          'SELECT fingerprint FROM assessment_questions WHERE userId = ? AND topic = ?',
+          'SELECT fingerprint, question, normalizedQuestion FROM assessment_questions WHERE userId = ? AND topic = ?',
           userId,
           topic
         );
         existingFps = rows.map((r: any) => r.fingerprint).filter(Boolean);
+        existingQuestions = rows.map((r: any) => r.normalizedQuestion || r.question).filter(Boolean);
       } catch (dbErr) {
-        console.warn('Could not query existing fingerprints from DB:', dbErr);
+        console.warn('Could not query existing questions from DB:', dbErr);
       }
 
-      // 2. Call RAG engine with verification pass
+      // 2. Call RAG engine with verification pass and deduplication
       const args = [
         'assessment-generate',
         '--topic',
@@ -308,10 +334,13 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         String(count),
         '--type',
         String(questionType),
+        '--assessment-id',
+        assessmentId,
       ];
       if (subtopic) args.push('--subtopic', String(subtopic));
       if (sourceId) args.push('--source-id', String(sourceId));
       if (existingFps.length > 0) args.push('--fingerprints', JSON.stringify(existingFps));
+      if (existingQuestions.length > 0) args.push('--existing-questions', JSON.stringify(existingQuestions));
 
       const genResult = await runPythonCli(args);
 
@@ -320,16 +349,18 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         return;
       }
 
-      // 3. Persist valid generated questions into assessment_questions table
+      // 3. Persist valid generated questions into assessment_questions table with full deduplication metadata
       const questions = genResult.questions || [];
       for (const q of questions) {
         try {
           await prisma.$executeRawUnsafe(
-            `INSERT INTO assessment_questions (id, userId, fingerprint, type, topic, subtopic, difficulty, sourceId, chunkId, pageNumber, slideNumber, timestampStart, timestampEnd, question, optionsJson, correctAnswer, explanation)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO assessment_questions (id, userId, assessmentId, fingerprint, normalizedQuestion, type, topic, subtopic, difficulty, sourceId, chunkId, pageNumber, slideNumber, timestampStart, timestampEnd, question, optionsJson, correctAnswer, explanation)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             q.question_id || `q_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             userId,
+            assessmentId,
             q.fingerprint || '',
+            q.normalized_question || q.question.toLowerCase().trim(),
             q.type || 'MCQ',
             q.topic || topic,
             q.subtopic || null,
@@ -352,6 +383,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
 
       res.status(200).json({
         success: true,
+        assessmentId,
         topic,
         subtopic,
         difficulty,

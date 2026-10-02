@@ -26,6 +26,8 @@ chroma_data/
 server/uploads/*
 !server/uploads/.gitkeep
 *.ses
+__pycache__/
+*.pyc
 
 # Editor directories and files
 .vscode/*

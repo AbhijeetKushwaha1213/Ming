@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSkills, parseSkillDetails } from "@/hooks/useSkills";
 import { useProjects } from "@/hooks/useProjects";
+import { geminiClient } from "@/utils/geminiClient";
 
 interface ProjectFocusViewProps {
   projectId?: string;
@@ -277,25 +278,40 @@ export default function ProjectFocusView({
     setIsTyping(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
-        body: {
+      let responseText = '';
+      try {
+        const { data, error } = await supabase.functions.invoke('ai-assistant', {
+          body: {
+            message: userMsgText,
+            context: `project focus bot for ${projectName} (${projectType})`,
+            conversationHistory: updatedMessages.slice(-10).map(msg => ({
+              role: msg.sender === 'user' ? 'user' : 'assistant',
+              content: msg.text
+            }))
+          }
+        });
+
+        if (error) throw error;
+        responseText = data.response;
+      } catch (invokeError) {
+        console.warn('Supabase edge function invoke failed, falling back to direct Gemini API call:', invokeError);
+        const directRes = await geminiClient.generateContent({
           message: userMsgText,
-          context: `project focus bot for ${projectName} (${projectType})`,
-          conversationHistory: updatedMessages.slice(-10).map(msg => ({
+          context: updatedMessages.slice(-10).map(msg => ({
             role: msg.sender === 'user' ? 'user' : 'assistant',
             content: msg.text
           }))
-        }
-      });
+        });
 
-      if (error) {
-        console.error('AI Assistant Error:', error);
-        throw error;
+        if (directRes.error) {
+          throw new Error(`${directRes.error}: ${directRes.details || ''}`);
+        }
+        responseText = directRes.response;
       }
 
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.response || "I'm sorry, I couldn't process your request right now.",
+        text: responseText || "I'm sorry, I couldn't process your request right now.",
         sender: 'ai',
         timestamp: new Date()
       };

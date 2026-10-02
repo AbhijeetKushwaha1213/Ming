@@ -213,7 +213,10 @@ Rules:
       Generate ${contentType} content STRICTLY for "${topic || message}" ONLY. Focus exclusively on the provided topic and ensure all content is accurate, relevant, and directly related to "${topic || message}". DO NOT include any concepts from other subjects or unrelated topics.` 
       : message;
 
-    const geminiPrompt = `${systemPrompt}\n\nUser Request:\n${userPrompt}`;
+    const historyParts = context && context.length > 0 
+      ? "\n\nConversation History:\n" + context.map(c => `${c.role === 'user' ? 'User' : 'Assistant'}: ${c.content}`).join("\n") + "\n"
+      : "";
+    const geminiPrompt = `${systemPrompt}${historyParts}\nUser Request:\n${userPrompt}`;
 
     try {
       const preferredModel = (import.meta.env as any).VITE_GEMINI_MODEL || 'gemini-2.5-flash';

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Loader2 } from 'lucide-react';
 import { useSkills, SyllabusTopic } from '@/hooks/useSkills';
 import { supabase } from '@/integrations/supabase/client';
+import { geminiClient } from '@/utils/geminiClient';
 
 interface AddSkillDialogProps {
   trigger?: React.ReactNode;
@@ -101,16 +102,27 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
     try {
       if (syllabusType === 'ai') {
         try {
-          const { data: response, error: callError } = await supabase.functions.invoke('ai-assistant', {
-            body: { 
-              message: `I want to learn the skill '${skill.trim()}'. Please generate a structured syllabus of exactly 12 topics, ordered logically from beginner to advanced. Return ONLY a valid raw JSON array of strings containing the topics (e.g. ["Topic 1", "Topic 2", ...]). Do not write any other text, markdown formatting (no backticks), or explanations. Just return the JSON array.`,
-              history: []
-            }
-          });
+          let rawText = '';
+          const syllabusPrompt = `I want to learn the skill '${skill.trim()}'. Please generate a structured syllabus of exactly 12 topics, ordered logically from beginner to advanced. Return ONLY a valid raw JSON array of strings containing the topics (e.g. ["Topic 1", "Topic 2", ...]). Do not write any other text, markdown formatting (no backticks), or explanations. Just return the JSON array.`;
+
+          try {
+            const { data: response, error: callError } = await supabase.functions.invoke('ai-assistant', {
+              body: { 
+                message: syllabusPrompt,
+                history: []
+              }
+            });
+            if (callError) throw callError;
+            rawText = response?.text || response?.response || '';
+          } catch (edgeErr) {
+            console.warn('Edge function invoke failed, using direct Gemini client:', edgeErr);
+            const direct = await geminiClient.generateContent({
+              message: syllabusPrompt
+            });
+            if (direct.error) throw new Error(direct.error);
+            rawText = direct.response;
+          }
           
-          if (callError) throw callError;
-          
-          const rawText = response?.text || '';
           // Try to clean markdown formatting if AI returns it
           const cleanText = rawText.replace(/```json|```/g, '').trim();
           const parsed = JSON.parse(cleanText);

@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Send, Bot, User, Loader2, Maximize2, Minimize2, Save, History, 
-  Copy, Check, ShieldCheck, AlertCircle, Paperclip, X, Sparkles, Plus 
+  Copy, Check, ShieldCheck, AlertCircle, Paperclip, X, Sparkles, Plus,
+  Mic, MicOff, Volume2, VolumeX, Languages
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -141,6 +142,136 @@ export const AIChat = ({
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  type ChatLanguage = 'english' | 'hinglish' | 'hindi';
+
+  const [language, setLanguage] = useState<ChatLanguage>(() => {
+    return (localStorage.getItem('studymate_chat_language') as ChatLanguage) || 'english';
+  });
+  const [isListening, setIsListening] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const handleSetLanguage = (lang: ChatLanguage) => {
+    setLanguage(lang);
+    try {
+      localStorage.setItem('studymate_chat_language', lang);
+    } catch (e) {}
+    toast({
+      title: `Language: ${lang === 'hinglish' ? '🇮🇳 Hinglish' : lang === 'hindi' ? '🇮🇳 Hindi' : '🇬🇧 English'}`,
+      description: lang === 'hinglish'
+        ? 'Tutor will explain concepts in collegiate Hinglish with verified source citations.'
+        : lang === 'hindi'
+        ? 'Tutor will explain concepts in Hindi with verified source citations.'
+        : 'Tutor will explain concepts in standard English with verified source citations.',
+      duration: 2500,
+    });
+  };
+
+  const toggleSpeechRecognition = () => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast({
+        title: "Speech Recognition Unavailable",
+        description: "Your browser does not support Web Speech Recognition. Please use Chrome, Edge, or Safari.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = language === 'hindi' ? 'hi-IN' : 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          setInput(transcript);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to initialize speech recognition:', err);
+      setIsListening(false);
+    }
+  };
+
+  const handleToggleSpeech = (messageId: string, text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      toast({
+        title: "Audio Read-Aloud Unavailable",
+        description: "Speech synthesis is not supported on this browser.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (speakingMessageId === messageId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    // Strip markdown tags and citation IDs for smooth natural speech
+    const cleanSpokenText = text
+      .replace(/\[CHUNK_[A-Za-z0-9_-]+\]/g, '')
+      .replace(/###?\s+/g, '')
+      .replace(/[*`_~]/g, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanSpokenText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.lang = language === 'hindi' ? 'hi-IN' : 'en-US';
+
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
+
+    setSpeakingMessageId(messageId);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+    };
+  }, []);
 
   // Auto-save active chat state to localStorage on every update
   useEffect(() => {
@@ -345,7 +476,8 @@ export const AIChat = ({
           message: userMsgText,
           userId: user?.user_id || user?.id || 'default_user',
           topic: sanitizedTopic || context,
-          conversationHistory
+          conversationHistory,
+          language,
         });
       } catch (tutorError) {
         console.warn('askGroundedTutor failed, falling back to direct Gemini API:', tutorError);
@@ -375,9 +507,16 @@ export const AIChat = ({
         setMessages(prev => [...prev, aiMessage]);
       } else {
         // Fall back directly to Gemini 2.5 Flash with workspace systemPrompt
+        let adjustedPrompt = workspacePrompt;
+        if (language === 'hinglish') {
+          adjustedPrompt += '\n\nIMPORTANT: Explain concepts in natural, friendly collegiate Hinglish (Hindi written in Roman/English script mixed with English technical terms). Keep technical keywords and code in English.';
+        } else if (language === 'hindi') {
+          adjustedPrompt += '\n\nIMPORTANT: Explain concepts in clear Hindi using Devanagari script, with technical English terms in parentheses.';
+        }
+
         const directRes = await geminiClient.generateContent({
           message: userMsgText,
-          systemPrompt: workspacePrompt,
+          systemPrompt: adjustedPrompt,
           topic: sanitizedTopic,
           context: conversationHistory
         });
@@ -563,7 +702,47 @@ export const AIChat = ({
             )}
           </div>
         </h3>
-        <div className="flex items-center space-x-1.5">
+        <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+          {/* Language Selector: English / Hinglish / Hindi */}
+          <div className="flex items-center bg-muted/80 p-0.5 rounded-lg border border-border/60 text-xs">
+            <button
+              type="button"
+              onClick={() => handleSetLanguage('english')}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${
+                language === 'english'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="English explanations"
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetLanguage('hinglish')}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${
+                language === 'hinglish'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Hinglish explanations (Hindi + English)"
+            >
+              🇮🇳 Hinglish
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetLanguage('hindi')}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${
+                language === 'hindi'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Hindi explanations"
+            >
+              हिन्दी
+            </button>
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -725,19 +904,39 @@ export const AIChat = ({
                               : new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                             }
                           </p>
-                          <button
-                            onClick={() => handleCopy(message.text, message.id)}
-                            className={`p-1 rounded hover:bg-black/10 transition-colors ${
-                              message.sender === 'user' ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground'
-                            }`}
-                            title="Copy message"
-                          >
-                            {copiedId === message.id ? (
-                              <Check className="w-3.5 h-3.5" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-1">
+                            {message.sender === 'ai' && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleSpeech(message.id, message.text)}
+                                className={`p-1 rounded transition-colors ${
+                                  speakingMessageId === message.id
+                                    ? 'text-primary bg-primary/15 animate-pulse'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-black/10'
+                                }`}
+                                title={speakingMessageId === message.id ? "Stop voice playback" : "Listen (Read aloud)"}
+                              >
+                                {speakingMessageId === message.id ? (
+                                  <VolumeX className="w-3.5 h-3.5 text-primary" />
+                                ) : (
+                                  <Volume2 className="w-3.5 h-3.5" />
+                                )}
+                              </button>
                             )}
-                          </button>
+                            <button
+                              onClick={() => handleCopy(message.text, message.id)}
+                              className={`p-1 rounded hover:bg-black/10 transition-colors ${
+                                message.sender === 'user' ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground'
+                              }`}
+                              title="Copy message"
+                            >
+                              {copiedId === message.id ? (
+                                <Check className="w-3.5 h-3.5" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -806,6 +1005,23 @@ export const AIChat = ({
                 </div>
               )}
 
+              {/* Voice recognition active banner */}
+              {isListening && (
+                <div className="flex items-center justify-between px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-600 dark:text-red-400 animate-pulse">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                    <span className="font-medium">Listening... speak your question in {language === 'hindi' ? 'Hindi' : 'English / Hinglish'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleSpeechRecognition}
+                    className="text-xs underline font-semibold ml-2 hover:opacity-80 cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center space-x-2">
                 {/* Hidden file input */}
                 <input
@@ -840,6 +1056,21 @@ export const AIChat = ({
                   disabled={isLoading}
                   className="flex-1 h-10 rounded-xl"
                 />
+
+                {/* Speech-to-Text Microphone Button */}
+                <Button
+                  type="button"
+                  variant={isListening ? "destructive" : "ghost"}
+                  size="icon"
+                  disabled={isLoading}
+                  onClick={toggleSpeechRecognition}
+                  className={`h-10 w-10 shrink-0 rounded-xl transition-all ${
+                    isListening ? 'animate-pulse ring-2 ring-red-500/50 text-white' : 'text-muted-foreground hover:text-primary'
+                  }`}
+                  title={isListening ? "Listening... click to stop" : "Voice input (Speech to Text)"}
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </Button>
 
                 {/* Send Button */}
                 <Button 

@@ -296,11 +296,14 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       }
     }
 
+    const language = method === 'POST' ? (req.body?.language || req.body?.lang) : (req.query?.language || req.query?.lang);
+
     const args = ['chat', '--query', String(query)];
     if (userId) args.push('--user-id', String(userId));
     if (topic) args.push('--topic', String(topic));
     if (history) args.push('--history', JSON.stringify(history));
     if (learnerState) args.push('--learner-state', JSON.stringify(learnerState));
+    if (language) args.push('--language', String(language));
 
     const chatResponse = await runPythonCli(args);
 

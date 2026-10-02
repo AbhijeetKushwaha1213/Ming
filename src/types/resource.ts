@@ -34,6 +34,8 @@ export interface RagChunkLocation {
   slide_number?: number | null;
   timestamp_start?: number | null;
   timestamp_end?: number | null;
+  is_diagram?: boolean;
+  diagram_caption?: string;
 }
 
 export interface RagChunk {
@@ -46,6 +48,8 @@ export interface RagChunk {
   document_id?: string;
   user_id?: string;
   location: RagChunkLocation;
+  is_diagram?: boolean;
+  diagram_caption?: string;
 }
 
 export interface RagSearchResponse {
@@ -91,6 +95,8 @@ export interface CitationData {
   slide_number?: number | null;
   timestamp_start?: number | null;
   timestamp_end?: number | null;
+  is_diagram?: boolean;
+  diagram_caption?: string;
   citation_label: string;
   snippet?: string;
 }

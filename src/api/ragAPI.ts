@@ -125,8 +125,9 @@ export async function askGroundedTutor(params: {
   userId?: string;
   topic?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
+  language?: 'english' | 'hinglish' | 'hindi';
 }): Promise<GroundedChatResponse> {
-  const { message, userId, topic, conversationHistory } = params;
+  const { message, userId, topic, conversationHistory, language = 'english' } = params;
 
   try {
     const res = await fetch(`${API_BASE}/chat`, {
@@ -137,6 +138,7 @@ export async function askGroundedTutor(params: {
         userId,
         topic,
         conversationHistory,
+        language,
       }),
     });
 

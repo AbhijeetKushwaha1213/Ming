@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wand2, Plus, Loader2, BookOpen, Brain, FileQuestion, GitBranch, FileText, Upload, FileCheck, X, Eye, Search } from 'lucide-react';
+import { Wand2, Plus, Loader2, BookOpen, Brain, FileQuestion, GitBranch, FileText, Upload, FileCheck, X, Eye, Search, Headphones } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
@@ -15,9 +15,10 @@ import { FlashcardViewer } from '@/components/flashcards/FlashcardViewer';
 import { QuizViewer } from '@/components/flashcards/QuizViewer';
 import { MindMapViewer } from '@/components/flashcards/MindMapViewer';
 import { StudyNotesViewer } from '@/components/flashcards/StudyNotesViewer';
+import { AudioBriefViewer } from '@/components/flashcards/AudioBriefViewer';
 import { useFlashcards } from '@/hooks/useFlashcards';
 
-type MaterialType = 'flashcards' | 'mindmaps' | 'quizzes' | 'diagrams' | 'notes';
+type MaterialType = 'flashcards' | 'mindmaps' | 'quizzes' | 'diagrams' | 'notes' | 'audio_briefs';
 
 interface GeneratedMaterial {
   id: string;
@@ -56,7 +57,8 @@ export const AIStudyMaterialGenerator = () => {
     mindmaps: Brain,
     quizzes: FileQuestion,
     diagrams: GitBranch,
-    notes: FileText
+    notes: FileText,
+    audio_briefs: Headphones
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,6 +233,39 @@ export const AIStudyMaterialGenerator = () => {
               selected: true
             }];
           }
+          break;
+
+        case 'audio_briefs':
+          const spokenScript = (aiResponse?.notes?.summary)
+            ? `Welcome to your 2-minute high-yield audio revision on ${materialTopic}. ${aiResponse.notes.summary} Key exam principles: ${aiResponse.notes.key_points ? aiResponse.notes.key_points.join('. ') : 'Review fundamental definitions and check invariant constraints.'} Keep practicing with adaptive assessments to master this concept!`
+            : `Welcome to this 2-minute spoken revision on ${materialTopic}. Today we focus on core principles and common exam pitfalls from your course materials. ${finalContent ? finalContent.substring(0, 200) : materialTopic} represents an essential concept. When analyzing problem sets, watch out for edge cases and invariant violations. In summary, review your course slides and chapter summary to solidify your understanding. Good luck with your revision!`;
+
+          materials = [{
+            id: `generated-${Date.now()}`,
+            type: materialType,
+            title: `${materialTopic} - 2-Min Audio Brief`,
+            content: {
+              title: `${materialTopic} - 2-Min Audio Revision Brief`,
+              topic: materialTopic,
+              target_concept: materialTopic,
+              mastery_score: 0.32,
+              duration_minutes: 2,
+              script: spokenScript,
+              key_takeaways: (aiResponse?.notes?.key_points) || [
+                `Core concept: ${materialTopic}`,
+                `Exam focal point: verify necessary conditions and state invariants`,
+                `Method: check state constraints step-by-step`
+              ],
+              citations: [
+                { label: 'Course Materials', coordinate: 'Page 12', source_type: 'PDF' },
+                { label: 'Lecture Deck', coordinate: 'Slide 5', source_type: 'SLIDE' }
+              ]
+            },
+            topic: materialTopic,
+            difficulty,
+            created_at: new Date().toISOString(),
+            selected: true
+          }];
           break;
       }
 
@@ -411,6 +446,15 @@ export const AIStudyMaterialGenerator = () => {
                 <p>{material.content.summary?.substring(0, 100)}...</p>
               </div>
             )}
+
+            {material.type === 'audio_briefs' && (
+              <div className="text-sm text-gray-600">
+                <p className="flex items-center gap-1.5 text-indigo-700 font-semibold">
+                  <Headphones className="w-3.5 h-3.5" /> 2-Minute Spoken Revision Brief
+                </p>
+                <p className="mt-1 line-clamp-2 italic text-gray-700">"{material.content?.script?.substring(0, 120)}..."</p>
+              </div>
+            )}
           </div>
           
           <div className="ml-4 flex flex-col space-y-2">
@@ -444,6 +488,16 @@ export const AIStudyMaterialGenerator = () => {
   // Show viewer if material is being viewed
   if (viewingMaterial) {
     switch (viewerType) {
+      case 'audio_briefs':
+        return (
+          <AudioBriefViewer
+            brief={viewingMaterial.content}
+            onClose={() => {
+              setViewingMaterial(null);
+              setViewerType('');
+            }}
+          />
+        );
       case 'flashcards':
         return (
           <FlashcardViewer
@@ -517,6 +571,7 @@ export const AIStudyMaterialGenerator = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="flashcards">📚 Smart Flashcards</SelectItem>
+                <SelectItem value="audio_briefs">🎧 2-Min Audio Briefs (Weak Area Revision)</SelectItem>
                 <SelectItem value="mindmaps">🧠 Interactive Mind Maps</SelectItem>
                 <SelectItem value="quizzes">❓ Engaging Quizzes</SelectItem>
                 <SelectItem value="diagrams">📊 Visual Diagrams</SelectItem>

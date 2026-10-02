@@ -76,55 +76,140 @@ def get_job_status(job_id: str) -> Dict[str, Any]:
 # ==========================================
 
 def extract_pdf(file_path: str) -> List[Dict[str, Any]]:
-    """Extract text page by page from PDF preserving page_number."""
+    """
+    Extract text and multimodal visual figures/diagrams page by page from PDF preserving page_number.
+    Identifies embedded figures, schemas, charts, diagrams, and textbook captions.
+    """
     from pypdf import PdfReader
     pages_data = []
     reader = PdfReader(file_path)
     total_pages = len(reader.pages)
     
+    # Regex to detect figure/diagram/chart/architecture labels in textbook pages
+    figure_regex = re.compile(
+        r'(?:Figure|Fig\.|Diagram|Chart|Graph|Illustration|Architecture|Flowchart)\s*([0-9A-Za-z\.\-_]+)?[:\-–]?\s*([^\n\r\.\!]{5,120})',
+        re.IGNORECASE
+    )
+
     for idx, page in enumerate(reader.pages, start=1):
         text = page.extract_text() or ""
         cleaned = text.strip()
+        
+        # Check for images on page
+        has_embedded_images = False
+        image_count = 0
+        try:
+            if hasattr(page, "images") and page.images:
+                image_count = len(page.images)
+                has_embedded_images = image_count > 0
+        except Exception:
+            pass
+
+        # Check for figure/diagram captions in the text
+        figures = []
         if cleaned:
+            matches = figure_regex.findall(cleaned)
+            for fig_idx, (fig_label, caption_txt) in enumerate(matches):
+                caption_clean = caption_txt.strip()
+                label_clean = fig_label.strip()
+                full_fig_title = f"Figure {label_clean}: {caption_clean}" if label_clean else f"Diagram: {caption_clean}"
+                figures.append({
+                    "figure_id": f"fig_p{idx}_{fig_idx+1}",
+                    "caption": full_fig_title,
+                    "has_image": has_embedded_images,
+                    "page_number": idx
+                })
+        
+        # If page has embedded image but no explicit caption matched, record visual illustration
+        if has_embedded_images and not figures:
+            figures.append({
+                "figure_id": f"fig_p{idx}_img1",
+                "caption": f"Visual Diagram / Schematic on Page {idx}",
+                "has_image": True,
+                "page_number": idx
+            })
+
+        if cleaned or figures:
             pages_data.append({
                 "page_number": idx,
                 "total_pages": total_pages,
-                "text": cleaned
+                "text": cleaned,
+                "figures": figures,
+                "has_images": has_embedded_images,
+                "image_count": image_count
             })
     return pages_data
 
 def extract_pptx(file_path: str) -> List[Dict[str, Any]]:
-    """Extract text slide by slide from PPT/PPTX preserving slide_number."""
-    import pptx
-    prs = pptx.Presentation(file_path)
+    """
+    Extract text and visual diagrams slide by slide from PPT/PPTX preserving slide_number.
+    Uses python-pptx if installed, otherwise uses Python's built-in zipfile + XML parser.
+    """
     slides_data = []
-    total_slides = len(prs.slides)
-    
-    for idx, slide in enumerate(prs.slides, start=1):
-        slide_texts = []
-        slide_title = ""
+    try:
+        import pptx
+        prs = pptx.Presentation(file_path)
+        total_slides = len(prs.slides)
         
-        # Check title if available
-        if slide.shapes.title and slide.shapes.title.text:
-            slide_title = slide.shapes.title.text.strip()
-            slide_texts.append(f"Title: {slide_title}")
+        for idx, slide in enumerate(prs.slides, start=1):
+            slide_texts = []
+            slide_title = ""
+            has_diagram = False
             
-        for shape in slide.shapes:
-            if shape != slide.shapes.title and shape.has_text_frame:
-                for paragraph in shape.text_frame.paragraphs:
-                    line = paragraph.text.strip()
-                    if line and line != slide_title:
-                        slide_texts.append(line)
-                        
-        content = "\n".join(slide_texts).strip()
-        if content:
-            slides_data.append({
-                "slide_number": idx,
-                "total_slides": total_slides,
-                "title": slide_title,
-                "text": content
-            })
-    return slides_data
+            # Check title if available
+            if slide.shapes.title and slide.shapes.title.text:
+                slide_title = slide.shapes.title.text.strip()
+                slide_texts.append(f"Title: {slide_title}")
+                
+            for shape in slide.shapes:
+                # Detect picture or diagram shapes
+                try:
+                    if getattr(shape, "shape_type", None) == 13 or "picture" in shape.name.lower() or "diagram" in shape.name.lower() or "chart" in shape.name.lower():
+                        has_diagram = True
+                except Exception:
+                    pass
+
+                if shape != slide.shapes.title and shape.has_text_frame:
+                    for paragraph in shape.text_frame.paragraphs:
+                        line = paragraph.text.strip()
+                        if line and line != slide_title:
+                            slide_texts.append(line)
+                            
+            content = "\n".join(slide_texts).strip()
+            if content or has_diagram:
+                slides_data.append({
+                    "slide_number": idx,
+                    "total_slides": total_slides,
+                    "title": slide_title,
+                    "text": content or f"Slide {idx}: {slide_title}",
+                    "has_diagram": has_diagram
+                })
+        return slides_data
+    except ImportError:
+        # Fallback to pure standard library zipfile + XML parser for zero external dependencies
+        import zipfile
+        import xml.etree.ElementTree as ET
+        try:
+            with zipfile.ZipFile(file_path, 'r') as z:
+                slide_names = [n for n in z.namelist() if n.startswith('ppt/slides/slide') and n.endswith('.xml')]
+                slide_names.sort(key=lambda s: int(''.join(filter(str.isdigit, s)) or 0))
+                total_slides = len(slide_names)
+                for idx, sname in enumerate(slide_names, 1):
+                    root = ET.fromstring(z.read(sname))
+                    texts = [node.text.strip() for node in root.iter() if node.tag.endswith('}t') and node.text and node.text.strip()]
+                    has_diagram = any(node.tag.endswith('}pic') for node in root.iter())
+                    title = texts[0] if texts else f"Slide {idx}"
+                    slides_data.append({
+                        "slide_number": idx,
+                        "total_slides": total_slides,
+                        "title": title,
+                        "text": " ".join(texts) if texts else f"Slide {idx}: {title}",
+                        "has_diagram": has_diagram
+                    })
+            return slides_data
+        except Exception as e:
+            logger.warning(f"Fallback PPTX parsing failed: {e}")
+            return []
 
 def extract_video_or_audio(file_path_or_url: str, custom_transcript: Optional[str] = None) -> List[Dict[str, Any]]:
     """
@@ -308,7 +393,7 @@ def ingest_source(
         if stype in ["PDF"]:
             pages = extract_pdf(file_path_or_url)
             for page in pages:
-                page_chunks = chunk_text(page["text"])
+                page_chunks = chunk_text(page["text"]) if page.get("text") else []
                 for sub_idx, chunk_content in enumerate(page_chunks):
                     chunk_id = f"{document_id}_p{page['page_number']}_c{sub_idx+1}"
                     chunks_to_add.append({
@@ -326,13 +411,39 @@ def ingest_source(
                             "slide_number": -1,
                             "timestamp_start": -1.0,
                             "timestamp_end": -1.0,
+                            "is_diagram": False,
+                            "diagram_caption": ""
+                        }
+                    })
+                # Add extracted visual figures / diagrams as multimodal knowledge units
+                for fig_idx, fig in enumerate(page.get("figures", [])):
+                    fig_chunk_id = f"{document_id}_p{page['page_number']}_fig{fig_idx+1}"
+                    caption = fig.get("caption", f"Diagram on Page {page['page_number']}")
+                    fig_text = f"[FIGURE / DIAGRAM - Page {page['page_number']}]: {caption}. (Topic: {topic} > {subtopic}). Visual schematic and architectural context from course materials."
+                    chunks_to_add.append({
+                        "id": fig_chunk_id,
+                        "text": fig_text,
+                        "metadata": {
+                            "user_id": str(user_id),
+                            "source_id": str(source_id),
+                            "document_id": str(document_id),
+                            "topic": str(topic),
+                            "subtopic": str(subtopic),
+                            "chunk_id": str(fig_chunk_id),
+                            "source_type": "PDF",
+                            "page_number": int(page["page_number"]),
+                            "slide_number": -1,
+                            "timestamp_start": -1.0,
+                            "timestamp_end": -1.0,
+                            "is_diagram": True,
+                            "diagram_caption": str(caption)
                         }
                     })
         elif stype in ["PPT", "PPTX", "SLIDES"]:
             slides = extract_pptx(file_path_or_url)
             for slide in slides:
                 slide_subtopic = slide.get("title") or subtopic
-                slide_chunks = chunk_text(slide["text"])
+                slide_chunks = chunk_text(slide["text"]) if slide.get("text") else []
                 for sub_idx, chunk_content in enumerate(slide_chunks):
                     chunk_id = f"{document_id}_s{slide['slide_number']}_c{sub_idx+1}"
                     chunks_to_add.append({
@@ -350,6 +461,32 @@ def ingest_source(
                             "slide_number": int(slide["slide_number"]),
                             "timestamp_start": -1.0,
                             "timestamp_end": -1.0,
+                            "is_diagram": False,
+                            "diagram_caption": ""
+                        }
+                    })
+                # If slide contains visual diagram or chart
+                if slide.get("has_diagram"):
+                    diag_chunk_id = f"{document_id}_s{slide['slide_number']}_diag"
+                    diag_caption = f"Diagram: {slide_subtopic}"
+                    diag_text = f"[SLIDE DIAGRAM - Slide {slide['slide_number']}]: {diag_caption}. Visual flowchart / architecture diagram illustrating {slide_subtopic}."
+                    chunks_to_add.append({
+                        "id": diag_chunk_id,
+                        "text": diag_text,
+                        "metadata": {
+                            "user_id": str(user_id),
+                            "source_id": str(source_id),
+                            "document_id": str(document_id),
+                            "topic": str(topic),
+                            "subtopic": str(slide_subtopic),
+                            "chunk_id": str(diag_chunk_id),
+                            "source_type": "SLIDE",
+                            "page_number": -1,
+                            "slide_number": int(slide["slide_number"]),
+                            "timestamp_start": -1.0,
+                            "timestamp_end": -1.0,
+                            "is_diagram": True,
+                            "diagram_caption": str(diag_caption)
                         }
                     })
         elif stype in ["VIDEO", "AUDIO", "YOUTUBE"]:
@@ -375,6 +512,8 @@ def ingest_source(
                             "slide_number": -1,
                             "timestamp_start": float(seg["timestamp_start"]),
                             "timestamp_end": float(seg.get("timestamp_end", seg["timestamp_start"] + 30.0)),
+                            "is_diagram": False,
+                            "diagram_caption": ""
                         }
                     })
         else:
@@ -399,6 +538,8 @@ def ingest_source(
                         "slide_number": -1,
                         "timestamp_start": -1.0,
                         "timestamp_end": -1.0,
+                        "is_diagram": False,
+                        "diagram_caption": ""
                     }
                 })
 
@@ -705,8 +846,15 @@ def search_relevant_chunks(
                 elif any(tok in chunk_topic or tok in chunk_subtopic for tok in (sq_tokens or q_tokens)):
                     topic_boost = 0.6
 
+                is_diag = bool(meta.get("is_diagram", False))
+                diag_cap = meta.get("diagram_caption", "")
+
+                # Multimodal diagram boost: if query asks for visual diagrams/figures/flowcharts
+                is_diag_query = any(k in (sq_norm or "").lower() for k in ["diagram", "figure", "fig", "chart", "graph", "flowchart", "architecture", "schematic", "visual", "illustration"])
+                diag_boost = 0.15 if (is_diag_query and is_diag) else 0.0
+
                 composite_score = round(
-                    0.50 * vector_score + 0.35 * lexical_score + 0.15 * topic_boost,
+                    min(1.0, 0.50 * vector_score + 0.35 * lexical_score + 0.15 * topic_boost + diag_boost),
                     4
                 )
 
@@ -732,6 +880,8 @@ def search_relevant_chunks(
                         "vector_score": round(vector_score, 4),
                         "lexical_score": round(lexical_score, 4),
                         "topic_boost": round(topic_boost, 4),
+                        "is_diagram": is_diag,
+                        "diagram_caption": diag_cap,
                         "text": text_content,
                         "snippet": text_content[:240],
                         "topic": meta.get("topic"),
@@ -874,6 +1024,8 @@ def get_source_location(chunk_id: str) -> Dict[str, Any]:
     
     loc = chunk["location"]
     meta = chunk["metadata"]
+    is_diag = bool(meta.get("is_diagram", False))
+    diag_cap = meta.get("diagram_caption", "")
     return {
         "chunk_id": chunk_id,
         "source_id": meta.get("source_id"),
@@ -883,8 +1035,12 @@ def get_source_location(chunk_id: str) -> Dict[str, Any]:
         "slide_number": loc.get("slide_number"),
         "timestamp_start": loc.get("timestamp_start"),
         "timestamp_end": loc.get("timestamp_end"),
+        "is_diagram": is_diag,
+        "diagram_caption": diag_cap,
         "citation_label": (
-            f"Page {loc['page_number']}" if loc.get("page_number")
+            f"Figure (Page {loc['page_number']})" if is_diag and loc.get("page_number")
+            else f"Diagram (Slide {loc['slide_number']})" if is_diag and loc.get("slide_number")
+            else f"Page {loc['page_number']}" if loc.get("page_number")
             else f"Slide {loc['slide_number']}" if loc.get("slide_number")
             else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
             else "Source"
@@ -903,15 +1059,17 @@ def grounded_chat(
     topic: Optional[str] = None,
     min_confidence: float = 0.55,
     top_k: int = 5,
-    learner_state: Optional[Dict[str, Any]] = None
+    learner_state: Optional[Dict[str, Any]] = None,
+    language: Optional[str] = "english"
 ) -> Dict[str, Any]:
     """
-    Source-Grounded AI Tutor Engine (Phase 8):
+    Source-Grounded AI Tutor Engine (Phase 8 + Phase 11 Multilingual):
     1. Query decomposition & multi-query retrieval from Chroma for user_id (isolated).
     2. Validates evidence coverage scoring before generation; declines to hallucinate if evidence is missing.
     3. Handles partial evidence explicitly with source-backed answers + disclaimer note.
     4. Supports personalized answer framing using verified BKT learner state (without fabricating learner data).
     5. Rigorous citation verification ensuring every factual statement maps directly to retrieved evidence.
+    6. Native multilingual support: English, Hinglish (Indian college colloquial), and Hindi.
     """
     # 1. Search relevant chunks for user
     search_data = search_relevant_chunks(
@@ -951,6 +1109,9 @@ def grounded_chat(
         cid = c["chunk_id"]
         chunk_map[cid] = c
         loc = c.get("location", {})
+        is_diag = bool(c.get("is_diagram", False))
+        diag_cap = c.get("diagram_caption", "")
+        diag_tag = f" [FIGURE / DIAGRAM: {diag_cap}]" if is_diag else ""
         loc_str = (
             f"Page {loc['page_number']}" if loc.get("page_number") is not None
             else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
@@ -958,14 +1119,34 @@ def grounded_chat(
             else "Source Excerpt"
         )
         evidence_lines.append(
-            f"[CHUNK {cid}]\n"
+            f"[CHUNK {cid}]{diag_tag}\n"
             f"Source Type: {loc.get('source_type', 'DOCUMENT')} | Coordinate: {loc_str}\n"
             f"Topic: {c.get('topic', 'General')} > {c.get('subtopic', 'Main')}\n"
             f"Content: \"{c.get('text', '')}\"\n"
         )
     evidence_block = "\n".join(evidence_lines)
 
-    # 4. Construct Prompt
+    # 4. Multilingual instruction rule
+    lang_code = (language or "english").lower().strip()
+    if lang_code in ["hinglish", "hindi_english"]:
+        language_rule = (
+            "6. LANGUAGE & EXPLANATION STYLE (HINGLISH - INDIAN COLLEGE CONTEXT):\n"
+            "   - Explain the concepts in conversational, friendly college Hinglish (Hindi written in Roman/English script blended with standard English technical terms, e.g., 'Operating System mein Deadlock tab banta hai jab processes ek doosre ke resources ka wait karte hain...').\n"
+            "   - Keep all core technical terms, formulas, code, and keywords in standard English.\n"
+            "   - STRICTLY retain all inline citations [CHUNK_ID] mapped to the underlying course materials.\n"
+        )
+    elif lang_code in ["hindi", "hi"]:
+        language_rule = (
+            "6. LANGUAGE & EXPLANATION STYLE (HINDI):\n"
+            "   - Explain the concepts in clear Hindi using Devanagari script, keeping key technical terms in English inside parentheses.\n"
+            "   - STRICTLY retain all inline citations [CHUNK_ID] mapped to the underlying course materials.\n"
+        )
+    else:
+        language_rule = (
+            "6. LANGUAGE & EXPLANATION STYLE: Standard collegiate English.\n"
+        )
+
+    # 5. Construct Prompt
     system_instruction = (
         "You are StudyMate's Source-Grounded AI Tutor. You explain concepts to students using STRICTLY their uploaded course materials.\n\n"
         "EVIDENCE CHUNKS FROM UPLOADED MATERIALS:\n"
@@ -978,6 +1159,7 @@ def grounded_chat(
         "   - Provide the source-backed answer first under '### 📚 Course Material Evidence'.\n"
         "   - Explicitly note what part of the question could not be answered from the materials under '### ⚠️ Evidence Coverage Note'.\n"
         "5. If the provided chunks do not contain enough information, state clearly that the uploaded materials do not contain sufficient information.\n"
+        f"{language_rule}\n"
     )
 
     history_text = ""
@@ -1110,8 +1292,12 @@ def grounded_chat(
                 seen.add(cid)
                 c = chunk_map[cid]
                 loc = c.get("location", {})
+                is_diag = bool(c.get("is_diagram", False))
+                diag_cap = c.get("diagram_caption", "")
                 label = (
-                    f"Page {loc['page_number']}" if loc.get("page_number") is not None
+                    f"Figure (Page {loc['page_number']})" if is_diag and loc.get("page_number") is not None
+                    else f"Diagram (Slide {loc['slide_number']})" if is_diag and loc.get("slide_number") is not None
+                    else f"Page {loc['page_number']}" if loc.get("page_number") is not None
                     else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
                     else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
                     else "Source Excerpt"
@@ -1125,6 +1311,8 @@ def grounded_chat(
                     "slide_number": loc.get("slide_number"),
                     "timestamp_start": loc.get("timestamp_start"),
                     "timestamp_end": loc.get("timestamp_end"),
+                    "is_diagram": is_diag,
+                    "diagram_caption": diag_cap,
                     "citation_label": label,
                     "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
                 })
@@ -1141,8 +1329,12 @@ def grounded_chat(
                 continue
             seen_fallback_cids.add(cid)
             loc = c.get("location", {})
+            is_diag = bool(c.get("is_diagram", False))
+            diag_cap = c.get("diagram_caption", "")
             label = (
-                f"Page {loc['page_number']}" if loc.get("page_number") is not None
+                f"Figure (Page {loc['page_number']})" if is_diag and loc.get("page_number") is not None
+                else f"Diagram (Slide {loc['slide_number']})" if is_diag and loc.get("slide_number") is not None
+                else f"Page {loc['page_number']}" if loc.get("page_number") is not None
                 else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
                 else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
                 else "Source Excerpt"
@@ -1156,6 +1348,8 @@ def grounded_chat(
                 "slide_number": loc.get("slide_number"),
                 "timestamp_start": loc.get("timestamp_start"),
                 "timestamp_end": loc.get("timestamp_end"),
+                "is_diagram": is_diag,
+                "diagram_caption": diag_cap,
                 "citation_label": label,
                 "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
             })
@@ -1898,6 +2092,7 @@ def main():
     chat_p.add_argument("--topic", default=None)
     chat_p.add_argument("--history", default=None)
     chat_p.add_argument("--learner-state", default=None)
+    chat_p.add_argument("--language", default="english")
 
     # Assessment generate command
     assess_p = subparsers.add_parser("assessment-generate")
@@ -1966,7 +2161,8 @@ def main():
             user_id=args.user_id,
             conversation_history=history,
             topic=args.topic,
-            learner_state=learner_st
+            learner_state=learner_st,
+            language=getattr(args, "language", "english") or "english"
         )
         print(json.dumps(res))
     elif args.command == "assessment-generate":

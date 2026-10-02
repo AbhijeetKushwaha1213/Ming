@@ -54,6 +54,9 @@ import { useSkills, getSkillCategory, parseSkillDetails } from '@/hooks/useSkill
 import { useUserStats } from '@/hooks/useUserStats';
 import { FloatingStudyAgentBar } from './FloatingStudyAgentBar';
 import { DashboardCoverWidget } from './DashboardCoverWidget';
+import { LearnerMasteryCard } from './LearnerMasteryCard';
+import { CoursePrerequisiteGraph } from '../planner/CoursePrerequisiteGraph';
+import { navigateToTab } from '@/utils/navigation';
 
 export const CollegeDashboard = () => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'project-focus'>('dashboard');
@@ -295,6 +298,12 @@ export const CollegeDashboard = () => {
           <ArrowRight className="w-3.5 h-3.5" />
         </Button>
       </div>
+
+      {/* Track D: Bayesian Learner Model Mastery & Concept Tracing */}
+      <LearnerMasteryCard onNavigateToAssessment={() => navigateToTab('ai-generator')} />
+
+      {/* Track D: Visual Course Flow Map & Prerequisite DAG */}
+      <CoursePrerequisiteGraph onSelectTopic={(topic) => navigateToTab('chat')} />
 
       {/* 1. Learning Progress Block (Moved ABOVE Active Projects as requested) */}
       <Card className="p-6">

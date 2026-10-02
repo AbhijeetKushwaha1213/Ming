@@ -57,7 +57,7 @@ export const ContentRenderer = ({ activeTab, onNavigate }: ContentRendererProps)
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 w-full flex flex-col min-h-0">
       {renderContent()}
     </div>
   );

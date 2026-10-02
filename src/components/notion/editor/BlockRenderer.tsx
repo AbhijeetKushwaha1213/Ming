@@ -188,6 +188,16 @@ function TextBlockRenderer({ block, editable, onUpdate, onSlashCommand }: BlockR
     }
   }, [editor, editable, content.text]);
 
+  // Keep TipTap synchronized if content changes externally (e.g. agent actions or page updates)
+  React.useEffect(() => {
+    if (!editor) return;
+    const currentHTML = editor.getHTML();
+    const targetHTML = richTextToHTML(content);
+    if (currentHTML !== targetHTML && !editor.isFocused) {
+      editor.commands.setContent(targetHTML, false);
+    }
+  }, [editor, content.text, JSON.stringify(content.marks)]);
+
   return (
     <div
       className={getClassName()}
@@ -197,80 +207,6 @@ function TextBlockRenderer({ block, editable, onUpdate, onSlashCommand }: BlockR
         }
       }}
     >
-      {editable && editor && (
-        <div className="mb-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              editor.chain().focus().toggleBold().run();
-            }}
-            className={cn(
-              'px-1.5 py-0.5 rounded border border-transparent hover:bg-accent',
-              editor.isActive('bold') && 'bg-accent border-border text-foreground'
-            )}
-          >
-            B
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              editor.chain().focus().toggleItalic().run();
-            }}
-            className={cn(
-              'px-1.5 py-0.5 rounded border border-transparent hover:bg-accent italic',
-              editor.isActive('italic') && 'bg-accent border-border text-foreground'
-            )}
-          >
-            I
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              editor.chain().focus().toggleUnderline().run();
-            }}
-            className={cn(
-              'px-1.5 py-0.5 rounded border border-transparent hover:bg-accent underline',
-              editor.isActive('underline') && 'bg-accent border-border text-foreground'
-            )}
-          >
-            U
-          </button>
-
-          <span className="ml-2 mr-1 text-[10px] uppercase tracking-wide">
-            Color
-          </span>
-          {['#000000', '#ef4444', '#0ea5e9', '#22c55e', '#eab308'].map((color) => (
-            <button
-              key={color}
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                editor.chain().focus().setColor(color).run();
-              }}
-              className={cn(
-                'w-4 h-4 rounded-full border border-border hover:scale-110 transition-transform',
-                editor.isActive('textStyle', { color }) && 'ring-1 ring-offset-1 ring-primary'
-              )}
-              style={{ backgroundColor: color }}
-              aria-label={`Set text color ${color}`}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              editor.chain().focus().unsetColor().run();
-            }}
-            className="ml-1 px-1.5 py-0.5 rounded border border-transparent hover:bg-accent"
-          >
-            Reset
-          </button>
-        </div>
-      )}
-
       <EditorContent editor={editor} />
     </div>
   );

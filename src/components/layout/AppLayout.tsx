@@ -10,7 +10,29 @@ import { RightSidebar } from './RightSidebar';
 import { ChatPanel } from './ChatPanel';
 import { SearchModal } from '../notion/SearchModal';
 import { Button } from '@/components/ui/button';
-import { X, Menu, Maximize, Minimize, MessageCircle, ListTodo, Moon, Sun } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { 
+  X, 
+  Menu, 
+  Maximize, 
+  Minimize, 
+  MessageCircle, 
+  ListTodo, 
+  Moon, 
+  Sun,
+  User,
+  Settings,
+  LogOut,
+  ChevronDown
+} from 'lucide-react';
 
 interface AppLayoutProps {
   user: any;
@@ -61,8 +83,16 @@ export const AppLayout = ({
         handleTabChange(e.detail.tab);
       }
     };
+    const handleDailyPlanEvent = () => {
+      setTodoSidebarOpen(true);
+      setChatPanelOpen(false);
+    };
     window.addEventListener('studymate-navigate', handleNavEvent);
-    return () => window.removeEventListener('studymate-navigate', handleNavEvent);
+    window.addEventListener('open-daily-plan', handleDailyPlanEvent);
+    return () => {
+      window.removeEventListener('studymate-navigate', handleNavEvent);
+      window.removeEventListener('open-daily-plan', handleDailyPlanEvent);
+    };
   }, []);
 
   const toggleSidebar = () => {
@@ -91,11 +121,22 @@ export const AppLayout = ({
     setChatPanelOpen(!chatPanelOpen);
   };
 
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name
+      .trim()
+      .split(' ')
+      .map(w => w[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div className="min-h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar - Collapsible */}
       {!fullScreenMode && (
-        <div className={`hidden lg:flex transition-all duration-300 ease-in-out ${
+        <div className={`hidden lg:flex transition-all duration-300 ease-in-out shrink-0 relative z-30 ${
           sidebarCollapsed ? 'w-16' : 'w-64'
         }`}>
           <DesktopSidebar 
@@ -213,19 +254,91 @@ export const AppLayout = ({
               {fullScreenMode ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
             </Button>
 
-            {/* Online Status */}
-            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-muted/60">
-              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-success animate-pulse' : 'bg-destructive'}`} />
-              <span className="text-xs font-medium text-muted-foreground hidden sm:block">
-                {isOnline ? 'Online' : 'Offline'}
-              </span>
-            </div>
+            {/* User Profile Widget in Top-Right Header (Replaces the online button) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center space-x-2.5 p-1 sm:px-2.5 sm:py-1 rounded-xl hover:bg-muted/70 transition-all border border-transparent hover:border-border/60 outline-none group text-left"
+                >
+                  {/* Avatar with Online Status Dot */}
+                  <div className="relative shrink-0">
+                    <Avatar className="w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-primary/20">
+                      {user?.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
+                      <AvatarFallback className="text-xs font-bold bg-brand-gradient text-white">
+                        {getInitials(user?.name || 'abhi')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full border-2 border-background absolute -bottom-0.5 -right-0.5 ${
+                        isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-destructive'
+                      }`}
+                      title={isOnline ? 'Online' : 'Offline'}
+                    />
+                  </div>
+
+                  {/* Name and Level / XP */}
+                  <div className="hidden sm:block text-left min-w-0">
+                    <p className="text-xs font-bold text-foreground leading-tight truncate max-w-[110px]">
+                      {user?.name || 'abhi'}
+                    </p>
+                    <div className="flex items-center space-x-1.5 text-[10px] text-muted-foreground mt-0.5">
+                      <span className="font-semibold text-primary">Level {user?.current_level || 1}</span>
+                      <span>•</span>
+                      <span>{user?.experience_points || 0} XP</span>
+                    </div>
+                  </div>
+
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground hidden sm:block transition-transform duration-200" />
+                </button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end" className="w-56 p-1.5">
+                {/* Header in Dropdown */}
+                <div className="px-2.5 py-2 border-b border-border/50 mb-1">
+                  <p className="text-xs font-bold text-foreground truncate">{user?.name || 'abhi'}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{user?.email || 'abhitest1290@gmail.com'}</p>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Badge variant="secondary" className="text-[10px] py-0 px-1.5 bg-primary/10 text-primary border-0 font-semibold">
+                      Level {user?.current_level || 1}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground">{user?.experience_points || 0} XP</span>
+                  </div>
+                </div>
+
+                <DropdownMenuItem
+                  onClick={() => handleTabChange('profile')}
+                  className="cursor-pointer text-xs py-2 gap-2"
+                >
+                  <User className="w-4 h-4 text-primary" />
+                  <span>My Profile</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => handleTabChange('settings')}
+                  className="cursor-pointer text-xs py-2 gap-2"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  <span>Account Settings</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  className="cursor-pointer text-xs py-2 gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-auto bg-gradient-to-br from-background via-background to-accent/20">
-          <div className="p-4 lg:p-6 pb-20 lg:pb-6 animate-fade-in">
+        <div className="flex-1 flex flex-col min-w-0 overflow-auto bg-gradient-to-br from-background via-background to-accent/20">
+          <div className="w-full flex-1 flex flex-col min-h-0 pb-20 lg:pb-0 animate-fade-in">
             <ErrorBoundary>
               <ContentRenderer activeTab={activeTab} onNavigate={handleTabChange} />
             </ErrorBoundary>

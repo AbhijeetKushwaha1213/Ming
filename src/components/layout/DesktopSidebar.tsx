@@ -52,7 +52,7 @@ export const DesktopSidebar = ({ activeTab, onTabChange, onSignOut, isCollapsed 
   ];
 
   return (
-    <div className="h-full flex flex-col bg-sidebar border-r border-sidebar-border sticky top-0">
+    <div className="h-full w-full flex flex-col bg-sidebar border-r border-sidebar-border sticky top-0">
       {/* Header */}
       <div className="flex items-center h-16 px-6 border-b border-sidebar-border flex-shrink-0">
         {isCollapsed ? (
@@ -74,49 +74,6 @@ export const DesktopSidebar = ({ activeTab, onTabChange, onSignOut, isCollapsed 
         )}
       </div>
 
-      {/* User Profile */}
-      <div className={`p-4 border-b border-sidebar-border flex-shrink-0 ${isCollapsed ? 'px-2' : ''}`}>
-        {isCollapsed ? (
-          <div className="flex justify-center">
-            <Avatar className="w-10 h-10 ring-2 ring-primary/20">
-              <AvatarFallback className="text-sm font-medium bg-brand-gradient text-white">
-                {getInitials(user.name || 'U')}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center space-x-3 mb-3">
-              <Avatar className="w-10 h-10 ring-2 ring-primary/20">
-                <AvatarFallback className="text-sm font-medium bg-brand-gradient text-white">
-                  {getInitials(user.name || 'U')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-1">
-                <Badge className="text-xs bg-brand-gradient-subtle text-primary border-0">
-                  Level {user.current_level || 1}
-                </Badge>
-                <span className="text-muted-foreground">{user.experience_points || 0} XP</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onTabChange('profile')}
-                className="h-6 px-2 text-xs"
-              >
-                <User className="w-3 h-3" />
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
 
       {/* Navigation - Scrollable */}
       <nav className={`flex-1 py-4 space-y-2 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-4'}`}>

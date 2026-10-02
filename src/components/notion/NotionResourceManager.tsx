@@ -96,6 +96,17 @@ export function NotionResourceManager() {
     }
   }, [pages, selectedPageId]);
 
+  // Keep active page ID in localStorage for AI agents and cross-component awareness
+  useEffect(() => {
+    if (selectedPageId) {
+      try {
+        localStorage.setItem('studymate-active-page-id', selectedPageId);
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [selectedPageId]);
+
   const handlePageClick = (page: Page) => {
     setSelectedPageId(page.id);
   };
@@ -105,14 +116,6 @@ export function NotionResourceManager() {
   };
 
   const handleCreatePage = async () => {
-    if (!user?.user_id) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please sign in to create pages',
-        variant: 'destructive',
-      });
-      return;
-    }
 
     setIsCreatingPage(true);
     try {
@@ -145,10 +148,10 @@ export function NotionResourceManager() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] overflow-hidden">
+    <div className="flex w-full h-[calc(100vh-4rem)] overflow-hidden bg-background">
       {/* Sidebar */}
       <ErrorBoundary>
-        <div className="w-64 border-r border-border bg-background flex flex-col">
+        <aside className="w-64 shrink-0 border-r border-border bg-background flex flex-col h-full">
           <div className="p-4 border-b border-border">
             <Button
               onClick={handleCreatePage}
@@ -161,19 +164,19 @@ export function NotionResourceManager() {
             </Button>
           </div>
           
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <PageSidebar
               onPageClick={handlePageClick}
               selectedPageId={selectedPageId || undefined}
               isLoading={isLoading}
             />
           </div>
-        </div>
+        </aside>
       </ErrorBoundary>
 
       {/* Main Content */}
       <ErrorBoundary>
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col bg-background">
           {selectedPageId ? (
             <PageView pageId={selectedPageId} onNavigate={handleNavigate} />
           ) : (

@@ -24,10 +24,11 @@ export const pageKeys = {
 /**
  * Hook for fetching child pages of a parent (or root pages if parentId is null)
  */
-export function usePages(parentId: string | null = null) {
+export function usePages(parentId: string | null = null, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: pageKeys.list(parentId),
     queryFn: () => getPageChildren(parentId),
+    ...options,
   });
 }
 
@@ -204,10 +205,18 @@ export function useMovePage() {
       newParentId: string | null;
       position: number;
     }) => movePage(id, newParentId, position),
-    onSuccess: (data, { id }) => {
+    onSuccess: (data, { id, newParentId }) => {
       // Invalidate all page lists since the page may have moved between parents
       queryClient.invalidateQueries({ queryKey: pageKeys.lists() });
       queryClient.setQueryData(pageKeys.detail(id), data);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('studymate-page-moved', {
+            detail: { pageId: id, targetParentId: newParentId },
+          })
+        );
+        window.dispatchEvent(new CustomEvent('studymate-resources-updated'));
+      }
     },
   });
 }

@@ -51,3 +51,4 @@ prisma/dev.db-journal
 
 # Conflicting lockfiles (project uses npm)
 bun.lockb
+*.tsbuildinfo

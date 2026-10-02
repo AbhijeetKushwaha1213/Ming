@@ -13,13 +13,6 @@ import {
   deleteResource,
   listResources,
   uploadPdfResource,
-import {
-  createPdfSignedUrl,
-  createResource,
-  deletePdfResource,
-  deleteResource,
-  listResources,
-  uploadPdfResource,
 } from '@/api/resourceAPI';
 import { ingestSource, searchChunks } from '@/api/ragAPI';
 import type { CreateResourceInput, ResourceItem, ResourceType, RagChunk } from '@/types/resource';

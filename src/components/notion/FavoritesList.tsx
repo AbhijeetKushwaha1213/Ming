@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Star, FileText, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types/notion';
+import { PageActionMenu } from './PageActionMenu';
 import {
   DndContext,
   DragEndEvent,
@@ -101,14 +102,18 @@ function FavoriteItem({
       {/* Page title */}
       <span className="flex-1 text-sm truncate">{page.title}</span>
 
-      {/* Favorite toggle */}
-      <button
-        onClick={handleToggleFavorite}
-        className="flex items-center justify-center w-4 h-4 opacity-0 group-hover:opacity-100 hover:bg-accent-foreground/10 rounded transition-opacity"
-        aria-label="Remove from favorites"
-      >
-        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-      </button>
+      {/* Actions (3-dot menu and Favorite toggle) */}
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <PageActionMenu page={page} />
+        <button
+          onClick={handleToggleFavorite}
+          className="flex items-center justify-center w-5 h-5 hover:bg-accent-foreground/10 rounded transition-opacity"
+          aria-label="Remove from favorites"
+          title="Remove from favorites"
+        >
+          <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+        </button>
+      </div>
     </div>
   );
 }

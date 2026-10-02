@@ -8,7 +8,9 @@ import type { QueryClient } from '@tanstack/react-query';
 
 export interface WorkspaceCatalog {
   pages: Page[];
-  pagesCatalog: Array<{ id: string; title: string; isFolder: boolean; parentId: string | null; sample: string }>;
+  activePageId?: string | null;
+  activePageTitle?: string | null;
+  pagesCatalog: Array<{ id: string; title: string; isFolder: boolean; parentId: string | null; isActive?: boolean; sample: string }>;
   vaultCatalog: Array<{ id: string; title: string; type: string; topic: string }>;
 }
 
@@ -43,6 +45,14 @@ export async function getWorkspaceCatalog(): Promise<WorkspaceCatalog> {
     console.warn('Failed to load pages catalog:', err);
   }
 
+  let activePageId: string | null = null;
+  if (typeof window !== 'undefined') {
+    try {
+      activePageId = localStorage.getItem('studymate-active-page-id');
+    } catch {}
+  }
+  const activePage = activePageId ? pages.find((p) => p.id === activePageId) : undefined;
+
   const studyMaterials = localStore.getStudyMaterials();
   const flashcards = localStore.getFlashcards();
 
@@ -51,6 +61,7 @@ export async function getWorkspaceCatalog(): Promise<WorkspaceCatalog> {
     title: p.title,
     isFolder: !p.parent_id,
     parentId: p.parent_id,
+    isActive: p.id === activePageId,
     sample: Array.isArray(p.content) && p.content.length > 0
       ? (p.content[0]?.content?.text || (typeof p.content[0]?.content === 'string' ? p.content[0]?.content : '') || '').slice(0, 80)
       : '',
@@ -61,7 +72,13 @@ export async function getWorkspaceCatalog(): Promise<WorkspaceCatalog> {
     ...flashcards.map((f) => ({ id: f.id, title: f.title || f.question.slice(0, 35), type: 'flashcard', topic: f.tags?.join(', ') || '' })),
   ];
 
-  return { pages, pagesCatalog, vaultCatalog };
+  return {
+    pages,
+    activePageId: activePage?.id || null,
+    activePageTitle: activePage?.title || null,
+    pagesCatalog,
+    vaultCatalog,
+  };
 }
 
 /**
@@ -70,6 +87,14 @@ export async function getWorkspaceCatalog(): Promise<WorkspaceCatalog> {
 export function getAgentWorkspacePrompt(catalog: WorkspaceCatalog, customInstructions?: string): string {
   return `You are StudyMate AI, the user's intelligent study assistant and autonomous workspace orchestrator.
 You have direct read, write, edit, rename, move, and delete control over the user's Resources workspace and Vault!
+
+${catalog.activePageTitle ? `📌 CURRENTLY ACTIVE PAGE BEING VIEWED BY USER:
+- Title: "${catalog.activePageTitle}"
+- Page ID: "${catalog.activePageId}"
+CRITICAL INSTRUCTION: If the user asks to "add to this page", "add content", "add a checklist", "add notes", or refers to "${catalog.activePageTitle}", TARGET THIS EXACT PAGE using:
+{ "type": "edit_page", "pageId": "${catalog.activePageId}", "pageTitle": "${catalog.activePageTitle}", "mode": "append", "content": "..." }
+Do NOT create an unnecessary duplicate page when modifying or adding to the current page!
+` : ''}
 
 CURRENT WORKSPACE RESOURCES (Pages & Folders in Resources):
 ${JSON.stringify(catalog.pagesCatalog, null, 2)}
@@ -192,6 +217,14 @@ export async function executeAgentActions(
     console.warn('Failed to pre-fetch pages in executeAgentActions:', err);
   }
 
+  let activePageId: string | null = null;
+  if (typeof window !== 'undefined') {
+    try {
+      activePageId = localStorage.getItem('studymate-active-page-id');
+    } catch {}
+  }
+  const activePage = activePageId ? allPages.find((p) => p.id === activePageId) : undefined;
+
   const findPage = (pageId?: string, pageTitle?: string): Page | undefined => {
     if (pageId) {
       const found = allPages.find((p) => p.id === pageId);
@@ -199,12 +232,20 @@ export async function executeAgentActions(
     }
     if (pageTitle) {
       const cleanTitle = pageTitle.replace(/^["'`]|["'`]$/g, '').trim().toLowerCase();
-      if (!cleanTitle) return undefined;
+      if (!cleanTitle) return activePage;
+      // If the action refers to "this page" or "current page", return activePage if available
+      if (activePage && (cleanTitle.includes('this page') || cleanTitle.includes('current page') || cleanTitle === 'untitled')) {
+        return activePage;
+      }
+      // If activePage matches or is mentioned in the cleanTitle
+      if (activePage && (cleanTitle.includes(activePage.title.toLowerCase().trim()) || activePage.title.toLowerCase().trim().includes(cleanTitle))) {
+        return activePage;
+      }
       return allPages.find((p) => p.title.toLowerCase().trim() === cleanTitle)
         || allPages.find((p) => p.title.toLowerCase().includes(cleanTitle))
         || allPages.find((p) => cleanTitle.includes(p.title.toLowerCase().trim()));
     }
-    return undefined;
+    return activePage;
   };
 
   const studyMaterials = localStore.getStudyMaterials();
@@ -251,6 +292,10 @@ export async function executeAgentActions(
         });
         allPages.push(newPage);
         executedSummaries.push(`📄 Created resource "${title}"`);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('studymate-page-created', { detail: { pageId: newPage.id } }));
+          window.dispatchEvent(new CustomEvent('studymate-select-resource-page', { detail: { pageId: newPage.id } }));
+        }
       }
 
       // 3. EDIT / MODIFY PAGE CONTENT
@@ -280,6 +325,25 @@ export async function executeAgentActions(
           executedSummaries.push(`✏️ Modified content in "${targetPage.title}" (${newBlocks.length} blocks)`);
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('studymate-page-updated', { detail: { pageId: targetPage.id } }));
+            window.dispatchEvent(new CustomEvent('studymate-select-resource-page', { detail: { pageId: targetPage.id } }));
+          }
+        } else if (!targetPage && act.content) {
+          // If page didn't exist, create it so user request is fulfilled
+          const newBlocks = typeof act.content === 'string'
+            ? markdownToBlocks(act.content)
+            : (Array.isArray(act.content) ? act.content : []);
+          const title = (act.pageTitle || act.title || 'New Notes').replace(/^["'`]|["'`]$/g, '').trim();
+          const newPage = await createPage({
+            title,
+            icon: '📝',
+            content: newBlocks,
+            parent_id: null,
+          });
+          allPages.push(newPage);
+          executedSummaries.push(`📄 Created resource "${newPage.title}" (${newBlocks.length} blocks)`);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('studymate-page-created', { detail: { pageId: newPage.id } }));
+            window.dispatchEvent(new CustomEvent('studymate-select-resource-page', { detail: { pageId: newPage.id } }));
           }
         }
       }
@@ -354,6 +418,9 @@ export async function executeAgentActions(
           const newPage = await copyVaultItemToResources(item);
           allPages.push(newPage);
           executedSummaries.push(`📚 Copied "${newPage.title}" from Vault to Resources`);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('studymate-select-resource-page', { detail: { pageId: newPage.id } }));
+          }
         }
       }
 
@@ -386,6 +453,7 @@ export async function executeAgentActions(
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('studymate-resources-updated'));
       window.dispatchEvent(new CustomEvent('studymate-page-created'));
+      window.dispatchEvent(new CustomEvent('studymate-page-updated'));
       window.dispatchEvent(new CustomEvent('studymate-page-deleted'));
     }
   }

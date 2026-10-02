@@ -35,7 +35,12 @@ export class CacheService {
    * @returns Array of cached pages
    */
   async getCachedPages(userId: string): Promise<CachedPage[]> {
-    return await db.pages.where('user_id').equals(userId).toArray();
+    const allPages = await db.pages.toArray();
+    return allPages.filter((p) => {
+      if (p.deleted_at) return false;
+      if (!userId) return true;
+      return p.user_id === userId || !p.user_id || p.user_id === 'local-dev-user-id';
+    });
   }
 
   /**
@@ -44,18 +49,15 @@ export class CacheService {
    * @param userId - The user ID
    * @returns Array of cached child pages
    */
-  async getCachedChildren(parentId: string | null, userId: string): Promise<CachedPage[]> {
-    if (parentId === null) {
-      return await db.pages
-        .where('user_id').equals(userId)
-        .and(page => page.parent_id === null)
-        .toArray();
-    }
-    
-    return await db.pages
-      .where('parent_id').equals(parentId)
-      .and(page => page.user_id === userId)
-      .toArray();
+  async getCachedChildren(parentId: string | null, userId?: string): Promise<CachedPage[]> {
+    const allPages = await db.pages.toArray();
+    return allPages.filter((page) => {
+      if (page.deleted_at) return false;
+      const matchesParent = parentId === null ? !page.parent_id : page.parent_id === parentId;
+      if (!matchesParent) return false;
+      if (!userId) return true;
+      return page.user_id === userId || !page.user_id || page.user_id === 'local-dev-user-id';
+    });
   }
 
   /**

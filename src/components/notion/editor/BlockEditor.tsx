@@ -30,8 +30,13 @@ import {
   Table as TableIcon, 
   Code as CodeIcon, 
   MessageSquare, 
-  MoreHorizontal 
+  MoreHorizontal,
+  FilePlus,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { createPage } from '@/api/pageAPI';
+import { pageKeys } from '@/hooks/usePages';
+import type { Page } from '@/types/notion';
 import './editor.css';
 
 interface BlockEditorProps {
@@ -39,14 +44,17 @@ interface BlockEditorProps {
   blocks: Block[];
   onBlocksChange: (blocks: Block[]) => void;
   editable?: boolean;
+  onNavigate?: (pageId: string) => void;
 }
 
 export function BlockEditor({ 
   pageId, 
   blocks, 
   onBlocksChange,
-  editable = true 
+  editable = true,
+  onNavigate,
 }: BlockEditorProps) {
+  const queryClient = useQueryClient();
   const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
   const [showSlashMenu, setShowSlashMenu] = React.useState(false);
   const [slashMenuPosition, setSlashMenuPosition] = React.useState({ x: 0, y: 0 });
@@ -235,6 +243,39 @@ export function BlockEditor({
     announce(`${type} block inserted at position ${insertPosition + 1}`);
   }, [blocks, createBlock, onBlocksChange, announce]);
 
+  const handleCreateSubpage = useCallback(async () => {
+    try {
+      const newPage = await createPage({
+        title: 'Untitled',
+        parent_id: pageId,
+      });
+
+      queryClient.setQueryData<Page[]>(pageKeys.list(pageId), (old) => {
+        if (!old) return [newPage];
+        return [...old, newPage];
+      });
+
+      await queryClient.invalidateQueries({ queryKey: pageKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: pageKeys.all });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('studymate-page-created', { detail: { pageId: newPage.id } }));
+        window.dispatchEvent(
+          new CustomEvent('studymate-page-moved', {
+            detail: { pageId: newPage.id, targetParentId: pageId },
+          })
+        );
+        window.dispatchEvent(new CustomEvent('studymate-resources-updated'));
+      }
+
+      if (onNavigate) {
+        onNavigate(newPage.id);
+      }
+    } catch (err) {
+      console.error('Failed to create subpage:', err);
+    }
+  }, [pageId, queryClient, onNavigate]);
+
   // Keyboard navigation handler
   const handleKeyboardNavigation = useCallback((e: KeyboardEvent) => {
     if (!editable || !selectedBlockId) return;
@@ -408,12 +449,32 @@ export function BlockEditor({
                       blockRefs.current.delete(block.id);
                     }
                   }}
-                  className="relative group block-enter hover:bg-accent/30 rounded-md transition-colors duration-150 px-2 py-1"
+                  className="relative group block-enter hover:bg-accent/25 rounded-md transition-colors duration-150 px-2 py-1"
                   role="article"
                   aria-label={`Block ${index + 1} of ${blocks.length}`}
                   onMouseEnter={() => setSelectedBlockId(block.id)}
                   onMouseLeave={() => setSelectedBlockId(null)}
                 >
+                  {/* Notion-style Left Gutter "+" Button */}
+                  {editable && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setSlashMenuPosition({ x: Math.max(16, rect.left), y: rect.bottom + 6 });
+                        setSlashMenuBlockId(block.id);
+                        setSlashMenuInsertPosition(index + 1);
+                        setShowSlashMenu(true);
+                      }}
+                      className="absolute -left-7 top-1.5 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent border border-transparent hover:border-border/60 transition-all opacity-0 group-hover:opacity-100 shadow-none z-20 cursor-pointer"
+                      aria-label="Add block below"
+                      title="Click to add a block below (/ commands)"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  )}
+
                   <BlockRenderer
                     pageId={pageId}
                     block={block}
@@ -430,14 +491,15 @@ export function BlockEditor({
                   
                   {editable && (
                     <BlockHoverMenu
-                      blockId={block.id}
+                      block={block}
+                      onUpdate={(updates) => handleBlockUpdate(block.id, updates)}
                       onDelete={() => handleBlockDelete(block.id)}
                       onDuplicate={() => handleBlockDuplicate(block.id)}
                       onReorder={handleBlockReorder}
                       onInsertBelow={(e) => {
                         e.stopPropagation();
                         const rect = e.currentTarget.getBoundingClientRect();
-                        setSlashMenuPosition({ x: rect.left - 120, y: rect.bottom + 8 });
+                        setSlashMenuPosition({ x: Math.max(16, rect.left - 140), y: rect.bottom + 8 });
                         setSlashMenuBlockId(null);
                         setSlashMenuInsertPosition(index + 1);
                         setShowSlashMenu(true);
@@ -595,6 +657,18 @@ export function BlockEditor({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    handleCreateSubpage();
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Add sub-page"
+                >
+                  <FilePlus className="w-3.5 h-3.5 text-primary" />
+                  Page
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     const rect = e.currentTarget.getBoundingClientRect();
                     setSlashMenuPosition({ x: rect.left - 120, y: rect.bottom + 8 });
                     setSlashMenuBlockId(null);
@@ -615,6 +689,22 @@ export function BlockEditor({
           <SlashCommandMenu
             position={slashMenuPosition}
             onSelect={(type) => {
+              if (type === 'page') {
+                if (slashMenuBlockId) {
+                  const blockIndex = blocks.findIndex((b) => b.id === slashMenuBlockId);
+                  if (blockIndex >= 0 && isBlockEmpty(blocks[blockIndex])) {
+                    const updatedBlocks = blocks
+                      .filter((b) => b.id !== slashMenuBlockId)
+                      .map((b, idx) => ({ ...b, position: idx }));
+                    onBlocksChange(updatedBlocks);
+                  }
+                }
+                setShowSlashMenu(false);
+                setSlashMenuInsertPosition(null);
+                handleCreateSubpage();
+                return;
+              }
+
               if (slashMenuInsertPosition !== null) {
                 handleInsertBlock(type, slashMenuInsertPosition);
                 setShowSlashMenu(false);

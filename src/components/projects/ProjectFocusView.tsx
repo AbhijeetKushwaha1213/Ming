@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Play, Pause, RotateCcw, Code, ExternalLink, Github, Timer, Brain, Send, Plus, Trash2, CheckCircle2, Circle, AlertCircle, TrendingUp, FileEdit, Copy, Check } from "lucide-react";
+import { 
+  ArrowLeft, Play, Pause, RotateCcw, Code, ExternalLink, Github, Timer, 
+  Brain, Send, Plus, Trash2, CheckCircle2, Circle, AlertCircle, TrendingUp, 
+  FileEdit, Copy, Check, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpDown, ListTodo, SlidersHorizontal 
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -60,15 +64,69 @@ export default function ProjectFocusView({
 }: ProjectFocusViewProps) {
   const { toast } = useToast();
   const [timer, setTimer] = useState(3600); // 1 hour default
+  const [initialTimer, setInitialTimer] = useState(3600);
   const [isRunning, setIsRunning] = useState(false);
   const projectDir = projectName.toLowerCase().replace(/\s+/g, '-');
-  const [currentDirectory, setCurrentDirectory] = useState(`~/projects/${projectDir}`);
-  const [terminalOutput, setTerminalOutput] = useState([
-    `Welcome to ${projectName}`,
-    `Current directory: ${currentDirectory}`,
-    ""
-  ]);
-  const [terminalInput, setTerminalInput] = useState("");
+
+  // Sidebar squeeze, maximize, and position order states
+  const [sidebarOrder, setSidebarOrder] = useState<'ai-top' | 'tasks-top'>(() => {
+    return (localStorage.getItem('studymate_focus_sidebar_order') as 'ai-top' | 'tasks-top') || 'ai-top';
+  });
+
+  const [isAiSqueezed, setIsAiSqueezed] = useState<boolean>(() => {
+    return localStorage.getItem('studymate_focus_ai_squeezed') === 'true';
+  });
+  const [isAiMaximized, setIsAiMaximized] = useState<boolean>(false);
+
+  const [isTasksSqueezed, setIsTasksSqueezed] = useState<boolean>(() => {
+    return localStorage.getItem('studymate_focus_tasks_squeezed') === 'true';
+  });
+  const [isTasksMaximized, setIsTasksMaximized] = useState<boolean>(false);
+
+  const toggleSidebarOrder = () => {
+    const nextOrder = sidebarOrder === 'ai-top' ? 'tasks-top' : 'ai-top';
+    setSidebarOrder(nextOrder);
+    localStorage.setItem('studymate_focus_sidebar_order', nextOrder);
+    toast({
+      title: "Sidebar Order Updated",
+      description: nextOrder === 'ai-top' ? "AI Assistant at Top · Today's Tasks at Bottom" : "Today's Tasks at Top · AI Assistant at Bottom",
+      duration: 2000
+    });
+  };
+
+  const toggleAiSqueezed = () => {
+    setIsAiSqueezed(prev => {
+      const next = !prev;
+      localStorage.setItem('studymate_focus_ai_squeezed', String(next));
+      if (next) setIsAiMaximized(false);
+      return next;
+    });
+  };
+
+  const toggleAiMaximized = () => {
+    setIsAiMaximized(prev => {
+      const next = !prev;
+      if (next) setIsAiSqueezed(false);
+      return next;
+    });
+  };
+
+  const toggleTasksSqueezed = () => {
+    setIsTasksSqueezed(prev => {
+      const next = !prev;
+      localStorage.setItem('studymate_focus_tasks_squeezed', String(next));
+      if (next) setIsTasksMaximized(false);
+      return next;
+    });
+  };
+
+  const toggleTasksMaximized = () => {
+    setIsTasksMaximized(prev => {
+      const next = !prev;
+      if (next) setIsTasksSqueezed(false);
+      return next;
+    });
+  };
   const [codeContent, setCodeContent] = useState("Write or paste your code here... This is a local scratchpad and does not save.");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -208,58 +266,18 @@ export default function ProjectFocusView({
   const handleStart = () => setIsRunning(true);
   const handlePause = () => setIsRunning(false);
   const handleReset = () => {
-    setTimer(3600);
+    setTimer(initialTimer);
+    setIsRunning(false);
+  };
+  const setTimerPreset = (secs: number) => {
+    setTimer(secs);
+    setInitialTimer(secs);
     setIsRunning(false);
   };
 
-  const executeCommand = () => {
-    if (terminalInput.trim()) {
-      const cmd = terminalInput.trim().toLowerCase();
-      const newOutput = [...terminalOutput, `${currentDirectory}$ ${terminalInput}`];
-      
-      if (cmd === "pwd") {
-        newOutput.push(currentDirectory);
-      } else if (cmd === "ls" || cmd === "ls -la") {
-        newOutput.push("src/", "public/", "package.json", "README.md", "node_modules/", ".git/");
-      } else if (cmd.startsWith("cd ")) {
-        const targetDir = cmd.substring(3).trim();
-        if (targetDir === "..") {
-          const parts = currentDirectory.split('/');
-          parts.pop();
-          setCurrentDirectory(parts.join('/') || '~');
-        } else if (targetDir === "~" || targetDir === "") {
-          setCurrentDirectory(`~/projects/${projectDir}`);
-        } else if (["src", "public", "node_modules"].includes(targetDir)) {
-          setCurrentDirectory(`${currentDirectory}/${targetDir}`);
-        } else {
-          newOutput.push(`cd: ${targetDir}: No such file or directory`);
-        }
-      } else if (cmd === "clear") {
-        setTerminalOutput([]);
-        setTerminalInput("");
-        return;
-      } else if (cmd.startsWith("npm install")) {
-        newOutput.push("📦 Installing dependencies...", "⏳ This may take a moment...", "✔️ Dependencies installed successfully");
-      } else if (cmd.startsWith("git status")) {
-        newOutput.push("On branch main", "Your branch is up to date with 'origin/main'.", "", "nothing to commit, working tree clean");
-      } else if (cmd.startsWith("git")) {
-        newOutput.push("✔️ Git command executed successfully");
-      } else if (cmd === "npm run build") {
-        newOutput.push("🔨 Building for production...", "✔️ Build completed successfully", "Output: dist/");
-      } else if (cmd === "npm start" || cmd === "npm run dev") {
-        newOutput.push("🚀 Starting development server...", "✔️ Server running at http://localhost:3000");
-      } else if (cmd === "npm test") {
-        newOutput.push("🧪 Running tests...", "✔️ All tests passed");
-      } else if (cmd === "help") {
-        newOutput.push("Available commands:", "  pwd          - Print working directory", "  ls           - List files", "  cd [dir]     - Change directory", "  clear        - Clear terminal", "  npm install  - Install dependencies", "  npm start    - Start dev server", "  npm test     - Run tests", "  git status   - Check git status", "  help         - Show this help");
-      } else {
-        newOutput.push(`Command not found: ${terminalInput}`, "Type 'help' for available commands");
-      }
-      
-      setTerminalOutput(newOutput);
-      setTerminalInput("");
-    }
-  };
+  const timerPercent = initialTimer > 0 
+    ? Math.max(0, Math.min(100, Math.round(((initialTimer - timer) / initialTimer) * 100))) 
+    : 0;
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isTyping) return;
@@ -624,191 +642,531 @@ export default function ProjectFocusView({
     return Math.round((completedTasks.length / tasks.length) * 100);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4 sticky top-0 z-40">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
+  // Render AI Assistant Card with Squeeze, Maximize, and Position Swap controls
+  const renderAiAssistantCard = () => (
+    <Card className="bg-card border-border transition-all duration-200 shadow-sm overflow-hidden">
+      <CardContent className="p-4">
+        {/* Header with Title, Status & Squeeze/Expand/Reorder controls */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div 
+            className="flex items-center gap-2 cursor-pointer select-none group"
+            onClick={() => isAiSqueezed && toggleAiSqueezed()}
+            title={isAiSqueezed ? "Click to expand AI Assistant" : undefined}
+          >
+            <div className="p-1.5 rounded-md bg-green-500/10 border border-green-500/30 group-hover:border-green-400/50 transition-colors">
+              <Brain className="w-4 h-4 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium text-foreground text-sm">AI Assistant</h3>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/30 font-medium">
+                  FocusBot
+                </span>
+              </div>
+              {isAiSqueezed && (
+                <p className="text-[11px] text-muted-foreground">Collapsed · Click to expand chat</p>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons: Swap position, Maximize/Restore, Squeeze/Expand - All Solid Green */}
+          <div className="flex items-center gap-1.5">
+            <Button
               size="sm"
-              onClick={onBack}
-              className="text-gray-300 hover:text-white hover:bg-gray-700"
+              onClick={toggleSidebarOrder}
+              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+              title={sidebarOrder === 'ai-top' ? "Move AI Assistant to Bottom" : "Move AI Assistant to Top"}
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              <ArrowUpDown className="w-3.5 h-3.5 text-white" />
             </Button>
-            <div className="text-xl font-semibold text-white">DevFocus Dashboard</div>
+
+            {!isAiSqueezed && (
+              <Button
+                size="sm"
+                onClick={toggleAiMaximized}
+                className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+                title={isAiMaximized ? "Restore default height" : "Maximize height"}
+              >
+                {isAiMaximized ? <Minimize2 className="w-3.5 h-3.5 text-white" /> : <Maximize2 className="w-3.5 h-3.5 text-white" />}
+              </Button>
+            )}
+
+            <Button
+              size="sm"
+              onClick={toggleAiSqueezed}
+              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+              title={isAiSqueezed ? "Expand AI Assistant" : "Squeeze / Collapse AI Assistant"}
+            >
+              {isAiSqueezed ? <ChevronDown className="w-4 h-4 text-white" /> : <ChevronUp className="w-4 h-4 text-white" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Card Body - visible only when NOT squeezed */}
+        {!isAiSqueezed && (
+          <div className="animate-in fade-in duration-200">
+            <ScrollArea className={`${isAiMaximized ? 'h-[460px]' : 'h-48'} mb-4 transition-all duration-200 pr-1`}>
+              <div className="space-y-3">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`p-2.5 rounded text-sm group relative ${
+                      message.sender === 'user'
+                        ? 'bg-green-600 text-white ml-8 shadow-sm'
+                        : 'bg-muted/70 text-foreground mr-8 border border-border'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap pr-6 text-xs leading-relaxed">{message.text}</div>
+                    <button
+                      onClick={() => handleCopy(message.text, message.id)}
+                      className="absolute bottom-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+                      title="Copy message"
+                    >
+                      {copiedId === message.id ? (
+                        <Check className="w-3.5 h-3.5 text-green-500" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="p-2.5 rounded text-sm bg-muted/70 text-muted-foreground mr-8 border border-border">
+                    <div className="flex space-x-1 py-1">
+                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+
+            <div className="flex gap-2">
+              <Input
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                placeholder="Ask AI anything..."
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground text-xs"
+                disabled={isTyping}
+              />
+              <Button 
+                onClick={sendMessage}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white flex-shrink-0 border-0 shadow-sm disabled:bg-green-600 disabled:opacity-50"
+                disabled={!inputMessage.trim() || isTyping}
+              >
+                <Send className="w-4 h-4 text-white" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  // Render Today's Tasks Card with Squeeze, Maximize, and Position Swap controls
+  const renderTasksCard = () => (
+    <Card className="bg-card border-border transition-all duration-200 shadow-sm overflow-hidden">
+      <CardContent className="p-4">
+        {/* Header with Title, Progress count & Squeeze/Expand/Reorder controls */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div 
+            className="flex items-center gap-2 cursor-pointer select-none group"
+            onClick={() => isTasksSqueezed && toggleTasksSqueezed()}
+            title={isTasksSqueezed ? "Click to expand Today's Tasks" : undefined}
+          >
+            <div className="p-1.5 rounded-md bg-green-500/10 border border-green-500/30 group-hover:border-green-400/50 transition-colors">
+              <ListTodo className="w-4 h-4 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium text-foreground text-sm">Today's Tasks</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-300 font-mono font-medium">
+                  {completedTasks.length}/{tasks.length}
+                </span>
+              </div>
+              {isTasksSqueezed && (
+                <p className="text-[11px] text-muted-foreground">Collapsed · Click to expand tasks</p>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons: Swap position, Maximize/Restore, Squeeze/Expand - All Solid Green */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              onClick={toggleSidebarOrder}
+              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+              title={sidebarOrder === 'tasks-top' ? "Move Today's Tasks to Bottom" : "Move Today's Tasks to Top"}
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 text-white" />
+            </Button>
+
+            {!isTasksSqueezed && (
+              <Button
+                size="sm"
+                onClick={toggleTasksMaximized}
+                className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+                title={isTasksMaximized ? "Restore default height" : "Maximize height"}
+              >
+                {isTasksMaximized ? <Minimize2 className="w-3.5 h-3.5 text-white" /> : <Maximize2 className="w-3.5 h-3.5 text-white" />}
+              </Button>
+            )}
+
+            <Button
+              size="sm"
+              onClick={toggleTasksSqueezed}
+              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+              title={isTasksSqueezed ? "Expand Tasks" : "Squeeze / Collapse Tasks"}
+            >
+              {isTasksSqueezed ? <ChevronDown className="w-4 h-4 text-white" /> : <ChevronUp className="w-4 h-4 text-white" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Card Body - visible only when NOT squeezed */}
+        {!isTasksSqueezed && (
+          <div className="animate-in fade-in duration-200">
+            {/* Add Task Input */}
+            <div className="flex gap-2 mb-3">
+              <Input
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addTask()}
+                placeholder="Add a new task..."
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground text-xs"
+              />
+              <Button 
+                onClick={addTask}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white flex-shrink-0 border-0 shadow-sm"
+              >
+                <Plus className="w-4 h-4 text-white" />
+              </Button>
+            </div>
+
+            {/* Tasks List */}
+            <div className={`space-y-2 ${isTasksMaximized ? 'max-h-[520px]' : 'max-h-80'} overflow-y-auto pr-1 transition-all duration-200`}>
+              {/* Pending Tasks */}
+              {todaysTasks.length > 0 && (
+                <div className="space-y-2">
+                  {todaysTasks.map(task => (
+                    <div 
+                      key={task.id} 
+                      className="flex items-start gap-2 p-2 bg-muted/40 rounded border border-border hover:bg-muted/70 transition-colors"
+                    >
+                      <button
+                        onClick={() => toggleTask(task.id)}
+                        className="mt-0.5 flex-shrink-0"
+                        title={task.completed ? "Mark incomplete" : "Mark complete"}
+                      >
+                        <Circle className="w-4 h-4 text-muted-foreground hover:text-green-600" />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground break-words">{task.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <AlertCircle className={`w-3 h-3 ${getPriorityColor(task.priority)}`} />
+                          <span className={`text-xs ${getPriorityColor(task.priority)} capitalize`}>
+                            {task.priority}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => deleteTask(task.id)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                        title="Delete task"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Completed Tasks */}
+              {completedTasks.length > 0 && (
+                <div className="space-y-2 mt-3 pt-3 border-t border-border">
+                  <p className="text-[11px] text-muted-foreground uppercase font-medium tracking-wide">Completed</p>
+                  {completedTasks.map(task => (
+                    <div 
+                      key={task.id} 
+                      className="flex items-start gap-2 p-2 bg-muted/20 rounded border border-border/50"
+                    >
+                      <button
+                        onClick={() => toggleTask(task.id)}
+                        className="mt-0.5 flex-shrink-0"
+                        title="Mark incomplete"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-muted-foreground line-through break-words">{task.title}</p>
+                      </div>
+                      <Button
+                        onClick={() => deleteTask(task.id)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                        title="Delete task"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty State */}
+              {tasks.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  <p className="text-xs">No tasks yet</p>
+                  <p className="text-[11px] mt-1">Add your first task above</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Header */}
+      <div className="w-full bg-card border-b border-border px-4 lg:px-6 py-3 relative z-10">
+        <div className="flex items-center justify-between gap-4">
+          {/* Back Arrow - Solid Green */}
+          <Button 
+            size="icon"
+            onClick={onBack}
+            className="h-9 w-9 bg-green-600 hover:bg-green-700 text-white shadow-sm rounded-lg flex-shrink-0 border-0 flex items-center justify-center cursor-pointer transition-all"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </Button>
+
+          {/* Action Buttons at Top in Place of Platform Links - All Green */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <Button 
+              size="sm" 
+              onClick={handleViewProgress}
+              className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+            >
+              <TrendingUp className="w-3.5 h-3.5 mr-1.5 text-white" />
+              View Progress
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleSubmitUpdate}
+              className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+            >
+              <FileEdit className="w-3.5 h-3.5 mr-1.5 text-white" />
+              Submit Update
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleMarkComplete}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm h-8 px-3.5 text-xs border-0"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-white" />
+              Mark as Complete
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 lg:p-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Content Area */}
           <div className="lg:col-span-3 space-y-6">
             {/* Project Header */}
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className="bg-card border-border shadow-sm">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <div>
-                    <h1 className="text-2xl font-bold text-white mb-2">{projectName}</h1>
-                    <p className="text-gray-400">{projectType} · Due in {deadline}</p>
+                    <h1 className="text-2xl font-bold text-foreground mb-1.5">{projectName}</h1>
+                    <p className="text-sm text-muted-foreground">{projectType} · Due in {deadline}</p>
                   </div>
                   
-                  {/* External Platform Links */}
-                  <div className="flex gap-2 flex-wrap">
+                  {/* Platform Quick Links */}
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button 
-                      variant="outline" 
                       size="sm" 
                       onClick={openInVSCode}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
                     >
-                      <Code className="w-4 h-4 mr-2" />
+                      <Code className="w-3.5 h-3.5 mr-1.5 text-white" />
                       VS Code
                     </Button>
                     <Button 
-                      variant="outline" 
                       size="sm" 
                       onClick={() => openExternalLink("https://github.com")}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
                     >
-                      <Github className="w-4 h-4 mr-2" />
+                      <Github className="w-3.5 h-3.5 mr-1.5 text-white" />
                       GitHub
                     </Button>
                     <Button 
-                      variant="outline" 
                       size="sm" 
                       onClick={() => openExternalLink("https://leetcode.com")}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       LeetCode
                     </Button>
                     <Button 
-                      variant="outline" 
                       size="sm" 
                       onClick={() => openExternalLink("https://hackerrank.com")}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       HackerRank
                     </Button>
                     <Button 
-                      variant="outline" 
                       size="sm" 
                       onClick={() => openExternalLink("https://linkedin.com")}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       LinkedIn
                     </Button>
                   </div>
                 </div>
 
-                {/* Quick Actions - Moved here */}
-                <div className="mb-6">
-                  <h3 className="font-medium text-white mb-3">Quick Actions</h3>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button 
-                      variant="outline" 
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                      onClick={handleViewProgress}
-                    >
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      View Progress
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                      onClick={handleSubmitUpdate}
-                    >
-                      <FileEdit className="w-4 h-4 mr-2" />
-                      Submit Update
-                    </Button>
-                    <Button 
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={handleMarkComplete}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Mark as Complete
-                    </Button>
-                  </div>
-                </div>
+                {/* Expanded Countdown / Focus Timer Block */}
+                <div className="mt-6 bg-gradient-to-br from-card via-card to-emerald-500/10 dark:from-gray-900 dark:via-gray-900/95 dark:to-emerald-950/20 rounded-xl p-6 sm:p-7 border border-border shadow-md relative overflow-hidden">
+                  {/* Subtle ambient decorative blur */}
+                  <div className="absolute -right-16 -top-16 w-56 h-56 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
 
-                {/* Timer Section */}
-                <div className="flex items-center justify-between bg-gray-900 rounded-lg p-4">
-                  <div className="flex items-center gap-4">
-                    <Timer className="w-8 h-8 text-purple-400" />
-                    <div className="text-3xl font-mono font-bold text-white">
-                      {formatTime(timer)}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    {/* Left: Timer Display & Status */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400">
+                          <Timer className={`w-6 h-6 ${isRunning ? 'animate-pulse' : ''}`} />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Focus Session Timer
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {isRunning ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
+                                Active Focus Session
+                              </span>
+                            ) : timer === 0 ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/30">
+                                Session Completed 🎉
+                              </span>
+                            ) : timer < initialTimer ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border border-yellow-500/30">
+                                Paused
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground border border-border">
+                                Ready to Focus
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Large Digital Typography */}
+                      <div className="text-5xl sm:text-6xl font-mono font-bold text-foreground tracking-widest drop-shadow-sm">
+                        {formatTime(timer)}
+                      </div>
+
+                      {/* Quick Duration Presets - All Solid Green */}
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                        <span className="text-xs text-muted-foreground font-medium mr-1">Presets:</span>
+                        {[
+                          { label: '25m', secs: 1500, title: 'Pomodoro (25 mins)' },
+                          { label: '45m', secs: 2700, title: 'Deep Work (45 mins)' },
+                          { label: '60m', secs: 3600, title: 'Standard (1 hour)' },
+                          { label: '90m', secs: 5400, title: 'Extended (1.5 hours)' },
+                        ].map((preset) => (
+                          <Button
+                            key={preset.label}
+                            type="button"
+                            size="sm"
+                            onClick={() => setTimerPreset(preset.secs)}
+                            className={`h-7 px-3 text-xs rounded-md font-semibold border-0 transition-all ${
+                              initialTimer === preset.secs
+                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-2 ring-emerald-500/30 shadow-sm'
+                                : 'bg-green-600 hover:bg-green-700 text-white shadow-sm'
+                            }`}
+                            title={preset.title}
+                          >
+                            {preset.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Right: Controls & Actions - All Solid Green */}
+                    <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-stretch sm:items-center gap-3">
+                      <Button 
+                        onClick={handleStart} 
+                        disabled={isRunning}
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2.5 h-12 text-sm shadow-md gap-2 rounded-xl border-0 disabled:bg-green-600 disabled:opacity-60 disabled:text-white"
+                      >
+                        <Play className="w-4 h-4 fill-white text-white" />
+                        Start Focus
+                      </Button>
+                      <Button 
+                        onClick={handlePause} 
+                        disabled={!isRunning}
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 h-12 text-sm shadow-md gap-2 rounded-xl border-0 disabled:bg-green-600 disabled:opacity-60 disabled:text-white"
+                      >
+                        <Pause className="w-4 h-4 fill-white text-white" />
+                        Pause
+                      </Button>
+                      <Button 
+                        onClick={handleReset}
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 h-12 text-sm shadow-md gap-2 rounded-xl border-0"
+                        title="Reset Timer"
+                      >
+                        <RotateCcw className="w-4 h-4 text-white" />
+                        Reset
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleStart} 
-                      disabled={isRunning}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Start
-                    </Button>
-                    <Button 
-                      onClick={handlePause} 
-                      disabled={!isRunning}
-                      variant="outline"
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    >
-                      <Pause className="w-4 h-4 mr-2" />
-                      Pause
-                    </Button>
-                    <Button 
-                      onClick={handleReset}
-                      variant="outline"
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Reset
-                    </Button>
+
+                  {/* Progress Bar along the bottom of the countdown block */}
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                      <span>Session Progress</span>
+                      <span className="font-mono">{timerPercent}% elapsed</span>
+                    </div>
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${timerPercent}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Tabs Section */}
-            <Card className="bg-gray-800 border-gray-700">
+            <Card className="bg-card border-border shadow-sm">
               <CardContent className="p-6">
-                <Tabs defaultValue="terminal" className="w-full">
-                  <TabsList className="bg-gray-900 border-gray-700">
-                    <TabsTrigger value="terminal" className="data-[state=active]:bg-gray-700">Terminal</TabsTrigger>
-                    <TabsTrigger value="resources" className="data-[state=active]:bg-gray-700">Resources</TabsTrigger>
-                    <TabsTrigger value="editor" className="data-[state=active]:bg-gray-700">Code Editor</TabsTrigger>
-                    <TabsTrigger value="practice" className="data-[state=active]:bg-gray-700">Practice</TabsTrigger>
+                <Tabs defaultValue="editor" className="w-full">
+                  <TabsList className="bg-muted border border-border">
+                    <TabsTrigger value="editor" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Code Editor</TabsTrigger>
+                    <TabsTrigger value="resources" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Resources</TabsTrigger>
+                    <TabsTrigger value="practice" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Practice</TabsTrigger>
                   </TabsList>
-                  
-                  <TabsContent value="terminal" className="mt-4">
-                    <div className="bg-black text-green-400 font-mono p-4 rounded h-96 overflow-y-auto">
-                      {terminalOutput.map((line, index) => (
-                        <div key={index} className="mb-1 whitespace-pre-wrap">{line}</div>
-                      ))}
-                      <div className="flex items-center mt-2">
-                        <span className="mr-2 text-blue-400">{currentDirectory}$</span>
-                        <Input 
-                          value={terminalInput}
-                          onChange={(e) => setTerminalInput(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && executeCommand()}
-                          className="bg-transparent border-none text-green-400 font-mono focus:ring-0 focus-visible:ring-0"
-                          placeholder="Type 'help' for commands..."
-                        />
-                      </div>
-                    </div>
-                  </TabsContent>
                   
                   <TabsContent value="resources" className="mt-4">
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white">Project Resources</h3>
+                      <h3 className="text-lg font-medium text-foreground">Project Resources</h3>
                       
                       {/* Add Resource Form */}
                       <div className="flex gap-2">
@@ -816,9 +1174,9 @@ export default function ProjectFocusView({
                           placeholder="Add resource URL or document name" 
                           value={newResource.title}
                           onChange={(e) => setNewResource({...newResource, title: e.target.value})}
-                          className="bg-gray-900 border-gray-600 text-white placeholder-gray-400"
+                          className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                         />
-                        <Button onClick={addResource} className="bg-blue-600 hover:bg-blue-700">
+                        <Button onClick={addResource} className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm border-0">
                           Add
                         </Button>
                       </div>
@@ -826,16 +1184,16 @@ export default function ProjectFocusView({
                       {/* Resources List */}
                       <div className="space-y-2">
                         {resources.map(resource => (
-                          <div key={resource.id} className="flex items-center justify-between p-3 bg-gray-900 rounded border border-gray-700">
+                          <div key={resource.id} className="flex items-center justify-between p-3 bg-muted/40 rounded border border-border">
                             <div className="flex items-center gap-3">
-                              <div className="px-2 py-1 bg-blue-600 text-white text-xs rounded">
+                              <div className="px-2 py-1 bg-green-600 text-white text-xs rounded">
                                 {resource.type}
                               </div>
                               <a 
                                 href={resource.url} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="text-white hover:text-blue-400 flex items-center gap-1"
+                                className="text-foreground hover:text-green-600 flex items-center gap-1 transition-colors"
                               >
                                 {resource.title}
                                 <ExternalLink className="w-3 h-3" />
@@ -845,7 +1203,7 @@ export default function ProjectFocusView({
                               onClick={() => removeResource(resource.id)} 
                               variant="ghost" 
                               size="sm"
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -858,13 +1216,12 @@ export default function ProjectFocusView({
                   <TabsContent value="editor" className="mt-4">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-medium text-white">Code Scratchpad</h3>
+                        <h3 className="text-lg font-medium text-foreground">Code Scratchpad</h3>
                         <Button 
                           onClick={openInVSCode}
-                          variant="outline" 
-                          className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                          className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
                         >
-                          <ExternalLink className="w-4 h-4 mr-2" />
+                          <ExternalLink className="w-4 h-4 mr-2 text-white" />
                           Open in VS Code
                         </Button>
                       </div>
@@ -872,7 +1229,7 @@ export default function ProjectFocusView({
                         value={codeContent}
                         onChange={(e) => setCodeContent(e.target.value)}
                         placeholder="Write or paste your code here... This is a local scratchpad and does not save."
-                        className="bg-gray-900 border-gray-600 text-white placeholder-gray-400 font-mono h-96 resize-none"
+                        className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground font-mono h-96 resize-none"
                       />
                     </div>
                   </TabsContent>
@@ -880,13 +1237,12 @@ export default function ProjectFocusView({
                   <TabsContent value="practice" className="mt-4">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-medium text-white">Practice Problems</h3>
+                        <h3 className="text-lg font-medium text-foreground">Practice Problems</h3>
                         <Button 
                           onClick={() => openExternalLink("https://leetcode.com")}
-                          variant="outline" 
-                          className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                          className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
                         >
-                          <ExternalLink className="w-4 h-4 mr-2" />
+                          <ExternalLink className="w-4 h-4 mr-2 text-white" />
                           Open LeetCode
                         </Button>
                       </div>
@@ -895,13 +1251,13 @@ export default function ProjectFocusView({
                         {leetcodeProblems.map(problem => (
                           <div 
                             key={problem.id} 
-                            className="p-4 bg-gray-900 rounded border border-gray-700 cursor-pointer hover:bg-gray-800 transition-colors"
+                            className="p-4 bg-muted/40 rounded border border-border cursor-pointer hover:bg-muted/70 transition-colors"
                             onClick={() => openLeetCodeProblem(problem)}
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <h4 className="font-medium text-white mb-1">{problem.title}</h4>
-                                <p className="text-sm text-gray-400">
+                                <h4 className="font-medium text-foreground mb-1">{problem.title}</h4>
+                                <p className="text-sm text-muted-foreground">
                                   {problem.tags.join(", ")} - {problem.difficulty}
                                 </p>
                               </div>
@@ -912,7 +1268,7 @@ export default function ProjectFocusView({
                                     openLeetCodeProblem(problem);
                                   }}
                                   size="sm"
-                                  className="bg-orange-600 hover:bg-orange-700"
+                                  className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm border-0"
                                 >
                                   Practice Now
                                 </Button>
@@ -932,190 +1288,50 @@ export default function ProjectFocusView({
           </div>
 
           {/* Right Sidebar - Sticky */}
-          <div className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
-            {/* Today's Tasks */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-medium text-white">Today's Tasks</h3>
-                  <div className="text-sm text-gray-400">
-                    {completedTasks.length}/{tasks.length}
-                  </div>
-                </div>
+          <div className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
+            {/* Sidebar Controls Bar: Quick Position Swap & Squeeze Info */}
+            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-card border border-border text-xs shadow-xs">
+              <div className="flex items-center gap-1.5 text-foreground">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                <span className="font-medium text-foreground">Layout:</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {sidebarOrder === 'ai-top' ? 'AI on Top · Tasks at Bottom' : 'Tasks on Top · AI at Bottom'}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                onClick={toggleSidebarOrder}
+                className="h-6 px-2.5 text-[11px] bg-green-600 hover:bg-green-700 text-white gap-1 rounded font-medium shadow-sm border-0"
+                title="Swap order between AI Assistant and Today's Tasks"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 text-white" />
+                <span>Swap ⇅</span>
+              </Button>
+            </div>
 
-                {/* Add Task Input */}
-                <div className="flex gap-2 mb-4">
-                  <Input
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addTask()}
-                    placeholder="Add a new task..."
-                    className="bg-gray-900 border-gray-600 text-white placeholder-gray-400"
-                  />
-                  <Button 
-                    onClick={addTask}
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                {/* Tasks List */}
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {/* Pending Tasks */}
-                  {todaysTasks.length > 0 && (
-                    <div className="space-y-2">
-                      {todaysTasks.map(task => (
-                        <div 
-                          key={task.id}
-                          className="flex items-start gap-2 p-2 bg-gray-900 rounded border border-gray-700 hover:bg-gray-800 transition-colors"
-                        >
-                          <button
-                            onClick={() => toggleTask(task.id)}
-                            className="mt-0.5 flex-shrink-0"
-                          >
-                            <Circle className="w-4 h-4 text-gray-400 hover:text-blue-400" />
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white break-words">{task.title}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <AlertCircle className={`w-3 h-3 ${getPriorityColor(task.priority)}`} />
-                              <span className={`text-xs ${getPriorityColor(task.priority)}`}>
-                                {task.priority}
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            onClick={() => deleteTask(task.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Completed Tasks */}
-                  {completedTasks.length > 0 && (
-                    <div className="space-y-2 mt-4 pt-4 border-t border-gray-700">
-                      <p className="text-xs text-gray-500 uppercase font-medium">Completed</p>
-                      {completedTasks.map(task => (
-                        <div 
-                          key={task.id}
-                          className="flex items-start gap-2 p-2 bg-gray-900/50 rounded border border-gray-700/50"
-                        >
-                          <button
-                            onClick={() => toggleTask(task.id)}
-                            className="mt-0.5 flex-shrink-0"
-                          >
-                            <CheckCircle2 className="w-4 h-4 text-green-400" />
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-500 line-through break-words">{task.title}</p>
-                          </div>
-                          <Button
-                            onClick={() => deleteTask(task.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Empty State */}
-                  {tasks.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <p className="text-sm">No tasks yet</p>
-                      <p className="text-xs mt-1">Add your first task above</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* AI Assistant - Sticky */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Brain className="w-5 h-5 text-purple-400" />
-                  <h3 className="font-medium text-white">AI Assistant</h3>
-                </div>
-                
-                <ScrollArea className="h-48 mb-4">
-                  <div className="space-y-3">
-                    {messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`p-2 rounded text-sm group relative ${
-                          message.sender === 'user'
-                            ? 'bg-blue-600 text-white ml-8'
-                            : 'bg-gray-700 text-gray-300 mr-8'
-                        }`}
-                      >
-                        <div className="whitespace-pre-wrap pr-6">{message.text}</div>
-                        <button
-                          onClick={() => handleCopy(message.text, message.id)}
-                          className="absolute bottom-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-black/20 text-gray-400 hover:text-white transition-all"
-                          title="Copy message"
-                        >
-                          {copiedId === message.id ? (
-                            <Check className="w-3.5 h-3.5" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    ))}
-                    {isTyping && (
-                      <div className="p-2 rounded text-sm bg-gray-700 text-gray-300 mr-8">
-                        <div className="flex space-x-1 py-1">
-                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                <div className="flex gap-2">
-                  <Input
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="Ask AI anything..."
-                    className="bg-gray-900 border-gray-600 text-white placeholder-gray-400"
-                    disabled={isTyping}
-                  />
-                  <Button 
-                    onClick={sendMessage}
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700"
-                    disabled={!inputMessage.trim() || isTyping}
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Dynamic Card Order: AI Assistant Top vs Today's Tasks Bottom */}
+            {sidebarOrder === 'ai-top' ? (
+              <>
+                {renderAiAssistantCard()}
+                {renderTasksCard()}
+              </>
+            ) : (
+              <>
+                {renderTasksCard()}
+                {renderAiAssistantCard()}
+              </>
+            )}
 
             {/* Focus Tips */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardContent className="p-4">
-                <h3 className="font-medium text-white mb-3">Focus Tips</h3>
-                <ul className="text-sm text-gray-400 space-y-2">
-                  <li>• Break large tasks into smaller steps.</li>
+            <Card className="bg-card/70 border-border shadow-xs">
+              <CardContent className="p-3.5">
+                <h3 className="font-medium text-foreground text-xs mb-2 flex items-center gap-1.5">
+                  <span>💡</span> Focus Tips
+                </h3>
+                <ul className="text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
+                  <li>• Break large tasks into smaller sub-tasks.</li>
                   <li>• Use the timer for focused Pomodoro sessions.</li>
-                  <li>• Push code regularly to track progress.</li>
-                  <li>• Stay consistent — 1 hour daily matters.</li>
+                  <li>• Squeeze or expand panels anytime to customize your view.</li>
                 </ul>
               </CardContent>
             </Card>
@@ -1125,10 +1341,10 @@ export default function ProjectFocusView({
 
       {/* Progress Modal */}
       <Dialog open={showProgressModal} onOpenChange={setShowProgressModal}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
-            <DialogTitle className="text-white">Project Progress</DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogTitle className="text-foreground">Project Progress</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Track your progress on {projectName}
             </DialogDescription>
           </DialogHeader>
@@ -1137,12 +1353,12 @@ export default function ProjectFocusView({
             {/* Overall Progress */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-300">Overall Completion</span>
-                <span className="text-2xl font-bold text-white">{calculateProgress()}%</span>
+                <span className="text-sm font-medium text-muted-foreground">Overall Completion</span>
+                <span className="text-2xl font-bold text-foreground">{calculateProgress()}%</span>
               </div>
-              <div className="h-4 bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-4 bg-muted rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-emerald-500 to-green-600 transition-all duration-500"
                   style={{ width: `${calculateProgress()}%` }}
                 />
               </div>
@@ -1150,29 +1366,29 @@ export default function ProjectFocusView({
 
             {/* Task Breakdown */}
             <div>
-              <h4 className="text-sm font-medium text-gray-300 mb-3">Task Breakdown</h4>
+              <h4 className="text-sm font-medium text-muted-foreground mb-3">Task Breakdown</h4>
               <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 bg-gray-900 rounded">
-                  <span className="text-sm text-gray-300">Total Tasks</span>
-                  <span className="font-semibold text-white">{tasks.length}</span>
+                <div className="flex items-center justify-between p-3 bg-muted/40 rounded border border-border">
+                  <span className="text-sm text-muted-foreground">Total Tasks</span>
+                  <span className="font-semibold text-foreground">{tasks.length}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gray-900 rounded">
-                  <span className="text-sm text-gray-300">Completed</span>
-                  <span className="font-semibold text-green-400">{completedTasks.length}</span>
+                <div className="flex items-center justify-between p-3 bg-muted/40 rounded border border-border">
+                  <span className="text-sm text-muted-foreground">Completed</span>
+                  <span className="font-semibold text-green-600 dark:text-green-400">{completedTasks.length}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gray-900 rounded">
-                  <span className="text-sm text-gray-300">Remaining</span>
-                  <span className="font-semibold text-yellow-400">{todaysTasks.length}</span>
+                <div className="flex items-center justify-between p-3 bg-muted/40 rounded border border-border">
+                  <span className="text-sm text-muted-foreground">Remaining</span>
+                  <span className="font-semibold text-yellow-600 dark:text-yellow-400">{todaysTasks.length}</span>
                 </div>
               </div>
             </div>
 
             {/* Time Spent */}
             <div>
-              <h4 className="text-sm font-medium text-gray-300 mb-3">Session Info</h4>
-              <div className="flex items-center justify-between p-3 bg-gray-900 rounded">
-                <span className="text-sm text-gray-300">Current Session</span>
-                <span className="font-mono font-semibold text-white">{formatTime(3600 - timer)}</span>
+              <h4 className="text-sm font-medium text-muted-foreground mb-3">Session Info</h4>
+              <div className="flex items-center justify-between p-3 bg-muted/40 rounded border border-border">
+                <span className="text-sm text-muted-foreground">Current Session</span>
+                <span className="font-mono font-semibold text-foreground">{formatTime(3600 - timer)}</span>
               </div>
             </div>
           </div>
@@ -1180,7 +1396,7 @@ export default function ProjectFocusView({
           <DialogFooter>
             <Button 
               onClick={() => setShowProgressModal(false)}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm"
             >
               Close
             </Button>
@@ -1190,46 +1406,45 @@ export default function ProjectFocusView({
 
       {/* Submit Update Modal */}
       <Dialog open={showUpdateModal} onOpenChange={setShowUpdateModal}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
-            <DialogTitle className="text-white">Submit Project Update</DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogTitle className="text-foreground">Submit Project Update</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Share your progress and any blockers you're facing
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium text-gray-300 mb-2 block">
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">
                 What did you accomplish today?
               </label>
-              <Textarea
+              <Textarea 
                 value={updateText}
                 onChange={(e) => setUpdateText(e.target.value)}
                 placeholder="Describe your progress, completed tasks, or any challenges..."
-                className="bg-gray-900 border-gray-600 text-white placeholder-gray-400 min-h-32"
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground min-h-32"
               />
             </div>
 
-            <div className="p-3 bg-blue-900/20 border border-blue-700 rounded">
-              <p className="text-sm text-blue-300">
+            <div className="p-3 bg-green-500/10 border border-green-500/30 rounded">
+              <p className="text-sm text-green-700 dark:text-green-300">
                 💡 Tip: Regular updates help track your progress and identify patterns in your workflow.
               </p>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button 
-              variant="outline"
               onClick={() => setShowUpdateModal(false)}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700"
+              className="bg-green-700 hover:bg-green-800 text-white font-medium shadow-sm border-0"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleSaveUpdate}
               disabled={!updateText.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm border-0 disabled:bg-green-600 disabled:opacity-50"
             >
               Submit Update
             </Button>

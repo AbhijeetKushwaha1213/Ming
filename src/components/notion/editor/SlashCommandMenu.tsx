@@ -15,12 +15,15 @@ import {
   Link2,
   Minus,
   Table,
-  ListTree
+  ListTree,
+  FilePlus,
 } from 'lucide-react';
 import type { BlockType } from '@/types/notion';
 
+export type SlashCommandType = BlockType | 'page';
+
 interface SlashCommand {
-  id: BlockType;
+  id: SlashCommandType;
   label: string;
   description: string;
   icon: React.ReactNode;
@@ -34,6 +37,13 @@ const SLASH_COMMANDS: SlashCommand[] = [
     description: 'Plain text paragraph',
     icon: <Type className="w-4 h-4" />,
     keywords: ['text', 'paragraph', 'p'],
+  },
+  {
+    id: 'page',
+    label: 'Page',
+    description: 'Embed a sub-page inside this page',
+    icon: <FilePlus className="w-4 h-4 text-primary" />,
+    keywords: ['page', 'subpage', 'document', 'note', 'new page'],
   },
   {
     id: 'heading1',
@@ -144,7 +154,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
 
 interface SlashCommandMenuProps {
   position: { x: number; y: number };
-  onSelect: (type: BlockType) => void;
+  onSelect: (type: SlashCommandType) => void;
   onClose: () => void;
 }
 

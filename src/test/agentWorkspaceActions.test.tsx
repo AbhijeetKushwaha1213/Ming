@@ -234,5 +234,54 @@ Let me know if you need anything else!`;
       expect(prompt).toContain('delete_page');
       expect(prompt).toContain('Test instructions');
     });
+
+    it('resolves active page and dispatches select & update events when modifying content', async () => {
+      const mockPage: Page = {
+        id: 'page_os_1',
+        user_id: 'user_1',
+        title: 'Operating Systems',
+        parent_id: null,
+        icon: '💻',
+        cover_image: null,
+        content: [],
+        position: 0,
+        is_favorite: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+      };
+
+      vi.spyOn(pageAPI, 'getAllPages').mockResolvedValue([mockPage]);
+      const updateSpy = vi.spyOn(pageAPI, 'updatePage').mockResolvedValue({
+        ...mockPage,
+        content: [{ id: 'b1', type: 'text', position: 0, created_at: '', updated_at: '', content: { text: 'Checklist', marks: [] } }],
+      });
+
+      localStorage.setItem('studymate-active-page-id', 'page_os_1');
+
+      const dispatchedEvents: string[] = [];
+      const listener = (e: Event) => dispatchedEvents.push(e.type);
+      window.addEventListener('studymate-page-updated', listener);
+      window.addEventListener('studymate-select-resource-page', listener);
+
+      const actions: AgentAction[] = [
+        {
+          type: 'edit_page',
+          pageTitle: 'Operating Systems Main Topics Checklist!',
+          content: '## Main Topics\n- Processes\n- Memory Management',
+          mode: 'append',
+        },
+      ];
+
+      const summaries = await executeAgentActions(actions);
+      expect(updateSpy).toHaveBeenCalled();
+      expect(summaries.some((s) => s.includes('Modified content in "Operating Systems"'))).toBe(true);
+      expect(dispatchedEvents).toContain('studymate-page-updated');
+      expect(dispatchedEvents).toContain('studymate-select-resource-page');
+
+      window.removeEventListener('studymate-page-updated', listener);
+      window.removeEventListener('studymate-select-resource-page', listener);
+      localStorage.removeItem('studymate-active-page-id');
+    });
   });
 });

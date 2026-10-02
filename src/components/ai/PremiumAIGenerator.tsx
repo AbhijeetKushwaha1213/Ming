@@ -22,6 +22,7 @@ import {
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
+import { useFlashcards } from '@/hooks/useFlashcards';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -111,6 +112,7 @@ export const PremiumAIGenerator = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { generateContent, isLoading } = useAIAssistant();
+  const { createFlashcard, createStudyMaterial } = useFlashcards();
   
   // State management
   const [step, setStep] = useState<Step>('choose');
@@ -894,8 +896,76 @@ export const PremiumAIGenerator = () => {
     try {
       const title = topic || `${selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) : 'Study'} Notes`;
       const markdown = getFormattedMarkdown();
-      const vaultKey = `studymate_vault_resources_${user?.user_id || 'guest'}`;
+      const currentDifficulty: 'easy' | 'medium' | 'hard' = difficulty === 'adaptive' ? 'medium' : difficulty;
 
+      // 1. If flashcards, save individual flashcards so they appear under Flashcards in Study Vault
+      if (selectedType === 'flashcards') {
+        const cards = generatedResult?.flashcards || 
+                      (Array.isArray(generatedResult) ? generatedResult : []);
+        if (Array.isArray(cards) && cards.length > 0) {
+          cards.forEach((card: any) => {
+            createFlashcard({
+              title: card.question || title,
+              question: card.question || 'Concept',
+              answer: card.answer || card.content || '',
+              tags: [topic || 'flashcards', 'AI-Generated'],
+              difficulty: currentDifficulty,
+            });
+          });
+        }
+      }
+
+      // 2. Also save as a StudyMaterial so it displays under Vault tabs
+      const materialType: 'flashcards' | 'mindmaps' | 'quizzes' | 'diagrams' | 'notes' = 
+        selectedType === 'flashcards' ? 'flashcards' :
+        selectedType === 'mindmaps' ? 'mindmaps' :
+        selectedType === 'quizzes' ? 'quizzes' :
+        selectedType === 'diagrams' ? 'diagrams' : 'notes';
+
+      let materialContent: any = generatedResult;
+      
+      if (materialType === 'quizzes') {
+        const quizList = generatedResult?.quiz || 
+                         generatedResult?.questions || 
+                         (Array.isArray(generatedResult) ? generatedResult : []);
+        materialContent = { questions: quizList };
+      } else if (materialType === 'mindmaps') {
+        materialContent = generatedResult?.mindmap || generatedResult || {
+          central_topic: topic || 'Mind Map',
+          branches: []
+        };
+      } else if (materialType === 'flashcards') {
+        const cards = generatedResult?.flashcards || 
+                      (Array.isArray(generatedResult) ? generatedResult : []);
+        materialContent = { flashcards: cards };
+      } else {
+        // notes, diagrams, summary, revision
+        materialContent = {
+          title,
+          summary: generatedResult?.notes?.summary || (markdown.length > 250 ? markdown.slice(0, 250) + '...' : markdown),
+          key_points: generatedResult?.notes?.key_points || [
+            { heading: 'Overview', content: markdown }
+          ],
+          quick_facts: generatedResult?.notes?.quick_facts || [
+            `Generated for ${topic || 'studies'}`
+          ],
+          content: markdown,
+          notes: generatedResult?.notes
+        };
+      }
+
+      createStudyMaterial({
+        title,
+        type: materialType,
+        content: materialContent,
+        topic: topic || 'General',
+        difficulty: currentDifficulty,
+        tags: [selectedType || 'notes', 'AI-Generated'],
+        source: 'AI Generator'
+      });
+
+      // 3. Keep local resources key updated for legacy compatibility
+      const vaultKey = `studymate_vault_resources_${user?.user_id || user?.id || 'guest'}`;
       const newResource = {
         id: `res_${Date.now()}`,
         title,
@@ -914,13 +984,13 @@ export const PremiumAIGenerator = () => {
 
       toast({
         title: "Saved to Vault! 🔒",
-        description: `"${title}" has been saved. Access anytime in Resources.`,
+        description: `"${title}" has been saved. You can find it right now in the My Vault tab.`,
       });
     } catch (e) {
       console.error('Error saving to vault:', e);
       toast({
-        title: "Saved",
-        description: "Study notes have been stored.",
+        title: "Saved to Vault",
+        description: "Your materials have been stored in your vault.",
       });
     }
   };

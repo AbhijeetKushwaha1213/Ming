@@ -28,66 +28,83 @@ export const useStudyMaterials = (type?: MaterialType) => {
   const queryClient = useQueryClient();
 
   // Fetch study materials for the current user
+  const effectiveUserId = user?.user_id || user?.id || 'guest_user';
+
   const {
     data: materials = [],
     isLoading,
     error
   } = useQuery({
-    queryKey: ['study_materials', user?.user_id, type],
+    queryKey: ['study_materials', effectiveUserId, type],
     queryFn: async () => {
-      if (!user?.user_id) return [];
-      
-      if (isLocalMode()) {
-        return localStore.getStudyMaterials(type);
+      const localList = localStore.getStudyMaterials(type);
+
+      if (isLocalMode() || !user?.user_id) {
+        return localList;
       }
 
-      let query = supabase
-        .from('study_materials')
-        .select('*')
-        .eq('user_id', user.user_id)
-        .order('created_at', { ascending: false });
+      try {
+        let query = supabase
+          .from('study_materials')
+          .select('*')
+          .eq('user_id', user.user_id)
+          .order('created_at', { ascending: false });
 
-      if (type) {
-        query = query.eq('type', type);
+        if (type) {
+          query = query.eq('type', type);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.warn('Supabase fetch study materials notice, falling back to local:', error);
+          return localList;
+        }
+
+        const remoteList = (data || []) as StudyMaterial[];
+        const map = new Map<string, StudyMaterial>();
+        remoteList.forEach(m => map.set(m.id, m));
+        localList.forEach(m => {
+          if (!map.has(m.id)) {
+            map.set(m.id, m);
+          }
+        });
+
+        return Array.from(map.values()).sort(
+          (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+      } catch (err) {
+        console.warn('Error fetching remote study materials:', err);
+        return localList;
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching study materials:', error);
-        throw error;
-      }
-
-      return data as StudyMaterial[];
     },
-    enabled: !!user?.user_id,
+    enabled: true,
   });
 
   // Create new study material
   const createMaterial = useMutation({
     mutationFn: async (newMaterial: Omit<StudyMaterial, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
-      if (!user?.user_id) throw new Error('User not authenticated');
-
       console.log('Creating study material:', newMaterial);
+      const savedLocal = localStore.saveStudyMaterial(newMaterial);
 
-      if (isLocalMode()) {
-        return localStore.saveStudyMaterial(newMaterial);
+      if (!isLocalMode() && user?.user_id) {
+        try {
+          const { data, error } = await supabase
+            .from('study_materials')
+            .insert([{
+              ...newMaterial,
+              user_id: user.user_id,
+            }])
+            .select()
+            .single();
+
+          if (!error && data) return data;
+        } catch (syncErr) {
+          console.warn('Supabase sync notice, saved locally:', syncErr);
+        }
       }
 
-      const { data, error } = await supabase
-        .from('study_materials')
-        .insert([{
-          ...newMaterial,
-          user_id: user.user_id,
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating study material:', error);
-        throw error;
-      }
-      return data;
+      return savedLocal;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['study_materials'] });
@@ -109,22 +126,27 @@ export const useStudyMaterials = (type?: MaterialType) => {
   // Update study material
   const updateMaterial = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<StudyMaterial> }) => {
-      if (isLocalMode()) {
-        return localStore.updateStudyMaterial(id, updates);
+      const updatedLocal = localStore.updateStudyMaterial(id, updates);
+
+      if (!isLocalMode() && user?.user_id) {
+        try {
+          const { data, error } = await supabase
+            .from('study_materials')
+            .update({
+              ...updates,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+          if (!error && data) return data;
+        } catch (syncErr) {
+          console.warn('Supabase update notice, updated locally:', syncErr);
+        }
       }
 
-      const { data, error } = await supabase
-        .from('study_materials')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return updatedLocal;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['study_materials'] });
@@ -146,16 +168,18 @@ export const useStudyMaterials = (type?: MaterialType) => {
   // Delete study material
   const deleteMaterial = useMutation({
     mutationFn: async (id: string) => {
-      if (isLocalMode()) {
-        return localStore.deleteStudyMaterial(id);
+      localStore.deleteStudyMaterial(id);
+
+      if (!isLocalMode() && user?.user_id) {
+        try {
+          await supabase
+            .from('study_materials')
+            .delete()
+            .eq('id', id);
+        } catch (err) {
+          console.warn('Error deleting study material from Supabase:', err);
+        }
       }
-
-      const { error } = await supabase
-        .from('study_materials')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['study_materials'] });
@@ -177,27 +201,27 @@ export const useStudyMaterials = (type?: MaterialType) => {
   // Bulk create materials
   const createMultipleMaterials = useMutation({
     mutationFn: async (materials: Omit<StudyMaterial, 'id' | 'created_at' | 'updated_at' | 'user_id'>[]) => {
-      if (!user?.user_id) throw new Error('User not authenticated');
+      const savedLocalList = localStore.saveMultipleStudyMaterials(materials);
 
-      if (isLocalMode()) {
-        return localStore.saveMultipleStudyMaterials(materials);
+      if (!isLocalMode() && user?.user_id) {
+        try {
+          const materialsWithUserId = materials.map(material => ({
+            ...material,
+            user_id: user.user_id,
+          }));
+
+          const { data, error } = await supabase
+            .from('study_materials')
+            .insert(materialsWithUserId)
+            .select();
+
+          if (!error && data) return data;
+        } catch (syncErr) {
+          console.warn('Supabase bulk sync notice, saved locally:', syncErr);
+        }
       }
 
-      const materialsWithUserId = materials.map(material => ({
-        ...material,
-        user_id: user.user_id,
-      }));
-
-      const { data, error } = await supabase
-        .from('study_materials')
-        .insert(materialsWithUserId)
-        .select();
-
-      if (error) {
-        console.error('Error creating study materials:', error);
-        throw error;
-      }
-      return data;
+      return savedLocalList;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['study_materials'] });

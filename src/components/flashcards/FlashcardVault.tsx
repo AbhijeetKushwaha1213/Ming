@@ -50,7 +50,11 @@ export const FlashcardVault = () => {
       const searchFields = [
         item.title?.toLowerCase() || '',
         item.topic?.toLowerCase() || '',
-        item.question?.toLowerCase() || ''
+        item.question?.toLowerCase() || '',
+        item.description?.toLowerCase() || '',
+        (typeof item.content === 'string' ? item.content.toLowerCase() : ''),
+        item.content?.summary?.toLowerCase() || '',
+        item.content?.notes?.summary?.toLowerCase() || '',
       ];
       
       const matchesSearch = searchTerm === '' || searchFields.some(field => 
@@ -86,12 +90,19 @@ export const FlashcardVault = () => {
 
   const renderContentCard = (item: any, type: string) => {
     const IconComponent = materialIcons[type as keyof typeof materialIcons] || FileText;
+    const previewText = 
+      item.content?.summary || 
+      item.content?.notes?.summary || 
+      (typeof item.content?.content === 'string' ? item.content.content : '') ||
+      (typeof item.content === 'string' ? item.content : '') ||
+      item.description || 
+      '';
     
     return (
-      <Card key={item.id} className="p-4 card-interactive">
+      <Card key={item.id} className="p-4 card-interactive hover:shadow-md transition-all">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <IconComponent className="w-5 h-5 text-primary" />
+            <IconComponent className="w-5 h-5 text-primary shrink-0" />
             <h3 className="font-semibold text-foreground line-clamp-1">{item.title || 'Untitled'}</h3>
           </div>
           <div className="flex items-center space-x-2">
@@ -110,9 +121,15 @@ export const FlashcardVault = () => {
               <strong>Q:</strong> {item.question}
             </p>
           )}
+
+          {previewText && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {previewText}
+            </p>
+          )}
           
           {item.topic && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               <strong>Topic:</strong> {item.topic}
             </p>
           )}
@@ -130,20 +147,20 @@ export const FlashcardVault = () => {
             </div>
           )}
           
-          <div className="flex items-center text-xs text-muted-foreground space-x-2">
+          <div className="flex items-center text-xs text-muted-foreground space-x-2 pt-1">
             <Calendar className="w-3 h-3" />
-            <span>{format(new Date(item.created_at), 'MMM dd, yyyy')}</span>
+            <span>{format(new Date(item.created_at || Date.now()), 'MMM dd, yyyy')}</span>
           </div>
         </div>
 
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 pt-2 border-t border-border/50">
           <Button
             variant="outline"
             size="sm"
             onClick={() => handleView(item, type)}
-            className="flex-1"
+            className="flex-1 text-xs"
           >
-            <Play className="w-3 h-3 mr-1" />
+            <Play className="w-3.5 h-3.5 mr-1 text-primary" />
             {type === 'flashcards' ? 'Study' : 'View'}
           </Button>
           <Button
@@ -151,8 +168,9 @@ export const FlashcardVault = () => {
             size="sm"
             onClick={() => handleDelete(item.id, type)}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            title="Delete item"
           >
-            <Trash2 className="w-3 h-3" />
+            <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
       </Card>
@@ -163,11 +181,12 @@ export const FlashcardVault = () => {
   if (viewingContent) {
     switch (viewerType) {
       case 'flashcards':
-        const flashcardData = [{
-          question: viewingContent.question,
-          answer: viewingContent.answer,
-          hint: viewingContent.hint
-        }];
+        const flashcardData = viewingContent.content?.flashcards || 
+          (viewingContent.question ? [{
+            question: viewingContent.question,
+            answer: viewingContent.answer,
+            hint: viewingContent.hint
+          }] : []);
         return (
           <FlashcardViewer
             flashcards={flashcardData}
@@ -181,11 +200,15 @@ export const FlashcardVault = () => {
         );
       
       case 'quizzes':
+        const quizQuestions = viewingContent.content?.questions || 
+                             viewingContent.content?.quiz || 
+                             (Array.isArray(viewingContent.content) ? viewingContent.content : []);
         return (
           <QuizViewer
-            questions={viewingContent.content?.questions || []}
+            questions={quizQuestions}
             title={viewingContent.title}
             difficulty={viewingContent.difficulty}
+            topic={viewingContent.topic}
             onClose={() => {
               setViewingContent(null);
               setViewerType('');
@@ -194,9 +217,10 @@ export const FlashcardVault = () => {
         );
       
       case 'mindmaps':
+        const mindmapData = viewingContent.content?.mindmap || viewingContent.content;
         return (
           <MindMapViewer
-            mindmap={viewingContent.content}
+            mindmap={mindmapData}
             title={viewingContent.title}
             difficulty={viewingContent.difficulty}
             onClose={() => {
@@ -207,56 +231,125 @@ export const FlashcardVault = () => {
         );
       
       default:
+        const noteSummary = viewingContent.content?.summary || 
+                            viewingContent.content?.notes?.summary;
+        const keyPoints = viewingContent.content?.key_points || 
+                          viewingContent.content?.notes?.key_points;
+        const quickFacts = viewingContent.content?.quick_facts || 
+                           viewingContent.content?.notes?.quick_facts;
+        const fullMarkdown = typeof viewingContent.content?.content === 'string' 
+                             ? viewingContent.content.content 
+                             : (typeof viewingContent.content === 'string' ? viewingContent.content : null);
+
         return (
           <div className="space-y-6">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setViewingContent(null);
-                setViewerType('');
-              }}
-            >
-              ← Back to Vault
-            </Button>
+            <div className="flex items-center justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setViewingContent(null);
+                  setViewerType('');
+                }}
+              >
+                ← Back to Vault
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const textToCopy = fullMarkdown || noteSummary || JSON.stringify(viewingContent.content, null, 2);
+                    navigator.clipboard.writeText(textToCopy);
+                  }}
+                >
+                  Copy Notes
+                </Button>
+                {fullMarkdown && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const blob = new Blob([fullMarkdown], { type: 'text/markdown;charset=utf-8' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${(viewingContent.title || 'study-notes').replace(/[^a-zA-Z0-9_-]/g, '_')}.md`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    Export .md
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">{viewingContent.title}</h3>
-              <div className="space-y-4">
-                {viewerType === 'notes' && viewingContent.content ? (
-                  <div className="space-y-4">
-                    {viewingContent.content.summary && (
-                      <div>
-                        <h4 className="font-medium text-foreground mb-2">Summary</h4>
-                        <p className="text-muted-foreground">{viewingContent.content.summary}</p>
-                      </div>
-                    )}
-                    
-                    {viewingContent.content.key_points && (
-                      <div>
-                        <h4 className="font-medium text-foreground mb-2">Key Points</h4>
-                        <div className="space-y-2">
-                          {viewingContent.content.key_points.map((point: any, index: number) => (
-                            <div key={index} className="border-l-4 border-blue-500 pl-4">
-                              <h5 className="font-medium">{point.heading}</h5>
-                              <p className="text-muted-foreground">{point.content}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {viewingContent.content.quick_facts && (
-                      <div>
-                        <h4 className="font-medium text-foreground mb-2">Quick Facts</h4>
-                        <ul className="list-disc list-inside space-y-1">
-                          {viewingContent.content.quick_facts.map((fact: string, index: number) => (
-                            <li key={index} className="text-muted-foreground">{fact}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+              <div className="flex items-start justify-between mb-4 border-b pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">{viewingContent.title}</h3>
+                  {viewingContent.topic && (
+                    <p className="text-sm text-muted-foreground mt-1">Topic: {viewingContent.topic}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={`text-xs border ${getDifficultyColor(viewingContent.difficulty)}`}>
+                    {viewingContent.difficulty || 'medium'}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs uppercase">
+                    {viewerType}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {noteSummary && (
+                  <div className="bg-primary/5 p-4 rounded-xl border border-primary/20">
+                    <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                      <FileText className="w-4 h-4" /> Summary
+                    </h4>
+                    <p className="text-foreground/90 leading-relaxed text-sm">{noteSummary}</p>
                   </div>
-                ) : (
-                  <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded">
+                )}
+                
+                {Array.isArray(keyPoints) && keyPoints.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3">Key Concepts</h4>
+                    <div className="space-y-3">
+                      {keyPoints.map((point: any, index: number) => (
+                        <div key={index} className="border-l-4 border-primary/70 bg-muted/40 p-3.5 rounded-r-lg">
+                          <h5 className="font-medium text-foreground text-sm">{point.heading}</h5>
+                          <p className="text-muted-foreground text-sm mt-1">{point.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {Array.isArray(quickFacts) && quickFacts.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Quick Facts</h4>
+                    <ul className="list-disc list-inside space-y-1.5 bg-muted/30 p-4 rounded-xl border border-border">
+                      {quickFacts.map((fact: string, index: number) => (
+                        <li key={index} className="text-muted-foreground text-sm">{fact}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {fullMarkdown && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Detailed Notes</h4>
+                    <div className="bg-muted/30 p-5 rounded-xl border border-border whitespace-pre-wrap text-sm leading-relaxed font-sans">
+                      {fullMarkdown}
+                    </div>
+                  </div>
+                )}
+
+                {!noteSummary && !keyPoints && !quickFacts && !fullMarkdown && (
+                  <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded overflow-auto max-h-96">
                     {JSON.stringify(viewingContent.content, null, 2)}
                   </pre>
                 )}

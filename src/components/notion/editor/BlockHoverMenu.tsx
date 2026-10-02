@@ -1,20 +1,22 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, Copy } from 'lucide-react';
+import { GripVertical, Trash2, Copy, Plus } from 'lucide-react';
 
 interface BlockHoverMenuProps {
   blockId: string;
   onDelete: () => void;
   onDuplicate: () => void;
   onReorder: (draggedId: string, targetId: string) => void;
+  onInsertBelow?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 export function BlockHoverMenu({ 
   blockId, 
   onDelete, 
   onDuplicate,
-  onReorder 
+  onReorder,
+  onInsertBelow
 }: BlockHoverMenuProps) {
   const {
     attributes,
@@ -53,6 +55,19 @@ export function BlockHoverMenu({
       >
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </button>
+
+      {/* Add Block Below Button */}
+      {onInsertBelow && (
+        <button
+          type="button"
+          onClick={onInsertBelow}
+          className="p-1.5 hover:bg-primary hover:text-primary-foreground rounded transition-colors duration-150 bg-background border border-border shadow-md"
+          aria-label="Add block below"
+          title="Add block below"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      )}
 
       {/* Duplicate Button */}
       <button

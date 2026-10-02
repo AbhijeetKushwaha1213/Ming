@@ -19,6 +19,19 @@ import { BlockRenderer } from './BlockRenderer';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { BlockHoverMenu } from './BlockHoverMenu';
 import { useScreenReaderAnnouncement } from '@/hooks/useScreenReaderAnnouncement';
+import { 
+  Plus, 
+  Type, 
+  Heading, 
+  Image as ImageIcon, 
+  FileText, 
+  List, 
+  CheckSquare, 
+  Table as TableIcon, 
+  Code as CodeIcon, 
+  MessageSquare, 
+  MoreHorizontal 
+} from 'lucide-react';
 import './editor.css';
 
 interface BlockEditorProps {
@@ -38,6 +51,7 @@ export function BlockEditor({
   const [showSlashMenu, setShowSlashMenu] = React.useState(false);
   const [slashMenuPosition, setSlashMenuPosition] = React.useState({ x: 0, y: 0 });
   const [slashMenuBlockId, setSlashMenuBlockId] = React.useState<string | null>(null);
+  const [slashMenuInsertPosition, setSlashMenuInsertPosition] = React.useState<number | null>(null);
   const blockRefs = React.useRef<Map<string, HTMLDivElement>>(new Map());
   const announce = useScreenReaderAnnouncement();
 
@@ -290,22 +304,30 @@ export function BlockEditor({
       onDragEnd={handleDragEnd}
     >
       <div
-        className="block-editor relative"
+        className="block-editor relative flex-1 flex flex-col min-h-[300px]"
         role="document"
         aria-label="Page content editor"
         onClick={(e) => {
           if (!editable || blocks.length === 0) return;
 
-          // If the user clicks clearly below the last block, focus it if empty, or insert a new text block there
+          // If clicking an existing interactive element, don't hijack
+          if ((e.target as HTMLElement).closest('.block-renderer, button, input, textarea, .ProseMirror, a, [role="button"]')) {
+            return;
+          }
+
+          // If the user clicks anywhere below the last block, focus it if empty, or insert a new text block there
           const lastBlock = blocks[blocks.length - 1];
           const lastEl = blockRefs.current.get(lastBlock.id);
 
-          if (!lastEl) return;
+          if (!lastEl) {
+            handleInsertBlock('text', blocks.length);
+            return;
+          }
 
           const rect = lastEl.getBoundingClientRect();
 
-          // If click is below the last block (with a small margin)
-          if (e.clientY > rect.bottom + 8) {
+          // If click is below the last block
+          if (e.clientY > rect.bottom) {
             if (isBlockEmpty(lastBlock)) {
               const focusable = lastEl.querySelector('.ProseMirror, input:not([disabled]), textarea:not([disabled])');
               (focusable as HTMLElement)?.focus();
@@ -412,6 +434,14 @@ export function BlockEditor({
                       onDelete={() => handleBlockDelete(block.id)}
                       onDuplicate={() => handleBlockDuplicate(block.id)}
                       onReorder={handleBlockReorder}
+                      onInsertBelow={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setSlashMenuPosition({ x: rect.left - 120, y: rect.bottom + 8 });
+                        setSlashMenuBlockId(null);
+                        setSlashMenuInsertPosition(index + 1);
+                        setShowSlashMenu(true);
+                      }}
                     />
                   )}
                 </div>
@@ -420,10 +450,178 @@ export function BlockEditor({
           </SortableContext>
         )}
 
+        {/* Notion-Style Interactive Bottom Block Creation Toolbar */}
+        {editable && blocks.length > 0 && (
+          <div
+            className="mt-6 mb-28 pt-4 border-t border-dashed border-border/60 hover:border-primary/50 transition-all rounded-xl p-4 bg-muted/10 hover:bg-muted/20 cursor-pointer group shadow-sm"
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest('button')) return;
+              handleInsertBlock('text', blocks.length);
+            }}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setSlashMenuPosition({ x: rect.left, y: rect.bottom + 8 });
+                    setSlashMenuBlockId(null);
+                    setSlashMenuInsertPosition(blocks.length);
+                    setShowSlashMenu(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium shadow-sm transition-all active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add block
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  Click to add or type <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-muted border border-border rounded text-foreground">/</kbd> for commands
+                </span>
+              </div>
+
+              {/* Quick block shortcuts */}
+              <div className="flex items-center flex-wrap gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('text', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Add text paragraph"
+                >
+                  <Type className="w-3.5 h-3.5" />
+                  Text
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('heading2', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Add heading"
+                >
+                  <Heading className="w-3.5 h-3.5" />
+                  Heading
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('image', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Upload image"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                  Image
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('file', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Upload file attachment"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-500" />
+                  File
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('bulletList', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Add bullet list"
+                >
+                  <List className="w-3.5 h-3.5 text-purple-500" />
+                  List
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('checkbox', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Add to-do checkbox"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />
+                  To-do
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('table', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Add table"
+                >
+                  <TableIcon className="w-3.5 h-3.5 text-indigo-500" />
+                  Table
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('code', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Add code block"
+                >
+                  <CodeIcon className="w-3.5 h-3.5 text-rose-500" />
+                  Code
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInsertBlock('callout', blocks.length);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="Add callout"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-yellow-500" />
+                  Callout
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setSlashMenuPosition({ x: rect.left - 120, y: rect.bottom + 8 });
+                    setSlashMenuBlockId(null);
+                    setSlashMenuInsertPosition(blocks.length);
+                    setShowSlashMenu(true);
+                  }}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
+                  title="More blocks (Table of Contents, Quotes, Embeds, Dividers)"
+                >
+                  <MoreHorizontal className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showSlashMenu && (
           <SlashCommandMenu
             position={slashMenuPosition}
             onSelect={(type) => {
+              if (slashMenuInsertPosition !== null) {
+                handleInsertBlock(type, slashMenuInsertPosition);
+                setShowSlashMenu(false);
+                setSlashMenuInsertPosition(null);
+                return;
+              }
+
               const blockIndex = slashMenuBlockId
                 ? blocks.findIndex((b) => b.id === slashMenuBlockId)
                 : blocks.length - 1;
@@ -447,7 +645,10 @@ export function BlockEditor({
               const insertPosition = blockIndex >= 0 ? blockIndex + 1 : blocks.length;
               handleInsertBlock(type, insertPosition);
             }}
-            onClose={() => setShowSlashMenu(false)}
+            onClose={() => {
+              setShowSlashMenu(false);
+              setSlashMenuInsertPosition(null);
+            }}
           />
         )}
       </div>

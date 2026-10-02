@@ -230,7 +230,7 @@ export function PageView({ pageId, onNavigate }: PageViewProps) {
       />
 
       {/* Block editor */}
-      <div className="px-16 pb-32">
+      <div className="px-16 pb-48 min-h-[calc(100vh-14rem)] flex flex-col cursor-text">
         <BlockEditor
           pageId={page.id}
           blocks={draftBlocks}

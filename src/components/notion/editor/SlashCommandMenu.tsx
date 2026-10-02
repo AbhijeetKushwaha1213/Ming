@@ -210,16 +210,26 @@ export function SlashCommandMenu({ position, onSelect, onClose }: SlashCommandMe
     setSelectedIndex(0);
   }, [searchQuery]);
 
+  const winW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const menuWidth = 320;
+  const menuHeight = 360;
+
+  const left = Math.max(16, Math.min(position.x, winW - menuWidth - 16));
+  const top = position.y + menuHeight > winH
+    ? Math.max(16, position.y - menuHeight - 8)
+    : position.y + 4;
+
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 w-80 bg-popover border border-border rounded-md shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
+      className="fixed z-50 w-80 bg-popover border border-border rounded-md shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
       role="dialog"
       aria-label="Insert block menu"
       aria-modal="true"
       style={{
-        top: position.y + 4,
-        left: position.x,
+        top,
+        left,
       }}
     >
       <div className="p-2 border-b border-border">

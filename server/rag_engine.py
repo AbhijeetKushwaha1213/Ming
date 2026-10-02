@@ -651,6 +651,22 @@ def search_relevant_chunks(
 
         try:
             results = collection.query(**query_params)
+            # If no results with strict sq_topic filter, retry without sq_topic (keeping user_id strictly isolated)
+            if (not results or not results.get("ids") or len(results["ids"][0]) == 0) and sq_topic and not source_id:
+                fallback_where = []
+                if user_id:
+                    fallback_where.append({"user_id": {"$eq": str(user_id)}})
+                query_fallback = {
+                    "query_texts": [sq_norm or sq_text],
+                    "n_results": candidate_k
+                }
+                if len(fallback_where) == 1:
+                    query_fallback["where"] = fallback_where[0]
+                elif len(fallback_where) > 1:
+                    query_fallback["where"] = {"$and": fallback_where}
+                fallback_res = collection.query(**query_fallback)
+                if fallback_res and fallback_res.get("ids") and len(fallback_res["ids"][0]) > 0:
+                    results = fallback_res
         except Exception as e:
             if user_id:
                 # Maintain strict user isolation - do not query without user_id filter
@@ -1279,6 +1295,295 @@ def verify_question(q: Dict[str, Any], chunk: Dict[str, Any]) -> Tuple[bool, Lis
     is_valid = len(issues) == 0
     return is_valid, issues
 
+def _generate_curriculum_baseline_questions(
+    topic: str,
+    subtopic: Optional[str] = None,
+    difficulty: str = "medium",
+    count: int = 5,
+    question_type: str = "MCQ",
+    assessment_id: Optional[str] = None,
+    used_fps: Optional[set] = None
+) -> List[Dict[str, Any]]:
+    """
+    Generate high-quality diagnostic baseline assessment questions grounded in standard academic curriculum 
+    when no personal course materials are found for the student.
+    """
+    asmt_id = assessment_id or f"asmt_{int(time.time() * 1000)}"
+    used_fps = used_fps or set()
+    topic_clean = topic.strip().title()
+    subtopic_clean = (subtopic or "Diagnostic Baseline").strip().title()
+
+    questions = []
+
+    # 1. Try Gemini generation if API key is present
+    raw_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("VITE_GEMINI_API_KEY") or ""
+    api_key = raw_api_key.strip().strip('"').strip("'")
+    if api_key:
+        try:
+            import httpx
+            prompt = (
+                f"You are an expert university professor creating an adaptive diagnostic assessment.\n"
+                f"Course Topic: {topic_clean}\n"
+                f"Subtopic: {subtopic_clean}\n"
+                f"Difficulty: {difficulty}\n"
+                f"Target Question Count: {count}\n"
+                f"Format: {question_type}\n\n"
+                f"Generate exactly {count} distinct, rigorous diagnostic assessment questions assessing baseline conceptual knowledge.\n"
+                f"Return ONLY a valid JSON array of objects with the following schema for each question:\n"
+                f"[\n"
+                f"  {{\n"
+                f"    \"question\": \"clear question stem\",\n"
+                f"    \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n"
+                f"    \"correct_answer\": \"the exact correct option text\",\n"
+                f"    \"explanation\": \"clear pedagogical rationale explaining why this answer is correct and why other choices are wrong (at least 20 words)\",\n"
+                f"    \"subtopic\": \"specific concept tested\"\n"
+                f"  }}\n"
+                f"]"
+            )
+            gemini_payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "maxOutputTokens": 2048
+                }
+            }
+            preferred_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+            for model in [preferred_model, "gemini-2.5-flash-lite", "gemini-flash-latest"]:
+                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                try:
+                    resp = httpx.post(gemini_url, json=gemini_payload, timeout=12.0)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        text_resp = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        m = re.search(r'\[.*\]', text_resp, re.DOTALL)
+                        if m:
+                            parsed_qs = json.loads(m.group(0))
+                            if isinstance(parsed_qs, list) and len(parsed_qs) > 0:
+                                for idx, pq in enumerate(parsed_qs[:count]):
+                                    stem = pq.get("question", "").strip()
+                                    opts = pq.get("options", [])
+                                    ans = str(pq.get("correct_answer", "")).strip()
+                                    expl = pq.get("explanation", "").strip()
+                                    subt = pq.get("subtopic", subtopic_clean)
+                                    if stem and len(opts) >= 2 and ans:
+                                        fp = compute_question_fingerprint(stem, ans, f"chunk_curriculum_{idx}")
+                                        questions.append({
+                                            "question_id": f"q_curr_{int(time.time()*1000)}_{idx}",
+                                            "assessment_id": asmt_id,
+                                            "type": question_type.upper() if question_type.upper() in ["MCQ", "SHORT_ANSWER", "NUMERICAL"] else "MCQ",
+                                            "topic": topic_clean,
+                                            "subtopic": subt,
+                                            "difficulty": difficulty,
+                                            "source_id": "src_curriculum_standard",
+                                            "chunk_id": f"chunk_curriculum_{idx}",
+                                            "page_number": None,
+                                            "slide_number": None,
+                                            "timestamp_start": None,
+                                            "timestamp_end": None,
+                                            "question": stem,
+                                            "options": opts,
+                                            "correct_answer": ans,
+                                            "explanation": expl or f"Standard academic curriculum benchmark rationale for {topic_clean}.",
+                                            "fingerprint": fp,
+                                            "citation_label": f"Standard Academic Curriculum ({topic_clean})"
+                                        })
+                                if len(questions) >= count:
+                                    return questions
+                except Exception as ex:
+                    logger.warning(f"Baseline Gemini call to {model} failed: {ex}")
+        except Exception as e:
+            logger.warning(f"Gemini baseline generation error: {e}")
+
+    # 2. Structured curriculum template fallback if Gemini unavailable
+    norm_t = topic.lower()
+    domain_bank = []
+
+    if any(k in norm_t for k in ["operating", "os", "kernel", "linux", "unix", "process", "concurrency"]):
+        domain_bank = [
+            {
+                "subtopic": "Process Lifecycle & State Transitions",
+                "question": f"In {topic_clean}, which state transition occurs when an executing process issues an I/O request and must wait for completion?",
+                "options": ["Running to Blocked/Waiting", "Blocked to Running", "Ready to Terminated", "Running to Ready"],
+                "correct_answer": "Running to Blocked/Waiting",
+                "explanation": "When an executing process issues a blocking I/O request or system call, it moves from the Running state to the Blocked/Waiting state until the I/O operation completes."
+            },
+            {
+                "subtopic": "Deadlock Characterization & Prevention",
+                "question": f"Which of the following conditions is NOT one of the four essential Coffman conditions required for a deadlock to occur?",
+                "options": ["Preemptive Resource Allocation", "Mutual Exclusion", "Hold and Wait", "Circular Wait"],
+                "correct_answer": "Preemptive Resource Allocation",
+                "explanation": "Deadlock requires No Preemption (resources cannot be forcibly taken from a process holding them), along with Mutual Exclusion, Hold and Wait, and Circular Wait."
+            },
+            {
+                "subtopic": "Virtual Memory & Address Translation",
+                "question": f"What is the primary role of the Translation Lookaside Buffer (TLB) in {topic_clean} memory management?",
+                "options": [
+                    "To cache recent virtual-to-physical address translations for fast lookup",
+                    "To store secondary disk swap partitions for backing storage",
+                    "To allocate CPU execution slices to user-level threads",
+                    "To encrypt process memory spaces during hardware context switching"
+                ],
+                "correct_answer": "To cache recent virtual-to-physical address translations for fast lookup",
+                "explanation": "The TLB is a high-speed associative hardware cache that stores recently used page table mappings to avoid repeated memory access delays."
+            },
+            {
+                "subtopic": "CPU Scheduling Algorithms",
+                "question": f"Which CPU scheduling algorithm provides the theoretical minimum average waiting time for a stationary set of processes?",
+                "options": ["Shortest Job First (SJF)", "First-Come, First-Served (FCFS)", "Round Robin (RR)", "Multilevel Feedback Queue without priority aging"],
+                "correct_answer": "Shortest Job First (SJF)",
+                "explanation": "Shortest Job First (SJF) is provably optimal with respect to minimizing average waiting time for a given set of stationary jobs."
+            },
+            {
+                "subtopic": "File System Architecture & Inodes",
+                "question": f"In a standard UNIX file system architecture, which data is stored inside an inode?",
+                "options": [
+                    "File metadata, permissions, owner ID, size, and data block pointers (excluding the file name)",
+                    "The human-readable file name and its parent directory path only",
+                    "The raw unstructured payload bytes stored contiguously on the platter",
+                    "The operating system kernel symbol lookup table"
+                ],
+                "correct_answer": "File metadata, permissions, owner ID, size, and data block pointers (excluding the file name)",
+                "explanation": "An inode stores all file metadata (file size, permissions, owner, timestamps, and pointers to disk blocks), while the file name is stored separately in the directory table."
+            }
+        ]
+    elif any(k in norm_t for k in ["network", "tcp", "ip", "http", "routing", "protocol"]):
+        domain_bank = [
+            {
+                "subtopic": "Transport Layer Flow Control",
+                "question": f"In {topic_clean}, how does TCP achieve reliable end-to-end transport across an unreliable network layer?",
+                "options": [
+                    "Through sequence numbers, cumulative acknowledgments, and retransmission timers",
+                    "By rejecting all incoming packets when latency exceeds 10 milliseconds",
+                    "By requiring optical line-of-sight hardware between communicating nodes",
+                    "By disabling checksum verification at intermediate switches"
+                ],
+                "correct_answer": "Through sequence numbers, cumulative acknowledgments, and retransmission timers",
+                "explanation": "TCP ensures reliability over unreliable IP by sequencing bytes, requiring acknowledgments, and using adaptive timeout retransmissions."
+            },
+            {
+                "subtopic": "Congestion Avoidance",
+                "question": f"What event typically signals network congestion to a standard TCP Reno sender?",
+                "options": ["Receipt of 3 duplicate ACKs or a retransmission timeout", "A negative ACK frame received from the gateway router", "Local CPU utilization reaching 100 percent", "A DNS resolution failure"],
+                "correct_answer": "Receipt of 3 duplicate ACKs or a retransmission timeout",
+                "explanation": "TCP Reno infers packet loss and congestion either through 3 duplicate ACKs (fast retransmit) or an explicit RTO timeout."
+            },
+            {
+                "subtopic": "OSI & TCP/IP Model Abstraction",
+                "question": f"Which layer in the standard protocol stack is responsible for end-to-end process-to-process communication?",
+                "options": ["Transport Layer", "Network (Internet) Layer", "Data Link Layer", "Physical Layer"],
+                "correct_answer": "Transport Layer",
+                "explanation": "The Transport layer (e.g. TCP/UDP) handles process-to-process port communication, whereas the Network layer handles host-to-host routing."
+            },
+            {
+                "subtopic": "Routing Protocols",
+                "question": f"Which metric does Dijkstra's algorithm calculate in Link-State routing protocols like OSPF?",
+                "options": ["Shortest path tree to all network nodes based on link cost", "Hop count bounded strictly by 15 hops", "Round-trip ping time measured per second", "BGP autonomous system path attributes"],
+                "correct_answer": "Shortest path tree to all network nodes based on link cost",
+                "explanation": "OSPF uses Dijkstra's shortest path first algorithm to compute loop-free minimum-cost paths to all destinations in the topology."
+            },
+            {
+                "subtopic": "Domain Name System",
+                "question": f"What is the primary role of DNS in Internet architecture?",
+                "options": ["Translating human-friendly domain names to IP addresses", "Encrypting HTTP request bodies across public Wi-Fi", "Assigning MAC addresses to physical network interfaces", "Balancing CPU workloads across symmetric multiprocessing cores"],
+                "correct_answer": "Translating human-friendly domain names to IP addresses",
+                "explanation": "DNS acts as the distributed directory service translating human-readable hostnames into routable numerical IP addresses."
+            }
+        ]
+    else:
+        # High quality generic conceptual diagnostic bank
+        domain_bank = [
+            {
+                "subtopic": "Foundational Principles",
+                "question": f"In the study of {topic_clean}, what is the primary conceptual objective of baseline diagnostic evaluation?",
+                "options": [
+                    f"To systematically identify foundational strengths, knowledge gaps, and core primitives in {topic_clean}",
+                    "To generate fabricated progress metrics without assessing verified student understanding",
+                    "To bypass prerequisite invariant verification and jump directly to non-grounded exercises",
+                    "To mandate rote memorization without contextual reasoning or problem solving"
+                ],
+                "correct_answer": f"To systematically identify foundational strengths, knowledge gaps, and core primitives in {topic_clean}",
+                "explanation": f"Diagnostic assessments calibrate the student's Bayesian Knowledge Tracing baseline on {topic_clean} to uncover precise weaknesses."
+            },
+            {
+                "subtopic": "System Invariants & Constraints",
+                "question": f"Which analytical method is most effective when establishing system invariants in {topic_clean}?",
+                "options": [
+                    "Formally specifying boundary conditions, safety invariants, and operational trade-offs",
+                    "Assuming unconstrained resource availability across all operational scenarios",
+                    "Discarding edge cases whenever empirical testing produces sporadic errors",
+                    "Restricting verification strictly to the simplest trivial test vector"
+                ],
+                "correct_answer": "Formally specifying boundary conditions, safety invariants, and operational trade-offs",
+                "explanation": "Rigorous academic study requires explicit modeling of boundary constraints, system safety guarantees, and trade-offs."
+            },
+            {
+                "subtopic": "Methodology & Execution",
+                "question": f"When solving complex problems in {topic_clean} ({subtopic_clean}), which structured approach ensures correctness?",
+                "options": [
+                    "Decomposing the problem into verifiable sub-components and verifying pre/post-conditions",
+                    "Applying arbitrary heuristic guesses without verifying correctness invariants",
+                    "Skipping error handling and assuming inputs always conform to ideal expectations",
+                    "Ignoring standard algorithmic complexity constraints"
+                ],
+                "correct_answer": "Decomposing the problem into verifiable sub-components and verifying pre/post-conditions",
+                "explanation": "Modular decomposition and invariant validation ensure verifiable correctness in complex technical topics."
+            },
+            {
+                "subtopic": "Trade-offs & Optimization",
+                "question": f"In {topic_clean}, how should practitioners evaluate trade-offs between competing design strategies?",
+                "options": [
+                    "By quantifying metrics such as efficiency, latency, reliability, and computational complexity",
+                    "By selecting whichever approach has the fewest characters in its naming convention",
+                    "By prioritizing ease of superficial implementation over correctness and scalability",
+                    "By assuming all configurations yield identical performance characteristics"
+                ],
+                "correct_answer": "By quantifying metrics such as efficiency, latency, reliability, and computational complexity",
+                "explanation": "Principled engineering decisions require objective evaluation against defined performance and scalability metrics."
+            },
+            {
+                "subtopic": "Continuous Mastery & Retrieval",
+                "question": f"According to cognitive learning science applied to {topic_clean}, which study technique produces highest long-term retention?",
+                "options": [
+                    "Active retrieval practice with spaced repetition and immediate explanatory feedback",
+                    "Passive re-reading of summarized notes without self-testing",
+                    "Unfocused skimming of headings the night before an assessment",
+                    "Highlighting textbook sentences without active recall exercises"
+                ],
+                "correct_answer": "Active retrieval practice with spaced repetition and immediate explanatory feedback",
+                "explanation": "Cognitive psychology demonstrates that active retrieval practice and spaced repetition maximize memory consolidation and concept mastery."
+            }
+        ]
+
+    for idx, item in enumerate(domain_bank[:count]):
+        stem = item["question"]
+        ans = item["correct_answer"]
+        expl = item["explanation"]
+        subt = item["subtopic"]
+        opts = item["options"]
+        fp = compute_question_fingerprint(stem, ans, f"chunk_curriculum_{idx}")
+        questions.append({
+            "question_id": f"q_curr_{int(time.time()*1000)}_{idx}",
+            "assessment_id": asmt_id,
+            "type": question_type.upper() if question_type.upper() in ["MCQ", "SHORT_ANSWER", "NUMERICAL"] else "MCQ",
+            "topic": topic_clean,
+            "subtopic": subt,
+            "difficulty": difficulty,
+            "source_id": "src_curriculum_standard",
+            "chunk_id": f"chunk_curriculum_{idx}",
+            "page_number": None,
+            "slide_number": None,
+            "timestamp_start": None,
+            "timestamp_end": None,
+            "question": stem,
+            "options": opts,
+            "correct_answer": ans,
+            "explanation": expl,
+            "fingerprint": fp,
+            "citation_label": f"Standard Academic Curriculum ({topic_clean})"
+        })
+
+    return questions
+
 def generate_grounded_assessment(
     topic: str,
     user_id: str,
@@ -1309,10 +1614,33 @@ def generate_grounded_assessment(
     )
 
     results = search_res.get("results", [])
+    asmt_id = assessment_id or f"asmt_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
+
     if not results:
+        # Fall back to standard curriculum diagnostic assessment so new learners are never blocked
+        baseline_questions = _generate_curriculum_baseline_questions(
+            topic=topic,
+            subtopic=subtopic,
+            difficulty=difficulty,
+            count=count,
+            question_type=question_type,
+            assessment_id=asmt_id,
+            used_fps=used_fps
+        )
+        if baseline_questions:
+            return {
+                "success": True,
+                "assessment_id": asmt_id,
+                "topic": topic,
+                "subtopic": subtopic or "Diagnostic Baseline",
+                "difficulty": difficulty,
+                "total_questions": len(baseline_questions),
+                "questions": baseline_questions,
+                "is_baseline": True
+            }
         return {
             "success": False,
-            "error": "No course materials found for this topic and student. Please upload textbooks, slides, or lecture videos first.",
+            "error": "No course materials found for this topic and student. Please upload textbooks, slides, or lecture videos first in Resources.",
             "questions": []
         }
 

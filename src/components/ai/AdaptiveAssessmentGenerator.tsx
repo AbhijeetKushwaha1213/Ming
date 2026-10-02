@@ -18,11 +18,15 @@ import {
   FileText,
   Presentation,
   Video,
+  AlertCircle,
+  ExternalLink,
+  UploadCloud,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { generateAssessment, getAssessmentHistory, AssessmentQuestion, DiagnosticReport } from '@/api/assessmentAPI';
 import { QuizViewer } from '@/components/flashcards/QuizViewer';
+import { navigateToTab } from '@/utils/navigation';
 
 export const AdaptiveAssessmentGenerator: React.FC = () => {
   const { user } = useAuth();
@@ -41,6 +45,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeQuestions, setActiveQuestions] = useState<AssessmentQuestion[] | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [generationNotice, setGenerationNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const handlePrefill = (e: any) => {
@@ -90,6 +95,104 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
     loadHistory();
   }, [user, activeQuestions]);
 
+  const handleGenerateBaseline = async () => {
+    const currentTopic = topic.trim() || 'Course Diagnostic';
+    const fallbackQuestions: AssessmentQuestion[] = [
+      {
+        question_id: `q_diag_1_${Date.now()}`,
+        type: 'MCQ',
+        topic: currentTopic,
+        subtopic: subtopic.trim() || 'Core Primitives & Invariants',
+        difficulty,
+        question: `In ${currentTopic}, which principle accurately governs baseline conceptual correctness?`,
+        options: [
+          'Systematic enforcement of safety invariants and prerequisite conditions',
+          'Unverified arbitrary guesses without invariant verification',
+          'Surface-level rote memorization without contextual reasoning',
+          'Skipping boundary constraints and edge cases'
+        ],
+        correct_answer: 'Systematic enforcement of safety invariants and prerequisite conditions',
+        explanation: `Diagnostic baseline assessments verify foundational understanding of core primitives and invariants in ${currentTopic}.`,
+        source_id: 'src_curriculum_standard',
+        citation_label: `Curriculum Diagnostic Baseline (${currentTopic})`
+      },
+      {
+        question_id: `q_diag_2_${Date.now()}`,
+        type: 'MCQ',
+        topic: currentTopic,
+        subtopic: subtopic.trim() || 'Methodology & Assessment',
+        difficulty,
+        question: `Which methodology provides optimal long-term retention and diagnostic tracking for ${currentTopic}?`,
+        options: [
+          'Active retrieval practice and Bayesian Knowledge Tracing',
+          'Passive re-reading of notes without any assessment',
+          'Cramming only the night before an examination',
+          'Randomly skimming headings without solving problems'
+        ],
+        correct_answer: 'Active retrieval practice and Bayesian Knowledge Tracing',
+        explanation: 'Active recall and spaced repetition maximize memory consolidation and accurately calibrate knowledge state.',
+        source_id: 'src_curriculum_standard',
+        citation_label: `Curriculum Diagnostic Baseline (${currentTopic})`
+      },
+      {
+        question_id: `q_diag_3_${Date.now()}`,
+        type: 'MCQ',
+        topic: currentTopic,
+        subtopic: subtopic.trim() || 'System Trade-offs',
+        difficulty,
+        question: `When analyzing architectural trade-offs in ${currentTopic}, what is the primary consideration?`,
+        options: [
+          'Balancing performance, latency, and correctness invariants',
+          'Assuming unconstrained resource availability',
+          'Ignoring edge case failures when average case works',
+          'Using maximum possible complexity regardless of necessity'
+        ],
+        correct_answer: 'Balancing performance, latency, and correctness invariants',
+        explanation: 'Principled system architecture requires balancing efficiency and correctness across operational scenarios.',
+        source_id: 'src_curriculum_standard',
+        citation_label: `Curriculum Diagnostic Baseline (${currentTopic})`
+      },
+      {
+        question_id: `q_diag_4_${Date.now()}`,
+        type: 'MCQ',
+        topic: currentTopic,
+        subtopic: subtopic.trim() || 'Execution Flow',
+        difficulty,
+        question: `How should error handling and anomalous states be managed in ${currentTopic}?`,
+        options: [
+          'Through explicit boundary checks, error propagation, and safe fallback states',
+          'By terminating the environment silently without logging evidence',
+          'By assuming all client inputs conform to ideal formatting constraints',
+          'By ignoring hardware interrupts and peripheral signals'
+        ],
+        correct_answer: 'Through explicit boundary checks, error propagation, and safe fallback states',
+        explanation: 'Robust systems require deterministic boundary checks and graceful failure modes.',
+        source_id: 'src_curriculum_standard',
+        citation_label: `Curriculum Diagnostic Baseline (${currentTopic})`
+      },
+      {
+        question_id: `q_diag_5_${Date.now()}`,
+        type: 'MCQ',
+        topic: currentTopic,
+        subtopic: subtopic.trim() || 'Continuous Calibration',
+        difficulty,
+        question: `Why is an initial diagnostic assessment essential prior to full-course study planning in ${currentTopic}?`,
+        options: [
+          'To calibrate the Bayesian Knowledge Tracing baseline without fabricating mastery',
+          'To assign permanent final grades before starting coursework',
+          'To lock access to reference materials indefinitely',
+          'To bypass foundational prerequisites entirely'
+        ],
+        correct_answer: 'To calibrate the Bayesian Knowledge Tracing baseline without fabricating mastery',
+        explanation: 'Baseline diagnostics calibrate P(L0) knowledge states so study agents prioritize genuine weak concepts.',
+        source_id: 'src_curriculum_standard',
+        citation_label: `Curriculum Diagnostic Baseline (${currentTopic})`
+      }
+    ];
+    setActiveQuestions(fallbackQuestions);
+    setGenerationNotice(null);
+  };
+
   const handleGenerate = async () => {
     if (!topic.trim()) {
       toast({
@@ -101,6 +204,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
     }
 
     setIsGenerating(true);
+    setGenerationNotice(null);
 
     try {
       const result = await generateAssessment({
@@ -114,23 +218,26 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
       });
 
       if (!result.questions || result.questions.length === 0) {
+        setGenerationNotice('No verified course materials found matching this topic. Please upload textbooks, slides, or lecture videos in Resources, or take the standard diagnostic baseline assessment.');
         toast({
           title: 'Insufficient Course Evidence',
-          description: 'No verified course materials found matching this topic. Please upload source material first.',
+          description: 'No verified course materials found matching this topic. You can upload files in Resources or start a standard diagnostic baseline.',
           variant: 'destructive',
         });
         return;
       }
 
       setActiveQuestions(result.questions);
+      setGenerationNotice(null);
       toast({
         title: 'Assessment Ready',
         description: `Generated and verified ${result.questions.length} grounded questions.`,
       });
     } catch (err: any) {
+      setGenerationNotice(err.message || 'No course materials found for this topic and student. Please upload course materials in Resources, or take the standard diagnostic assessment.');
       toast({
-        title: 'Generation Failed',
-        description: err.message || 'Unable to generate assessment. Please try again.',
+        title: 'Course Materials Required',
+        description: err.message || 'Unable to retrieve course chunks. You can upload files in Resources or take the diagnostic baseline.',
         variant: 'destructive',
       });
     } finally {
@@ -199,6 +306,57 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
           Configure Assessment Parameters
         </h3>
 
+        {availableSources.length === 0 && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <span>
+                <strong>No course materials uploaded yet:</strong> You can take a standard curriculum diagnostic assessment, or upload textbooks, slides, and videos in Resources to generate questions citing exact pages and timestamps.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              type="button"
+              onClick={() => navigateToTab('resources')}
+              className="border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-xs h-7 px-2.5 flex-shrink-0"
+            >
+              <UploadCloud className="w-3.5 h-3.5 mr-1" />
+              Upload Materials in Resources ↗
+            </Button>
+          </div>
+        )}
+
+        {generationNotice && (
+          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 space-y-2.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-rose-700 dark:text-rose-300">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{generationNotice}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                type="button"
+                onClick={() => navigateToTab('resources')}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 px-3 gap-1.5 shadow-xs"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                Upload Course Materials in Resources ↗
+              </Button>
+              <Button
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={handleGenerateBaseline}
+                className="text-xs h-8 px-3 gap-1.5 border-rose-300 dark:border-rose-700 hover:bg-rose-100/50"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Take Standard Diagnostic Assessment Now
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Source / Course Selection */}
           <div className="space-y-2">
@@ -216,7 +374,20 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">Select a specific textbook, slide deck, or all uploaded materials.</p>
+            {availableSources.length === 0 ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <span>0 sources uploaded.</span>
+                <button
+                  type="button"
+                  onClick={() => navigateToTab('resources')}
+                  className="font-medium underline hover:text-amber-700 dark:hover:text-amber-300 inline-flex items-center gap-0.5"
+                >
+                  Upload textbooks/slides in Resources <ExternalLink className="w-2.5 h-2.5" />
+                </button>
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Select a specific textbook, slide deck, or all uploaded materials.</p>
+            )}
           </div>
 
           {/* Topic */}
@@ -307,30 +478,43 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
         </div>
 
         {/* Action Button */}
-        <div className="pt-4 border-t flex items-center justify-between">
+        <div className="pt-4 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
             <span>Passes automated verification to eliminate hallucinated questions and repeat duplicates.</span>
           </div>
 
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating || !topic.trim()}
-            size="lg"
-            className="bg-brand-gradient text-white shadow-glow hover:opacity-95 transition-opacity px-6"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Retrieving Evidence & Verifying...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Generate Grounded Assessment
-              </>
-            )}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGenerateBaseline}
+              size="lg"
+              className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs px-4 h-10 w-full sm:w-auto"
+            >
+              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+              Take Standard Diagnostic Baseline
+            </Button>
+
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating || !topic.trim()}
+              size="lg"
+              className="bg-brand-gradient text-white shadow-glow hover:opacity-95 transition-opacity px-6 h-10 w-full sm:w-auto"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Retrieving Evidence & Verifying...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate Grounded Assessment
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </Card>
 

@@ -22,8 +22,10 @@ export interface DiagnosticReport {
   percentage: number;
   totalQuestions: number;
   correctCount: number;
-  topicPerformance: Record<string, { total: number; correct: number; percentage: number }>;
-  difficultyPerformance: Record<string, { total: number; correct: number; percentage: number }>;
+  partialCount?: number;
+  incorrectCount?: number;
+  topicPerformance?: Record<string, { total: number; correct: number; percentage: number }>;
+  difficultyPerformance?: Record<string, { total: number; correct: number; percentage: number }>;
   incorrectAnswers: Array<{
     questionId: string;
     question: string;
@@ -33,12 +35,50 @@ export interface DiagnosticReport {
     citationLabel: string;
     location?: any;
   }>;
-  likelyMisconceptions: string[];
-  recommendedSourceMaterial: Array<{
+  likelyMisconceptions: any[];
+  topicWiseMastery?: Record<string, {
+    topic: string;
+    priorMastery: number;
+    posteriorMastery: number;
+    masteryDelta: number;
+    correctCount: number;
+    totalCount: number;
+    status: string;
+  }>;
+  weakConcepts?: string[];
+  repeatedMistakes?: Array<{
+    topic: string;
+    subtopic: string;
+    concept: string;
+    frequency: number;
+    firstEncounteredAt: string;
+    lastEncounteredAt: string;
+    patternSummary: string;
+    previousAttemptIds: string[];
+  }>;
+  confidenceAndMasteryChanges?: Array<{
+    topic: string;
+    subtopic?: string | null;
+    priorMastery: number;
+    posteriorMastery: number;
+    delta: number;
+    confidence: number;
+  }>;
+  recommendedNextActions?: Array<{
+    priority: number;
+    actionType: string;
+    title: string;
+    topic: string;
+    subtopic?: string | null;
+    sourceCoordinate?: string | null;
+    reason: string;
+    expectedOutcome: string;
+  }>;
+  recommendedSourceMaterial?: Array<{
     topic: string;
     subtopic: string;
     coordinate: string;
-    chunkId?: string;
+    chunkId?: string | null;
     recommendation: string;
   }>;
 }
@@ -53,10 +93,16 @@ export interface AssessmentAttemptResult {
     questionId: string;
     userAnswer: string;
     correctAnswer: string;
+    classification?: string;
+    credit?: number;
     isCorrect: boolean;
+    isPartial?: boolean;
     feedback: string;
     explanation: string;
+    sourceCitation?: string;
+    citationLabel?: string;
     location?: any;
+    detectedMisconception?: any;
   }>;
   diagnosticReport: DiagnosticReport;
 }
@@ -123,3 +169,51 @@ export async function getAssessmentHistory(userId: string): Promise<{ success: b
   }
   return res.json();
 }
+
+export async function getMisconceptions(userId: string, topic?: string): Promise<{
+  success: boolean;
+  misconceptions: any[];
+  repeatedMistakes: any[];
+  summary: {
+    total: number;
+    repeatedCount: number;
+    highSeverityCount: number;
+  };
+}> {
+  const url = topic
+    ? `${API_BASE}/misconceptions?userId=${encodeURIComponent(userId)}&topic=${encodeURIComponent(topic)}`
+    : `${API_BASE}/misconceptions?userId=${encodeURIComponent(userId)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch misconceptions: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function getDiagnosticAttempt(attemptId: string, userId?: string): Promise<{
+  success: boolean;
+  attemptId: string;
+  userId: string;
+  title: string;
+  topic: string;
+  subtopic: string | null;
+  difficulty: string;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  completedAt: string;
+  diagnosticReport: DiagnosticReport;
+  questions: AssessmentQuestion[];
+  answers: any[];
+  evaluations: any[];
+}> {
+  const url = userId
+    ? `${API_BASE}/diagnostic?attemptId=${encodeURIComponent(attemptId)}&userId=${encodeURIComponent(userId)}`
+    : `${API_BASE}/diagnostic?attemptId=${encodeURIComponent(attemptId)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch diagnostic attempt: ${res.statusText}`);
+  }
+  return res.json();
+}
+

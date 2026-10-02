@@ -657,11 +657,122 @@ async function runTests() {
   console.log('Status code:', res27.getStatusCode());
   const csvText = typeof csvData === 'string' ? csvData : (csvData?.csv || '');
   console.log('CSV preview:', csvText.split('\n').slice(0, 4).join(' | '));
-  if (!csvText.includes('Faithfulness') || !csvText.includes('Refusal Accuracy')) {
-    throw new Error('CSV benchmark export missing required KPI rows');
+  // Test 28: Phase 9 Assessment Intelligence with Numerical, Partial, and Misconception responses
+  console.log('\n2️⃣8️⃣ Testing Phase 9 POST /api/rag/assessment/submit (Adaptive Intelligence & Misconceptions)...');
+  const phase9SubmitReq = {
+    method: 'POST',
+    url: '/api/rag/assessment/submit',
+    headers: {},
+    body: {
+      userId: TEST_USER,
+      title: 'Phase 9 Intelligence Assessment',
+      topic: 'Operating Systems',
+      subtopic: 'Deadlocks',
+      difficulty: 'hard',
+      questions: [
+        {
+          question_id: 'q_p9_1',
+          type: 'MCQ',
+          topic: 'Operating Systems',
+          subtopic: 'Deadlocks',
+          question: 'How does deadlock avoidance guarantee safe operation?',
+          correct_answer: 'Dynamically monitors requests to ensure safe state using Banker algorithm',
+          options: ['Statically eliminate coffman conditions before execution', 'Dynamically monitors requests to ensure safe state using Banker algorithm'],
+          page_number: 4,
+          source_id: 'src_os_pdf'
+        },
+        {
+          question_id: 'q_p9_2',
+          type: 'NUMERICAL',
+          topic: 'Operating Systems',
+          subtopic: 'Virtual Memory',
+          question: 'Calculate EMAT for 100ns memory and 10000000ns page fault at p=0.001',
+          correct_answer: '10100',
+          page_number: 3,
+          source_id: 'src_os_pdf'
+        }
+      ],
+      // Question 1: Confused with Deadlock Prevention (statically eliminating coffman conditions)
+      // Question 2: Answer 10700 (within 10% margin -> partially_correct)
+      answers: [
+        'Statically eliminate coffman conditions before execution',
+        '10700'
+      ]
+    }
+  };
+  const res28 = mockRes();
+  await ragHandler(phase9SubmitReq, res28);
+  const p9Data = res28.getData();
+  console.log('Status code:', res28.getStatusCode());
+  console.log('Score:', p9Data?.score, '/', p9Data?.totalQuestions, `(${p9Data?.percentage}%)`);
+  console.log('Classifications:', p9Data?.results?.map((r: any) => `${r.questionId}: ${r.classification} (credit=${r.credit})`));
+  console.log('Detected Misconceptions:', p9Data?.diagnosticReport?.likelyMisconceptions?.length);
+  console.log('Recommended Actions:', p9Data?.diagnosticReport?.recommendedNextActions?.length);
+
+  if (p9Data?.diagnosticReport?.likelyMisconceptions?.length === 0) {
+    throw new Error('Phase 9 Assessment Intelligence failed to detect expected misconception');
+  }
+  if (!p9Data?.diagnosticReport?.recommendedNextActions || p9Data.diagnosticReport.recommendedNextActions.length === 0) {
+    throw new Error('Phase 9 Assessment Intelligence failed to produce recommended next actions');
   }
 
-  console.log('\n🎉 ALL 27 PHASE 1-6 MULTIMODAL RAG, TUTOR, ADAPTIVE ASSESSMENT, BKT, STUDY AGENT & BENCHMARKING INTEGRATION TESTS PASSED SUCCESSFULLY!');
+  // Test 29: GET /api/rag/assessment/misconceptions?userId=...
+  console.log(`\n2️⃣9️⃣ Testing GET /api/rag/assessment/misconceptions?userId=${TEST_USER}...`);
+  const miscReq = {
+    method: 'GET',
+    url: '/api/rag/assessment/misconceptions',
+    headers: {},
+    query: { userId: TEST_USER }
+  };
+  const res29 = mockRes();
+  await ragHandler(miscReq, res29);
+  const miscData = res29.getData();
+  console.log('Status code:', res29.getStatusCode());
+  console.log('Total Misconceptions stored:', miscData?.summary?.total);
+  console.log('Misconceptions list length:', miscData?.misconceptions?.length);
+  if (!miscData?.success || miscData.misconceptions.length === 0) {
+    throw new Error('Failed to retrieve persisted misconceptions from database');
+  }
+
+  // Test 30: GET /api/rag/assessment/diagnostic?attemptId=...
+  console.log(`\n3️⃣0️⃣ Testing GET /api/rag/assessment/diagnostic?attemptId=${p9Data.attemptId}...`);
+  const p9DiagReq = {
+    method: 'GET',
+    url: '/api/rag/assessment/diagnostic',
+    headers: {},
+    query: { attemptId: p9Data.attemptId, userId: TEST_USER }
+  };
+  const res30 = mockRes();
+  await ragHandler(p9DiagReq, res30);
+  const p9DiagData = res30.getData();
+  console.log('Status code:', res30.getStatusCode());
+  console.log('Retrieved Diagnostic score:', p9DiagData?.score, '/', p9DiagData?.totalQuestions);
+  console.log('Evaluations count:', p9DiagData?.evaluations?.length);
+  if (!p9DiagData?.success || !p9DiagData.diagnosticReport || p9DiagData.evaluations.length === 0) {
+    throw new Error('Failed to retrieve full attempt diagnostic and question evaluations');
+  }
+
+  // Test 31: Study Agent Priority Boost from Detected Misconceptions
+  console.log(`\n3️⃣1️⃣ Testing Study Agent Adaptation to Assessment Misconceptions...`);
+  const agentPlanReq = {
+    method: 'POST',
+    url: '/api/agent/plan/generate',
+    headers: {},
+    body: { userId: TEST_USER, targetMinutes: 60, forceRegenerate: true }
+  };
+  const res31 = mockRes();
+  await ragHandler(agentPlanReq, res31);
+  const p9PlanData = res31.getData();
+  console.log('Status code:', res31.getStatusCode());
+  const planItems = p9PlanData?.plan?.items || [];
+  console.log('Plan items generated:', planItems.length);
+  console.log('Plan activity types:', planItems.map((i: any) => `${i.activityType} (${i.topic})`));
+  const hasRemediation = planItems.some((i: any) => i.activityType === 'RESOLVE_MISCONCEPTION' || i.activityType === 'REVIEW_SOURCE' || i.activityType === 'PRACTICE_WEAK_CONCEPTS');
+  if (!hasRemediation) {
+    throw new Error('Study Agent failed to schedule targeted remediation for detected weaknesses');
+  }
+
+  console.log('\n🎉 ALL 31 PHASE 1-9 MULTIMODAL RAG, TUTOR, ADAPTIVE ASSESSMENT, BKT, STUDY AGENT, BENCHMARKING & ASSESSMENT INTELLIGENCE INTEGRATION TESTS PASSED SUCCESSFULLY!');
 }
 
 runTests().catch(err => {

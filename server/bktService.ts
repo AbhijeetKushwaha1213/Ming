@@ -70,10 +70,23 @@ export function getDifficultyBKTParameters(
 export function calculateBKTUpdate(
   priorMastery: number,
   isCorrect: boolean,
-  params: BKTParameters
+  params: BKTParameters,
+  credit?: number
 ): { posterior: number; prior: number; parameters: BKTParameters } {
   const pL_prev = Math.max(0.01, Math.min(0.99, priorMastery));
   const { pT, pG, pS } = params;
+
+  // Phase 9: Partial credit calibration
+  if (credit !== undefined && credit > 0 && credit < 1) {
+    const resCorrect = calculateBKTUpdate(priorMastery, true, params);
+    const resIncorrect = calculateBKTUpdate(priorMastery, false, params);
+    const interpolated = credit * resCorrect.posterior + (1 - credit) * resIncorrect.posterior;
+    return {
+      prior: pL_prev,
+      posterior: Math.max(0.01, Math.min(0.99, Math.round(interpolated * 1000) / 1000)),
+      parameters: params,
+    };
+  }
 
   let pL_given_obs: number;
 
@@ -237,6 +250,7 @@ export async function updateMasteryFromEvidence(params: {
   topic: string;
   subtopic?: string | null;
   isCorrect: boolean;
+  credit?: number;
   difficulty?: string;
   sourceId?: string;
   eventType?: LearnerEventType;
@@ -259,11 +273,12 @@ export async function updateMasteryFromEvidence(params: {
   const bktParams = getDifficultyBKTParameters(params.difficulty || 'medium', params.customParameters);
   const prior = record.attempts === 0 ? bktParams.pL0 : record.masteryProbability;
 
-  const { posterior } = calculateBKTUpdate(prior, params.isCorrect, bktParams);
+  const { posterior } = calculateBKTUpdate(prior, params.isCorrect, bktParams, params.credit);
 
   const attempts = record.attempts + 1;
-  const correctCount = record.correctCount + (params.isCorrect ? 1 : 0);
-  const incorrectCount = record.incorrectCount + (params.isCorrect ? 0 : 1);
+  const isFullCredit = params.credit !== undefined ? params.credit >= 0.75 : params.isCorrect;
+  const correctCount = record.correctCount + (isFullCredit ? 1 : 0);
+  const incorrectCount = record.incorrectCount + (isFullCredit ? 0 : 1);
   const confidence = calculateConfidence(attempts);
   const status = determineMasteryStatus(attempts, posterior);
   const now = new Date().toISOString();

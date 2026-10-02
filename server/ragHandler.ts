@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { prisma, ensureResourceSchema, ensureAssessmentSchema, ensureLearnerSchema } from './prisma.ts';
 import { updateMasteryFromEvidence, getTopicLearnerMastery } from './bktService.ts';
+import { processAssessmentIntelligence, getUserMisconceptions, getAttemptDiagnostic } from './assessmentIntelligenceService.ts';
 import { learnerHandler } from './learnerHandler.ts';
 import { studyAgentHandler } from './studyAgentHandler.ts';
 import { evaluationHandler } from './evaluationHandler.ts';
@@ -418,11 +419,12 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     }
   }
 
-  // 8. Assessment Submission & Diagnostic Report Evaluation (Phase 3)
+  // 8. Assessment Submission & Diagnostic Report Evaluation (Phase 9 Intelligence)
   // POST /api/rag/assessment/submit
   if (method === 'POST' && pathname === '/api/rag/assessment/submit') {
     try {
       await ensureAssessmentSchema();
+      await ensureLearnerSchema();
       const body = req.body || {};
       const userId = body.userId || body.user_id || 'default_user';
       const title = body.title || 'Course Assessment';
@@ -437,144 +439,19 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         return;
       }
 
-      // Evaluate each answer
-      const evaluatedResults = questions.map((q, idx) => {
-        const userAnswer = answers[idx];
-        const qType = (q.type || 'MCQ').toUpperCase();
-        const correct = String(q.correct_answer ?? '').trim();
-        const userStr = String(userAnswer ?? '').trim();
-
-        let isCorrect = false;
-        let feedback = '';
-
-        if (qType === 'MCQ') {
-          if (userStr.toLowerCase() === correct.toLowerCase()) {
-            isCorrect = true;
-          } else if (!isNaN(Number(userStr)) && Array.isArray(q.options)) {
-            const selectedOpt = q.options[Number(userStr)];
-            if (selectedOpt && String(selectedOpt).trim().toLowerCase() === correct.toLowerCase()) {
-              isCorrect = true;
-            }
-          }
-          feedback = isCorrect ? 'Correct!' : `Incorrect. Correct answer: ${correct}`;
-        } else if (qType === 'NUMERICAL') {
-          const uNum = parseFloat(userStr.replace(/[^\d.-]/g, ''));
-          const cNum = parseFloat(correct.replace(/[^\d.-]/g, ''));
-          if (isNaN(uNum) || isNaN(cNum)) {
-            isCorrect = false;
-            feedback = 'Invalid numerical format.';
-          } else {
-            const tol = Math.max(Math.abs(cNum) * 0.03, 0.01);
-            isCorrect = Math.abs(uNum - cNum) <= tol;
-            feedback = isCorrect ? 'Correct! Numeric value verified.' : `Incorrect. Expected ${cNum} (±3%).`;
-          }
-        } else {
-          // SHORT_ANSWER
-          const cleanU = userStr.toLowerCase().replace(/[^\w\s]/g, ' ');
-          const cleanC = correct.toLowerCase().replace(/[^\w\s]/g, ' ');
-          const cWords = cleanC.split(/\s+/).filter(w => w.length > 2);
-          let matchCount = 0;
-          for (const w of cWords) {
-            if (cleanU.includes(w)) matchCount++;
-          }
-          const ratio = cWords.length > 0 ? matchCount / cWords.length : 0;
-          isCorrect = ratio >= 0.4 || cleanU.includes(cleanC) || cleanC.includes(cleanU);
-          feedback = isCorrect ? 'Correct! Key concepts identified.' : `Incomplete. Concept requires: ${correct}`;
-        }
-
-        return {
-          questionId: q.question_id || `q_${idx}`,
-          userAnswer: userStr,
-          correctAnswer: correct,
-          isCorrect,
-          feedback,
-          explanation: q.explanation || '',
-          location: {
-            page_number: q.page_number,
-            slide_number: q.slide_number,
-            timestamp_start: q.timestamp_start,
-            timestamp_end: q.timestamp_end,
-            source_type: q.source_type || 'TEXT',
-          },
-        };
+      const attemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const { results, diagnosticReport } = await processAssessmentIntelligence({
+        userId,
+        title,
+        topic,
+        subtopic,
+        difficulty,
+        questions,
+        answers,
+        attemptId,
       });
-
-      // Compute Diagnostic Report
-      const totalQuestions = questions.length;
-      const correctCount = evaluatedResults.filter(r => r.isCorrect).length;
-      const percentage = Math.round((correctCount / totalQuestions) * 100);
-
-      const topicPerf: Record<string, { total: number; correct: number; percentage: number }> = {};
-      const diffPerf: Record<string, { total: number; correct: number; percentage: number }> = {};
-      const incorrectList: any[] = [];
-      const recommendedMaterial: any[] = [];
-
-      questions.forEach((q, idx) => {
-        const ev = evaluatedResults[idx];
-        const tKey = q.subtopic || q.topic || topic;
-        if (!topicPerf[tKey]) topicPerf[tKey] = { total: 0, correct: 0, percentage: 0 };
-        topicPerf[tKey].total++;
-        if (ev.isCorrect) topicPerf[tKey].correct++;
-
-        const dKey = q.difficulty || difficulty;
-        if (!diffPerf[dKey]) diffPerf[dKey] = { total: 0, correct: 0, percentage: 0 };
-        diffPerf[dKey].total++;
-        if (ev.isCorrect) diffPerf[dKey].correct++;
-
-        if (!ev.isCorrect) {
-          const coordLabel = q.page_number
-            ? `Page ${q.page_number}`
-            : q.slide_number
-            ? `Slide ${q.slide_number}`
-            : q.timestamp_start !== null && q.timestamp_start !== undefined
-            ? `${Math.floor(q.timestamp_start / 60)}m${Math.floor(q.timestamp_start % 60)}s`
-            : 'Source Document';
-
-          incorrectList.push({
-            questionId: q.question_id || `q_${idx}`,
-            question: q.question,
-            userAnswer: ev.userAnswer,
-            correctAnswer: q.correct_answer,
-            explanation: q.explanation,
-            citationLabel: coordLabel,
-            location: ev.location,
-          });
-
-          recommendedMaterial.push({
-            topic: q.topic || topic,
-            subtopic: q.subtopic || 'Core Concept',
-            coordinate: coordLabel,
-            chunkId: q.chunk_id,
-            recommendation: `Review ${q.subtopic || q.topic} at ${coordLabel}: '${q.correct_answer}'`,
-          });
-        }
-      });
-
-      Object.keys(topicPerf).forEach(k => {
-        topicPerf[k].percentage = Math.round((topicPerf[k].correct / topicPerf[k].total) * 100);
-      });
-      Object.keys(diffPerf).forEach(k => {
-        diffPerf[k].percentage = Math.round((diffPerf[k].correct / diffPerf[k].total) * 100);
-      });
-
-      const likelyMisconceptions = incorrectList.map(item => {
-        return `Possible confusion in '${item.question.slice(0, 50)}...': student answered '${item.userAnswer}', expected '${item.correctAnswer}'`;
-      });
-
-      const diagnosticReport = {
-        overallScore: `${correctCount}/${totalQuestions}`,
-        percentage,
-        totalQuestions,
-        correctCount,
-        topicPerformance: topicPerf,
-        difficultyPerformance: diffPerf,
-        incorrectAnswers: incorrectList,
-        likelyMisconceptions: likelyMisconceptions.length ? likelyMisconceptions : ['None! Excellent mastery demonstrated.'],
-        recommendedSourceMaterial: recommendedMaterial,
-      };
 
       // Persist attempt into assessment_attempts table
-      const attemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       try {
         await prisma.$executeRawUnsafe(
           `INSERT INTO assessment_attempts (id, userId, title, topic, subtopic, difficulty, score, totalQuestions, correctCount, percentage, questionsJson, answersJson, diagnosticJson)
@@ -585,10 +462,10 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
           topic,
           subtopic || null,
           difficulty,
-          correctCount,
-          totalQuestions,
-          correctCount,
-          percentage,
+          diagnosticReport.correctCount,
+          diagnosticReport.totalQuestions,
+          diagnosticReport.correctCount,
+          diagnosticReport.percentage,
           JSON.stringify(questions),
           JSON.stringify(answers),
           JSON.stringify(diagnosticReport)
@@ -597,39 +474,61 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         console.warn('Could not persist assessment attempt into database:', dbErr);
       }
 
-      // Automatically update BKT learner model for each answered question (Phase 4)
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i];
-        const ev = evaluatedResults[i];
-        try {
-          await updateMasteryFromEvidence({
-            userId,
-            topic: q.topic || topic,
-            subtopic: q.subtopic || null,
-            isCorrect: ev?.isCorrect ?? false,
-            difficulty: q.difficulty || difficulty,
-            sourceId: attemptId,
-            eventType: 'ASSESSMENT_ANSWER',
-            evidenceDetails: `Assessment: ${q.question?.slice(0, 60)}... (${ev?.isCorrect ? 'Correct' : 'Incorrect'})`,
-          });
-        } catch (masteryErr) {
-          console.warn('Could not update learner mastery for question:', masteryErr);
-        }
-      }
-
       res.status(200).json({
         success: true,
         attemptId,
-        score: correctCount,
-        totalQuestions,
-        percentage,
-        results: evaluatedResults,
+        score: diagnosticReport.correctCount,
+        totalQuestions: diagnosticReport.totalQuestions,
+        percentage: diagnosticReport.percentage,
+        results,
         diagnosticReport,
       });
       return;
     } catch (err: any) {
       console.error('Assessment evaluation error:', err);
       res.status(500).json({ error: 'Failed to evaluate assessment', details: err.message });
+      return;
+    }
+  }
+
+  // 8b. Active Misconceptions & Repeated Mistakes (Phase 9)
+  // GET /api/rag/assessment/misconceptions?userId=...
+  if (method === 'GET' && pathname === '/api/rag/assessment/misconceptions') {
+    try {
+      const userId = req.query?.userId || urlObj.searchParams.get('userId') || 'default_user';
+      const topic = req.query?.topic || urlObj.searchParams.get('topic') || undefined;
+      const data = await getUserMisconceptions(userId, topic);
+      res.status(200).json({ success: true, ...data });
+      return;
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to retrieve misconceptions', details: err.message });
+      return;
+    }
+  }
+
+  // 8c. Diagnostic Report by Attempt ID (Phase 9)
+  // GET /api/rag/assessment/diagnostic?attemptId=... or /api/rag/assessment/diagnostic/:attemptId
+  if (method === 'GET' && (pathname.startsWith('/api/rag/assessment/diagnostic') || pathname === '/api/rag/assessment/diagnostic')) {
+    try {
+      const parts = pathname.split('/');
+      // /api/rag/assessment/diagnostic -> parts: ['', 'api', 'rag', 'assessment', 'diagnostic'] (length 5)
+      // /api/rag/assessment/diagnostic/:attemptId -> parts: ['', 'api', 'rag', 'assessment', 'diagnostic', ':attemptId'] (length 6)
+      const pathAttemptId = parts.length > 5 ? parts[5] : null;
+      const attemptId = pathAttemptId || req.query?.attemptId || req.query?.id || urlObj.searchParams.get('attemptId') || urlObj.searchParams.get('id');
+      if (!attemptId) {
+        res.status(400).json({ error: 'attemptId is required' });
+        return;
+      }
+      const userId = req.query?.userId || urlObj.searchParams.get('userId') || undefined;
+      const diagnostic = await getAttemptDiagnostic(attemptId, userId);
+      if (!diagnostic) {
+        res.status(404).json({ error: 'Assessment diagnostic not found' });
+        return;
+      }
+      res.status(200).json({ success: true, ...diagnostic });
+      return;
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to retrieve diagnostic', details: err.message });
       return;
     }
   }

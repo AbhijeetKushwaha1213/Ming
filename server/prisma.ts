@@ -131,6 +131,67 @@ async function createAssessmentSchema() {
   await prisma.$executeRawUnsafe(
     'CREATE INDEX IF NOT EXISTS assessment_attempts_user_topic_idx ON assessment_attempts(userId, topic)',
   );
+
+  // Phase 9: Persistent Answer Evaluations Table
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS assessment_evaluations (
+      id TEXT PRIMARY KEY NOT NULL,
+      attemptId TEXT NOT NULL,
+      userId TEXT NOT NULL,
+      questionId TEXT NOT NULL,
+      questionText TEXT NOT NULL,
+      questionType TEXT NOT NULL,
+      userAnswer TEXT NOT NULL,
+      correctAnswer TEXT NOT NULL,
+      classification TEXT NOT NULL,
+      credit REAL NOT NULL,
+      feedback TEXT NOT NULL,
+      explanation TEXT,
+      sourceId TEXT,
+      chunkId TEXT,
+      sourceCoordinate TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_evaluations_attempt_idx ON assessment_evaluations(attemptId)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_evaluations_user_idx ON assessment_evaluations(userId, createdAt)',
+  );
+
+  // Phase 9: Persistent Misconceptions Table
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS assessment_misconceptions (
+      id TEXT PRIMARY KEY NOT NULL,
+      attemptId TEXT NOT NULL,
+      evaluationId TEXT,
+      userId TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      subtopic TEXT,
+      concept TEXT NOT NULL,
+      misconceptionType TEXT NOT NULL,
+      description TEXT NOT NULL,
+      studentAnswer TEXT NOT NULL,
+      expectedAnswer TEXT NOT NULL,
+      sourceId TEXT,
+      chunkId TEXT,
+      sourceCoordinate TEXT,
+      severity TEXT NOT NULL DEFAULT 'medium',
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_misconceptions_user_topic_idx ON assessment_misconceptions(userId, topic)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_misconceptions_attempt_idx ON assessment_misconceptions(attemptId)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS assessment_misconceptions_concept_idx ON assessment_misconceptions(concept)',
+  );
 }
 
 export async function ensureAssessmentSchema() {

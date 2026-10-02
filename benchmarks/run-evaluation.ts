@@ -83,6 +83,15 @@ async function main() {
   console.log(`   • Exact Duplicates:    ${(report.noveltyMetrics.exactDuplicateRate * 100).toFixed(1)}% (Baseline was 80.0%)`);
   console.log(`   • Semantic Duplicates: ${(report.noveltyMetrics.semanticDuplicateRate * 100).toFixed(1)}%`);
 
+  if (report.assessmentMetrics) {
+    console.log('\n5. Phase 9 Assessment Intelligence & Misconception Detection:');
+    console.log(`   • Assessment Correctness:    ${(report.assessmentMetrics.assessmentCorrectness * 100).toFixed(1)}% (MCQ, numerical, partial answers)`);
+    console.log(`   • Feedback Grounding:        ${(report.assessmentMetrics.feedbackGrounding * 100).toFixed(1)}% (Citations & verified coordinates)`);
+    console.log(`   • Misconception Precision:   ${(report.assessmentMetrics.misconceptionPrecision * 100).toFixed(1)}% (Deterministic mapping & concept tagging)`);
+    console.log(`   • Repeated Mistake Detection:${(report.assessmentMetrics.repeatedMistakeDetection * 100).toFixed(1)}% (Historical tracking across attempts)`);
+    console.log(`   • BKT Update Consistency:    ${(report.assessmentMetrics.bktUpdateConsistency * 100).toFixed(1)}% (Strict evidence-derived updates)`);
+  }
+
   if (report.failuresAndErrors.length > 0) {
     console.log('\n⚠️ Failures and Errors Encountered:');
     for (const f of report.failuresAndErrors) {

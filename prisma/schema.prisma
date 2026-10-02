@@ -160,4 +160,51 @@ model StudyPlanItem {
   @@map("study_plan_items")
 }
 
+model AssessmentEvaluation {
+  id               String   @id @default(cuid())
+  attemptId        String
+  userId           String
+  questionId       String
+  questionText     String
+  questionType     String
+  userAnswer       String
+  correctAnswer    String
+  classification   String   // 'correct', 'partially_correct', 'incorrect'
+  credit           Float
+  feedback         String
+  explanation      String?
+  sourceId         String?
+  chunkId          String?
+  sourceCoordinate String?
+  createdAt        DateTime @default(now())
+
+  @@index([attemptId])
+  @@index([userId, createdAt])
+  @@map("assessment_evaluations")
+}
+
+model AssessmentMisconception {
+  id               String   @id @default(cuid())
+  attemptId        String
+  evaluationId     String?
+  userId           String
+  topic            String
+  subtopic         String?
+  concept          String
+  misconceptionType String  // 'CONCEPT_CONFUSION', 'MECHANISM_INVERSION', etc.
+  description      String
+  studentAnswer    String
+  expectedAnswer   String
+  sourceId         String?
+  chunkId          String?
+  sourceCoordinate String?
+  severity         String   @default("medium")
+  createdAt        DateTime @default(now())
+
+  @@index([userId, topic])
+  @@index([attemptId])
+  @@index([concept])
+  @@map("assessment_misconceptions")
+}
+
 

@@ -8,7 +8,8 @@ export type ActivityType =
   | 'PRACTICE_WEAK_CONCEPTS'
   | 'ASK_TUTOR'
   | 'DIAGNOSTIC_ASSESSMENT'
-  | 'COMPLETE_UNFINISHED_TASK';
+  | 'COMPLETE_UNFINISHED_TASK'
+  | 'RESOLVE_MISCONCEPTION';
 
 export type PlanItemStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 
@@ -31,6 +32,9 @@ export interface PriorityScoreBreakdown {
     recentIncorrectCount: number;
     daysSinceLastAssessed: number | null;
     daysUntilExam: number | null;
+    activeMisconceptionsCount?: number;
+    hasRepeatedMistakes?: boolean;
+    misconceptionConcepts?: string[];
   };
 }
 
@@ -109,6 +113,17 @@ export async function computeDeterministicPriorities(params: {
     userId
   );
 
+  // 4. Fetch persistent misconceptions and repeated mistakes (Phase 9)
+  let userMisconceptions: any[] = [];
+  try {
+    userMisconceptions = await prisma.$queryRawUnsafe(
+      'SELECT topic, subtopic, concept, severity FROM assessment_misconceptions WHERE userId = ? ORDER BY createdAt DESC LIMIT 50',
+      userId
+    );
+  } catch {
+    userMisconceptions = [];
+  }
+
   // Collect distinct topics from mastery and resources
   const topicMap = new Map<string, { topic: string; subtopic: string | null; source?: any }>();
 
@@ -167,13 +182,33 @@ export async function computeDeterministicPriorities(params: {
       recencyForgetting = Math.min(1.0, diffDays / 14.0); // gradual decay over 14 days
     }
 
+    // Phase 9: Count active misconceptions and detect repeated mistakes for this topic
+    const topicMisconceptions = userMisconceptions.filter(
+      (m) =>
+        m.topic?.toLowerCase() === item.topic.toLowerCase() ||
+        (item.subtopic && m.subtopic && m.subtopic.toLowerCase() === item.subtopic.toLowerCase())
+    );
+    const conceptCounts = new Map<string, number>();
+    for (const m of topicMisconceptions) {
+      const c = m.concept || m.topic;
+      conceptCounts.set(c, (conceptCounts.get(c) || 0) + 1);
+    }
+    const hasRepeated = Array.from(conceptCounts.values()).some((cnt) => cnt > 1);
+    const activeMisconceptionsCount = topicMisconceptions.length;
+
     // Weighted Deterministic Multi-Factor Priority Score
-    const overallScore =
+    let overallScore =
       0.35 * masteryDeficit +
       0.20 * confidenceDeficit +
       0.20 * recentMistakes +
       0.15 * examUrgency +
       0.10 * recencyForgetting;
+
+    // Phase 9 Priority Boost: detected misconceptions & repeated mistakes increase topic study urgency
+    if (activeMisconceptionsCount > 0) {
+      const boost = Math.min(0.25, activeMisconceptionsCount * 0.08 + (hasRepeated ? 0.12 : 0));
+      overallScore = Math.min(1.0, overallScore + boost);
+    }
 
     priorities.push({
       topic: item.topic,
@@ -194,6 +229,9 @@ export async function computeDeterministicPriorities(params: {
         recentIncorrectCount: recentTopicMistakes,
         daysSinceLastAssessed,
         daysUntilExam,
+        activeMisconceptionsCount,
+        hasRepeatedMistakes: hasRepeated,
+        misconceptionConcepts: Array.from(conceptCounts.keys()),
       },
     });
   }
@@ -309,6 +347,31 @@ export async function generatePersonalizedDailyPlan(params: {
 
       const pct = Math.round(p.details.currentMastery * 100);
       const confPct = Math.round(p.details.confidence * 100);
+
+      // Rule 0 (Phase 9): Unresolved Misconceptions or Repeated Mistakes -> Immediate Misconception Remediation
+      if (p.details.activeMisconceptionsCount && p.details.activeMisconceptionsCount > 0 && remainingTime >= 15) {
+        const estTime = Math.min(25, remainingTime);
+        const topConcept = p.details.misconceptionConcepts?.[0] || p.topic;
+        recommendedItems.push({
+          priority: priorityRank++,
+          priorityScore: p.overallScore,
+          topic: p.topic,
+          subtopic: p.subtopic,
+          activityType: 'RESOLVE_MISCONCEPTION',
+          title: `Resolve Misconception: ${topConcept}`,
+          description: `Targeted review of verified course material to eliminate persistent misconception in ${topConcept}.`,
+          estimatedMinutes: estTime,
+          reason: p.details.hasRepeatedMistakes
+            ? `Mastery is ${pct}% (${p.details.status}): persistent mistake on "${topConcept}" detected across multiple assessments. Immediate conceptual correction required.`
+            : `Mastery is ${pct}% (${p.details.status}): detected misconception on "${topConcept}" in recent assessment for ${p.topic}.`,
+          expectedOutcome: `Eliminate misconception and raise topic mastery from ${pct}% toward proficiency (≥60%).`,
+          sourceId: matchingResource?.id || null,
+          chunkId: null,
+          sourceTitle: matchingResource?.title || `${p.topic} Course Material`,
+          sourceCoordinate: matchingResource?.type === 'PDF' ? 'Slide / Key Section' : 'Lecture Material',
+        });
+        remainingTime -= estTime;
+      }
 
       // Rule 1: High deficit and recent mistakes -> Targeted Review & Practice
       if (p.details.recentIncorrectCount > 0 || p.details.currentMastery < 0.60) {
@@ -639,8 +702,14 @@ export async function answerStudyAgentQuery(params: {
 
     const pct = Math.round(topWeak.details.currentMastery * 100);
     const confPct = Math.round(topWeak.details.confidence * 100);
+    let reply = `📊 Based on your verified assessment history, your primary area for improvement is **${topWeak.topic}** (Mastery: **${pct}% - ${topWeak.details.status}** with ${confPct}% confidence). You recently missed ${topWeak.details.recentIncorrectCount} question(s) in this topic. I recommend focusing your next 25-minute session here.`;
+    if (topWeak.details.activeMisconceptionsCount && topWeak.details.activeMisconceptionsCount > 0) {
+      const concStr = (topWeak.details.misconceptionConcepts || []).slice(0, 3).join(', ');
+      reply += `\n\n⚠️ **Persistent Misconceptions Detected**: You have active misconceptions in: **${concStr}**${topWeak.details.hasRepeatedMistakes ? ' (flagged as repeated mistakes across assessments)' : ''}. Prioritize reviewing these core concepts.`;
+    }
+
     return {
-      reply: `📊 Based on your verified assessment history, your primary area for improvement is **${topWeak.topic}** (Mastery: **${pct}% - ${topWeak.details.status}** with ${confPct}% confidence). You recently missed ${topWeak.details.recentIncorrectCount} question(s) in this topic. I recommend focusing your next 25-minute session here.`,
+      reply,
       recommendedTopic: topWeak.topic,
       suggestedAction: `Practice ${topWeak.topic}`,
       evidenceUsed: {

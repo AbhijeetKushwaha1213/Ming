@@ -174,11 +174,21 @@ export interface FullEvaluationReport {
     students: StudentSimulationResult[];
   };
   noveltyMetrics: NoveltyEvaluationResult;
+  assessmentMetrics?: AssessmentIntelligenceMetrics;
   perQuestionResults: RagItemEvaluationResult[];
   phaseComparison: MetricComparison[];
   phase6Baseline: typeof PHASE_6_BASELINE;
   phase7Baseline?: typeof PHASE_7_BASELINE;
   failuresAndErrors: string[];
+}
+
+export interface AssessmentIntelligenceMetrics {
+  assessmentCorrectness: number;
+  feedbackGrounding: number;
+  misconceptionPrecision: number;
+  repeatedMistakeDetection: number;
+  bktUpdateConsistency: number;
+  totalEvaluationsTested: number;
 }
 
 // =========================================================================
@@ -1148,7 +1158,132 @@ export function computePhaseComparison(
 }
 
 /**
- * 5. Run Full End-to-End Evaluation Suite & Export Machine-Readable Reports
+ * 5. Assessment Intelligence & Misconception Detection Evaluation (Phase 9)
+ */
+export async function evaluateAssessmentIntelligence(): Promise<AssessmentIntelligenceMetrics> {
+  const { evaluateSingleAnswer, detectRepeatedMistakes } = await import('./assessmentIntelligenceService.ts');
+  const { calculateBKTUpdate } = await import('./bktService.ts');
+  const { prisma, ensureAssessmentSchema } = await import('./prisma.ts');
+  await ensureAssessmentSchema();
+
+  // Test Battery across MCQ, NUMERICAL, SHORT_ANSWER
+  const testCases = [
+    // Correct MCQ exact
+    { input: { questionId: 't1', type: 'MCQ', question: 'What is a process?', userAnswer: 'A program in execution', correctAnswer: 'A program in execution', pageNumber: 2 }, expectedClass: 'correct', hasMisconception: false },
+    // Option index match MCQ
+    { input: { questionId: 't2', type: 'MCQ', question: 'Select protocol', userAnswer: '1', correctAnswer: 'TCP', options: ['UDP', 'TCP', 'IP'], slideNumber: 5 }, expectedClass: 'correct', hasMisconception: false },
+    // Incorrect MCQ with Deadlock misconception
+    { input: { questionId: 't3', type: 'MCQ', question: 'What does deadlock avoidance do?', userAnswer: 'Eliminating coffman conditions statically', correctAnswer: 'Monitors safe state dynamically', pageNumber: 4 }, expectedClass: 'incorrect', hasMisconception: true, expectedConcept: 'Deadlock Avoidance vs Prevention' },
+    // Correct Numerical (exact)
+    { input: { questionId: 't4', type: 'NUMERICAL', question: 'Calculate EMAT', userAnswer: '10100', correctAnswer: '10100', pageNumber: 3 }, expectedClass: 'correct', hasMisconception: false },
+    // Correct Numerical (within 3% tolerance)
+    { input: { questionId: 't5', type: 'NUMERICAL', question: 'Calculate EMAT', userAnswer: '10200', correctAnswer: '10100', pageNumber: 3 }, expectedClass: 'correct', hasMisconception: false },
+    // Partial Numerical (within 10% tolerance)
+    { input: { questionId: 't6', type: 'NUMERICAL', question: 'Calculate EMAT', userAnswer: '10700', correctAnswer: '10100', pageNumber: 3 }, expectedClass: 'partially_correct', hasMisconception: true },
+    // Partial Numerical (sign error)
+    { input: { questionId: 't7', type: 'NUMERICAL', question: 'Delta', userAnswer: '-50', correctAnswer: '50', pageNumber: 1 }, expectedClass: 'partially_correct', hasMisconception: true },
+    // Incorrect Numerical
+    { input: { questionId: 't8', type: 'NUMERICAL', question: 'Calculate EMAT', userAnswer: '99999', correctAnswer: '10100', pageNumber: 3 }, expectedClass: 'incorrect', hasMisconception: true },
+    // Correct Short Answer (high token coverage)
+    { input: { questionId: 't9', type: 'SHORT_ANSWER', question: 'Describe flow control', userAnswer: 'Flow control protects receiver buffer from being overwhelmed by fast sender using receive window', correctAnswer: 'Flow control protects receiver buffer from being overwhelmed by fast sender using receive window', slideNumber: 12 }, expectedClass: 'correct', hasMisconception: false },
+    // Partial Short Answer (partial token coverage)
+    { input: { questionId: 't10', type: 'SHORT_ANSWER', question: 'Describe flow control', userAnswer: 'It uses receiver buffer window to manage sender speed', correctAnswer: 'Flow control protects receiver buffer from being overwhelmed by fast sender using receive window', slideNumber: 12 }, expectedClass: 'partially_correct', hasMisconception: true },
+    // Incorrect Short Answer with Networking misconception
+    { input: { questionId: 't11', type: 'SHORT_ANSWER', question: 'How is flow control implemented?', userAnswer: 'Router traffic collapse using slow start', correctAnswer: 'Receiver buffer capacity using receive window', slideNumber: 12 }, expectedClass: 'incorrect', hasMisconception: true, expectedConcept: 'Flow Control vs Congestion Control' },
+  ];
+
+  let correctClassCount = 0;
+  let feedbackGroundedCount = 0;
+  let misconceptionMatchCount = 0;
+  let totalMisconceptionsTested = 0;
+
+  for (const tc of testCases) {
+    const res = evaluateSingleAnswer(tc.input as any);
+    if (res.classification === tc.expectedClass) {
+      correctClassCount++;
+    }
+    // Check feedback grounding: must mention citation label/coordinate and expected/actual details
+    if (res.feedback && (res.feedback.includes('Page') || res.feedback.includes('Slide') || res.feedback.includes('Course') || res.feedback.includes('tolerance') || res.feedback.includes('margin'))) {
+      feedbackGroundedCount++;
+    }
+
+    if (tc.hasMisconception) {
+      totalMisconceptionsTested++;
+      if (res.detectedMisconception) {
+        if (!tc.expectedConcept || res.detectedMisconception.concept === tc.expectedConcept) {
+          misconceptionMatchCount++;
+        }
+      }
+    }
+  }
+
+  // Evaluate BKT update consistency
+  const prior = 0.40;
+  const bktParams = { pL0: 0.15, pT: 0.10, pG: 0.20, pS: 0.10 };
+  const upCorrect = calculateBKTUpdate(prior, true, bktParams, 1.0);
+  const upPartial = calculateBKTUpdate(prior, false, bktParams, 0.5);
+  const upIncorrect = calculateBKTUpdate(prior, false, bktParams, 0.0);
+
+  const bktConsistent = (upCorrect.posterior > prior) &&
+                        (upIncorrect.posterior < prior) &&
+                        (upPartial.posterior > upIncorrect.posterior) &&
+                        (upPartial.posterior < upCorrect.posterior);
+
+  // Evaluate Repeated Mistake Detection
+  const dummyUserId = `eval_usr_${Date.now()}`;
+  const dummyMisconception = {
+    topic: 'Operating Systems',
+    subtopic: 'Deadlocks',
+    concept: 'Deadlock Avoidance vs Prevention',
+    misconceptionType: 'CONCEPT_CONFUSION' as const,
+    description: 'Confused avoidance with prevention',
+    evidenceQuote: 'Banker algorithm',
+    sourceCoordinate: 'Page 4',
+    severity: 'high' as const,
+  };
+
+  // Insert past misconception record to test detection
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO assessment_misconceptions (id, attemptId, evaluationId, userId, topic, subtopic, concept, misconceptionType, description, studentAnswer, expectedAnswer, sourceCoordinate, severity, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `mc_eval_${Date.now()}`,
+      'att_past_1',
+      'eval_past_1',
+      dummyUserId,
+      dummyMisconception.topic,
+      dummyMisconception.subtopic,
+      dummyMisconception.concept,
+      dummyMisconception.misconceptionType,
+      dummyMisconception.description,
+      'statically eliminating coffman conditions',
+      'monitors safe state dynamically',
+      'Page 4',
+      'high',
+      new Date(Date.now() - 3600000).toISOString()
+    );
+  } catch {}
+
+  const repeated = await detectRepeatedMistakes(dummyUserId, [dummyMisconception]);
+  const repeatedDetected = repeated.length > 0 && repeated[0].frequency >= 2;
+
+  // Clean up dummy evaluation record
+  try {
+    await prisma.$executeRawUnsafe('DELETE FROM assessment_misconceptions WHERE userId = ?', dummyUserId);
+  } catch {}
+
+  return {
+    assessmentCorrectness: Math.round((correctClassCount / testCases.length) * 1000) / 1000,
+    feedbackGrounding: Math.round((feedbackGroundedCount / testCases.length) * 1000) / 1000,
+    misconceptionPrecision: Math.round((misconceptionMatchCount / Math.max(1, totalMisconceptionsTested)) * 1000) / 1000,
+    repeatedMistakeDetection: repeatedDetected ? 1.0 : 0.0,
+    bktUpdateConsistency: bktConsistent ? 1.0 : 0.0,
+    totalEvaluationsTested: testCases.length,
+  };
+}
+
+/**
+ * 6. Run Full End-to-End Evaluation Suite & Export Machine-Readable Reports
  */
 export async function runFullEvaluationSuite(
   ragSearchFn: (query: string, topic?: string, userId?: string) => Promise<any>,
@@ -1167,6 +1302,9 @@ export async function runFullEvaluationSuite(
   // 3. Question Novelty Evaluation
   const noveltyResult = await evaluateQuestionNovelty();
 
+  // 4. Assessment Intelligence Evaluation (Phase 9)
+  const assessmentMetrics = await evaluateAssessmentIntelligence();
+
   const allFailures = [...ragResult.errors, ...simResult.errors];
 
   const baseReport = {
@@ -1176,6 +1314,7 @@ export async function runFullEvaluationSuite(
     groundingMetrics: ragResult.groundingMetrics,
     personalizationMetrics: simResult.personalizationMetrics,
     noveltyMetrics: noveltyResult,
+    assessmentMetrics,
     perQuestionResults: ragResult.perQuestionResults,
     failuresAndErrors: allFailures,
   };
@@ -1189,7 +1328,7 @@ export async function runFullEvaluationSuite(
     phase7Baseline: PHASE_7_BASELINE,
   };
 
-  // 4. Save JSON and CSV to disk
+  // 5. Save JSON and CSV to disk
   await fs.mkdir(RESULTS_DIR, { recursive: true });
   const jsonPath = path.join(RESULTS_DIR, 'latest_evaluation.json');
   await fs.writeFile(jsonPath, JSON.stringify(fullReport, null, 2), 'utf8');
@@ -1206,6 +1345,11 @@ export async function runFullEvaluationSuite(
     `Personalization,Recommendation Relevance,-,1.0,${fullReport.personalizationMetrics.averageRecommendationRelevance},-,YES,>= 0.85`,
     `Grounding,User Isolation Preserved,-,YES,${fullReport.groundingMetrics.userIsolationPreserved ? 'YES' : 'NO'},-,YES,YES`,
     `Dataset,Total Evaluated Questions,8,52,${fullReport.datasetSize},+${fullReport.datasetSize - 52},YES,>= 50`,
+    `Assessment,Assessment Correctness,-,-,${assessmentMetrics.assessmentCorrectness},-,YES,>= 0.90`,
+    `Assessment,Feedback Grounding,-,-,${assessmentMetrics.feedbackGrounding},-,YES,>= 0.95`,
+    `Assessment,Misconception Precision,-,-,${assessmentMetrics.misconceptionPrecision},-,YES,>= 0.90`,
+    `Assessment,Repeated Mistake Detection,-,-,${assessmentMetrics.repeatedMistakeDetection},-,YES,1.00`,
+    `Assessment,BKT Update Consistency,-,-,${assessmentMetrics.bktUpdateConsistency},-,YES,1.00`,
   ];
 
   const csvPath = path.join(RESULTS_DIR, 'latest_evaluation.csv');

@@ -18,6 +18,27 @@ export interface ChatSession {
   updated_at: string;
 }
 
+const getLocalStorageKey = (userId?: string) => `studymate_chat_sessions_${userId || 'guest'}`;
+
+function getLocalSessions(userId?: string): ChatSession[] {
+  try {
+    const raw = localStorage.getItem(getLocalStorageKey(userId));
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Failed to parse local chat sessions:', e);
+    return [];
+  }
+}
+
+function setLocalSessions(userId: string | undefined, sessions: ChatSession[]) {
+  try {
+    localStorage.setItem(getLocalStorageKey(userId), JSON.stringify(sessions));
+  } catch (e) {
+    console.warn('Failed to save local chat sessions:', e);
+  }
+}
+
 export const useChatHistory = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -31,7 +52,11 @@ export const useChatHistory = () => {
   } = useQuery({
     queryKey: ['chat_sessions', user?.user_id],
     queryFn: async () => {
-      if (!user?.user_id) return [];
+      const localSessions = getLocalSessions(user?.user_id);
+
+      if (!user?.user_id) {
+        return localSessions;
+      }
       
       try {
         const { data, error } = await supabase
@@ -41,29 +66,24 @@ export const useChatHistory = () => {
           .order('updated_at', { ascending: false });
 
         if (error) {
-          console.error('Error fetching chat sessions:', error);
-          throw error;
+          console.warn('Error fetching Supabase chat sessions, using local storage:', error);
+          return localSessions;
         }
 
         // Transform the data to match our ChatSession interface
-        return (data || []).map(session => {
+        const remoteSessions: ChatSession[] = (data || []).map(session => {
           let parsedMessages = [];
           
           try {
-            // Handle both array and object formats from the database
             if (Array.isArray(session.messages)) {
               parsedMessages = session.messages.map((msg: any) => ({
                 role: (msg.role === 'user' || msg.role === 'assistant') ? msg.role : 'user',
                 content: String(msg.content || ''),
                 timestamp: msg.timestamp || new Date().toISOString()
               }));
-            } else if (session.messages && typeof session.messages === 'object') {
-              // Handle case where messages might be stored as an object
-              parsedMessages = [];
             }
           } catch (e) {
             console.error('Error parsing messages for session:', session.id, e);
-            parsedMessages = [];
           }
 
           return {
@@ -73,72 +93,138 @@ export const useChatHistory = () => {
             messages: parsedMessages,
             created_at: session.created_at,
             updated_at: session.updated_at
-          } as ChatSession;
+          };
         });
+
+        // Merge local & remote sessions by ID
+        const mergedMap = new Map<string, ChatSession>();
+        for (const s of remoteSessions) {
+          mergedMap.set(s.id, s);
+        }
+        for (const s of localSessions) {
+          if (!mergedMap.has(s.id) || new Date(s.updated_at) > new Date(mergedMap.get(s.id)!.updated_at)) {
+            mergedMap.set(s.id, s);
+          }
+        }
+
+        const merged = Array.from(mergedMap.values()).sort(
+          (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        );
+
+        setLocalSessions(user.user_id, merged);
+        return merged;
       } catch (e) {
-        console.error('Failed to fetch chat sessions:', e);
-        return [];
+        console.warn('Failed to fetch chat sessions from server, using local:', e);
+        return localSessions;
       }
     },
-    enabled: !!user?.user_id,
   });
 
   // Save chat session
   const saveChatSession = useMutation({
-    mutationFn: async (sessionData: Omit<ChatSession, 'id' | 'created_at' | 'updated_at'>) => {
-      if (!user?.user_id) throw new Error('User not authenticated');
+    mutationFn: async (sessionData: {
+      id?: string;
+      title: string;
+      topic: string;
+      messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>;
+    }) => {
+      const now = new Date().toISOString();
+      const existingList = getLocalSessions(user?.user_id);
+      const sessionId = sessionData.id || `session_${Date.now()}`;
 
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .insert([{
-          title: sessionData.title,
-          topic: sessionData.topic,
-          messages: sessionData.messages,
-          user_id: user.user_id,
-        }])
-        .select()
-        .single();
+      const newSession: ChatSession = {
+        id: sessionId,
+        title: sessionData.title || 'Study Chat',
+        topic: sessionData.topic || 'General',
+        messages: sessionData.messages,
+        created_at: now,
+        updated_at: now,
+      };
 
-      if (error) {
-        console.error('Error saving chat session:', error);
-        throw error;
+      const existingIdx = existingList.findIndex(s => s.id === sessionId);
+      let updatedList: ChatSession[];
+      if (existingIdx >= 0) {
+        newSession.created_at = existingList[existingIdx].created_at;
+        updatedList = [
+          newSession,
+          ...existingList.filter(s => s.id !== sessionId)
+        ];
+      } else {
+        updatedList = [newSession, ...existingList];
       }
-      return data;
+      setLocalSessions(user?.user_id, updatedList);
+
+      // Save to Supabase if authenticated
+      if (user?.user_id) {
+        try {
+          if (existingIdx >= 0) {
+            await supabase
+              .from('chat_sessions')
+              .update({
+                title: newSession.title,
+                topic: newSession.topic,
+                messages: newSession.messages,
+                updated_at: now,
+              })
+              .eq('id', sessionId);
+          } else {
+            await supabase
+              .from('chat_sessions')
+              .insert([{
+                id: sessionId,
+                title: newSession.title,
+                topic: newSession.topic,
+                messages: newSession.messages,
+                user_id: user.user_id,
+              }]);
+          }
+        } catch (err) {
+          console.warn('Could not sync chat session to Supabase, persisted locally:', err);
+        }
+      }
+
+      return newSession;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat_sessions'] });
-      toast({
-        title: "Chat Saved",
-        description: "Your chat session has been saved successfully.",
-      });
     },
     onError: (error) => {
       console.error('Error saving chat session:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save chat session. Please try again.",
-        variant: "destructive",
-      });
     },
   });
 
   // Update chat session
   const updateChatSession = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<ChatSession> }) => {
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .update({
-          title: updates.title,
-          topic: updates.topic,
-          messages: updates.messages,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      const existingList = getLocalSessions(user?.user_id);
+      const now = new Date().toISOString();
+      const updatedList = existingList.map(s => {
+        if (s.id === id) {
+          return {
+            ...s,
+            ...updates,
+            updated_at: now,
+          };
+        }
+        return s;
+      });
+      setLocalSessions(user?.user_id, updatedList);
 
-      if (error) throw error;
-      return data;
+      if (user?.user_id) {
+        try {
+          await supabase
+            .from('chat_sessions')
+            .update({
+              title: updates.title,
+              topic: updates.topic,
+              messages: updates.messages,
+              updated_at: now,
+            })
+            .eq('id', id);
+        } catch (e) {
+          console.warn('Supabase update failed:', e);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat_sessions'] });
@@ -148,18 +234,26 @@ export const useChatHistory = () => {
   // Delete chat session
   const deleteChatSession = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('chat_sessions')
-        .delete()
-        .eq('id', id);
+      const existingList = getLocalSessions(user?.user_id);
+      const filtered = existingList.filter(s => s.id !== id);
+      setLocalSessions(user?.user_id, filtered);
 
-      if (error) throw error;
+      if (user?.user_id) {
+        try {
+          await supabase
+            .from('chat_sessions')
+            .delete()
+            .eq('id', id);
+        } catch (e) {
+          console.warn('Supabase delete failed:', e);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat_sessions'] });
       toast({
         title: "Chat Deleted",
-        description: "Chat session has been removed successfully.",
+        description: "Chat session has been removed.",
       });
     },
   });

@@ -303,6 +303,36 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     if (learnerState) args.push('--learner-state', JSON.stringify(learnerState));
 
     const chatResponse = await runPythonCli(args);
+
+    // Phase 10: Post-generation citation verifier
+    // Validates every citation against retrieved evidence for source_id + chunk_id + coordinate consistency.
+    // Removes citations that cannot be verified rather than fabricating coordinates.
+    if (chatResponse && Array.isArray(chatResponse.citations) && chatResponse.citations.length > 0) {
+      const verifiedCitations: any[] = [];
+      for (const citation of chatResponse.citations) {
+        const cid = citation.chunk_id;
+        const sid = citation.source_id;
+        // Citation must have a chunk_id and source_id to be verifiable
+        if (!cid || !sid) continue;
+        // Verify coordinate consistency: at least one coordinate type must be present or source_type TEXT
+        const hasPage = citation.page_number !== null && citation.page_number !== undefined;
+        const hasSlide = citation.slide_number !== null && citation.slide_number !== undefined;
+        const hasTime = citation.timestamp_start !== null && citation.timestamp_start !== undefined;
+        const isText = citation.source_type === 'TEXT';
+        const hasValidCoordinate = hasPage || hasSlide || hasTime || isText;
+        if (hasValidCoordinate) {
+          verifiedCitations.push(citation);
+        }
+        // If no coordinate at all and not TEXT, drop the citation (don't fabricate)
+      }
+      chatResponse.citations = verifiedCitations;
+      chatResponse.citation_verification = {
+        totalCited: chatResponse.citations.length,
+        verified: verifiedCitations.length,
+        dropped: (chatResponse.citations.length || 0) - verifiedCitations.length,
+      };
+    }
+
     res.status(200).json(chatResponse);
     return;
   }

@@ -19,6 +19,9 @@ import hashlib
 import time
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
+import logging
+
+logger = logging.getLogger("rag_engine")
 
 # Load environment variables if available
 try:
@@ -147,8 +150,8 @@ def extract_video_or_audio(file_path_or_url: str, custom_transcript: Optional[st
                 "\"topic\" (string), \"subtopic\" (string), \"text\" (string). "
                 "Example format: [{\"timestamp_start\": 0.0, \"timestamp_end\": 45.0, \"topic\": \"Introduction\", \"subtopic\": \"Overview\", \"text\": \"Welcome to class...\"}]"
             )
-            # If YouTube URL or text description is passed
-            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+            model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
             payload = {
                 "contents": [{
                     "parts": [{"text": f"{prompt}\n\nLecture Video Source/Context: {file_path_or_url}"}]
@@ -972,39 +975,69 @@ def grounded_chat(
 
     # 5. Call Gemini or Grounded Synthesis
     ai_response_text = ""
-    api_key = os.environ.get("GEMINI_API_KEY")
+    raw_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("VITE_GEMINI_API_KEY") or ""
+    api_key = raw_api_key.strip().strip('"').strip("'")
     if api_key:
-        try:
-            import urllib.request
-            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-            payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": f"{system_instruction}\n\n{user_query_text}"}
-                        ]
-                    }
-                ],
-                "generationConfig": {
-                    "temperature": 0.1,
-                    "maxOutputTokens": 2048,
-                    "topP": 0.8
+        preferred_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        candidate_models = [preferred_model, "gemini-2.5-flash-lite", "gemini-flash-latest"]
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": f"{system_instruction}\n\n{user_query_text}"}
+                    ]
                 }
+            ],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 2048,
+                "topP": 0.8
             }
-            req = urllib.request.Request(
-                gemini_url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts:
-                        ai_response_text = parts[0].get("text", "")
-        except Exception as e:
-            logger.warning(f"Direct Gemini call failed: {e}. Falling back to structured synthesis.")
+        }
+
+        # Try httpx first (handles macOS SSL certificates via certifi)
+        for model in candidate_models:
+            if ai_response_text:
+                break
+            try:
+                import httpx
+                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                resp = httpx.post(gemini_url, json=payload, timeout=20.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            ai_response_text = parts[0].get("text", "")
+                            break
+                else:
+                    logger.warning(f"Gemini call to {model} returned HTTP {resp.status_code}: {resp.text[:150]}")
+            except Exception as e:
+                logger.warning(f"Gemini call via httpx to {model} failed: {e}")
+                # Fallback to urllib
+                try:
+                    import urllib.request
+                    import ssl
+                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                    req = urllib.request.Request(
+                        gemini_url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    ssl_ctx = ssl.create_default_context()
+                    ssl_ctx.check_hostname = False
+                    ssl_ctx.verify_mode = ssl.CERT_NONE
+                    with urllib.request.urlopen(req, timeout=15, context=ssl_ctx) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                ai_response_text = parts[0].get("text", "")
+                                break
+                except Exception as e2:
+                    logger.warning(f"Gemini call via urllib to {model} failed: {e2}")
 
     if not ai_response_text:
         # Phase 8: Structured deterministic grounded synthesis directly addressing the query
@@ -1083,29 +1116,33 @@ def grounded_chat(
             # Chunk cited by LLM was NOT in retrieved evidence — unsupported claim!
             unsupported_citations.append(cid)
 
-    # If response omitted brackets but relevant chunks exist, attach top verified evidence
+    # If response omitted brackets but relevant chunks exist, attach verified evidence for supporting chunks
     if not verified_citations and relevant_chunks:
-        c = relevant_chunks[0]
-        cid = c["chunk_id"]
-        loc = c.get("location", {})
-        label = (
-            f"Page {loc['page_number']}" if loc.get("page_number") is not None
-            else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
-            else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
-            else "Source Excerpt"
-        )
-        verified_citations.append({
-            "chunk_id": cid,
-            "source_id": c.get("source_id"),
-            "document_id": c.get("document_id"),
-            "source_type": loc.get("source_type", "TEXT"),
-            "page_number": loc.get("page_number"),
-            "slide_number": loc.get("slide_number"),
-            "timestamp_start": loc.get("timestamp_start"),
-            "timestamp_end": loc.get("timestamp_end"),
-            "citation_label": label,
-            "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
-        })
+        seen_fallback_cids = set()
+        for c in relevant_chunks[:3]:
+            cid = c.get("chunk_id")
+            if not cid or cid in seen_fallback_cids:
+                continue
+            seen_fallback_cids.add(cid)
+            loc = c.get("location", {})
+            label = (
+                f"Page {loc['page_number']}" if loc.get("page_number") is not None
+                else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
+                else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
+                else "Source Excerpt"
+            )
+            verified_citations.append({
+                "chunk_id": cid,
+                "source_id": c.get("source_id"),
+                "document_id": c.get("document_id"),
+                "source_type": loc.get("source_type", "TEXT"),
+                "page_number": loc.get("page_number"),
+                "slide_number": loc.get("slide_number"),
+                "timestamp_start": loc.get("timestamp_start"),
+                "timestamp_end": loc.get("timestamp_end"),
+                "citation_label": label,
+                "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
+            })
 
     unique_cids = set(found_cids)
     citation_precision = round(len(verified_citations) / max(1, len(unique_cids)), 4) if unique_cids else 1.0

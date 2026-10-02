@@ -207,8 +207,8 @@ Rules:
 
     console.log('Calling Gemini API with enhanced topic-focused prompts for:', contentType, 'Topic:', topic || message);
 
-    // Gemini API endpoint - using gemini-1.5-flash (stable, reliable model)
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+    // Gemini API endpoint - using gemini-2.5-flash
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
     
     console.log('Gemini endpoint:', geminiEndpoint.replace(geminiApiKey, 'API_KEY_HIDDEN'));
 

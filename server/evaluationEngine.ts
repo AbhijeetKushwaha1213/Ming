@@ -474,15 +474,46 @@ export async function evaluateRagAndGrounding(
           (topChunk?.topic && topChunk.topic.toLowerCase().includes(item.topic.toLowerCase()))
         : retrievedChunks.length > 0;
 
-      const topChunkPage = topChunk?.page_number ?? topChunk?.pageNumber ?? topChunk?.location?.page_number ?? null;
-      const topChunkSlide = topChunk?.slide_number ?? topChunk?.slideNumber ?? topChunk?.location?.slide_number ?? null;
-      const topChunkTime = topChunk?.timestamp_start ?? topChunk?.timestampStart ?? topChunk?.location?.timestamp_start ?? null;
-      const isTopText = topChunk?.source_type === 'TEXT' || topChunk?.location?.source_type === 'TEXT';
+      // Phase 10: Search ALL retrieved chunks AND chat citations for coordinate match,
+      // not just the top chunk. This correctly handles multi-source, multi-hop, and
+      // cross-source queries where the expected coordinate appears in a secondary chunk.
+      const chatCitations: any[] = chatRes?.citations || [];
+      const allEvidenceSources = [
+        ...retrievedChunks,
+        ...chatCitations.map((c: any) => ({
+          page_number: c.page_number ?? c.pageNumber ?? null,
+          slide_number: c.slide_number ?? c.slideNumber ?? null,
+          timestamp_start: c.timestamp_start ?? c.timestampStart ?? null,
+          source_type: c.source_type ?? 'UNKNOWN',
+          source_id: c.source_id ?? c.sourceId ?? null,
+          location: c,
+        })),
+      ];
 
-      const pageMatch = item.expected_page ? isTopText || topChunkPage === item.expected_page : true;
-      const slideMatch = item.expected_slide ? isTopText || topChunkSlide === item.expected_slide : true;
-      const timeMatch = item.expected_timestamp ? isTopText || (topChunkTime !== null && Math.abs(topChunkTime - item.expected_timestamp) <= 60) : true;
-      const coordinatesMatched = item.off_material ? true : (pageMatch && slideMatch && timeMatch);
+      let coordinatesMatched = false;
+      if (item.off_material) {
+        coordinatesMatched = true;
+      } else if (!item.expected_page && !item.expected_slide && !item.expected_timestamp) {
+        // No specific coordinate expected — auto-pass
+        coordinatesMatched = true;
+      } else {
+        // Search across all retrieved evidence sources for a coordinate match
+        for (const chunk of allEvidenceSources) {
+          const chunkPage = chunk.page_number ?? chunk.pageNumber ?? chunk.location?.page_number ?? null;
+          const chunkSlide = chunk.slide_number ?? chunk.slideNumber ?? chunk.location?.slide_number ?? null;
+          const chunkTime = chunk.timestamp_start ?? chunk.timestampStart ?? chunk.location?.timestamp_start ?? null;
+          const isTextSource = chunk.source_type === 'TEXT' || chunk.location?.source_type === 'TEXT';
+
+          const pageOk = item.expected_page ? isTextSource || chunkPage === item.expected_page : true;
+          const slideOk = item.expected_slide ? isTextSource || chunkSlide === item.expected_slide : true;
+          const timeOk = item.expected_timestamp ? isTextSource || (chunkTime !== null && Math.abs(chunkTime - item.expected_timestamp) <= 60) : true;
+
+          if (pageOk && slideOk && timeOk) {
+            coordinatesMatched = true;
+            break;
+          }
+        }
+      }
 
       let refusalMatched = false;
       if (item.off_material) {

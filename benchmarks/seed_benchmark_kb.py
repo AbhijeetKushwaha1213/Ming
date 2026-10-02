@@ -189,7 +189,7 @@ def seed_knowledge_base():
         },
         {
             "id": "net_slide_s4_c1",
-            "text": "Lecture 8: TCP Congestion Control Mechanisms. Congestion control prevents traffic collapse within network routers. TCP uses four core algorithms: Slow Start, Congestion Avoidance, Fast Retransmit, and Fast Recovery. During Slow Start, the congestion window (cwnd) doubles every RTT until reaching slow start threshold (ssthresh). In Congestion Avoidance, cwnd increases linearly by 1 MSS per RTT (Additive Increase Multiplicative Decrease - AIMD). Three duplicate ACKs trigger Fast Retransmit without waiting for retransmission timeout.",
+            "text": "Lecture 8: TCP Congestion Control Mechanisms. Congestion control prevents traffic collapse within network routers. TCP uses four core algorithms: Slow Start, Congestion Avoidance, Fast Retransmit, and Fast Recovery. During Slow Start, the congestion window (cwnd) doubles every RTT until reaching slow start threshold (ssthresh). In Congestion Avoidance, cwnd increases linearly by 1 MSS per RTT (Additive Increase Multiplicative Decrease - AIMD). Three duplicate ACKs trigger Fast Retransmit without waiting for retransmission timeout. The Bandwidth-Delay Product (BDP = Bandwidth * RTT) defines the data capacity of the link pipe to determine optimal window sizing and buffer allocation.",
             "metadata": {
                 "user_id": "default_user",
                 "source_id": "src_net_slides",

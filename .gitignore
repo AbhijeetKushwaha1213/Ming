@@ -28,6 +28,9 @@ server/uploads/*
 *.ses
 __pycache__/
 *.pyc
+*.db
+*.sqlite
+*.sqlite3
 
 # Editor directories and files
 .vscode/*

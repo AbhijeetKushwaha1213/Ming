@@ -20,7 +20,8 @@ export interface GeminiResponse {
 
 export const geminiClient = {
   async generateContent(req: GeminiRequest): Promise<GeminiResponse> {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const rawKey = import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
+    const apiKey = rawKey?.trim().replace(/^["']|["']$/g, '');
     
     if (!apiKey) {
       return {
@@ -215,51 +216,65 @@ Rules:
     const geminiPrompt = `${systemPrompt}\n\nUser Request:\n${userPrompt}`;
 
     try {
-      const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const preferredModel = (import.meta.env as any).VITE_GEMINI_MODEL || 'gemini-2.5-flash';
+      const candidateModels = [preferredModel, 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
       
-      const response = await fetch(geminiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: geminiPrompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 2048,
-            topP: 0.8,
-            topK: 10
+      let lastErrorStatus = 0;
+      let lastErrorDetails = '';
+
+      for (const model of candidateModels) {
+        try {
+          const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+          
+          const response = await fetch(geminiEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: geminiPrompt
+                }]
+              }],
+              generationConfig: {
+                temperature: 0.1,
+                maxOutputTokens: 2048,
+                topP: 0.8,
+                topK: 10
+              }
+            }),
+          });
+
+          if (!response.ok) {
+            lastErrorStatus = response.status;
+            lastErrorDetails = await response.text();
+            console.warn(`Gemini model ${model} failed with ${response.status}, trying next fallback...`);
+            continue;
           }
-        }),
-      });
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        return {
-          response: "",
-          error: `Gemini API error: ${response.status}`,
-          details: errorData
-        };
+          const data = await response.json();
+          let aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't generate a response.";
+          
+          // Clean up markdown blocks
+          if (aiResponse.includes('```json')) {
+            aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+          } else if (aiResponse.includes('```')) {
+            aiResponse = aiResponse.replace(/```\s*/g, '');
+          }
+          
+          aiResponse = aiResponse.trim();
+          return { response: aiResponse };
+        } catch (fetchErr) {
+          console.warn(`Gemini request to ${model} failed:`, fetchErr);
+        }
       }
 
-      const data = await response.json();
-      let aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't generate a response.";
-      
-      // Clean up markdown blocks
-      if (aiResponse.includes('```json')) {
-        aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-      } else if (aiResponse.includes('```')) {
-        aiResponse = aiResponse.replace(/```\s*/g, '');
-      }
-      
-      aiResponse = aiResponse.trim();
-
-      return { response: aiResponse };
-
+      return {
+        response: "",
+        error: `Gemini API error: ${lastErrorStatus || 'Network/Model Unavailable'}`,
+        details: lastErrorDetails || 'Failed across all candidate Gemini models.'
+      };
     } catch (error) {
       console.error('Error calling Gemini directly:', error);
       return {

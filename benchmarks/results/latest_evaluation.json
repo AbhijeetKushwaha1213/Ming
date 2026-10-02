@@ -1,15 +1,15 @@
 {
-  "evaluationTimestamp": "2026-10-02T09:27:10.549Z",
+  "evaluationTimestamp": "2026-10-02T10:09:27.452Z",
   "datasetSize": 70,
   "ragMetrics": {
-    "faithfulness": 0.963,
-    "answerRelevancy": 0.84,
-    "contextPrecision": 0.888,
-    "contextRecall": 0.834
+    "faithfulness": 0.978,
+    "answerRelevancy": 0.85,
+    "contextPrecision": 0.974,
+    "contextRecall": 0.841
   },
   "groundingMetrics": {
-    "groundingAccuracy": 0.986,
-    "coordinateAccuracy": 0.871,
+    "groundingAccuracy": 1,
+    "coordinateAccuracy": 1,
     "refusalAccuracy": 1,
     "userIsolationPreserved": true
   },
@@ -379,7 +379,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -393,7 +393,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -427,7 +427,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -441,7 +441,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -474,14 +474,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -516,7 +516,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -530,7 +530,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -564,7 +564,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -578,7 +578,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -612,7 +612,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -626,7 +626,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -659,14 +659,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -700,7 +700,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -714,7 +714,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -747,14 +747,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.6
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.8838709677419354
           }
         ]
@@ -787,14 +787,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -829,7 +829,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -843,7 +843,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -877,7 +877,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -891,7 +891,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -925,7 +925,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -939,7 +939,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -972,14 +972,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1013,7 +1013,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1027,7 +1027,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -1061,7 +1061,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1075,7 +1075,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1108,14 +1108,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1150,7 +1150,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1164,7 +1164,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1198,7 +1198,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1212,7 +1212,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1246,7 +1246,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1260,7 +1260,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -1293,14 +1293,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1334,7 +1334,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1348,7 +1348,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -1382,7 +1382,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1396,7 +1396,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1429,14 +1429,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1471,7 +1471,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1485,7 +1485,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1519,7 +1519,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1533,7 +1533,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1567,7 +1567,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1581,7 +1581,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -1614,14 +1614,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1655,7 +1655,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1669,7 +1669,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -1703,7 +1703,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1717,7 +1717,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1750,14 +1750,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1792,7 +1792,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1806,7 +1806,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1840,7 +1840,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1854,7 +1854,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1888,7 +1888,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1902,7 +1902,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -1935,14 +1935,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1976,7 +1976,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1990,7 +1990,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -2023,14 +2023,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.6
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.8838709677419354
           }
         ]
@@ -2063,14 +2063,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -2105,7 +2105,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -2119,7 +2119,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -2153,7 +2153,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -2167,7 +2167,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -2201,7 +2201,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -2215,7 +2215,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -2248,14 +2248,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -2289,7 +2289,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -2303,7 +2303,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -2311,10 +2311,10 @@
     ]
   },
   "noveltyMetrics": {
-    "totalQuestionsAnalyzed": 41,
+    "totalQuestionsAnalyzed": 45,
     "exactDuplicatesCount": 0,
     "semanticDuplicatesCount": 0,
-    "uniqueQuestionsCount": 41,
+    "uniqueQuestionsCount": 45,
     "exactDuplicateRate": 0,
     "semanticDuplicateRate": 0,
     "uniqueQuestionPercentage": 1
@@ -2407,7 +2407,7 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.933,
+      "faithfulness": 0.938,
       "answerRelevancy": 0.974,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -2843,14 +2843,14 @@
       "question": "Compare the role of caches in operating systems (TLB) and networks (sliding window buffer) in mitigating latency bottlenecks.",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 3,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.917,
-      "answerRelevancy": 0.675,
+      "faithfulness": 0.947,
+      "answerRelevancy": 0.729,
       "contextPrecision": 1,
       "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Compare the role of caches in operating systems (TLB) and networks (sliding window buffer) in mitigating latency b"
@@ -2898,7 +2898,7 @@
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
-      "coordinatesMatched": false,
+      "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 0.933,
       "answerRelevancy": 0.74,
@@ -3272,7 +3272,7 @@
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
-      "coordinatesMatched": false,
+      "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.946,
@@ -3374,7 +3374,7 @@
       "topSourceId": "src_os_pdf",
       "topPageNumber": 3,
       "groundingMatched": true,
-      "coordinatesMatched": false,
+      "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 0.941,
       "answerRelevancy": 0.865,
@@ -3391,11 +3391,11 @@
       "topSourceId": "src_os_pdf",
       "topPageNumber": 4,
       "groundingMatched": true,
-      "coordinatesMatched": false,
+      "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.711,
-      "contextPrecision": 0,
+      "contextPrecision": 1,
       "contextRecall": 0.6,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does Least Recently Used (LRU) page replacement perform differently from First-In First-Out (FIFO)**\n\nAccordin"
     },
@@ -3408,11 +3408,11 @@
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
-      "coordinatesMatched": false,
+      "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
-      "answerRelevancy": 0.663,
-      "contextPrecision": 0,
+      "answerRelevancy": 0.687,
+      "contextPrecision": 1,
       "contextRecall": 0.4,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Explain the difference between TCP flow control and TCP congestion control**\n\nAccording to your course materials o"
     },
@@ -3425,11 +3425,11 @@
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
-      "coordinatesMatched": false,
+      "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.532,
-      "contextPrecision": 0,
+      "contextPrecision": 1,
       "contextRecall": 0.8,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why is TCP considered a reliable byte-stream protocol while UDP is considered unreliable and message-oriented**\n\nA"
     },
@@ -3459,11 +3459,11 @@
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
-      "coordinatesMatched": false,
+      "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.88,
-      "contextPrecision": 0,
+      "contextPrecision": 1,
       "contextRecall": 0.8,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Where are actual data records or record pointers stored in a B+ Tree index, and what do internal nodes contain**\n\n"
     },
@@ -3493,11 +3493,11 @@
       "topSourceId": "src_os_pdf",
       "topPageNumber": 4,
       "groundingMatched": true,
-      "coordinatesMatched": false,
+      "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.814,
-      "contextPrecision": 0,
+      "contextPrecision": 1,
       "contextRecall": 0.25,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **If main memory access time is 100 ns and page fault service time is 10,000,000 ns, what is the effective memory ac"
     },
@@ -3506,16 +3506,17 @@
       "question": "Calculate the Bandwidth-Delay Product (BDP) for a link with 1 Gbps bandwidth and 50 ms Round-Trip Time (RTT).",
       "questionType": "numerical-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 0,
-      "topSourceId": null,
+      "retrievedChunkCount": 1,
+      "topSourceId": "src_net_slides",
       "topPageNumber": null,
-      "coordinatesMatched": false,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0,
-      "answerRelevancy": 0,
-      "contextPrecision": 0,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "The uploaded course materials do not contain sufficient information to answer this question. Please upload relevant course materials (such as lecture slides, PD"
+      "faithfulness": 1,
+      "answerRelevancy": 0.576,
+      "contextPrecision": 1,
+      "contextRecall": 0.5,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Calculate the Bandwidth-Delay Product (BDP) for a link with 1 Gbps bandwidth and 50 ms Round-Trip Time (RTT)**\n\nAc"
     }
   ],
   "failuresAndErrors": [],
@@ -3524,8 +3525,8 @@
       "metric": "Context Recall",
       "phase6Value": 0.65,
       "phase7Value": 0.458,
-      "phase8Value": 0.834,
-      "delta": 0.376,
+      "phase8Value": 0.841,
+      "delta": 0.383,
       "improved": true,
       "targetBenchmark": ">= 0.80"
     },
@@ -3533,8 +3534,8 @@
       "metric": "Answer Relevancy",
       "phase6Value": 0.702,
       "phase7Value": 0.713,
-      "phase8Value": 0.84,
-      "delta": 0.127,
+      "phase8Value": 0.85,
+      "delta": 0.137,
       "improved": true,
       "targetBenchmark": ">= 0.80"
     },
@@ -3542,8 +3543,8 @@
       "metric": "Context Precision",
       "phase6Value": 0.375,
       "phase7Value": 0.942,
-      "phase8Value": 0.888,
-      "delta": -0.054,
+      "phase8Value": 0.974,
+      "delta": 0.032,
       "improved": true,
       "targetBenchmark": ">= 0.80"
     },
@@ -3551,8 +3552,8 @@
       "metric": "Faithfulness",
       "phase6Value": 0.796,
       "phase7Value": 0.418,
-      "phase8Value": 0.963,
-      "delta": 0.545,
+      "phase8Value": 0.978,
+      "delta": 0.56,
       "improved": true,
       "targetBenchmark": ">= 0.85"
     },
@@ -3560,8 +3561,8 @@
       "metric": "Grounding Accuracy",
       "phase6Value": 1,
       "phase7Value": 0.942,
-      "phase8Value": 0.986,
-      "delta": 0.044,
+      "phase8Value": 1,
+      "delta": 0.058,
       "improved": true,
       "targetBenchmark": ">= 0.90"
     },
@@ -3569,9 +3570,9 @@
       "metric": "Coordinate Match",
       "phase6Value": 0.875,
       "phase7Value": 0.962,
-      "phase8Value": 0.871,
-      "delta": -0.091,
-      "improved": false,
+      "phase8Value": 1,
+      "delta": 0.038,
+      "improved": true,
       "targetBenchmark": ">= 0.95"
     },
     {

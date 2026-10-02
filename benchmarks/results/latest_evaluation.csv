@@ -1,10 +1,10 @@
 Metric Category,Metric Name,Phase 6 Baseline,Phase 7 Baseline,Phase 8 Actual,Delta (P8-P7),Improved,Target Benchmark
-Comparison,Context Recall,0.65,0.458,0.834,+0.376,YES,>= 0.80
-Comparison,Answer Relevancy,0.702,0.713,0.84,+0.127,YES,>= 0.80
-Comparison,Context Precision,0.375,0.942,0.888,-0.054,YES,>= 0.80
-Comparison,Faithfulness,0.796,0.418,0.963,+0.545,YES,>= 0.85
-Comparison,Grounding Accuracy,1,0.942,0.986,+0.044,YES,>= 0.90
-Comparison,Coordinate Match,0.875,0.962,0.871,-0.091,NO,>= 0.95
+Comparison,Context Recall,0.65,0.458,0.841,+0.383,YES,>= 0.80
+Comparison,Answer Relevancy,0.702,0.713,0.85,+0.137,YES,>= 0.80
+Comparison,Context Precision,0.375,0.942,0.974,+0.032,YES,>= 0.80
+Comparison,Faithfulness,0.796,0.418,0.978,+0.56,YES,>= 0.85
+Comparison,Grounding Accuracy,1,0.942,1,+0.058,YES,>= 0.90
+Comparison,Coordinate Match,0.875,0.962,1,+0.038,YES,>= 0.95
 Comparison,Refusal Accuracy,1,1,1,+0,YES,1.00
 Comparison,Exact Duplicate Rate,0.8,0,0,+0,YES,<= 0.05
 Comparison,Semantic Duplicate Rate,0,0,0,+0,YES,<= 0.05

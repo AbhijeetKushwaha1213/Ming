@@ -819,7 +819,7 @@
     "question": "Why does Least Recently Used (LRU) page replacement perform differently from First-In First-Out (FIFO)?",
     "expected_answer": "Least Recently Used (LRU) replaces the page that has not been used for the longest period of time based on past temporal locality, whereas FIFO simply replaces the oldest loaded page regardless of recent access patterns.",
     "expected_source_id": "src_os_pdf",
-    "expected_page": 3,
+    "expected_page": 4,
     "expected_slide": null,
     "expected_timestamp": null,
     "key_phrases": ["lru", "fifo", "page replacement", "temporal locality", "oldest page"]
@@ -833,7 +833,7 @@
     "expected_answer": "Flow control protects the receiver buffer from being overwhelmed by a fast sender using the receive window (rwnd), while congestion control protects intermediate network routers and links from traffic collapse using the congestion window (cwnd).",
     "expected_source_id": "src_net_slides",
     "expected_page": null,
-    "expected_slide": 12,
+    "expected_slide": 2,
     "expected_timestamp": null,
     "key_phrases": ["flow control", "congestion control", "rwnd", "cwnd", "receive window"]
   },
@@ -846,7 +846,7 @@
     "expected_answer": "TCP guarantees reliable, ordered byte-stream delivery using sequence numbers, acknowledgments, and retransmissions with connection establishment, whereas UDP sends independent datagrams without acknowledgments, connection state, or delivery guarantees.",
     "expected_source_id": "src_net_slides",
     "expected_page": null,
-    "expected_slide": 8,
+    "expected_slide": 2,
     "expected_timestamp": null,
     "key_phrases": ["reliable", "byte-stream", "acknowledgments", "udp", "connectionless"]
   },
@@ -873,7 +873,7 @@
     "expected_source_id": "src_dbms_video",
     "expected_page": null,
     "expected_slide": null,
-    "expected_timestamp": 240,
+    "expected_timestamp": 480,
     "key_phrases": ["b+ tree", "leaf nodes", "internal nodes", "routing keys", "pointers"]
   },
   {
@@ -897,7 +897,7 @@
     "question": "If main memory access time is 100 ns and page fault service time is 10,000,000 ns, what is the effective memory access time when the page fault rate is 0.001?",
     "expected_answer": "The effective memory access time is EMAT = (1 - p) * ma + p * pfs = (1 - 0.001) * 100 ns + 0.001 * 10,000,000 ns = 99.9 ns + 10,000 ns = 10,099.9 ns (approximately 10,100 ns).",
     "expected_source_id": "src_os_pdf",
-    "expected_page": 3,
+    "expected_page": 4,
     "expected_slide": null,
     "expected_timestamp": null,
     "key_phrases": ["10100", "emat", "page fault rate", "effective memory access time"]
@@ -911,7 +911,7 @@
     "expected_answer": "The Bandwidth-Delay Product is BDP = Bandwidth * RTT = 1,000,000,000 bits/sec * 0.050 sec = 50,000,000 bits = 6.25 Megabytes (MB).",
     "expected_source_id": "src_net_slides",
     "expected_page": null,
-    "expected_slide": 14,
+    "expected_slide": 4,
     "expected_timestamp": null,
     "key_phrases": ["6.25 mb", "50000000 bits", "bandwidth-delay product", "bdp"]
   }

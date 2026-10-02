@@ -1,0 +1,275 @@
+{
+  "evaluationTimestamp": "2026-10-02T06:40:03.796Z",
+  "datasetSize": 8,
+  "ragMetrics": {
+    "faithfulness": 0.796,
+    "answerRelevancy": 0.702,
+    "contextPrecision": 0.375,
+    "contextRecall": 0.65
+  },
+  "groundingMetrics": {
+    "groundingAccuracy": 1,
+    "coordinateAccuracy": 0.875,
+    "refusalAccuracy": 1,
+    "userIsolationPreserved": true
+  },
+  "personalizationMetrics": {
+    "simulatedStudentsCount": 3,
+    "averageMasteryImprovement": 0.501,
+    "totalCompletedActivities": 5,
+    "students": [
+      {
+        "studentId": "eval_sim_novice_1790923215846",
+        "profileName": "Novice Student (Low Initial Mastery & High Mistakes)",
+        "initialTopicMasteries": {
+          "Operating Systems": 0.2
+        },
+        "finalTopicMasteries": {
+          "Operating Systems": 0.8736842105263158
+        },
+        "masteryBefore": 0.2,
+        "masteryAfter": 0.8736842105263158,
+        "masteryImprovement": 0.674,
+        "recommendedTopics": [
+          "Operating Systems"
+        ],
+        "recommendedActivities": [
+          "REVIEW_SOURCE",
+          "ASK_TUTOR"
+        ],
+        "completedTasksCount": 2,
+        "sessionSteps": [
+          {
+            "sessionIndex": 1,
+            "recommendedTopic": "Operating Systems",
+            "activityType": "REVIEW_SOURCE",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 1 related questions.",
+            "priorMastery": 0.2
+          },
+          {
+            "sessionIndex": 2,
+            "recommendedTopic": "Operating Systems",
+            "activityType": "ASK_TUTOR",
+            "reason": "Your lowest mastery topic is Operating Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
+            "priorMastery": 0.5764705882352941
+          }
+        ]
+      },
+      {
+        "studentId": "eval_sim_crammer_1790923215846",
+        "profileName": "Exam Crammer (Exam in 2 Days, Moderate Knowledge)",
+        "initialTopicMasteries": {
+          "Operating Systems": 0.4
+        },
+        "finalTopicMasteries": {
+          "Operating Systems": 0.9454545454545454
+        },
+        "masteryBefore": 0.4,
+        "masteryAfter": 0.9454545454545454,
+        "masteryImprovement": 0.545,
+        "recommendedTopics": [
+          "Operating Systems"
+        ],
+        "recommendedActivities": [
+          "PRACTICE_WEAK_CONCEPTS",
+          "PRACTICE_ASSESSMENT",
+          "ASK_TUTOR"
+        ],
+        "completedTasksCount": 2,
+        "sessionSteps": [
+          {
+            "sessionIndex": 1,
+            "recommendedTopic": "Operating Systems",
+            "activityType": "PRACTICE_WEAK_CONCEPTS",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 1 related questions.",
+            "priorMastery": 0.4
+          },
+          {
+            "sessionIndex": 2,
+            "recommendedTopic": "Operating Systems",
+            "activityType": "PRACTICE_ASSESSMENT",
+            "reason": "Exam is in 2 days; active retrieval practice solidifies memory retention.",
+            "priorMastery": 0.775
+          }
+        ]
+      },
+      {
+        "studentId": "eval_sim_proficient_1790923215846",
+        "profileName": "Developing Student (Proficiency Target)",
+        "initialTopicMasteries": {
+          "Operating Systems": 0.6
+        },
+        "finalTopicMasteries": {
+          "Operating Systems": 0.8838709677419354
+        },
+        "masteryBefore": 0.6,
+        "masteryAfter": 0.8838709677419354,
+        "masteryImprovement": 0.284,
+        "recommendedTopics": [
+          "Operating Systems"
+        ],
+        "recommendedActivities": [
+          "PRACTICE_WEAK_CONCEPTS"
+        ],
+        "completedTasksCount": 1,
+        "sessionSteps": [
+          {
+            "sessionIndex": 1,
+            "recommendedTopic": "Operating Systems",
+            "activityType": "PRACTICE_WEAK_CONCEPTS",
+            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 1 related questions.",
+            "priorMastery": 0.6
+          }
+        ]
+      }
+    ]
+  },
+  "noveltyMetrics": {
+    "totalQuestionsAnalyzed": 5,
+    "exactDuplicatesCount": 4,
+    "semanticDuplicatesCount": 0,
+    "uniqueQuestionsCount": 1,
+    "exactDuplicateRate": 0.8,
+    "semanticDuplicateRate": 0,
+    "uniqueQuestionPercentage": 0.2
+  },
+  "perQuestionResults": [
+    {
+      "itemId": "eval_q_01",
+      "question": "What are the four Coffman conditions required for a deadlock to occur?",
+      "questionType": "factual",
+      "offMaterial": false,
+      "retrievedChunkCount": 5,
+      "topSourceId": "src_ace0943af87e",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.714,
+      "answerRelevancy": 0.883,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), A deadlock occurs when processes are waiting for "
+    },
+    {
+      "itemId": "eval_q_02",
+      "question": "How does the Banker's algorithm determine whether a resource allocation state is safe?",
+      "questionType": "factual",
+      "offMaterial": false,
+      "retrievedChunkCount": 5,
+      "topSourceId": "src_d76dd034ee99",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": false,
+      "refusalMatched": true,
+      "faithfulness": 0.8,
+      "answerRelevancy": 0.638,
+      "contextPrecision": 0,
+      "contextRecall": 0.75,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Slide 2), Title: Banker Algorithm for Deadlock Avoidance\nSafe stat"
+    },
+    {
+      "itemId": "eval_q_03",
+      "question": "What is the primary difference between deadlock prevention and deadlock avoidance?",
+      "questionType": "conceptual",
+      "offMaterial": false,
+      "retrievedChunkCount": 5,
+      "topSourceId": "src_ace0943af87e",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.714,
+      "answerRelevancy": 0.326,
+      "contextPrecision": 0,
+      "contextRecall": 0.2,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), A deadlock occurs when processes are waiting for "
+    },
+    {
+      "itemId": "eval_q_04",
+      "question": "If circular wait is prevented by imposing a strict global ordering on resource requests, can a deadlock still occur under the remaining conditions?",
+      "questionType": "reasoning",
+      "offMaterial": false,
+      "retrievedChunkCount": 5,
+      "topSourceId": "src_f61cf0c56424",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.714,
+      "answerRelevancy": 0.476,
+      "contextPrecision": 0,
+      "contextRecall": 0.25,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), A deadlock occurs when processes are waiting for "
+    },
+    {
+      "itemId": "eval_q_05",
+      "question": "How do resource allocation graphs represent hold-and-wait versus circular wait in concurrency management?",
+      "questionType": "multi-source",
+      "offMaterial": false,
+      "retrievedChunkCount": 5,
+      "topSourceId": "src_afb38b408982",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.714,
+      "answerRelevancy": 0.295,
+      "contextPrecision": 0,
+      "contextRecall": 0,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), A deadlock occurs when processes are waiting for "
+    },
+    {
+      "itemId": "eval_q_06",
+      "question": "Explain Shor's algorithm for quantum polynomial-time integer factorization and its effect on RSA.",
+      "questionType": "off-material",
+      "offMaterial": true,
+      "retrievedChunkCount": 0,
+      "topSourceId": null,
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "The uploaded course materials do not contain sufficient information to answer this question. Please upload relevant course materials (such as lecture slides, PD"
+    },
+    {
+      "itemId": "eval_q_07",
+      "question": "What is the authentic recipe for preparing traditional French onion soup?",
+      "questionType": "off-material",
+      "offMaterial": true,
+      "retrievedChunkCount": 0,
+      "topSourceId": null,
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "The uploaded course materials do not contain sufficient information to answer this question. Please upload relevant course materials (such as lecture slides, PD"
+    },
+    {
+      "itemId": "eval_q_08",
+      "question": "What occurs when processes are waiting for resources held by each other?",
+      "questionType": "factual",
+      "offMaterial": false,
+      "retrievedChunkCount": 5,
+      "topSourceId": "src_f61cf0c56424",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.714,
+      "answerRelevancy": 1,
+      "contextPrecision": 0,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), A deadlock occurs when processes are waiting for "
+    }
+  ],
+  "failuresAndErrors": []
+}

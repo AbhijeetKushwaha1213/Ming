@@ -5,6 +5,7 @@ import resourcesHandler from '../api/resources.ts';
 import { ragHandler } from './ragHandler.ts';
 import { learnerHandler } from './learnerHandler.ts';
 import { studyAgentHandler } from './studyAgentHandler.ts';
+import { evaluationHandler } from './evaluationHandler.ts';
 
 const PORT = Number(process.env.API_PORT || 3001);
 const HOST = process.env.API_HOST || '127.0.0.1';
@@ -117,6 +118,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   if (url.pathname.startsWith('/api/agent')) {
     const body = await readBody(req);
     await studyAgentHandler(
+      {
+        method: req.method,
+        headers: req.headers as Record<string, HeaderValue>,
+        query: Object.fromEntries(url.searchParams.entries()),
+        url: url.toString(),
+        body,
+      },
+      createRouteResponse(res),
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/evaluation')) {
+    const body = await readBody(req);
+    await evaluationHandler(
       {
         method: req.method,
         headers: req.headers as Record<string, HeaderValue>,

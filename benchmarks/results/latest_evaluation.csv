@@ -1,0 +1,12 @@
+Metric Category,Metric Name,Value,Target Benchmark
+RAG,Faithfulness,0.796,>= 0.85
+RAG,Answer Relevancy,0.702,>= 0.80
+RAG,Context Precision,0.375,>= 0.80
+RAG,Context Recall,0.65,>= 0.80
+Grounding,Grounding Accuracy,1,>= 0.85
+Grounding,Coordinate Accuracy,0.875,>= 0.85
+Grounding,Refusal Accuracy,1,1.00
+Grounding,User Isolation Preserved,YES,YES
+Personalization,Average Mastery Improvement,0.501,> 0.00
+Novelty,Unique Question Percentage,0.2,>= 0.90
+Novelty,Exact Duplicate Rate,0.8,<= 0.05

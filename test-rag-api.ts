@@ -600,7 +600,68 @@ async function runTests() {
     throw new Error('Cold-start agent failed to recommend diagnostic baseline assessment');
   }
 
-  console.log('\n🎉 ALL 24 PHASE 1-5 MULTIMODAL RAG, TUTOR, ADAPTIVE ASSESSMENT, BKT & STUDY AGENT INTEGRATION TESTS PASSED SUCCESSFULLY!');
+  // =========================================================================
+  // Phase 6: StudyMate Evaluation & Benchmarking Integration Tests
+  // =========================================================================
+
+  // Test 25: GET /api/evaluation/dataset
+  console.log('\n2️⃣5️⃣ Testing GET /api/evaluation/dataset (Evaluation Dataset API)...');
+  const datasetReq = {
+    method: 'GET',
+    url: '/api/evaluation/dataset',
+    headers: {},
+  };
+  const res25 = mockRes();
+  await ragHandler(datasetReq, res25);
+  const datasetData = res25.getData();
+  console.log('Status code:', res25.getStatusCode());
+  console.log('Dataset items count:', datasetData?.count);
+  if (!datasetData?.dataset || datasetData.count < 5) {
+    throw new Error('Evaluation dataset failed to load required benchmark items');
+  }
+
+  // Test 26: GET /api/evaluation/latest (RAGAS-equivalent Metrics & Simulation Report)
+  console.log('\n2️⃣6️⃣ Testing GET /api/evaluation/latest (Empirical Benchmarks Report)...');
+  const evalReq = {
+    method: 'GET',
+    url: '/api/evaluation/latest',
+    headers: {},
+  };
+  const res26 = mockRes();
+  await ragHandler(evalReq, res26);
+  const evalData = res26.getData();
+  console.log('Status code:', res26.getStatusCode());
+  console.log('Faithfulness:', evalData?.report?.ragMetrics?.faithfulness);
+  console.log('Answer Relevancy:', evalData?.report?.ragMetrics?.answerRelevancy);
+  console.log('Context Precision:', evalData?.report?.ragMetrics?.contextPrecision);
+  console.log('Context Recall:', evalData?.report?.ragMetrics?.contextRecall);
+  console.log('Grounding Accuracy:', evalData?.report?.groundingMetrics?.groundingAccuracy);
+  console.log('Refusal Accuracy:', evalData?.report?.groundingMetrics?.refusalAccuracy);
+  console.log('Question Novelty (% unique):', evalData?.report?.noveltyMetrics?.uniqueQuestionPercentage);
+  console.log('Simulated Students Average Mastery Delta:', evalData?.report?.personalizationMetrics?.averageMasteryImprovement);
+
+  if (evalData?.report?.ragMetrics?.faithfulness === undefined || evalData?.report?.groundingMetrics?.refusalAccuracy !== 1) {
+    throw new Error('Benchmark report missing verified RAG metrics or refusal guardrail failed');
+  }
+
+  // Test 27: GET /api/evaluation/csv (Machine-Readable CSV Export)
+  console.log('\n2️⃣7️⃣ Testing GET /api/evaluation/csv (CSV Benchmark Export)...');
+  const csvReq = {
+    method: 'GET',
+    url: '/api/evaluation/csv',
+    headers: {},
+  };
+  const res27 = mockRes();
+  await ragHandler(csvReq, res27);
+  const csvData = res27.getData();
+  console.log('Status code:', res27.getStatusCode());
+  const csvText = typeof csvData === 'string' ? csvData : (csvData?.csv || '');
+  console.log('CSV preview:', csvText.split('\n').slice(0, 4).join(' | '));
+  if (!csvText.includes('Faithfulness') || !csvText.includes('Refusal Accuracy')) {
+    throw new Error('CSV benchmark export missing required KPI rows');
+  }
+
+  console.log('\n🎉 ALL 27 PHASE 1-6 MULTIMODAL RAG, TUTOR, ADAPTIVE ASSESSMENT, BKT, STUDY AGENT & BENCHMARKING INTEGRATION TESTS PASSED SUCCESSFULLY!');
 }
 
 runTests().catch(err => {

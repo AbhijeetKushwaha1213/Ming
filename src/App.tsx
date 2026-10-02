@@ -11,6 +11,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SecurityHeaders } from "./components/security/SecurityHeaders";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
+import { EvaluationDashboard } from "./components/dev/EvaluationDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +67,7 @@ const App = () => {
                   <MainApp />
                 </AuthProvider>
               } />
+              <Route path="/dev/evaluation" element={<EvaluationDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

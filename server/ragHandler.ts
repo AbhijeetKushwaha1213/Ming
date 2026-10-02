@@ -7,6 +7,7 @@ import { prisma, ensureResourceSchema, ensureAssessmentSchema, ensureLearnerSche
 import { updateMasteryFromEvidence } from './bktService.ts';
 import { learnerHandler } from './learnerHandler.ts';
 import { studyAgentHandler } from './studyAgentHandler.ts';
+import { evaluationHandler } from './evaluationHandler.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,7 +33,7 @@ export type RagApiResponse = {
   end: (body?: string) => void;
 };
 
-function runPythonCli(args: string[]): Promise<any> {
+export function runPythonCli(args: string[]): Promise<any> {
   return new Promise((resolve, reject) => {
     execFile(
       PYTHON_PATH,
@@ -632,6 +633,16 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       url: req.url?.replace('/api/rag/agent', '/api/agent'),
     };
     await studyAgentHandler(normalizedReq, res);
+    return;
+  }
+
+  // 12. Phase 6: StudyMate Evaluation & Benchmarking APIs
+  if (pathname.startsWith('/api/evaluation') || pathname.startsWith('/api/rag/evaluation')) {
+    const normalizedReq = {
+      ...req,
+      url: req.url?.replace('/api/rag/evaluation', '/api/evaluation'),
+    };
+    await evaluationHandler(normalizedReq, res);
     return;
   }
 

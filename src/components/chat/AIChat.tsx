@@ -66,13 +66,15 @@ export const AIChat = ({
     return `session_${Date.now()}`;
   });
 
-  // Restore current topic
+  // Restore current topic (ignore greetings)
   const [currentTopic, setCurrentTopic] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(activeChatStorageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.topic) return parsed.topic;
+        if (parsed.topic && !['hy', 'hi', 'hello', 'hey', 'test', 'yo'].includes(parsed.topic.toLowerCase().trim())) {
+          return parsed.topic;
+        }
       }
     } catch (e) {}
     return '';
@@ -215,10 +217,20 @@ export const AIChat = ({
     setAttachedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
 
-    // Set topic if not already set
-    if (!currentTopic) {
-      setCurrentTopic(attachedName ? attachedName.replace(/\.[^/.]+$/, "") : userMsgText.slice(0, 30));
+    // Set topic only if real topic and not a greeting/casual message
+    const isGreeting = /^(hi|hey|hello|hy|yo|sup|test|help|start|good\s+(morning|afternoon|evening))\b/i.test(userMsgText.trim()) || userMsgText.trim().length <= 3;
+    let effectiveTopic = currentTopic;
+    if (attachedName) {
+      effectiveTopic = attachedName.replace(/\.[^/.]+$/, "");
+      setCurrentTopic(effectiveTopic);
+    } else if (!effectiveTopic && !isGreeting && userMsgText.length > 5) {
+      effectiveTopic = userMsgText.slice(0, 35);
+      setCurrentTopic(effectiveTopic);
     }
+
+    const sanitizedTopic = (effectiveTopic && !['hy', 'hi', 'hello', 'hey', 'test', 'yo'].includes(effectiveTopic.toLowerCase().trim())) 
+      ? effectiveTopic 
+      : undefined;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -240,7 +252,7 @@ export const AIChat = ({
           await ingestSource({
             file: fileToIngest,
             userId: user?.user_id || user?.id || 'default_user',
-            topic: currentTopic || 'Course Document',
+            topic: sanitizedTopic || 'Course Document',
             title: fileToIngest.name
           });
           toast({
@@ -265,7 +277,7 @@ export const AIChat = ({
         tutorResult = await askGroundedTutor({
           message: userMsgText,
           userId: user?.user_id || user?.id || 'default_user',
-          topic: currentTopic || context,
+          topic: sanitizedTopic || context,
           conversationHistory
         });
       } catch (tutorError) {
@@ -294,7 +306,7 @@ export const AIChat = ({
         // Fall back directly to Gemini 2.5 Flash
         const directRes = await geminiClient.generateContent({
           message: userMsgText,
-          topic: currentTopic || context,
+          topic: sanitizedTopic,
           context: conversationHistory
         });
 
@@ -451,8 +463,18 @@ export const AIChat = ({
           </span>
           <div className="flex flex-col">
             <span className="text-sm font-bold text-foreground">AI {context.charAt(0).toUpperCase() + context.slice(1)}</span>
-            {currentTopic ? (
-              <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">Topic: {currentTopic}</span>
+            {currentTopic && !['hy', 'hi', 'hello', 'hey', 'test', 'yo'].includes(currentTopic.toLowerCase().trim()) ? (
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="truncate max-w-[180px]">Topic: {currentTopic}</span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentTopic('')}
+                  className="hover:text-foreground text-muted-foreground/70 p-0.5 rounded-full hover:bg-muted"
+                  title="Clear topic focus"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
             ) : (
               <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Ready • Gemini 2.5 + Grounded RAG</span>
             )}

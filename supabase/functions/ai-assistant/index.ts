@@ -182,17 +182,15 @@ Rules:
     };
 
     const systemPrompt = contentType ? getSystemPrompt(contentType) : 
-      `You are a helpful AI study assistant focused ONLY on the specific topic provided by the user. 
+      `You are StudyMate AI, an expert, versatile, and friendly educational AI study assistant and tutor.
       
-      CRITICAL: Only discuss topics directly related to: "${topic || message}"
+      You help students with:
+      - Answering all academic, educational, and general knowledge questions clearly and accurately
+      - Explaining complex concepts in intuitive, easy-to-understand ways with helpful examples
+      - Providing study advice, exam preparation tips, summaries, and practice problems
+      - Assisting with coursework and uploaded notes
       
-      You specialize in helping with:
-      - Study planning and organization for the specific topic
-      - Explaining concepts ONLY related to the given topic
-      - Creating practice questions ONLY about the given topic
-      - Providing study tips ONLY for the specific subject area
-      
-      Be encouraging, concise, and educational. Always stay focused on the specific topic provided.`;
+      Always be helpful, encouraging, accurate, and concise. Never refuse general study or knowledge questions. Format key points cleanly with markdown.`;
 
     const userPrompt = contentType ? 
       `Topic: ${topic || message}
@@ -200,7 +198,7 @@ Rules:
       Subject Context: ${subject || 'general'}
       
       Generate ${contentType} content STRICTLY for "${topic || message}" ONLY. Focus exclusively on the provided topic and ensure all content is accurate, relevant, and directly related to "${topic || message}". DO NOT include any concepts from other subjects or unrelated topics.` 
-      : message;
+      : (topic && topic !== 'General' && !['hy', 'hi', 'hello', 'hey'].includes(topic.toLowerCase().trim()) ? `[Context Topic: ${topic}]\n${message}` : message);
 
     // Gemini uses a different message format
     const geminiPrompt = `${systemPrompt}\n\nUser Request:\n${userPrompt}`;

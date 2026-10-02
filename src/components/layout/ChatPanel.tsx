@@ -58,7 +58,6 @@ interface ChatPanelProps {
 export const ChatPanel = ({ isOpen, onClose }: ChatPanelProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { flashcards, studyMaterials } = useFlashcards();
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>(() => {

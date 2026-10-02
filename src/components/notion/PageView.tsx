@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { usePage } from '@/hooks/usePage';
 import { useUpdatePageOptimistic } from '@/hooks/usePage';
-import { getPageAncestors } from '@/api/pageAPI';
+import { getPage, getPageAncestors } from '@/api/pageAPI';
 import { PageHeader } from './PageHeader';
 import { PageBreadcrumb } from './PageBreadcrumb';
 import { BlockEditor } from './editor/BlockEditor';
@@ -10,6 +10,8 @@ import { ShareModal } from './ShareModal';
 import { PageContentSkeleton } from './PageSkeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { logError } from '@/utils/errorLogger';
+import { useQueryClient } from '@tanstack/react-query';
+import { pageKeys } from '@/hooks/usePages';
 import type { Page, Block } from '@/types/notion';
 
 interface PageViewProps {
@@ -20,6 +22,7 @@ interface PageViewProps {
 export function PageView({ pageId, onNavigate }: PageViewProps) {
   const { data: page, isLoading, error } = usePage(pageId);
   const updatePage = useUpdatePageOptimistic(pageId);
+  const queryClient = useQueryClient();
   const [ancestors, setAncestors] = useState<Page[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -41,10 +44,36 @@ export function PageView({ pageId, onNavigate }: PageViewProps) {
       });
   }, [pageId]);
 
+  // Sync draftBlocks when page data changes (including after external updates)
   useEffect(() => {
     if (!page) return;
     setDraftBlocks(page.content || []);
   }, [page?.id, page?.updated_at]);
+
+  // Listen for agent-driven page updates and refetch the page from the server
+  useEffect(() => {
+    const handlePageUpdated = async (e: any) => {
+      const updatedPageId = e?.detail?.pageId;
+      if (updatedPageId && updatedPageId === pageId) {
+        // Invalidate and refetch the specific page detail query so PageView gets new content
+        await queryClient.invalidateQueries({ queryKey: pageKeys.detail(pageId) });
+        // Also directly fetch fresh data and update draftBlocks to avoid stale state
+        try {
+          const freshPage = await getPage(pageId);
+          if (freshPage?.content) {
+            setDraftBlocks(freshPage.content);
+          }
+        } catch (err) {
+          console.warn('Failed to refetch page after agent update:', err);
+        }
+      }
+    };
+
+    window.addEventListener('studymate-page-updated', handlePageUpdated);
+    return () => {
+      window.removeEventListener('studymate-page-updated', handlePageUpdated);
+    };
+  }, [pageId, queryClient]);
 
   // Handle title change with auto-save
   const handleTitleChange = useCallback(

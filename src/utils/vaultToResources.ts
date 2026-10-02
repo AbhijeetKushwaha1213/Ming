@@ -242,13 +242,29 @@ export function markdownToBlocks(markdown: string): Block[] {
   const createId = (p: string) => `block-md-${p}-${Date.now()}-${++blockCounter}`;
 
   const blocks: Block[] = [];
-  const paragraphs = markdown.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const lines = markdown.split('\n');
 
-  for (const para of paragraphs) {
-    if (para.startsWith('```')) {
-      const match = para.match(/^```(\w+)?\n([\s\S]*?)```$/);
-      const lang = match?.[1] || 'plaintext';
-      const code = match ? match[2] : para.replace(/```/g, '');
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i].trimEnd();
+
+    // Skip empty lines
+    if (line.trim() === '') {
+      i++;
+      continue;
+    }
+
+    // Code block (collect until closing ```)
+    if (line.trim().startsWith('```')) {
+      const langMatch = line.trim().match(/^```(\w+)?/);
+      const lang = langMatch?.[1] || 'plaintext';
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
       blocks.push({
         id: createId('code'),
         type: 'code',
@@ -256,36 +272,60 @@ export function markdownToBlocks(markdown: string): Block[] {
         language: lang,
         created_at: now,
         updated_at: now,
-        content: code.trim(),
+        content: codeLines.join('\n').trim(),
       } as Block);
-    } else if (para.startsWith('# ')) {
+      continue;
+    }
+
+    // Heading 1
+    if (line.startsWith('# ')) {
       blocks.push({
         id: createId('h1'),
         type: 'heading1',
         position: blockCounter,
         created_at: now,
         updated_at: now,
-        content: { text: para.replace(/^#\s+/, ''), marks: [{ type: 'bold' }] },
+        content: { text: line.replace(/^#\s+/, ''), marks: [{ type: 'bold' }] },
       } as Block);
-    } else if (para.startsWith('## ')) {
+      i++;
+      continue;
+    }
+
+    // Heading 2
+    if (line.startsWith('## ')) {
       blocks.push({
         id: createId('h2'),
         type: 'heading2',
         position: blockCounter,
         created_at: now,
         updated_at: now,
-        content: { text: para.replace(/^##\s+/, ''), marks: [{ type: 'bold' }] },
+        content: { text: line.replace(/^##\s+/, ''), marks: [{ type: 'bold' }] },
       } as Block);
-    } else if (para.startsWith('### ')) {
+      i++;
+      continue;
+    }
+
+    // Heading 3
+    if (line.startsWith('### ')) {
       blocks.push({
         id: createId('h3'),
         type: 'heading3',
         position: blockCounter,
         created_at: now,
         updated_at: now,
-        content: { text: para.replace(/^###\s+/, ''), marks: [{ type: 'bold' }] },
+        content: { text: line.replace(/^###\s+/, ''), marks: [{ type: 'bold' }] },
       } as Block);
-    } else if (para.startsWith('> ')) {
+      i++;
+      continue;
+    }
+
+    // Blockquote / Callout
+    if (line.startsWith('> ')) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && lines[i].startsWith('> ')) {
+        quoteLines.push(lines[i].replace(/^>\s*/, ''));
+        i++;
+      }
       blocks.push({
         id: createId('callout'),
         type: 'callout',
@@ -293,13 +333,17 @@ export function markdownToBlocks(markdown: string): Block[] {
         icon: '💡',
         created_at: now,
         updated_at: now,
-        content: { text: para.replace(/^>\s*/gm, ''), marks: [] },
+        content: { text: quoteLines.join('\n'), marks: [] },
       } as Block);
-    } else if (/^[-*]\s+\[[ x]\]/i.test(para)) {
-      const lines = para.split('\n');
-      for (const line of lines) {
-        const checked = /^[-*]\s+\[x\]/i.test(line);
-        const text = line.replace(/^[-*]\s+\[[ x]\]\s*/i, '');
+      continue;
+    }
+
+    // Checkbox list item(s)
+    if (/^[-*]\s+\[[ x]\]/i.test(line)) {
+      while (i < lines.length && /^[-*]\s+\[[ x]\]/i.test(lines[i])) {
+        const cbLine = lines[i];
+        const checked = /^[-*]\s+\[x\]/i.test(cbLine);
+        const text = cbLine.replace(/^[-*]\s+\[[ x]\]\s*/i, '');
         blocks.push({
           id: createId('checkbox'),
           type: 'checkbox',
@@ -309,28 +353,49 @@ export function markdownToBlocks(markdown: string): Block[] {
           updated_at: now,
           content: { text, marks: [] },
         } as Block);
+        i++;
       }
-    } else if (/^[-*]\s+/m.test(para)) {
-      const lines = para.split('\n').map(l => l.replace(/^[-*]\s+/, '').trim()).filter(Boolean);
+      continue;
+    }
+
+    // Bullet list items (collect consecutive)
+    if (/^[-*]\s+/.test(line)) {
+      const bulletItems: string[] = [];
+      while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
+        bulletItems.push(lines[i].replace(/^[-*]\s+/, '').trim());
+        i++;
+      }
       blocks.push({
         id: createId('bullets'),
         type: 'bulletList',
         position: blockCounter,
         created_at: now,
         updated_at: now,
-        items: lines.map(t => ({ text: t, marks: [] })),
+        items: bulletItems.map(t => ({ text: t, marks: [] })),
       } as Block);
-    } else if (/^\d+\.\s+/m.test(para)) {
-      const lines = para.split('\n').map(l => l.replace(/^\d+\.\s+/, '').trim()).filter(Boolean);
+      continue;
+    }
+
+    // Numbered list items (collect consecutive)
+    if (/^\d+\.\s+/.test(line)) {
+      const numItems: string[] = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+        numItems.push(lines[i].replace(/^\d+\.\s+/, '').trim());
+        i++;
+      }
       blocks.push({
         id: createId('numbers'),
         type: 'numberedList',
         position: blockCounter,
         created_at: now,
         updated_at: now,
-        items: lines.map(t => ({ text: t, marks: [] })),
+        items: numItems.map(t => ({ text: t, marks: [] })),
       } as Block);
-    } else if (para === '---' || para === '***') {
+      continue;
+    }
+
+    // Divider
+    if (line.trim() === '---' || line.trim() === '***') {
       blocks.push({
         id: createId('divider'),
         type: 'divider',
@@ -338,14 +403,34 @@ export function markdownToBlocks(markdown: string): Block[] {
         created_at: now,
         updated_at: now,
       } as Block);
-    } else {
+      i++;
+      continue;
+    }
+
+    // Plain text paragraph (collect consecutive non-special lines)
+    const paraLines: string[] = [];
+    while (
+      i < lines.length &&
+      lines[i].trim() !== '' &&
+      !lines[i].startsWith('#') &&
+      !lines[i].startsWith('> ') &&
+      !lines[i].startsWith('```') &&
+      !/^[-*]\s+/.test(lines[i]) &&
+      !/^\d+\.\s+/.test(lines[i]) &&
+      lines[i].trim() !== '---' &&
+      lines[i].trim() !== '***'
+    ) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    if (paraLines.length > 0) {
       blocks.push({
         id: createId('text'),
         type: 'text',
         position: blockCounter,
         created_at: now,
         updated_at: now,
-        content: { text: para, marks: [] },
+        content: { text: paraLines.join('\n').trim(), marks: [] },
       } as Block);
     }
   }

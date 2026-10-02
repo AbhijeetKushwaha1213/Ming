@@ -50,12 +50,17 @@ export function NotionResourceManager() {
         setSelectedPageId(null);
       }
     };
+    const handlePageUpdated = (e: any) => {
+      // Agent modified page content — invalidate queries so PageView refetches
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+    };
 
     window.addEventListener('studymate-select-resource-page', handleSelectPage);
     window.addEventListener('studymate-navigate', handleNavigate);
     window.addEventListener('studymate-page-created', handlePageCreated);
     window.addEventListener('studymate-resources-updated', handleResourcesUpdated);
     window.addEventListener('studymate-page-deleted', handlePageDeleted);
+    window.addEventListener('studymate-page-updated', handlePageUpdated);
 
     return () => {
       window.removeEventListener('studymate-select-resource-page', handleSelectPage);
@@ -63,6 +68,7 @@ export function NotionResourceManager() {
       window.removeEventListener('studymate-page-created', handlePageCreated);
       window.removeEventListener('studymate-resources-updated', handleResourcesUpdated);
       window.removeEventListener('studymate-page-deleted', handlePageDeleted);
+      window.removeEventListener('studymate-page-updated', handlePageUpdated);
     };
   }, [queryClient, selectedPageId]);
 

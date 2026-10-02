@@ -55,6 +55,16 @@ export const AppLayout = ({
     }
   };
 
+  useEffect(() => {
+    const handleNavEvent = (e: any) => {
+      if (e.detail?.tab) {
+        handleTabChange(e.detail.tab);
+      }
+    };
+    window.addEventListener('studymate-navigate', handleNavEvent);
+    return () => window.removeEventListener('studymate-navigate', handleNavEvent);
+  }, []);
+
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };

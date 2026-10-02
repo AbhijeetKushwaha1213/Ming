@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getLearnerMastery, getLearnerEvents, LearnerMasteryRecord, LearnerEventRecord, MasteryStatus } from '@/api/learnerAPI';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { navigateToTab } from '@/utils/navigation';
 
 export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void }> = ({ onNavigateToAssessment }) => {
   const { user } = useAuth();
@@ -27,28 +28,37 @@ export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void 
 
   const userId = user?.user_id || user?.id || 'default_user';
 
-  useEffect(() => {
-    async function loadMastery() {
-      setIsLoading(true);
-      try {
-        const [masteryRes, eventsRes] = await Promise.all([
-          getLearnerMastery(userId),
-          getLearnerEvents(userId, 5),
-        ]);
-        if (masteryRes.success && Array.isArray(masteryRes.mastery)) {
-          setMasteryList(masteryRes.mastery);
-        }
-        if (eventsRes.success && Array.isArray(eventsRes.events)) {
-          setRecentEvents(eventsRes.events);
-        }
-      } catch {
-        // Cold start or offline fallback
-      } finally {
-        setIsLoading(false);
+  const loadMastery = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [masteryRes, eventsRes] = await Promise.all([
+        getLearnerMastery(userId),
+        getLearnerEvents(userId, 5),
+      ]);
+      if (masteryRes.success && Array.isArray(masteryRes.mastery)) {
+        setMasteryList(masteryRes.mastery);
       }
+      if (eventsRes.success && Array.isArray(eventsRes.events)) {
+        setRecentEvents(eventsRes.events);
+      }
+    } catch {
+      // Cold start or offline fallback
+    } finally {
+      setIsLoading(false);
     }
-    loadMastery();
   }, [userId]);
+
+  useEffect(() => {
+    loadMastery();
+  }, [loadMastery]);
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadMastery();
+    };
+    window.addEventListener('studymate-bkt-refresh', handleRefresh);
+    return () => window.removeEventListener('studymate-bkt-refresh', handleRefresh);
+  }, [loadMastery]);
 
   // Aggregate stats
   const assessedList = masteryList.filter((m) => m.attempts > 0);
@@ -144,12 +154,20 @@ export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void 
               Your mastery is currently unassessed. Complete an adaptive course assessment to calibrate your BKT knowledge state without fabricated progress.
             </p>
           </div>
-          {onNavigateToAssessment && (
-            <Button size="sm" variant="premium" onClick={onNavigateToAssessment}>
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-              Take Diagnostic Assessment
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="premium"
+            onClick={() => {
+              if (onNavigateToAssessment) {
+                onNavigateToAssessment();
+              } else {
+                navigateToTab('flashcards', 'assessment', { topic: 'Diagnostic Assessment' });
+              }
+            }}
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+            Take Diagnostic Assessment
+          </Button>
         </div>
       )}
 

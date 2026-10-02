@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wand2, Library, ShieldCheck } from 'lucide-react';
 import { PremiumAIGenerator } from '../ai/PremiumAIGenerator';
@@ -7,7 +7,25 @@ import '../ai/animations.css';
 import { FlashcardVault } from './FlashcardVault';
 
 export const AIGeneratorPage = () => {
-  const [activeTab, setActiveTab] = useState('assessment');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('studymate-active-material-tab') || 'assessment';
+  });
+
+  useEffect(() => {
+    const handleSubtab = (e: any) => {
+      if (e.detail?.subtab) {
+        setActiveTab(e.detail.subtab);
+        localStorage.setItem('studymate-active-material-tab', e.detail.subtab);
+      }
+    };
+    window.addEventListener('studymate-subtab', handleSubtab);
+    return () => window.removeEventListener('studymate-subtab', handleSubtab);
+  }, []);
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val);
+    localStorage.setItem('studymate-active-material-tab', val);
+  };
 
   return (
     <div className="space-y-6">
@@ -20,7 +38,7 @@ export const AIGeneratorPage = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full max-w-xl grid-cols-3">
           <TabsTrigger value="assessment" className="flex items-center space-x-2">
             <ShieldCheck className="w-4 h-4 text-indigo-500" />

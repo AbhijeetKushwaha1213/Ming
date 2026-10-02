@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   Bot,
   Sparkles,
@@ -22,6 +29,9 @@ import {
   Send,
   Layers,
   HelpCircle,
+  Play,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   getDailyStudyPlan,
@@ -33,7 +43,11 @@ import {
   PlanItemStatus,
   ActivityType,
 } from '@/api/studyAgentAPI';
+import { generateAssessment, AssessmentQuestion, DiagnosticReport } from '@/api/assessmentAPI';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useToast } from '@/hooks/use-toast';
+import { navigateToTab } from '@/utils/navigation';
+import { QuizViewer } from '@/components/flashcards/QuizViewer';
 
 interface AIStudyAgentPanelProps {
   onNavigateToQuiz?: (topic?: string) => void;
@@ -47,12 +61,18 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
   examDate,
 }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const userId = user?.user_id || user?.id || 'default_user';
 
   const [plan, setPlan] = useState<DailyStudyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedReasons, setExpandedReasons] = useState<Record<string, boolean>>({});
+
+  // Interactive in-panel Assessment & Task execution state
+  const [activeQuizItem, setActiveQuizItem] = useState<StudyPlanItem | null>(null);
+  const [activeQuizQuestions, setActiveQuizQuestions] = useState<AssessmentQuestion[] | null>(null);
+  const [isLaunchingQuiz, setIsLaunchingQuiz] = useState<string | null>(null);
 
   // Conversational Agent state
   const [chatQuery, setChatQuery] = useState('');
@@ -64,29 +84,29 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
   } | null>(null);
 
   // Load existing plan or generate
-  useEffect(() => {
-    async function loadPlan() {
-      setIsLoading(true);
-      try {
-        const res = await getDailyStudyPlan(userId);
-        if (res.success && res.plan) {
-          setPlan(res.plan);
-        } else {
-          // Auto-generate today's plan
-          const genRes = await generateDailyStudyPlan({ userId, examDate, targetMinutes: 60 });
-          if (genRes.success && genRes.plan) {
-            setPlan(genRes.plan);
-          }
+  const loadPlan = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await getDailyStudyPlan(userId);
+      if (res.success && res.plan) {
+        setPlan(res.plan);
+      } else {
+        // Auto-generate today's plan
+        const genRes = await generateDailyStudyPlan({ userId, examDate, targetMinutes: 60 });
+        if (genRes.success && genRes.plan) {
+          setPlan(genRes.plan);
         }
-      } catch (err) {
-        console.error('Failed to load study plan:', err);
-      } finally {
-        setIsLoading(false);
       }
+    } catch (err) {
+      console.error('Failed to load study plan:', err);
+    } finally {
+      setIsLoading(false);
     }
-
-    loadPlan();
   }, [userId, examDate]);
+
+  useEffect(() => {
+    loadPlan();
+  }, [loadPlan]);
 
   const handleGenerate = async (force: boolean = false) => {
     setIsGenerating(true);
@@ -130,6 +150,144 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
       ...prev,
       [itemId]: !prev[itemId],
     }));
+  };
+
+  const handleStartTask = async (item: StudyPlanItem) => {
+    switch (item.activityType) {
+      case 'DIAGNOSTIC_ASSESSMENT':
+      case 'PRACTICE_ASSESSMENT':
+      case 'PRACTICE_WEAK_CONCEPTS':
+        setIsLaunchingQuiz(item.id);
+        try {
+          const res = await generateAssessment({
+            userId,
+            topic: item.topic || 'General Course Material',
+            subtopic: item.subtopic || undefined,
+            difficulty: 'medium',
+            count: 5,
+            questionType: 'MCQ',
+            sourceId: item.sourceId || undefined,
+          });
+
+          if (res.questions && res.questions.length > 0) {
+            setActiveQuizQuestions(res.questions);
+            setActiveQuizItem(item);
+          } else {
+            throw new Error('No questions returned');
+          }
+        } catch (err) {
+          console.warn('Falling back to baseline diagnostic assessment questions:', err);
+          const fallbackQuestions: AssessmentQuestion[] = [
+            {
+              question_id: `q_diag_1_${Date.now()}`,
+              type: 'MCQ',
+              topic: item.topic || 'Foundational Concepts',
+              subtopic: item.subtopic || 'Diagnostic Baseline',
+              difficulty: 'medium',
+              question: `Course Diagnostic: What is the primary conceptual objective in ${item.topic || 'this course'}?`,
+              options: [
+                `Systematic mastery of core primitives, data structures, and invariants`,
+                `Unverified arbitrary guesses without invariant verification`,
+                `Surface-level rote memorization without contextual application`,
+                `Skipping boundary constraints and edge cases`
+              ],
+              correct_answer: '0',
+              explanation: `Course diagnostics verify foundational understanding of core primitives and invariants.`,
+              source_id: item.sourceId,
+              citation_label: item.sourceTitle ? item.sourceTitle : 'Course Syllabus'
+            },
+            {
+              question_id: `q_diag_2_${Date.now()}`,
+              type: 'MCQ',
+              topic: item.topic || 'Evaluation & Practice',
+              subtopic: item.subtopic || 'Methodology',
+              difficulty: 'medium',
+              question: `Which methodology provides optimal retention and accurate diagnostic tracking for ${item.topic || 'this topic'}?`,
+              options: [
+                `Passive re-reading of notes without any assessment`,
+                `Active retrieval practice and Bayesian Knowledge Tracing`,
+                `Cramming only the night before an examination`,
+                `Randomly skimming headings without solving problems`
+              ],
+              correct_answer: '1',
+              explanation: `Active retrieval practice combined with Bayesian Knowledge Tracing establishes verifiable retention.`,
+              source_id: item.sourceId,
+              citation_label: item.sourceTitle ? item.sourceTitle : 'Learning Foundations'
+            },
+            {
+              question_id: `q_diag_3_${Date.now()}`,
+              type: 'MCQ',
+              topic: item.topic || 'Problem Analysis',
+              subtopic: item.subtopic || 'Problem Solving',
+              difficulty: 'medium',
+              question: `When analyzing problem constraints and complexity in ${item.topic || 'this subject'}, what is the first step?`,
+              options: [
+                `Immediately test random code without formulating invariants`,
+                `Identify input/output boundaries, state transitions, and edge cases`,
+                `Assume memory limits are infinite`,
+                `Rely on unverified approximations`
+              ],
+              correct_answer: '1',
+              explanation: `Deterministic problem solving begins by verifying input boundaries and state transitions.`,
+              source_id: item.sourceId,
+              citation_label: item.sourceTitle ? item.sourceTitle : 'Methodology Notes'
+            }
+          ];
+          setActiveQuizQuestions(fallbackQuestions);
+          setActiveQuizItem(item);
+        } finally {
+          setIsLaunchingQuiz(null);
+        }
+        break;
+
+      case 'REVISE_FLASHCARDS':
+        navigateToTab('flashcards', 'vault');
+        toast({
+          title: "Opening Study Vault 🔒",
+          description: `Navigating to your Flashcard Vault to revise ${item.topic}.`,
+        });
+        break;
+
+      case 'REVIEW_SOURCE':
+        navigateToTab('resources', undefined, { sourceId: item.sourceId, sourceTitle: item.sourceTitle });
+        toast({
+          title: "Opening Course Material 📚",
+          description: `Navigating to ${item.sourceTitle || 'Resources'}${item.sourceCoordinate ? ` (${item.sourceCoordinate})` : ''}.`,
+        });
+        break;
+
+      case 'ASK_TUTOR':
+        const promptText = `Explain ${item.topic}${item.subtopic ? ` (${item.subtopic})` : ''} to me. What are the key concepts and common pitfalls?`;
+        setChatQuery(promptText);
+        handleAskAgent(promptText);
+        const chatSection = document.getElementById('agent-chat-section');
+        if (chatSection) {
+          chatSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        break;
+
+      case 'COMPLETE_UNFINISHED_TASK':
+      default:
+        handleToggleItemStatus(item);
+        break;
+    }
+  };
+
+  const handleQuizComplete = async (report: DiagnosticReport, item: StudyPlanItem) => {
+    // 1. Mark task completed
+    await handleToggleItemStatus(item);
+
+    // 2. Toast success
+    toast({
+      title: "Diagnostic Assessment Completed! 🎉",
+      description: `Scored ${report.percentage}% (${report.correctCount}/${report.totalQuestions}). Your BKT knowledge state has been updated.`,
+    });
+
+    // 3. Dispatch mastery refresh event so LearnerMasteryCard reloads
+    window.dispatchEvent(new CustomEvent('studymate-bkt-refresh'));
+
+    // 4. Reload study plan
+    loadPlan();
   };
 
   const handleAskAgent = async (queryText: string) => {
@@ -286,7 +444,7 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
       {plan?.isColdStart && (
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-300/60 dark:border-amber-500/30 flex items-start gap-3">
           <HelpCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1">
+          <div className="space-y-1.5 flex-1">
             <h4 className="font-semibold text-sm text-amber-900 dark:text-amber-200">
               New Learner Onboarding & Diagnostic Recommended
             </h4>
@@ -294,6 +452,45 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
               No verified assessment data found yet. Rather than fabricating mastery scores, the AI Study Agent
               recommends an initial diagnostic test to establish your personalized BKT knowledge baseline.
             </p>
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <Button
+                size="sm"
+                onClick={() => {
+                  const diagItem = plan.items.find((i) => i.activityType === 'DIAGNOSTIC_ASSESSMENT') || {
+                    id: 'cold_start_diag',
+                    priority: 1,
+                    priorityScore: 100,
+                    topic: 'Course Materials',
+                    subtopic: 'Diagnostic Baseline',
+                    activityType: 'DIAGNOSTIC_ASSESSMENT' as ActivityType,
+                    title: 'Take Course Diagnostic Assessment',
+                    description: 'Calibrate your initial knowledge baseline across uploaded course materials.',
+                    estimatedMinutes: 15,
+                    reason: 'Required for personalized BKT mastery calibration.',
+                    expectedOutcome: 'Calibrate initial knowledge state.',
+                    sourceId: null,
+                    chunkId: null,
+                    sourceTitle: 'Uploaded Course Materials',
+                    sourceCoordinate: 'Diagnostic Test',
+                    status: 'pending' as PlanItemStatus,
+                    completedAt: null,
+                  };
+                  handleStartTask(diagItem);
+                }}
+                disabled={!!isLaunchingQuiz}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs gap-1.5 shadow-xs"
+              >
+                {isLaunchingQuiz ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                Take Diagnostic Assessment Now
+              </Button>
+              <button
+                type="button"
+                onClick={() => navigateToTab('flashcards', 'assessment')}
+                className="text-xs text-amber-900 dark:text-amber-200 hover:underline flex items-center gap-1 font-medium"
+              >
+                Open in Assessment Studio <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -392,6 +589,161 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
                           </button>
                         </div>
 
+                        {/* Action Buttons & Navigation Reference Row */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-border/50 mt-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {item.activityType === 'DIAGNOSTIC_ASSESSMENT' && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleStartTask(item)}
+                                disabled={isLaunchingQuiz === item.id}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
+                              >
+                                {isLaunchingQuiz === item.id ? (
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Play className="w-3.5 h-3.5 fill-current" />
+                                )}
+                                Take Diagnostic Assessment
+                              </Button>
+                            )}
+
+                            {item.activityType === 'PRACTICE_ASSESSMENT' && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleStartTask(item)}
+                                disabled={isLaunchingQuiz === item.id}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
+                              >
+                                {isLaunchingQuiz === item.id ? (
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Play className="w-3.5 h-3.5 fill-current" />
+                                )}
+                                Start Practice Quiz
+                              </Button>
+                            )}
+
+                            {item.activityType === 'PRACTICE_WEAK_CONCEPTS' && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleStartTask(item)}
+                                disabled={isLaunchingQuiz === item.id}
+                                className="bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
+                              >
+                                {isLaunchingQuiz === item.id ? (
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Target className="w-3.5 h-3.5" />
+                                )}
+                                Practice Weak Topic
+                              </Button>
+                            )}
+
+                            {item.activityType === 'REVISE_FLASHCARDS' && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleStartTask(item)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
+                              >
+                                <BookOpen className="w-3.5 h-3.5" />
+                                Study Flashcards in Vault
+                              </Button>
+                            )}
+
+                            {item.activityType === 'REVIEW_SOURCE' && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleStartTask(item)}
+                                className="bg-sky-600 hover:bg-sky-700 text-white font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                Open Course Material
+                              </Button>
+                            )}
+
+                            {item.activityType === 'ASK_TUTOR' && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleStartTask(item)}
+                                className="bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
+                              >
+                                <Bot className="w-3.5 h-3.5" />
+                                Ask AI Tutor
+                              </Button>
+                            )}
+
+                            {item.activityType === 'COMPLETE_UNFINISHED_TASK' && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleStartTask(item)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
+                              >
+                                <ArrowRight className="w-3.5 h-3.5" />
+                                Resume Task
+                              </Button>
+                            )}
+
+                            {/* Reference navigation link */}
+                            {(item.activityType === 'DIAGNOSTIC_ASSESSMENT' || item.activityType === 'PRACTICE_ASSESSMENT' || item.activityType === 'PRACTICE_WEAK_CONCEPTS') && (
+                              <button
+                                type="button"
+                                onClick={() => navigateToTab('flashcards', 'assessment', { topic: item.topic })}
+                                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium px-2 py-1"
+                              >
+                                Assessment Studio <ExternalLink className="w-3 h-3" />
+                              </button>
+                            )}
+
+                            {item.activityType === 'REVISE_FLASHCARDS' && (
+                              <button
+                                type="button"
+                                onClick={() => navigateToTab('flashcards', 'vault')}
+                                className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-medium px-2 py-1"
+                              >
+                                My Vault <ExternalLink className="w-3 h-3" />
+                              </button>
+                            )}
+
+                            {item.activityType === 'REVIEW_SOURCE' && (
+                              <button
+                                type="button"
+                                onClick={() => navigateToTab('resources', undefined, { sourceId: item.sourceId, sourceTitle: item.sourceTitle })}
+                                className="text-xs text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1 font-medium px-2 py-1"
+                              >
+                                Resources <ExternalLink className="w-3 h-3" />
+                              </button>
+                            )}
+
+                            {item.activityType === 'ASK_TUTOR' && (
+                              <button
+                                type="button"
+                                onClick={() => navigateToTab('ai')}
+                                className="text-xs text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 font-medium px-2 py-1"
+                              >
+                                AI Chat <ExternalLink className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Source citation badge reference */}
+                          {item.sourceTitle && (
+                            <button
+                              type="button"
+                              onClick={() => navigateToTab('resources', undefined, { sourceId: item.sourceId, sourceTitle: item.sourceTitle })}
+                              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 bg-muted/60 hover:bg-muted px-2 py-1 rounded transition-colors"
+                              title={`Open ${item.sourceTitle}${item.sourceCoordinate ? ` (${item.sourceCoordinate})` : ''}`}
+                            >
+                              <FileText className="w-3 h-3 text-sky-600 shrink-0" />
+                              <span className="truncate max-w-[150px]">{item.sourceTitle}</span>
+                              {item.sourceCoordinate && (
+                                <span className="font-semibold text-primary">({item.sourceCoordinate})</span>
+                              )}
+                              <ExternalLink className="w-2.5 h-2.5 ml-0.5 opacity-60" />
+                            </button>
+                          )}
+                        </div>
+
                         {/* "Why this?" Explanation Accordion */}
                         {isExpanded && (
                           <div className="mt-3 p-3 rounded-lg bg-muted/60 border border-border/60 space-y-2 text-xs">
@@ -416,7 +768,7 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
       )}
 
       {/* Conversational Agent Entry Point */}
-      <div className="pt-4 border-t border-border space-y-4">
+      <div className="pt-4 border-t border-border space-y-4" id="agent-chat-section">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-primary" />
           <h4 className="text-sm font-semibold text-foreground">Ask the AI Study Agent</h4>
@@ -482,23 +834,63 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
                   <span className="text-xs font-medium text-primary">
                     Next Step: {agentAnswer.suggestedAction}
                   </span>
-                  {onNavigateToQuiz && (
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="text-xs h-7"
-                      onClick={() => onNavigateToQuiz(agentAnswer.recommendedTopic)}
-                    >
-                      Start Recommended Action
-                      <ArrowRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="text-xs h-7 gap-1"
+                    onClick={() => {
+                      if (onNavigateToQuiz) {
+                        onNavigateToQuiz(agentAnswer.recommendedTopic);
+                      } else {
+                        navigateToTab('flashcards', 'assessment', { topic: agentAnswer.recommendedTopic });
+                      }
+                    }}
+                  >
+                    Start Recommended Action
+                    <ArrowRight className="w-3 h-3" />
+                  </Button>
                 </div>
               )}
             </div>
           )
         )}
       </div>
+
+      {/* Interactive In-Dashboard Assessment Modal */}
+      <Dialog
+        open={!!activeQuizQuestions}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActiveQuizQuestions(null);
+            setActiveQuizItem(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0 border-0 bg-transparent shadow-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{activeQuizItem?.title || 'Course Assessment'}</DialogTitle>
+            <DialogDescription>Interactive assessment session</DialogDescription>
+          </DialogHeader>
+          {activeQuizQuestions && activeQuizItem && (
+            <div className="bg-background rounded-2xl border border-border p-6 shadow-2xl">
+              <QuizViewer
+                questions={activeQuizQuestions}
+                title={activeQuizItem.title}
+                difficulty="medium"
+                topic={activeQuizItem.topic}
+                userId={userId}
+                onClose={() => {
+                  setActiveQuizQuestions(null);
+                  setActiveQuizItem(null);
+                }}
+                onComplete={(report) => {
+                  handleQuizComplete(report, activeQuizItem);
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

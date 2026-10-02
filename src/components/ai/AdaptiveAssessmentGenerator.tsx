@@ -28,7 +28,9 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(() => {
+    return localStorage.getItem('studymate-assessment-prefill-topic') || '';
+  });
   const [subtopic, setSubtopic] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [count, setCount] = useState<number>(5);
@@ -39,6 +41,20 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeQuestions, setActiveQuestions] = useState<AssessmentQuestion[] | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    const handlePrefill = (e: any) => {
+      if (e.detail?.params?.topic) {
+        setTopic(e.detail.params.topic);
+      }
+    };
+    window.addEventListener('studymate-navigate', handlePrefill);
+    window.addEventListener('studymate-subtab', handlePrefill);
+    return () => {
+      window.removeEventListener('studymate-navigate', handlePrefill);
+      window.removeEventListener('studymate-subtab', handlePrefill);
+    };
+  }, []);
 
   // Fetch student's course materials
   useEffect(() => {

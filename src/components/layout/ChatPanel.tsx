@@ -21,13 +21,14 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { geminiClient } from '@/utils/geminiClient';
-import { getAllPages, createPage, movePage } from '@/api/pageAPI';
-import { useFlashcards } from '@/hooks/useFlashcards';
-import { copyVaultItemToResources } from '@/utils/vaultToResources';
 import { navigateToTab } from '@/utils/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { pageKeys } from '@/hooks/usePages';
-import type { Page } from '@/types/notion';
+import { 
+  getWorkspaceCatalog, 
+  getAgentWorkspacePrompt, 
+  parseAgentActions, 
+  executeAgentActions 
+} from '@/services/agentActionEngine';
 
 interface AttachedItem {
   name: string;
@@ -144,127 +145,6 @@ export const ChatPanel = ({ isOpen, onClose }: ChatPanelProps) => {
     e.target.value = '';
   };
 
-  /**
-   * Parse and execute workspace actions returned by the AI agent
-   */
-  const processAgentActions = async (responseText: string): Promise<{ cleanText: string; executedSummaries: string[] }> => {
-    let cleanText = responseText;
-    let parsedActions: any[] = [];
-
-    // Match code fenced action blocks or raw JSON action objects
-    const actionBlockRegex = /```(?:json:action|action|json)?\s*(\{[\s\S]*?"actions"[\s\S]*?\})\s*```/i;
-    const match = responseText.match(actionBlockRegex);
-
-    if (match) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        if (Array.isArray(parsed.actions)) {
-          parsedActions = parsed.actions;
-          cleanText = responseText.replace(match[0], '').trim();
-        }
-      } catch (e) {
-        console.warn('Failed to parse JSON action block:', e);
-      }
-    } else {
-      const rawMatch = responseText.match(/\{[\s\S]*?"actions"\s*:\s*\[[\s\S]*?\][\s\S]*?\}/);
-      if (rawMatch) {
-        try {
-          const parsed = JSON.parse(rawMatch[0]);
-          if (Array.isArray(parsed.actions)) {
-            parsedActions = parsed.actions;
-            cleanText = responseText.replace(rawMatch[0], '').trim();
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
-
-    if (parsedActions.length === 0) {
-      return { cleanText, executedSummaries: [] };
-    }
-
-    const executedSummaries: string[] = [];
-    const createdFolders: Record<string, string> = {}; // normalized name -> id
-
-    // Load active pages
-    let allUserPages: Page[] = [];
-    try {
-      allUserPages = await getAllPages();
-      allUserPages.forEach(p => {
-        if (!p.parent_id) {
-          createdFolders[p.title.toLowerCase().trim()] = p.id;
-        }
-      });
-    } catch (e) {
-      console.warn('Failed to pre-fetch pages for actions:', e);
-    }
-
-    for (const act of parsedActions) {
-      try {
-        const actType = (act.type || act.action || '').toLowerCase();
-
-        if (actType === 'create_folder') {
-          const title = act.title || act.name || 'New Folder';
-          const normalized = title.toLowerCase().trim();
-          if (!createdFolders[normalized]) {
-            const folder = await createPage({
-              title,
-              icon: act.icon || '📁',
-              parent_id: null,
-            });
-            createdFolders[normalized] = folder.id;
-            executedSummaries.push(`📁 Created folder "${title}"`);
-          }
-        } else if (actType === 'move_page' || actType === 'move_resource') {
-          const pageId = act.pageId || act.page_id;
-          const targetFolderTitle = (act.folderTitle || act.targetFolderTitle || act.folder || '').toLowerCase().trim();
-          let targetFolderId = act.folderId || act.targetFolderId || createdFolders[targetFolderTitle];
-
-          // Auto-create folder if needed
-          if (!targetFolderId && targetFolderTitle) {
-            const folder = await createPage({
-              title: act.folderTitle || act.targetFolderTitle || 'New Folder',
-              icon: '📁',
-              parent_id: null,
-            });
-            targetFolderId = folder.id;
-            createdFolders[targetFolderTitle] = folder.id;
-            executedSummaries.push(`📁 Created folder "${folder.title}"`);
-          }
-
-          if (pageId && targetFolderId) {
-            await movePage(pageId, targetFolderId, 0);
-            const foundPage = allUserPages.find(p => p.id === pageId);
-            const pageTitle = foundPage?.title || act.pageTitle || 'Page';
-            executedSummaries.push(`📄 Moved "${pageTitle}" into folder`);
-          }
-        } else if (actType === 'copy_vault_to_resource' || actType === 'copy_vault') {
-          const vaultId = act.vaultId || act.id;
-          const vaultTitle = (act.vaultTitle || act.title || '').toLowerCase().trim();
-
-          const item = studyMaterials.find(m => m.id === vaultId || (vaultTitle && m.title.toLowerCase() === vaultTitle))
-            || flashcards.find(f => f.id === vaultId || (vaultTitle && f.title?.toLowerCase() === vaultTitle));
-
-          if (item) {
-            const newPage = await copyVaultItemToResources(item);
-            executedSummaries.push(`📚 Copied "${newPage.title}" from Vault to Resources`);
-          }
-        }
-      } catch (actionErr: any) {
-        console.error('Error executing agent action:', actionErr);
-      }
-    }
-
-    if (executedSummaries.length > 0) {
-      await queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      window.dispatchEvent(new CustomEvent('studymate-resources-updated'));
-      window.dispatchEvent(new CustomEvent('studymate-page-created'));
-    }
-
-    return { cleanText, executedSummaries };
-  };
-
   const sendMessage = async (overrideText?: string) => {
     const rawText = (overrideText ?? inputMessage).trim();
     if ((!rawText && !attachedItem) || isTyping) return;
@@ -291,60 +171,9 @@ export const ChatPanel = ({ isOpen, onClose }: ChatPanelProps) => {
     setIsTyping(true);
 
     try {
-      // Gather real-time workspace context
-      let pagesContext: Array<{ id: string; title: string; isFolder: boolean; parentId: string | null; sample: string }> = [];
-      try {
-        const pages = await getAllPages();
-        pagesContext = pages.map(p => ({
-          id: p.id,
-          title: p.title,
-          isFolder: !p.parent_id,
-          parentId: p.parent_id,
-          sample: Array.isArray(p.content) && p.content.length > 0 
-            ? (p.content[0]?.content?.text || p.content[0]?.content || '').slice(0, 80)
-            : ''
-        }));
-      } catch (pErr) {
-        console.warn('Could not load pages context:', pErr);
-      }
-
-      const vaultContext = [
-        ...studyMaterials.map(m => ({ id: m.id, title: m.title, type: m.type, topic: m.topic })),
-        ...flashcards.map(f => ({ id: f.id, title: f.title || f.question.slice(0, 30), type: 'flashcard', topic: f.tags?.join(', ') || '' }))
-      ];
-
-      const agentSystemPrompt = `You are StudyMate AI, an autonomous study assistant and workspace orchestrator.
-You have direct control over the user's workspace, Resources, and Vault!
-
-CURRENT WORKSPACE RESOURCES (Pages & Folders in Resources):
-${JSON.stringify(pagesContext, null, 2)}
-
-CURRENT STUDY VAULT ITEMS:
-${JSON.stringify(vaultContext, null, 2)}
-
-CAPABILITIES:
-1. Answering Academic & Study Inquiries: Provide clear, structured, and insightful tutoring.
-2. Resource Organization:
-   - When asked to organize resources/files into folders based on content similarity or subject, examine the resource list, invent clean, descriptive folder names (e.g. "📁 Operating Systems", "📁 Web Development", "📁 Machine Learning"), and take action to move pages into them.
-3. Vault to Resources:
-   - When asked to copy/transfer study materials from the Vault to Resources, perform the copy action using the item ID.
-4. Folder Creation & Moving:
-   - You can create organizational folders and move files/pages into them.
-
-ACTION PROTOCOL:
-If the user requests organizing files, creating folders, moving items, or copying vault items to resources, explain your plan to the user in a friendly tone, and append an action block at the VERY END of your response in this EXACT JSON format:
-
-\`\`\`json:action
-{
-  "actions": [
-    { "type": "create_folder", "title": "📁 Folder Name" },
-    { "type": "move_page", "pageId": "exact_id_from_resources", "folderTitle": "📁 Folder Name" },
-    { "type": "copy_vault_to_resource", "vaultId": "exact_id_from_vault" }
-  ]
-}
-\`\`\`
-
-Always output your conversational explanation first. Only include the action block when actions need to be performed.`;
+      // Gather real-time workspace context & prompt using unified Agent Action Engine
+      const catalog = await getWorkspaceCatalog();
+      const agentSystemPrompt = getAgentWorkspacePrompt(catalog);
 
       // If document text was attached, prepend to prompt
       let finalPrompt = userMsgText;
@@ -398,8 +227,9 @@ Always output your conversational explanation first. Only include the action blo
         responseText = directRes.response;
       }
 
-      // Process and execute any agent actions in the response
-      const { cleanText, executedSummaries } = await processAgentActions(responseText);
+      // Process and execute any agent actions in the response (edit, delete, create, move, organize, copy)
+      const { cleanText, actions } = parseAgentActions(responseText);
+      const executedSummaries = await executeAgentActions(actions, queryClient);
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -498,20 +328,28 @@ Always output your conversational explanation first. Only include the action blo
             Organize Resources
           </button>
           <button
+            onClick={() => sendMessage("List my resources and help me edit, improve, or expand the notes in my current pages.")}
+            disabled={isTyping}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors whitespace-nowrap text-xs font-medium"
+          >
+            <Sparkles className="w-3 h-3" />
+            Edit / Expand Content
+          </button>
+          <button
+            onClick={() => sendMessage("Check my workspace for empty, untitled, or duplicate pages and clean them up.")}
+            disabled={isTyping}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors whitespace-nowrap text-xs font-medium"
+          >
+            <X className="w-3 h-3" />
+            Delete / Clean Up
+          </button>
+          <button
             onClick={() => sendMessage("List my generated vault materials and copy key study summaries to my Resources workspace.")}
             disabled={isTyping}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary/80 text-secondary-foreground hover:bg-secondary transition-colors whitespace-nowrap text-xs font-medium"
           >
             <FileText className="w-3 h-3" />
             Vault to Resources
-          </button>
-          <button
-            onClick={() => sendMessage("Give me a comprehensive summary of all my notes and study materials.")}
-            disabled={isTyping}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent text-accent-foreground hover:bg-accent/80 transition-colors whitespace-nowrap text-xs font-medium"
-          >
-            <Sparkles className="w-3 h-3 text-warning" />
-            Summarize All
           </button>
         </div>
 

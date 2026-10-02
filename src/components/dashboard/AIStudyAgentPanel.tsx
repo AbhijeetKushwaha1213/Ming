@@ -48,6 +48,22 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { navigateToTab } from '@/utils/navigation';
 import { QuizViewer } from '@/components/flashcards/QuizViewer';
+import { 
+  getWorkspaceCatalog, 
+  getAgentWorkspacePrompt, 
+  parseAgentActions, 
+  executeAgentActions 
+} from '@/services/agentActionEngine';
+import { geminiClient } from '@/utils/geminiClient';
+import { useQueryClient, QueryClient } from '@tanstack/react-query';
+
+function useSafeQueryClient(): QueryClient | undefined {
+  try {
+    return useQueryClient();
+  } catch {
+    return undefined;
+  }
+}
 
 interface AIStudyAgentPanelProps {
   onNavigateToQuiz?: (topic?: string) => void;
@@ -62,6 +78,7 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useSafeQueryClient();
   const userId = user?.user_id || user?.id || 'default_user';
 
   const [plan, setPlan] = useState<DailyStudyPlan | null>(null);
@@ -81,6 +98,8 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
     reply: string;
     recommendedTopic?: string;
     suggestedAction?: string;
+    actionType?: 'quiz' | 'resources';
+    actionsExecuted?: string[];
   } | null>(null);
 
   // Load existing plan or generate
@@ -294,20 +313,84 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
     if (!queryText.trim()) return;
     setIsChatLoading(true);
     try {
+      const isActionQuery = /(delete|remove|edit|modify|update|rename|create|folder|organize|move|copy\s+vault|vault\s+to\s+resource|add\s+notes\s+to|append|clean\s+up)/i.test(queryText);
+
+      if (isActionQuery) {
+        const catalog = await getWorkspaceCatalog();
+        const workspacePrompt = getAgentWorkspacePrompt(catalog, "Dashboard Study Assistant");
+        const directRes = await geminiClient.generateContent({
+          message: queryText.trim(),
+          systemPrompt: workspacePrompt,
+        });
+
+        if (directRes && directRes.response) {
+          const { cleanText, actions } = parseAgentActions(directRes.response);
+          const executed = await executeAgentActions(actions, queryClient);
+
+          setAgentAnswer({
+            reply: cleanText || "I've processed your workspace update.",
+            actionsExecuted: executed.length > 0 ? executed : undefined,
+            suggestedAction: executed.length > 0 ? "Review Updated Resources in Workspace" : undefined,
+            actionType: 'resources',
+          });
+
+          if (executed.length > 0) {
+            toast({
+              title: "Workspace Actions Executed ⚡",
+              description: executed.join(', '),
+            });
+          }
+          return;
+        }
+      }
+
       const res = await askStudyAgent({
         userId,
         query: queryText.trim(),
         examDate,
       });
+
       if (res.success) {
+        const { cleanText, actions } = parseAgentActions(res.reply);
+        let executed: string[] = [];
+        if (actions.length > 0) {
+          executed = await executeAgentActions(actions, queryClient);
+        }
+
         setAgentAnswer({
-          reply: res.reply,
+          reply: cleanText,
           recommendedTopic: res.recommendedTopic,
           suggestedAction: res.suggestedAction,
+          actionType: 'quiz',
+          actionsExecuted: executed.length > 0 ? executed : undefined,
         });
       }
     } catch (err) {
       console.error('Failed to ask agent:', err);
+      try {
+        const catalog = await getWorkspaceCatalog();
+        const workspacePrompt = getAgentWorkspacePrompt(catalog, "Dashboard Study Assistant");
+        const directRes = await geminiClient.generateContent({
+          message: queryText.trim(),
+          systemPrompt: workspacePrompt,
+        });
+        if (directRes?.response) {
+          const { cleanText, actions } = parseAgentActions(directRes.response);
+          const executed = await executeAgentActions(actions, queryClient);
+          setAgentAnswer({
+            reply: cleanText,
+            actionsExecuted: executed.length > 0 ? executed : undefined,
+            suggestedAction: executed.length > 0 ? "Review Updated Resources in Workspace" : undefined,
+            actionType: 'resources',
+          });
+        }
+      } catch (fallbackErr) {
+        toast({
+          title: "Agent Error",
+          description: "Unable to process query. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsChatLoading(false);
     }
@@ -370,8 +453,8 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
   const quickQuestions = [
     'What should I study today?',
     'What am I weak at?',
-    'What should I revise before my exam?',
-    'Why are you recommending this?',
+    'Organize my study resources into folders',
+    'Copy my Vault quizzes and notes to Resources',
     'What should I do next?',
   ];
 
@@ -829,6 +912,32 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
                 </div>
               </div>
 
+              {/* Executed Workspace Actions Badge */}
+              {agentAnswer.actionsExecuted && agentAnswer.actionsExecuted.length > 0 && (
+                <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 space-y-1">
+                  <div className="flex items-center justify-between text-xs font-semibold text-primary">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Workspace Actions Executed ({agentAnswer.actionsExecuted.length})
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] text-primary hover:underline cursor-pointer"
+                      onClick={() => navigateToTab('resources')}
+                    >
+                      Open Resources ↗
+                    </Button>
+                  </div>
+                  {agentAnswer.actionsExecuted.map((summary, idx) => (
+                    <div key={idx} className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <span className="text-primary font-bold">•</span>
+                      <span>{summary}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {agentAnswer.suggestedAction && (
                 <div className="flex items-center justify-between pt-2 border-t border-primary/10">
                   <span className="text-xs font-medium text-primary">
@@ -839,7 +948,9 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
                     variant="default"
                     className="text-xs h-7 gap-1"
                     onClick={() => {
-                      if (onNavigateToQuiz) {
+                      if (agentAnswer.actionType === 'resources') {
+                        navigateToTab('resources');
+                      } else if (onNavigateToQuiz) {
                         onNavigateToQuiz(agentAnswer.recommendedTopic);
                       } else {
                         navigateToTab('flashcards', 'assessment', { topic: agentAnswer.recommendedTopic });

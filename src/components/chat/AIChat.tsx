@@ -14,7 +14,23 @@ import { ChatHistoryPanel } from './ChatHistoryPanel';
 import { Citation } from './Citation';
 import { askGroundedTutor, ingestSource, CitationData, GroundedChatResponse } from '@/api/ragAPI';
 import { geminiClient } from '@/utils/geminiClient';
+import { 
+  getWorkspaceCatalog, 
+  getAgentWorkspacePrompt, 
+  parseAgentActions, 
+  executeAgentActions 
+} from '@/services/agentActionEngine';
+import { useQueryClient, QueryClient } from '@tanstack/react-query';
+import { navigateToTab } from '@/utils/navigation';
 import { format } from 'date-fns';
+
+function useSafeQueryClient(): QueryClient | undefined {
+  try {
+    return useQueryClient();
+  } catch {
+    return undefined;
+  }
+}
 
 interface Message {
   id: string;
@@ -27,6 +43,7 @@ interface Message {
   usedGeminiFallback?: boolean;
   attachedFileName?: string;
   attachedFileSize?: string;
+  actionsExecuted?: string[];
 }
 
 interface AIChatProps {
@@ -51,6 +68,14 @@ export const AIChat = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const { saveChatSession } = useChatHistory();
+  const queryClient = useSafeQueryClient();
+
+  const quickPrompts = [
+    { label: '✏️ Edit / Modify Page', prompt: "Edit the page 'Machine Learning' and append a summary of key formulas and concepts." },
+    { label: '🗑️ Delete Resource', prompt: "Delete the page 'Untitled' from my resources." },
+    { label: '📁 Organize Resources', prompt: "Organize all my study resources into topic folders based on similarity." },
+    { label: '📚 Vault to Resources', prompt: "Copy my recent quizzes and study materials from Vault into Resources." },
+  ];
 
   const activeChatStorageKey = `studymate_active_chat_${user?.user_id || user?.id || 'guest'}`;
 
@@ -271,6 +296,48 @@ export const AIChat = ({
         content: m.text
       }));
 
+      // Gather real-time workspace context & action prompt
+      const catalog = await getWorkspaceCatalog();
+      const workspacePrompt = getAgentWorkspacePrompt(catalog, `Current topic/context: ${sanitizedTopic || context}`);
+
+      const isActionQuery = /(delete|remove|edit|modify|update|rename|create|folder|organize|move|copy\s+vault|vault\s+to\s+resource|add\s+notes\s+to|append|clean\s+up)/i.test(userMsgText);
+
+      // If user specifically asked for workspace actions (edit, delete, modify, organize, copy), route directly to Gemini with workspace tools
+      if (isActionQuery) {
+        const directRes = await geminiClient.generateContent({
+          message: userMsgText,
+          systemPrompt: workspacePrompt,
+          topic: sanitizedTopic,
+          context: conversationHistory
+        });
+
+        if (directRes && directRes.response && !directRes.error) {
+          const { cleanText, actions } = parseAgentActions(directRes.response);
+          const executed = await executeAgentActions(actions, queryClient);
+
+          if (executed.length > 0) {
+            toast({
+              title: "Workspace Actions Executed ⚡",
+              description: executed.join(', '),
+            });
+          }
+
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: cleanText || "I've processed your workspace request.",
+            sender: 'ai',
+            timestamp: new Date(),
+            citations: [],
+            grounded: false,
+            usedGeminiFallback: true,
+            insufficientEvidence: false,
+            actionsExecuted: executed.length > 0 ? executed : undefined,
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          return;
+        }
+      }
+
       // 2. Query Grounded AI Tutor
       let tutorResult: GroundedChatResponse | null = null;
       try {
@@ -292,34 +359,50 @@ export const AIChat = ({
         tutorResult.citations.length > 0;
 
       if (hasGroundedEvidence && tutorResult) {
+        const { cleanText, actions } = parseAgentActions(tutorResult.response);
+        const executed = await executeAgentActions(actions, queryClient);
+
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: tutorResult.response,
+          text: cleanText,
           sender: 'ai',
           timestamp: new Date(),
           citations: tutorResult.citations || [],
           grounded: true,
-          insufficientEvidence: false
+          insufficientEvidence: false,
+          actionsExecuted: executed.length > 0 ? executed : undefined,
         };
         setMessages(prev => [...prev, aiMessage]);
       } else {
-        // Fall back directly to Gemini 2.5 Flash
+        // Fall back directly to Gemini 2.5 Flash with workspace systemPrompt
         const directRes = await geminiClient.generateContent({
           message: userMsgText,
+          systemPrompt: workspacePrompt,
           topic: sanitizedTopic,
           context: conversationHistory
         });
 
         if (directRes && directRes.response && !directRes.error) {
+          const { cleanText, actions } = parseAgentActions(directRes.response);
+          const executed = await executeAgentActions(actions, queryClient);
+
+          if (executed.length > 0) {
+            toast({
+              title: "Workspace Actions Executed ⚡",
+              description: executed.join(', '),
+            });
+          }
+
           const aiMessage: Message = {
             id: (Date.now() + 1).toString(),
-            text: directRes.response,
+            text: cleanText,
             sender: 'ai',
             timestamp: new Date(),
             citations: [],
             grounded: false,
             usedGeminiFallback: true,
-            insufficientEvidence: false
+            insufficientEvidence: false,
+            actionsExecuted: executed.length > 0 ? executed : undefined,
           };
           setMessages(prev => [...prev, aiMessage]);
         } else {
@@ -589,6 +672,33 @@ export const AIChat = ({
                           </div>
                         )}
 
+                        {/* Executed Agent Actions Badge */}
+                        {message.sender === 'ai' && message.actionsExecuted && message.actionsExecuted.length > 0 && (
+                          <div className="mb-2.5 p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-xs">
+                            <div className="flex items-center justify-between font-medium text-primary mb-1.5">
+                              <span className="flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Workspace Actions Executed ({message.actionsExecuted.length})
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => navigateToTab('resources')}
+                                className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
+                              >
+                                Open Resources ↗
+                              </button>
+                            </div>
+                            <div className="space-y-1 text-muted-foreground text-[11px]">
+                              {message.actionsExecuted.map((summary, sIdx) => (
+                                <div key={sIdx} className="flex items-center gap-1.5">
+                                  <span className="text-primary font-bold">•</span>
+                                  <span>{summary}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
 
                         {/* Verified Sources Shelf */}
@@ -654,6 +764,26 @@ export const AIChat = ({
           {/* Footer Input Area */}
           <div className="p-3.5 border-t bg-card/60 backdrop-blur-sm">
             <div className="max-w-4xl mx-auto space-y-2">
+              {/* Quick Action Suggestion Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                <span className="text-[11px] text-muted-foreground font-medium shrink-0 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-primary" />
+                  Agent Actions:
+                </span>
+                {quickPrompts.map((qp, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setInput(qp.prompt);
+                    }}
+                    className="shrink-0 px-2.5 py-1 rounded-full text-[11px] bg-muted/80 hover:bg-primary/10 hover:text-primary border border-border/60 transition-colors cursor-pointer"
+                  >
+                    {qp.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Attached file pill banner */}
               {attachedFile && (
                 <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-xl text-xs">

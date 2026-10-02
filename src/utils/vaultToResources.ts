@@ -255,3 +255,124 @@ export async function copyVaultItemToResources(item: VaultItemLike, explicitType
 
   return newPage;
 }
+
+/**
+ * Converts any markdown string or text into Notion Block[]
+ */
+export function markdownToBlocks(markdown: string): Block[] {
+  if (!markdown || typeof markdown !== 'string') return [];
+  const now = new Date().toISOString();
+  let blockCounter = 0;
+  const createId = (p: string) => `block-md-${p}-${Date.now()}-${++blockCounter}`;
+
+  const blocks: Block[] = [];
+  const paragraphs = markdown.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+
+  for (const para of paragraphs) {
+    if (para.startsWith('```')) {
+      const match = para.match(/^```(\w+)?\n([\s\S]*?)```$/);
+      const lang = match?.[1] || 'plaintext';
+      const code = match ? match[2] : para.replace(/```/g, '');
+      blocks.push({
+        id: createId('code'),
+        type: 'code',
+        position: blockCounter,
+        language: lang,
+        created_at: now,
+        updated_at: now,
+        content: code.trim(),
+      } as Block);
+    } else if (para.startsWith('# ')) {
+      blocks.push({
+        id: createId('h1'),
+        type: 'heading1',
+        position: blockCounter,
+        created_at: now,
+        updated_at: now,
+        content: { text: para.replace(/^#\s+/, ''), marks: [{ type: 'bold' }] },
+      } as Block);
+    } else if (para.startsWith('## ')) {
+      blocks.push({
+        id: createId('h2'),
+        type: 'heading2',
+        position: blockCounter,
+        created_at: now,
+        updated_at: now,
+        content: { text: para.replace(/^##\s+/, ''), marks: [{ type: 'bold' }] },
+      } as Block);
+    } else if (para.startsWith('### ')) {
+      blocks.push({
+        id: createId('h3'),
+        type: 'heading3',
+        position: blockCounter,
+        created_at: now,
+        updated_at: now,
+        content: { text: para.replace(/^###\s+/, ''), marks: [{ type: 'bold' }] },
+      } as Block);
+    } else if (para.startsWith('> ')) {
+      blocks.push({
+        id: createId('callout'),
+        type: 'callout',
+        position: blockCounter,
+        icon: '💡',
+        created_at: now,
+        updated_at: now,
+        content: { text: para.replace(/^>\s*/gm, ''), marks: [] },
+      } as Block);
+    } else if (/^[-*]\s+\[[ x]\]/i.test(para)) {
+      const lines = para.split('\n');
+      for (const line of lines) {
+        const checked = /^[-*]\s+\[x\]/i.test(line);
+        const text = line.replace(/^[-*]\s+\[[ x]\]\s*/i, '');
+        blocks.push({
+          id: createId('checkbox'),
+          type: 'checkbox',
+          checked,
+          position: blockCounter,
+          created_at: now,
+          updated_at: now,
+          content: { text, marks: [] },
+        } as Block);
+      }
+    } else if (/^[-*]\s+/m.test(para)) {
+      const lines = para.split('\n').map(l => l.replace(/^[-*]\s+/, '').trim()).filter(Boolean);
+      blocks.push({
+        id: createId('bullets'),
+        type: 'bulletList',
+        position: blockCounter,
+        created_at: now,
+        updated_at: now,
+        items: lines.map(t => ({ text: t, marks: [] })),
+      } as Block);
+    } else if (/^\d+\.\s+/m.test(para)) {
+      const lines = para.split('\n').map(l => l.replace(/^\d+\.\s+/, '').trim()).filter(Boolean);
+      blocks.push({
+        id: createId('numbers'),
+        type: 'numberedList',
+        position: blockCounter,
+        created_at: now,
+        updated_at: now,
+        items: lines.map(t => ({ text: t, marks: [] })),
+      } as Block);
+    } else if (para === '---' || para === '***') {
+      blocks.push({
+        id: createId('divider'),
+        type: 'divider',
+        position: blockCounter,
+        created_at: now,
+        updated_at: now,
+      } as Block);
+    } else {
+      blocks.push({
+        id: createId('text'),
+        type: 'text',
+        position: blockCounter,
+        created_at: now,
+        updated_at: now,
+        content: { text: para, marks: [] },
+      } as Block);
+    }
+  }
+
+  return blocks;
+}

@@ -41,17 +41,30 @@ export function NotionResourceManager() {
     const handlePageCreated = () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
     };
+    const handleResourcesUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+    };
+    const handlePageDeleted = (e: any) => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      if (e?.detail?.pageId && e.detail.pageId === selectedPageId) {
+        setSelectedPageId(null);
+      }
+    };
 
     window.addEventListener('studymate-select-resource-page', handleSelectPage);
     window.addEventListener('studymate-navigate', handleNavigate);
     window.addEventListener('studymate-page-created', handlePageCreated);
+    window.addEventListener('studymate-resources-updated', handleResourcesUpdated);
+    window.addEventListener('studymate-page-deleted', handlePageDeleted);
 
     return () => {
       window.removeEventListener('studymate-select-resource-page', handleSelectPage);
       window.removeEventListener('studymate-navigate', handleNavigate);
       window.removeEventListener('studymate-page-created', handlePageCreated);
+      window.removeEventListener('studymate-resources-updated', handleResourcesUpdated);
+      window.removeEventListener('studymate-page-deleted', handlePageDeleted);
     };
-  }, [queryClient]);
+  }, [queryClient, selectedPageId]);
 
   // Log errors for debugging
   useEffect(() => {

@@ -44,7 +44,7 @@ export function PageView({ pageId, onNavigate }: PageViewProps) {
   useEffect(() => {
     if (!page) return;
     setDraftBlocks(page.content || []);
-  }, [page?.id]);
+  }, [page?.id, page?.updated_at]);
 
   // Handle title change with auto-save
   const handleTitleChange = useCallback(

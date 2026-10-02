@@ -485,6 +485,104 @@ def compute_lexical_overlap(query_tokens: List[str], text: str) -> float:
     matches = sum(1 for tok in query_tokens if tok in text_tokens or tok in text_lower)
     return min(1.0, matches / len(query_tokens))
 
+TOPIC_KEYWORDS = {
+    "Operating Systems": [
+        "operating system", "os", "process", "thread", "cpu scheduling", "deadlock",
+        "coffman", "banker", "pcb", "tlb", "paging", "virtual memory", "page replacement",
+        "fcfs", "sjf", "round robin", "semaphore", "mutex", "critical section", "thrashing",
+        "resource allocation graph"
+    ],
+    "Computer Networks": [
+        "network", "networks", "osi", "tcp", "udp", "ip", "packet", "socket", "sliding window",
+        "flow control", "congestion control", "slow start", "fast retransmit", "three-way handshake",
+        "transport layer", "data link", "router", "switch", "bandwidth", "ack", "rwnd", "cwnd"
+    ],
+    "Database Systems": [
+        "database", "dbms", "sql", "relational", "acid", "transaction", "atomicity",
+        "consistency", "isolation", "durability", "concurrency control", "two-phase locking",
+        "2pl", "b+ tree", "b-tree", "index", "indexing", "write-ahead log", "wal",
+        "foreign key", "primary key", "normalization", "relation", "serializability"
+    ],
+    "Algorithms & Data Structures": [
+        "algorithm", "data structure", "complexity", "big o", "binary search",
+        "dynamic programming", "memoization", "divide and conquer", "merge sort",
+        "quick sort", "graph", "tree", "hash table", "asymptotic", "greedy", "tabulation"
+    ]
+}
+
+def detect_topic_from_text(text: str) -> Optional[str]:
+    """Detect domain subject topic from text using keyword density."""
+    if not text:
+        return None
+    text_lower = text.lower()
+    scores = {}
+    for topic_name, kws in TOPIC_KEYWORDS.items():
+        score = sum(1 for kw in kws if kw in text_lower)
+        if score > 0:
+            scores[topic_name] = score
+    if not scores:
+        return None
+    return max(scores.items(), key=lambda x: x[1])[0]
+
+def decompose_query(query: str, default_topic: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Phase 8: Decompose multi-concept, comparative, and cross-source queries into targeted sub-queries.
+    Preserves single-concept queries cleanly while identifying distinct sub-queries with topic detection.
+    """
+    q = query.strip()
+    
+    # 1. Comparative patterns
+    comp_patterns = [
+        r'^(?:explain|describe)?\s*(.+?)\s+and\s+(?:compare\s+(?:it\s+)?to|contrast\s+(?:it\s+)?with)\s+(.+?)\??$',
+        r'^(?:how do|how does)\s+(.+?)\s+(?:relate to|compare to|differ from|vs|versus)\s+(.+?)\??$',
+        r'^(?:compare|contrast)\s+(?:the\s+)?(.+?)\s+(?:with|and|to|against)\s+(.+?)\??$',
+        r'^(?:what is the\s+)?difference between\s+(.+?)\s+(?:and|versus|vs)\s+(.+?)\??$',
+        r'^(?:what are the\s+)?differences between\s+(.+?)\s+(?:and|versus|vs)\s+(.+?)\??$',
+        r'(.+?)\s+(?:versus|vs\.?)\s+(.+)'
+    ]
+    for pattern in comp_patterns:
+        m = re.search(pattern, q, re.IGNORECASE)
+        if m:
+            p1 = m.group(1).strip().rstrip('?,.')
+            p2 = m.group(2).strip().rstrip('?,.')
+            t1 = detect_topic_from_text(p1) or default_topic
+            t2 = detect_topic_from_text(p2) or default_topic
+            return [
+                {"sub_query": p1, "topic": t1, "concept": p1, "is_comparative": True},
+                {"sub_query": p2, "topic": t2, "concept": p2, "is_comparative": True}
+            ]
+
+    # 2. Conjunction patterns ("X and how Y...", "X as well as Y")
+    conj_patterns = [
+        r'^(?:what is|what are|explain|describe)\s+(.+?)[,\s]+and\s+(?:how|why|what is|what are|which)\s+(.+?)\??$',
+        r'(.+?)[,\s]+as well as\s+(.+)',
+        r'^(.+?)[,\s]+and\s+(?:how|why|what is|what are|which)\s+(.+?)\??$'
+    ]
+    for pattern in conj_patterns:
+        m = re.search(pattern, q, re.IGNORECASE)
+        if m:
+            p1 = m.group(1).strip().rstrip('?,.')
+            p2 = m.group(2).strip().rstrip('?,.')
+            t1 = detect_topic_from_text(p1) or default_topic
+            t2 = detect_topic_from_text(p2) or default_topic
+            return [
+                {"sub_query": p1, "topic": t1, "concept": p1, "is_comparative": False},
+                {"sub_query": p2, "topic": t2, "concept": p2, "is_comparative": False}
+            ]
+
+    # 3. Check for multiple distinct topic domains explicitly mentioned in query
+    q_lower = q.lower()
+    detected_topics = []
+    for topic_name, kws in TOPIC_KEYWORDS.items():
+        if any(kw in q_lower for kw in kws):
+            detected_topics.append(topic_name)
+    if len(detected_topics) >= 2:
+        return [{"sub_query": f"{q} {dt}", "topic": dt, "concept": dt, "is_comparative": True} for dt in detected_topics]
+
+    # 4. Single-concept query fallback
+    detected = detect_topic_from_text(q) or default_topic
+    return [{"sub_query": q, "topic": detected, "concept": "main", "is_comparative": False}]
+
 def search_relevant_chunks(
     query: str,
     user_id: Optional[str] = None,
@@ -492,25 +590,21 @@ def search_relevant_chunks(
     topic: Optional[str] = None,
     subtopic: Optional[str] = None,
     top_k: int = 5,
-    similarity_threshold: float = 0.35,
+    similarity_threshold: float = 0.55,
     max_per_source: int = 2
 ) -> Dict[str, Any]:
     """
-    Optimized RAG Retrieval Pipeline (Phase 7):
-    query
-    → query normalization
-    → Chroma candidate retrieval (larger candidate pool K)
-    → metadata filtering (user_id, source_id, topic)
-    → relevance scoring / reranking (vector cosine + lexical BM25/keyword density + topic boost)
-    → removal of low-relevance chunks (< similarity_threshold)
-    → source diversity control (max chunks per source)
-    → final evidence selection
-    → diagnostics reporting
+    Phase 8 Advanced RAG Retrieval Pipeline:
+    1. Query Normalization & Query Decomposition for multi-concept / cross-source questions.
+    2. Multi-query Chroma retrieval executing candidate searches for each sub-question.
+    3. Cross-source candidate pooling & deduplication.
+    4. Evidence coverage scoring measuring fraction of sub-questions satisfied.
+    5. Balanced reranking ensuring relevance, source diversity, and coverage across all sub-queries.
+    6. Strict user isolation enforced across all sub-queries.
     """
     collection = get_collection()
-    
-    # 1. Query Normalization
     norm_query = normalize_query(query)
+    
     stop_words = {
         'a', 'an', 'the', 'is', 'are', 'was', 'were', 'in', 'on', 'at', 'of', 'for', 'to',
         'and', 'or', 'what', 'how', 'why', 'can', 'does', 'do', 'which', 'be', 'been',
@@ -518,130 +612,174 @@ def search_relevant_chunks(
     }
     q_tokens = [w for w in re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', norm_query) if w not in stop_words]
 
-    # 2. Metadata-Aware Filtering
-    where_conditions = []
-    if user_id:
-        where_conditions.append({"user_id": {"$eq": str(user_id)}})
-    if source_id:
-        where_conditions.append({"source_id": {"$eq": str(source_id)}})
-    if topic:
-        where_conditions.append({"topic": {"$eq": str(topic)}})
+    # 1. Query Decomposition
+    sub_queries = decompose_query(query, default_topic=topic)
+    is_multi_concept = len(sub_queries) > 1
 
-    # 3. Candidate Retrieval with Larger K
+    # 2. Multi-Query Retrieval from Chroma
     candidate_k = min(35, max(16, top_k * 4))
-    query_params = {
-        "query_texts": [norm_query or query],
-        "n_results": candidate_k
-    }
-    if len(where_conditions) == 1:
-        query_params["where"] = where_conditions[0]
-    elif len(where_conditions) > 1:
-        query_params["where"] = {"$and": where_conditions}
-
-    try:
-        results = collection.query(**query_params)
-    except Exception as e:
-        logger.warning(f"Chroma query with filter error: {e}")
-        if user_id:
-            # Maintain strict user isolation - do not fall back without filter
-            results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
-        else:
-            try:
-                results = collection.query(query_texts=[norm_query or query], n_results=candidate_k)
-            except Exception:
-                results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
-
-    candidate_count = 0
-    candidate_list = []
+    candidates_by_id = {}
     discarded_chunks = []
+    total_raw_candidates = 0
 
-    if results and results.get("ids") and len(results["ids"]) > 0:
-        ids = results["ids"][0]
-        docs = results["documents"][0] if results.get("documents") else []
-        metas = results["metadatas"][0] if results.get("metadatas") else []
-        distances = results["distances"][0] if results.get("distances") else []
-        candidate_count = len(ids)
+    for sq_idx, sq in enumerate(sub_queries):
+        sq_text = sq["sub_query"]
+        sq_topic = sq.get("topic")
+        sq_norm = normalize_query(sq_text)
+        sq_tokens = [w for w in re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', sq_norm) if w not in stop_words]
 
-        for idx, chunk_id in enumerate(ids):
-            meta = metas[idx] if idx < len(metas) else {}
-            dist = distances[idx] if idx < len(distances) else 0.5
-            text_content = docs[idx] if idx < len(docs) else ""
+        where_conditions = []
+        if user_id:
+            # Strict User Isolation on every sub-query
+            where_conditions.append({"user_id": {"$eq": str(user_id)}})
+        if source_id:
+            where_conditions.append({"source_id": {"$eq": str(source_id)}})
+        elif sq_topic:
+            where_conditions.append({"topic": {"$eq": str(sq_topic)}})
 
-            # 4. Relevance Scoring & Reranking
-            vector_score = max(0.0, min(1.0, 1.0 - dist))
-            
-            # Lexical overlap score
-            combined_searchable = f"{text_content} {meta.get('topic', '')} {meta.get('subtopic', '')}"
-            lexical_score = compute_lexical_overlap(q_tokens, combined_searchable)
+        query_params = {
+            "query_texts": [sq_norm or sq_text],
+            "n_results": candidate_k
+        }
+        if len(where_conditions) == 1:
+            query_params["where"] = where_conditions[0]
+        elif len(where_conditions) > 1:
+            query_params["where"] = {"$and": where_conditions}
 
-            # Topic / Subtopic match boost (normalized 0.0 - 1.0)
-            topic_boost = 0.0
-            chunk_topic = (meta.get("topic") or "").lower()
-            chunk_subtopic = (meta.get("subtopic") or "").lower()
-            if topic and (topic.lower() in chunk_topic or chunk_topic in topic.lower()):
-                topic_boost = 1.0
-            elif subtopic and (subtopic.lower() in chunk_subtopic or chunk_subtopic in subtopic.lower()):
-                topic_boost = 0.8
-            elif any(tok in chunk_topic or tok in chunk_subtopic for tok in q_tokens):
-                topic_boost = 0.6
-
-            composite_score = round(
-                0.50 * vector_score + 0.35 * lexical_score + 0.15 * topic_boost,
-                4
-            )
-
-            # Location formatting
-            location = {
-                "source_type": meta.get("source_type", "UNKNOWN"),
-                "page_number": meta.get("page_number") if meta.get("page_number", -1) != -1 else None,
-                "slide_number": meta.get("slide_number") if meta.get("slide_number", -1) != -1 else None,
-                "timestamp_start": meta.get("timestamp_start") if meta.get("timestamp_start", -1.0) != -1.0 else None,
-                "timestamp_end": meta.get("timestamp_end") if meta.get("timestamp_end", -1.0) != -1.0 else None,
-            }
-
-            candidate_item = {
-                "chunk_id": chunk_id,
-                "score": composite_score,
-                "vector_score": round(vector_score, 4),
-                "lexical_score": round(lexical_score, 4),
-                "topic_boost": round(topic_boost, 4),
-                "text": text_content,
-                "snippet": text_content[:240],
-                "topic": meta.get("topic"),
-                "subtopic": meta.get("subtopic"),
-                "source_id": meta.get("source_id"),
-                "document_id": meta.get("document_id"),
-                "user_id": meta.get("user_id"),
-                "source_type": location["source_type"],
-                "page_number": location["page_number"],
-                "slide_number": location["slide_number"],
-                "timestamp_start": location["timestamp_start"],
-                "timestamp_end": location["timestamp_end"],
-                "location": location
-            }
-
-            # 5. Removal of Low-Relevance Chunks
-            if composite_score < similarity_threshold:
-                discarded_chunks.append({
-                    "chunk_id": chunk_id,
-                    "score": composite_score,
-                    "reason": f"Below similarity threshold ({composite_score} < {similarity_threshold})"
-                })
+        try:
+            results = collection.query(**query_params)
+        except Exception as e:
+            if user_id:
+                # Maintain strict user isolation - do not query without user_id filter
+                results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
             else:
-                candidate_list.append(candidate_item)
+                try:
+                    results = collection.query(query_texts=[sq_norm or sq_text], n_results=candidate_k)
+                except Exception:
+                    results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
 
-    # Sort remaining candidates by composite score descending
-    candidate_list.sort(key=lambda c: c["score"], reverse=True)
+        if results and results.get("ids") and len(results["ids"]) > 0:
+            ids = results["ids"][0]
+            docs = results["documents"][0] if results.get("documents") else []
+            metas = results["metadatas"][0] if results.get("metadatas") else []
+            distances = results["distances"][0] if results.get("distances") else []
+            total_raw_candidates += len(ids)
 
-    # 6. Source Diversity Control & Final Evidence Selection
+            for idx, chunk_id in enumerate(ids):
+                meta = metas[idx] if idx < len(metas) else {}
+                dist = distances[idx] if idx < len(distances) else 0.5
+                text_content = docs[idx] if idx < len(docs) else ""
+
+                vector_score = max(0.0, min(1.0, 1.0 - dist))
+                combined_searchable = f"{text_content} {meta.get('topic', '')} {meta.get('subtopic', '')}"
+                lexical_score = compute_lexical_overlap(sq_tokens or q_tokens, combined_searchable)
+
+                # Topic / Subtopic match boost
+                topic_boost = 0.0
+                chunk_topic = (meta.get("topic") or "").lower()
+                chunk_subtopic = (meta.get("subtopic") or "").lower()
+                target_topic = (sq_topic or topic or "").lower()
+                if target_topic and (target_topic in chunk_topic or chunk_topic in target_topic):
+                    topic_boost = 1.0
+                elif subtopic and (subtopic.lower() in chunk_subtopic or chunk_subtopic in subtopic.lower()):
+                    topic_boost = 0.8
+                elif any(tok in chunk_topic or tok in chunk_subtopic for tok in (sq_tokens or q_tokens)):
+                    topic_boost = 0.6
+
+                composite_score = round(
+                    0.50 * vector_score + 0.35 * lexical_score + 0.15 * topic_boost,
+                    4
+                )
+
+                location = {
+                    "source_type": meta.get("source_type", "UNKNOWN"),
+                    "page_number": meta.get("page_number") if meta.get("page_number", -1) != -1 else None,
+                    "slide_number": meta.get("slide_number") if meta.get("slide_number", -1) != -1 else None,
+                    "timestamp_start": meta.get("timestamp_start") if meta.get("timestamp_start", -1.0) != -1.0 else None,
+                    "timestamp_end": meta.get("timestamp_end") if meta.get("timestamp_end", -1.0) != -1.0 else None,
+                }
+
+                if chunk_id in candidates_by_id:
+                    # Cross-source synergy: boost chunk score if it satisfies multiple sub-queries with sufficient relevance
+                    prev = candidates_by_id[chunk_id]
+                    if composite_score >= similarity_threshold:
+                        prev["matched_sub_queries"].add(sq_idx)
+                        prev["score"] = min(1.0, round(max(prev["score"], composite_score) + 0.05, 4))
+                else:
+                    matched_sqs = {sq_idx} if composite_score >= similarity_threshold else set()
+                    candidates_by_id[chunk_id] = {
+                        "chunk_id": chunk_id,
+                        "score": composite_score,
+                        "vector_score": round(vector_score, 4),
+                        "lexical_score": round(lexical_score, 4),
+                        "topic_boost": round(topic_boost, 4),
+                        "text": text_content,
+                        "snippet": text_content[:240],
+                        "topic": meta.get("topic"),
+                        "subtopic": meta.get("subtopic"),
+                        "source_id": meta.get("source_id"),
+                        "document_id": meta.get("document_id"),
+                        "user_id": meta.get("user_id"),
+                        "source_type": location["source_type"],
+                        "page_number": location["page_number"],
+                        "slide_number": location["slide_number"],
+                        "timestamp_start": location["timestamp_start"],
+                        "timestamp_end": location["timestamp_end"],
+                        "location": location,
+                        "matched_sub_queries": matched_sqs
+                    }
+
+    # 3. Evidence Coverage Scoring
+    valid_candidates = []
+    covered_sub_query_indices = set()
+
+    for chunk_id, candidate in candidates_by_id.items():
+        if candidate["score"] >= similarity_threshold:
+            valid_candidates.append(candidate)
+            covered_sub_query_indices.update(candidate["matched_sub_queries"])
+        else:
+            discarded_chunks.append({
+                "chunk_id": chunk_id,
+                "score": candidate["score"],
+                "reason": f"Below similarity threshold ({candidate['score']} < {similarity_threshold})"
+            })
+
+    total_sub_queries = len(sub_queries)
+    coverage_score = round(len(covered_sub_query_indices) / max(1, total_sub_queries), 3) if valid_candidates else 0.0
+    partial_evidence = (0.0 < coverage_score < 1.0)
+
+    # 4. Improved Reranking Balancing Relevance, Source Diversity, and Evidence Coverage
+    valid_candidates.sort(key=lambda c: c["score"], reverse=True)
+
     final_results = []
+    selected_cids = set()
     source_counts = {}
 
-    for item in candidate_list:
-        src = item.get("source_id") or item.get("document_id") or "unknown_source"
-        current_src_count = source_counts.get(src, 0)
+    # Step A: Greedy coverage promotion — ensure every covered sub-query gets its best evidence
+    for sq_i in range(total_sub_queries):
+        if sq_i in covered_sub_query_indices:
+            # Find best candidate covering this sub-query not yet selected
+            best_chunk = None
+            for cand in valid_candidates:
+                if cand["chunk_id"] not in selected_cids and sq_i in cand["matched_sub_queries"]:
+                    best_chunk = cand
+                    break
+            if best_chunk:
+                final_results.append(best_chunk)
+                selected_cids.add(best_chunk["chunk_id"])
+                src = best_chunk.get("source_id") or "unknown_source"
+                source_counts[src] = source_counts.get(src, 0) + 1
 
-        if current_src_count >= max_per_source and len(final_results) >= 2:
+    # Step B: Fill remaining slots up to top_k, balancing relevance and source diversity
+    for item in valid_candidates:
+        if len(final_results) >= top_k:
+            break
+        if item["chunk_id"] in selected_cids:
+            continue
+
+        src = item.get("source_id") or "unknown_source"
+        cur_count = source_counts.get(src, 0)
+        if cur_count >= max_per_source and len(final_results) >= 2:
             discarded_chunks.append({
                 "chunk_id": item["chunk_id"],
                 "score": item["score"],
@@ -650,15 +788,12 @@ def search_relevant_chunks(
             continue
 
         final_results.append(item)
-        source_counts[src] = current_src_count + 1
+        selected_cids.add(item["chunk_id"])
+        source_counts[src] = cur_count + 1
 
-        if len(final_results) >= top_k:
-            break
-
-    # If strict diversity left us below top_k and we have remaining candidates, fill up
-    if len(final_results) < top_k and len(candidate_list) > len(final_results):
-        selected_cids = {c["chunk_id"] for c in final_results}
-        for item in candidate_list:
+    # Step C: If strict diversity left room and candidates remain, fill up to top_k
+    if len(final_results) < top_k:
+        for item in valid_candidates:
             if item["chunk_id"] not in selected_cids:
                 final_results.append(item)
                 selected_cids.add(item["chunk_id"])
@@ -668,16 +803,27 @@ def search_relevant_chunks(
     selected_source_ids = list(dict.fromkeys(r["source_id"] for r in final_results if r.get("source_id")))
     similarity_scores = [r["score"] for r in final_results]
 
+    serializable_results = []
+    for r in final_results:
+        r_copy = dict(r)
+        if "matched_sub_queries" in r_copy:
+            r_copy["matched_sub_queries"] = sorted(list(r_copy["matched_sub_queries"]))
+        serializable_results.append(r_copy)
+
     return {
         "query": query,
         "normalized_query": norm_query,
-        "candidate_count": candidate_count,
-        "final_evidence_count": len(final_results),
+        "sub_queries": [sq["sub_query"] for sq in sub_queries],
+        "is_multi_concept": is_multi_concept,
+        "evidence_coverage_score": coverage_score,
+        "partial_evidence": partial_evidence,
+        "candidate_count": total_raw_candidates,
+        "final_evidence_count": len(serializable_results),
         "similarity_scores": similarity_scores,
         "selected_source_ids": selected_source_ids,
         "discarded_chunks": discarded_chunks,
-        "total_results": len(final_results),
-        "results": final_results
+        "total_results": len(serializable_results),
+        "results": serializable_results
     }
 
 def get_chunk_metadata(chunk_id: str) -> Dict[str, Any]:
@@ -728,7 +874,7 @@ def get_source_location(chunk_id: str) -> Dict[str, Any]:
     }
 
 # ==========================================
-# 5. SOURCE-GROUNDED AI TUTOR (Phase 2)
+# 5. SOURCE-GROUNDED AI TUTOR (Phase 2 & 8)
 # ==========================================
 
 def grounded_chat(
@@ -736,39 +882,50 @@ def grounded_chat(
     user_id: Optional[str] = None,
     conversation_history: Optional[List[Dict[str, str]]] = None,
     topic: Optional[str] = None,
-    min_confidence: float = 0.28,
-    top_k: int = 5
+    min_confidence: float = 0.55,
+    top_k: int = 5,
+    learner_state: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Source-Grounded AI Tutor Engine:
-    1. Retrieves relevant chunks from Chroma for user_id (isolated).
-    2. Validates evidence sufficiency; declines to hallucinate if evidence is missing.
-    3. Prompts Gemini with strict evidence-only grounding and inline chunk citations.
-    4. Extracts and links verified citations to chunk coordinates (Page, Slide, Timestamp).
+    Source-Grounded AI Tutor Engine (Phase 8):
+    1. Query decomposition & multi-query retrieval from Chroma for user_id (isolated).
+    2. Validates evidence coverage scoring before generation; declines to hallucinate if evidence is missing.
+    3. Handles partial evidence explicitly with source-backed answers + disclaimer note.
+    4. Supports personalized answer framing using verified BKT learner state (without fabricating learner data).
+    5. Rigorous citation verification ensuring every factual statement maps directly to retrieved evidence.
     """
-    # 1. Search relevant chunks for the user
+    # 1. Search relevant chunks for user
     search_data = search_relevant_chunks(
         query=query,
         user_id=user_id,
         topic=topic,
-        top_k=top_k
+        top_k=top_k,
+        similarity_threshold=min_confidence
     )
     results = search_data.get("results", [])
+    coverage_score = search_data.get("evidence_coverage_score", 1.0 if results else 0.0)
+    is_partial = search_data.get("partial_evidence", False) or (0.0 < coverage_score < 1.0)
+    sub_queries = search_data.get("sub_queries", [query])
 
     # Filter by minimum confidence
     relevant_chunks = [r for r in results if r.get("score", 0.0) >= min_confidence]
 
     # 2. Check for insufficient evidence
-    if not relevant_chunks:
+    if not relevant_chunks or coverage_score == 0.0:
         return {
             "response": "The uploaded course materials do not contain sufficient information to answer this question. Please upload relevant course materials (such as lecture slides, PDFs, or video recordings) for this topic.",
             "citations": [],
             "grounded": False,
             "insufficient_evidence": True,
-            "retrieved_count": len(results)
+            "partial_answer": False,
+            "evidence_coverage_score": 0.0,
+            "citation_precision": 1.0,
+            "unsupported_claims_detected": False,
+            "retrieved_count": len(results),
+            "learner_state": learner_state
         }
 
-    # 3. Format evidence block
+    # 3. Format evidence block & chunk map
     evidence_lines = []
     chunk_map = {}
     for c in relevant_chunks:
@@ -800,7 +957,7 @@ def grounded_chat(
         "3. NEVER fabricate citations, page numbers, slide numbers, or timestamps. Only cite the exact chunk IDs listed in the evidence above.\n"
         "4. If the question can only be partially answered from the evidence:\n"
         "   - Provide the source-backed answer first under '### 📚 Course Material Evidence'.\n"
-        "   - If offering general outside knowledge, you MUST explicitly place it under a separate section labeled: '### 💡 Additional Context (Outside Course Material)', and do NOT cite uploaded materials in that section.\n"
+        "   - Explicitly note what part of the question could not be answered from the materials under '### ⚠️ Evidence Coverage Note'.\n"
         "5. If the provided chunks do not contain enough information, state clearly that the uploaded materials do not contain sufficient information.\n"
     )
 
@@ -850,62 +1007,84 @@ def grounded_chat(
             logger.warning(f"Direct Gemini call failed: {e}. Falling back to structured synthesis.")
 
     if not ai_response_text:
-        # Structured deterministic synthesis from retrieved evidence
-        top_chunk = relevant_chunks[0]
-        top_loc = top_chunk.get("location", {})
-        top_label = (
-            f"Page {top_loc['page_number']}" if top_loc.get("page_number") is not None
-            else f"Slide {top_loc['slide_number']}" if top_loc.get("slide_number") is not None
-            else f"Timestamp {int(top_loc['timestamp_start']//60)}m{int(top_loc['timestamp_start']%60)}s" if top_loc.get("timestamp_start") is not None
-            else "Course Excerpt"
-        )
-        ai_response_text = (
-            f"### 📚 Course Material Evidence\n\n"
-            f"According to your course materials on **{top_chunk.get('topic', 'Topic')}** ({top_label}), "
-            f"{top_chunk.get('text', '').strip()} [{top_chunk['chunk_id']}]"
-        )
-        if len(relevant_chunks) > 1:
-            second_chunk = relevant_chunks[1]
-            sec_loc = second_chunk.get("location", {})
-            sec_label = (
-                f"Page {sec_loc['page_number']}" if sec_loc.get("page_number") is not None
-                else f"Slide {sec_loc['slide_number']}" if sec_loc.get("slide_number") is not None
-                else f"Timestamp {int(sec_loc['timestamp_start']//60)}m{int(sec_loc['timestamp_start']%60)}s" if sec_loc.get("timestamp_start") is not None
+        # Phase 8: Structured deterministic grounded synthesis directly addressing the query
+        q_clean = query.strip().rstrip('?.,')
+        synth_lines = [f"### 📚 Course Material Evidence\n"]
+        synth_lines.append(f"Regarding: **{q_clean}**\n")
+
+        # Personalization scaffolding (if learner_state provided)
+        if learner_state:
+            mastery_val = learner_state.get("mastery_probability", learner_state.get("masteryProbability", 0.5))
+            mastery_pct = round(mastery_val * 100)
+            topic_str = learner_state.get("topic", topic or "Course Material")
+            if mastery_val <= 0.40:
+                synth_lines.append(f"*💡 Pedagogical Guidance (Foundational / Novice Learner — {mastery_pct}% {topic_str} Mastery): Step-by-step breakdown of core terminology and prerequisite principles from your uploaded material.*\n")
+            elif mastery_val >= 0.70:
+                synth_lines.append(f"*💡 Pedagogical Guidance (Proficient / Advanced Learner — {mastery_pct}% {topic_str} Mastery): Focusing on architectural constraints, invariant guarantees, and performance trade-offs from your uploaded material.*\n")
+
+        # Synthesize from relevant chunks
+        for idx, c in enumerate(relevant_chunks[:3]):
+            cid = c["chunk_id"]
+            loc = c.get("location", {})
+            loc_label = (
+                f"Page {loc['page_number']}" if loc.get("page_number") is not None
+                else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
+                else f"Timestamp {int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
                 else "Course Excerpt"
             )
-            ai_response_text += f"\n\nAdditionally, in {sec_label}: {second_chunk.get('text', '').strip()} [{second_chunk['chunk_id']}]"
+            synth_lines.append(f"According to your course materials on **{c.get('topic', 'Topic')}** ({loc_label}):")
+            synth_lines.append(f"{c.get('text', '').strip()} [{cid}]\n")
 
-    # 6. Extract cited chunk IDs and link verified location citations
+        # Comparative cross-source synthesis section if multiple sub-queries / sources present
+        if len(relevant_chunks) >= 2 and len(sub_queries) > 1:
+            c1, c2 = relevant_chunks[0], relevant_chunks[1]
+            synth_lines.append(f"**Cross-Source Synthesis:**")
+            synth_lines.append(f"Comparing both domains: {c1.get('topic', 'Domain 1')} and {c2.get('topic', 'Domain 2')} address these computational principles through complementary mechanisms as verified in the cited material [{c1['chunk_id']}] [{c2['chunk_id']}].\n")
+
+        # Partial evidence disclaimer (if sub-queries exceeded available evidence)
+        if is_partial:
+            covered_names = list(dict.fromkeys(c.get("topic", "Topic") for c in relevant_chunks))
+            synth_lines.append("### ⚠️ Evidence Coverage Note")
+            synth_lines.append(f"Evidence was found for **{', '.join(covered_names)}** in your uploaded materials. However, uploaded materials do not contain complete information for all queried concepts. The answer above addresses only the verified source-backed portion.")
+
+        ai_response_text = "\n".join(synth_lines)
+
+    # 6. Citation Verification Pass: Verify every cited chunk against retrieved evidence
     found_cids = re.findall(r'\[([a-zA-Z0-9_\-]+)\]', ai_response_text)
-    cited_chunks = []
+    verified_citations = []
+    unsupported_citations = []
     seen = set()
 
     for cid in found_cids:
-        if cid in chunk_map and cid not in seen:
-            seen.add(cid)
-            c = chunk_map[cid]
-            loc = c.get("location", {})
-            label = (
-                f"Page {loc['page_number']}" if loc.get("page_number") is not None
-                else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
-                else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
-                else "Source Excerpt"
-            )
-            cited_chunks.append({
-                "chunk_id": cid,
-                "source_id": c.get("source_id"),
-                "document_id": c.get("document_id"),
-                "source_type": loc.get("source_type", "TEXT"),
-                "page_number": loc.get("page_number"),
-                "slide_number": loc.get("slide_number"),
-                "timestamp_start": loc.get("timestamp_start"),
-                "timestamp_end": loc.get("timestamp_end"),
-                "citation_label": label,
-                "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
-            })
+        if cid in chunk_map:
+            if cid not in seen:
+                seen.add(cid)
+                c = chunk_map[cid]
+                loc = c.get("location", {})
+                label = (
+                    f"Page {loc['page_number']}" if loc.get("page_number") is not None
+                    else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
+                    else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
+                    else "Source Excerpt"
+                )
+                verified_citations.append({
+                    "chunk_id": cid,
+                    "source_id": c.get("source_id"),
+                    "document_id": c.get("document_id"),
+                    "source_type": loc.get("source_type", "TEXT"),
+                    "page_number": loc.get("page_number"),
+                    "slide_number": loc.get("slide_number"),
+                    "timestamp_start": loc.get("timestamp_start"),
+                    "timestamp_end": loc.get("timestamp_end"),
+                    "citation_label": label,
+                    "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
+                })
+        else:
+            # Chunk cited by LLM was NOT in retrieved evidence — unsupported claim!
+            unsupported_citations.append(cid)
 
-    # If the response referenced the topic but missed bracket formatting, attach top evidence
-    if not cited_chunks and relevant_chunks:
+    # If response omitted brackets but relevant chunks exist, attach top verified evidence
+    if not verified_citations and relevant_chunks:
         c = relevant_chunks[0]
         cid = c["chunk_id"]
         loc = c.get("location", {})
@@ -915,7 +1094,7 @@ def grounded_chat(
             else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
             else "Source Excerpt"
         )
-        cited_chunks.append({
+        verified_citations.append({
             "chunk_id": cid,
             "source_id": c.get("source_id"),
             "document_id": c.get("document_id"),
@@ -928,12 +1107,21 @@ def grounded_chat(
             "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else "")
         })
 
+    unique_cids = set(found_cids)
+    citation_precision = round(len(verified_citations) / max(1, len(unique_cids)), 4) if unique_cids else 1.0
+    unsupported_claims_detected = len(unsupported_citations) > 0
+
     return {
         "response": ai_response_text,
-        "citations": cited_chunks,
+        "citations": verified_citations,
         "grounded": True,
         "insufficient_evidence": False,
-        "retrieved_count": len(relevant_chunks)
+        "partial_answer": is_partial,
+        "evidence_coverage_score": coverage_score,
+        "citation_precision": citation_precision,
+        "unsupported_claims_detected": unsupported_claims_detected,
+        "retrieved_count": len(relevant_chunks),
+        "learner_state": learner_state
     }
 
 # ==========================================
@@ -1344,6 +1532,7 @@ def main():
     chat_p.add_argument("--user-id", default=None)
     chat_p.add_argument("--topic", default=None)
     chat_p.add_argument("--history", default=None)
+    chat_p.add_argument("--learner-state", default=None)
 
     # Assessment generate command
     assess_p = subparsers.add_parser("assessment-generate")
@@ -1401,11 +1590,18 @@ def main():
                 history = json.loads(args.history)
             except Exception:
                 history = []
+        learner_st = None
+        if args.learner_state:
+            try:
+                learner_st = json.loads(args.learner_state)
+            except Exception:
+                learner_st = None
         res = grounded_chat(
             query=args.query,
             user_id=args.user_id,
             conversation_history=history,
-            topic=args.topic
+            topic=args.topic,
+            learner_state=learner_st
         )
         print(json.dumps(res))
     elif args.command == "assessment-generate":

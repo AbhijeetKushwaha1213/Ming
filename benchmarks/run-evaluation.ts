@@ -18,7 +18,7 @@ const chatAdapter = async (query: string, topic?: string, userId: string = 'defa
 
 async function main() {
   console.log('================================================================');
-  console.log('🔬 StudyMate Phase 6: Automated Evaluation & Benchmarking Suite');
+  console.log('🔬 StudyMate Phase 8: Multi-Hop Retrieval & Grounded Tutor Suite');
   console.log('================================================================');
   console.log('Operating on isolated test data and verified learner models...\n');
 
@@ -29,25 +29,24 @@ async function main() {
   console.log('\n📊 BENCHMARK EVALUATION RESULTS:');
   console.log('----------------------------------------------------------------');
   console.log(`⏱️ Evaluation Timestamp: ${report.evaluationTimestamp}`);
-  console.log(`📁 Dataset Items Evaluated: ${report.datasetSize} (Phase 6: 8 -> Phase 7: ${report.datasetSize})`);
-  console.log(`👥 Simulated Cohort Size: ${report.personalizationMetrics.simulatedStudentsCount} (Phase 6: 3 -> Phase 7: ${report.personalizationMetrics.simulatedStudentsCount})`);
+  console.log(`📁 Dataset Items Evaluated: ${report.datasetSize} (Phase 6: 8 -> Phase 7: 52 -> Phase 8: ${report.datasetSize})`);
+  console.log(`👥 Simulated Cohort Size: ${report.personalizationMetrics.simulatedStudentsCount}`);
   console.log(`⚡ Execution Duration: ${durationSec}s\n`);
 
-  console.log('📈 PHASE 6 vs PHASE 7 EMPIRICAL COMPARISON:');
+  console.log('📈 PHASE 7 vs PHASE 8 EMPIRICAL COMPARISON:');
   console.log('┌─────────────────────────────┬───────────┬───────────┬──────────┬──────────┬──────────────┐');
-  console.log('│ Metric                      │ Phase 6   │ Phase 7   │ Delta    │ Status   │ Benchmark    │');
+  console.log('│ Metric                      │ Phase 7   │ Phase 8   │ Delta    │ Status   │ Benchmark    │');
   console.log('├─────────────────────────────┼───────────┼───────────┼──────────┼──────────┼──────────────┤');
 
   for (const row of report.phaseComparison) {
-    const isPct = !['Exact Duplicate Rate', 'Semantic Duplicate Rate'].includes(row.metric) && typeof row.phase6Value === 'number';
-    const p6Str = typeof row.phase6Value === 'number' ? `${(row.phase6Value * 100).toFixed(1)}%` : String(row.phase6Value);
-    const p7Str = typeof row.phase7Value === 'number' ? `${(row.phase7Value * 100).toFixed(1)}%` : String(row.phase7Value);
+    const p7Str = typeof row.phase7Value === 'number' ? `${(row.phase7Value * 100).toFixed(1)}%` : String(row.phase7Value ?? '-');
+    const p8Str = typeof row.phase8Value === 'number' ? `${(row.phase8Value * 100).toFixed(1)}%` : String(row.phase8Value ?? '-');
     const deltaStr = (row.delta >= 0 ? `+${(row.delta * 100).toFixed(1)}%` : `${(row.delta * 100).toFixed(1)}%`);
     const status = row.improved ? 'PASSED ✅' : 'ATTN ⚠️ ';
 
     const pad = (str: string, len: number) => (str + ' '.repeat(len)).slice(0, len);
     console.log(
-      `│ ${pad(row.metric, 27)} │ ${pad(p6Str, 9)} │ ${pad(p7Str, 9)} │ ${pad(deltaStr, 8)} │ ${pad(status, 8)} │ ${pad(row.targetBenchmark, 12)} │`
+      `│ ${pad(row.metric, 27)} │ ${pad(p7Str, 9)} │ ${pad(p8Str, 9)} │ ${pad(deltaStr, 8)} │ ${pad(status, 8)} │ ${pad(row.targetBenchmark, 12)} │`
     );
   }
   console.log('└─────────────────────────────┴───────────┴───────────┴──────────┴──────────┴──────────────┘');

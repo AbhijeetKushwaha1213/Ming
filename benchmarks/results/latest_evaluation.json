@@ -1,15 +1,15 @@
 {
-  "evaluationTimestamp": "2026-10-02T07:45:08.930Z",
-  "datasetSize": 52,
+  "evaluationTimestamp": "2026-10-02T08:40:39.804Z",
+  "datasetSize": 60,
   "ragMetrics": {
-    "faithfulness": 0.418,
-    "answerRelevancy": 0.713,
-    "contextPrecision": 0.942,
-    "contextRecall": 0.458
+    "faithfulness": 0.974,
+    "answerRelevancy": 0.868,
+    "contextPrecision": 0.978,
+    "contextRecall": 0.872
   },
   "groundingMetrics": {
-    "groundingAccuracy": 0.942,
-    "coordinateAccuracy": 0.962,
+    "groundingAccuracy": 1,
+    "coordinateAccuracy": 0.967,
     "refusalAccuracy": 1,
     "userIsolationPreserved": true
   },
@@ -153,14 +153,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 50 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 50 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -195,7 +195,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 36 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -209,7 +209,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 40 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -243,7 +243,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 30 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -257,7 +257,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 34 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -291,7 +291,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 29 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -305,7 +305,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 33 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 50 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -338,14 +338,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 21 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 50 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 23 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 50 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -379,7 +379,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -393,7 +393,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -427,7 +427,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -441,7 +441,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -474,14 +474,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -516,7 +516,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -530,7 +530,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -564,7 +564,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -578,7 +578,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -612,7 +612,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -626,7 +626,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -659,14 +659,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -700,7 +700,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -714,7 +714,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -747,14 +747,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.6
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.8838709677419354
           }
         ]
@@ -787,14 +787,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -829,7 +829,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -843,7 +843,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -877,7 +877,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -891,7 +891,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -925,7 +925,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -939,7 +939,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -972,14 +972,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1013,7 +1013,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1027,7 +1027,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -1061,7 +1061,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1075,7 +1075,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1108,14 +1108,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1150,7 +1150,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1164,7 +1164,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1198,7 +1198,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1212,7 +1212,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1246,7 +1246,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1260,7 +1260,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -1293,14 +1293,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1334,7 +1334,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1348,7 +1348,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -1382,7 +1382,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1396,7 +1396,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1429,14 +1429,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1471,7 +1471,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1485,7 +1485,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1519,7 +1519,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1533,7 +1533,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1567,7 +1567,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1581,7 +1581,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -1614,14 +1614,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1655,7 +1655,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1669,7 +1669,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -1703,7 +1703,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1717,7 +1717,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1750,14 +1750,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1792,7 +1792,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1806,7 +1806,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1840,7 +1840,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -1854,7 +1854,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -1888,7 +1888,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1902,7 +1902,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -1935,14 +1935,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -1976,7 +1976,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -1990,7 +1990,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -2023,14 +2023,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.6
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.8838709677419354
           }
         ]
@@ -2063,14 +2063,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -2105,7 +2105,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -2119,7 +2119,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -2153,7 +2153,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.4
           },
           {
@@ -2167,7 +2167,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.9454545454545454
           }
         ]
@@ -2201,7 +2201,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -2215,7 +2215,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.1161125319693095
           }
         ]
@@ -2248,14 +2248,14 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 6 related questions.",
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 16 related questions.",
             "priorMastery": 0.8
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 18 related questions.",
             "priorMastery": 0.9526315789473684
           }
         ]
@@ -2289,7 +2289,7 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 8 related questions.",
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 22 related questions.",
             "priorMastery": 0.2
           },
           {
@@ -2303,7 +2303,7 @@
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 12 related questions.",
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 26 related questions.",
             "priorMastery": 0.8736842105263158
           }
         ]
@@ -2311,10 +2311,10 @@
     ]
   },
   "noveltyMetrics": {
-    "totalQuestionsAnalyzed": 13,
+    "totalQuestionsAnalyzed": 29,
     "exactDuplicatesCount": 0,
     "semanticDuplicatesCount": 0,
-    "uniqueQuestionsCount": 13,
+    "uniqueQuestionsCount": 29,
     "exactDuplicateRate": 0,
     "semanticDuplicateRate": 0,
     "uniqueQuestionPercentage": 1
@@ -2331,11 +2331,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.444,
-      "answerRelevancy": 0.883,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), A deadlock occurs when processes are waiting for "
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What are the four Coffman conditions required for a deadlock to occur**\n\nAccording to your course materials on **O"
     },
     {
       "itemId": "eval_q_02",
@@ -2348,11 +2348,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.444,
-      "answerRelevancy": 0.854,
+      "faithfulness": 0.889,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), A deadlock occurs when processes are waiting for "
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How does the Banker's algorithm determine whether a resource allocation state is safe**\n\nAccording to your course "
     },
     {
       "itemId": "eval_q_03",
@@ -2365,45 +2365,45 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.364,
-      "answerRelevancy": 0.883,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
-      "contextRecall": 0.75,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 1), Chapter 3: Process Management. A process is a program in "
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What information is contained inside a Process Control Block (PCB) in an operating system**\n\nAccording to your cou"
     },
     {
       "itemId": "eval_q_04",
       "question": "What are the common CPU scheduling algorithms in operating systems?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 2,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.273,
+      "faithfulness": 0.933,
       "answerRelevancy": 1,
-      "contextPrecision": 1,
-      "contextRecall": 0.75,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 2), Chapter 5: CPU Scheduling. The CPU scheduler selects a pr"
+      "contextPrecision": 0.833,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What are the common CPU scheduling algorithms in operating systems**\n\nAccording to your course materials on **Oper"
     },
     {
       "itemId": "eval_q_05",
       "question": "How many layers are defined in the OSI reference model versus the TCP/IP protocol suite?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.222,
-      "answerRelevancy": 0.847,
+      "faithfulness": 0.933,
+      "answerRelevancy": 0.974,
       "contextPrecision": 1,
       "contextRecall": 1,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 1), Lecture 2: Layered Network Architecture. The OSI model d"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How many layers are defined in the OSI reference model versus the TCP/IP protocol suite**\n\nAccording to your cours"
     },
     {
       "itemId": "eval_q_06",
@@ -2416,11 +2416,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.182,
-      "answerRelevancy": 0.667,
+      "faithfulness": 1,
+      "answerRelevancy": 0.9,
       "contextPrecision": 1,
-      "contextRecall": 0.5,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 2), Lecture 4: Transport Layer Protocols: TCP vs UDP. Transm"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How does TCP establish a connection between client and server**\n\nAccording to your course materials on **Computer "
     },
     {
       "itemId": "eval_q_07",
@@ -2433,11 +2433,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.2,
-      "answerRelevancy": 0.942,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
-      "contextRecall": 0.25,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 0m45s), Video Segment 0:00 - 1:30: Relational Model & Int"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What is the primary role of a foreign key in a relational database**\n\nAccording to your course materials on **Data"
     },
     {
       "itemId": "eval_q_08",
@@ -2450,11 +2450,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.25,
-      "answerRelevancy": 0.79,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
-      "contextRecall": 0.25,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 2m30s), Video Segment 1:30 - 4:00: Transaction Processing"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What are the four ACID properties required for database transactions**\n\nAccording to your course materials on **Da"
     },
     {
       "itemId": "eval_q_09",
@@ -2467,11 +2467,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.4,
+      "faithfulness": 1,
       "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Algorithms & Data Structures** (Course Excerpt), Fundamental Algorithm Analysis. Binary"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What is the time complexity of binary search on a sorted array**\n\nAccording to your course materials on **Algorith"
     },
     {
       "itemId": "eval_q_10",
@@ -2484,11 +2484,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.4,
-      "answerRelevancy": 0.719,
+      "faithfulness": 1,
+      "answerRelevancy": 0.919,
       "contextPrecision": 1,
       "contextRecall": 1,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Algorithms & Data Structures** (Course Excerpt), Dynamic Programming Paradigms. Dynamic"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What are the two core technical characteristics of dynamic programming problems**\n\nAccording to your course materi"
     },
     {
       "itemId": "eval_q_11",
@@ -2501,11 +2501,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.556,
-      "answerRelevancy": 0.68,
+      "faithfulness": 1,
+      "answerRelevancy": 0.83,
       "contextPrecision": 1,
-      "contextRecall": 0.4,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), Deadlock prevention functions by eliminating at l"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What is the primary difference between deadlock prevention and deadlock avoidance**\n\nAccording to your course mate"
     },
     {
       "itemId": "eval_q_12",
@@ -2518,11 +2518,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.636,
-      "answerRelevancy": 0.664,
+      "faithfulness": 0.909,
+      "answerRelevancy": 0.764,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 1), Chapter 3: Process Management. A process is a program in "
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What is a context switch and what overhead does it impose on operating system performance**\n\nAccording to your cou"
     },
     {
       "itemId": "eval_q_13",
@@ -2535,11 +2535,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.333,
-      "answerRelevancy": 0.708,
+      "faithfulness": 1,
+      "answerRelevancy": 0.74,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 2), Chapter 5: CPU Scheduling. The CPU scheduler selects a pr"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does Round Robin scheduling degrade into processor sharing when the time quantum is too small**\n\nAccording to "
     },
     {
       "itemId": "eval_q_14",
@@ -2552,11 +2552,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.167,
-      "answerRelevancy": 0.765,
+      "faithfulness": 1,
+      "answerRelevancy": 0.852,
       "contextPrecision": 1,
-      "contextRecall": 0.6,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 3), Chapter 8: Memory Management & Paging. Paging is a memory"
+      "contextRecall": 0.8,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Explain the fundamental mechanism of paging and how it eliminates contiguous physical memory allocation**\n\nAccordi"
     },
     {
       "itemId": "eval_q_15",
@@ -2569,11 +2569,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.583,
-      "answerRelevancy": 0.656,
+      "faithfulness": 1,
+      "answerRelevancy": 0.734,
       "contextPrecision": 1,
-      "contextRecall": 0.75,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 4), Chapter 9: Virtual Memory and Page Replacement. Virtual m"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How does virtual memory allow execution of processes that exceed physical memory frames**\n\nAccording to your cours"
     },
     {
       "itemId": "eval_q_16",
@@ -2586,11 +2586,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.556,
-      "answerRelevancy": 0.793,
+      "faithfulness": 1,
+      "answerRelevancy": 0.967,
       "contextPrecision": 1,
-      "contextRecall": 0.6,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 2), Lecture 4: Transport Layer Protocols: TCP vs UDP. Transm"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Explain the core differences between TCP and UDP at the transport layer**\n\nAccording to your course materials on *"
     },
     {
       "itemId": "eval_q_17",
@@ -2603,11 +2603,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.167,
-      "answerRelevancy": 0.888,
+      "faithfulness": 1,
+      "answerRelevancy": 0.946,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 3), Lecture 6: Flow Control & Sliding Window Protocols. Flow"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What is the difference between Go-Back-N and Selective Repeat sliding window flow control protocols**\n\nAccording t"
     },
     {
       "itemId": "eval_q_18",
@@ -2620,28 +2620,28 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.182,
-      "answerRelevancy": 0.833,
+      "faithfulness": 1,
+      "answerRelevancy": 0.938,
       "contextPrecision": 1,
-      "contextRecall": 0.5,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 4), Lecture 8: TCP Congestion Control Mechanisms. Congestion"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How does TCP Slow Start differ from Congestion Avoidance in regulating congestion window size**\n\nAccording to your"
     },
     {
       "itemId": "eval_q_19",
       "question": "Explain how Two-Phase Locking (2PL) ensures serializability in concurrent transaction processing.",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.375,
-      "answerRelevancy": 0.841,
+      "faithfulness": 0.875,
+      "answerRelevancy": 0.911,
       "contextPrecision": 1,
-      "contextRecall": 0.5,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 5m0s), Video Segment 4:00 - 7:00: Concurrency Control and"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Explain how Two-Phase Locking (2PL) ensures serializability in concurrent transaction processing**\n\nAccording to y"
     },
     {
       "itemId": "eval_q_20",
@@ -2654,11 +2654,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.5,
-      "answerRelevancy": 0.552,
+      "faithfulness": 1,
+      "answerRelevancy": 0.74,
       "contextPrecision": 1,
-      "contextRecall": 0.4,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 8m0s), Video Segment 7:00 - 10:00: Database Indexing with"
+      "contextRecall": 0.8,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why are B+ Trees preferred over regular binary search trees for disk-based relational storage engines**\n\nAccording"
     },
     {
       "itemId": "eval_q_21",
@@ -2671,11 +2671,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.556,
-      "answerRelevancy": 0.739,
+      "faithfulness": 0.889,
+      "answerRelevancy": 0.885,
       "contextPrecision": 1,
       "contextRecall": 0.75,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), Deadlock prevention functions by eliminating at l"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **If circular wait is prevented by imposing a strict global ordering on resource requests, can a deadlock still occu"
     },
     {
       "itemId": "eval_q_22",
@@ -2688,11 +2688,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.25,
-      "answerRelevancy": 0.533,
+      "faithfulness": 1,
+      "answerRelevancy": 0.773,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 4), Chapter 9: Virtual Memory and Page Replacement. Virtual m"
+      "contextRecall": 0.667,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does the Optimal Page Replacement algorithm have the lowest page fault rate, and why cannot it be implemented "
     },
     {
       "itemId": "eval_q_23",
@@ -2705,11 +2705,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.167,
-      "answerRelevancy": 0.525,
+      "faithfulness": 1,
+      "answerRelevancy": 0.598,
       "contextPrecision": 1,
-      "contextRecall": 0.333,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 4), Lecture 8: TCP Congestion Control Mechanisms. Congestion"
+      "contextRecall": 0.667,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does TCP trigger Fast Retransmit after receiving three duplicate acknowledgments rather than waiting for a tim"
     },
     {
       "itemId": "eval_q_24",
@@ -2722,11 +2722,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.6,
-      "answerRelevancy": 0.621,
+      "faithfulness": 1,
+      "answerRelevancy": 0.721,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 5m0s), Video Segment 4:00 - 7:00: Concurrency Control and"
+      "contextRecall": 0.75,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does Strict 2PL hold exclusive locks until commit or abort instead of releasing them during the shrinking phas"
     },
     {
       "itemId": "eval_q_25",
@@ -2739,11 +2739,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.4,
-      "answerRelevancy": 0.341,
+      "faithfulness": 1,
+      "answerRelevancy": 0.555,
       "contextPrecision": 1,
       "contextRecall": 0.5,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Algorithms & Data Structures** (Course Excerpt), Fundamental Algorithm Analysis. Binary"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **If an array is unsorted, why cannot binary search be executed directly in O(log n) time**\n\nAccording to your cours"
     },
     {
       "itemId": "eval_q_26",
@@ -2756,11 +2756,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.556,
-      "answerRelevancy": 0.408,
+      "faithfulness": 0.889,
+      "answerRelevancy": 0.675,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), Deadlock prevention functions by eliminating at l"
+      "contextRecall": 0.5,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **In a resource allocation graph, does every cycle imply a deadlock when resources have multiple instances**\n\nAccord"
     },
     {
       "itemId": "eval_q_27",
@@ -2773,11 +2773,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.2,
-      "answerRelevancy": 0.388,
+      "faithfulness": 1,
+      "answerRelevancy": 0.474,
       "contextPrecision": 1,
       "contextRecall": 0.25,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 2), Chapter 5: CPU Scheduling. The CPU scheduler selects a pr"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does Shortest Job First (SJF) scheduling provide the minimum average waiting time for a set of processes**\n\nAc"
     },
     {
       "itemId": "eval_q_28",
@@ -2790,11 +2790,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.5,
-      "answerRelevancy": 0.558,
+      "faithfulness": 1,
+      "answerRelevancy": 0.675,
       "contextPrecision": 1,
-      "contextRecall": 0.4,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 8m0s), Video Segment 7:00 - 10:00: Database Indexing with"
+      "contextRecall": 0.8,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does the leaf node doubly linked list in a B+ Tree drastically speed up range queries compared to tree travers"
     },
     {
       "itemId": "eval_q_29",
@@ -2807,44 +2807,45 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.556,
-      "answerRelevancy": 0.602,
+      "faithfulness": 0.889,
+      "answerRelevancy": 0.729,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), Deadlock prevention functions by eliminating at l"
+      "contextRecall": 0.75,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How do resource allocation graphs represent hold-and-wait versus circular wait in concurrency management**\n\nAccord"
     },
     {
       "itemId": "eval_q_30",
       "question": "How do process scheduling states in OS relate to transaction states in database concurrency control?",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 1,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.364,
-      "answerRelevancy": 0.401,
+      "faithfulness": 0.923,
+      "answerRelevancy": 0.661,
       "contextPrecision": 1,
-      "contextRecall": 0.6,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 1), Chapter 3: Process Management. A process is a program in "
+      "contextRecall": 0.8,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How do process scheduling states in OS relate to transaction states in database concurrency control**\n\nAccording t"
     },
     {
       "itemId": "eval_q_31",
       "question": "Compare the role of caches in operating systems (TLB) and networks (sliding window buffer) in mitigating latency bottlenecks.",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 0,
-      "topSourceId": null,
-      "topPageNumber": null,
-      "coordinatesMatched": false,
+      "retrievedChunkCount": 2,
+      "topSourceId": "src_os_pdf",
+      "topPageNumber": 3,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0,
-      "answerRelevancy": 0.351,
-      "contextPrecision": 0,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 3), Chapter 8: Memory Management & Paging. Paging is a memory"
+      "faithfulness": 0.917,
+      "answerRelevancy": 0.675,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Compare the role of caches in operating systems (TLB) and networks (sliding window buffer) in mitigating latency b"
     },
     {
       "itemId": "eval_q_32",
@@ -2857,43 +2858,45 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.556,
-      "answerRelevancy": 0.479,
+      "faithfulness": 0.889,
+      "answerRelevancy": 0.756,
       "contextPrecision": 1,
       "contextRecall": 0.5,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), Deadlock prevention functions by eliminating at l"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How does deadlock handling in operating systems compare to Two-Phase Locking deadlock detection in DBMS**\n\nAccordi"
     },
     {
       "itemId": "eval_q_33",
       "question": "How do divide-and-conquer algorithms like Merge Sort relate to parallel process execution across multiple CPU cores?",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 0,
-      "topSourceId": null,
+      "retrievedChunkCount": 1,
+      "topSourceId": "src_algo_text",
       "topPageNumber": null,
+      "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0,
-      "answerRelevancy": 0.355,
-      "contextPrecision": 0,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Algorithms & Data Structures** (Course Excerpt), Fundamental Algorithm Analysis. Binary"
+      "faithfulness": 1,
+      "answerRelevancy": 0.658,
+      "contextPrecision": 1,
+      "contextRecall": 0.5,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How do divide-and-conquer algorithms like Merge Sort relate to parallel process execution across multiple CPU core"
     },
     {
       "itemId": "eval_q_34",
       "question": "Compare flow control at the transport layer with page replacement in virtual memory under resource exhaustion.",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 0,
-      "topSourceId": null,
+      "retrievedChunkCount": 3,
+      "topSourceId": "src_net_slides",
       "topPageNumber": null,
+      "groundingMatched": true,
       "coordinatesMatched": false,
       "refusalMatched": true,
-      "faithfulness": 0,
-      "answerRelevancy": 0.322,
-      "contextPrecision": 0,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 2), Lecture 4: Transport Layer Protocols: TCP vs UDP. Transm"
+      "faithfulness": 0.933,
+      "answerRelevancy": 0.74,
+      "contextPrecision": 0.333,
+      "contextRecall": 0.8,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Compare flow control at the transport layer with page replacement in virtual memory under resource exhaustion**\n\nA"
     },
     {
       "itemId": "eval_q_35",
@@ -2906,11 +2909,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.167,
-      "answerRelevancy": 0.764,
+      "faithfulness": 1,
+      "answerRelevancy": 0.823,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 3), Chapter 8: Memory Management & Paging. Paging is a memory"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Given a page size of 4KB and logical address 12500, calculate the page number and page offset**\n\nAccording to your"
     },
     {
       "itemId": "eval_q_36",
@@ -2923,11 +2926,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.273,
-      "answerRelevancy": 0.361,
+      "faithfulness": 1,
+      "answerRelevancy": 0.675,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 2), Chapter 5: CPU Scheduling. The CPU scheduler selects a pr"
+      "contextRecall": 0.25,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **If a system uses Round Robin scheduling with a time quantum of 20ms and a process requires 55ms of CPU burst, how "
     },
     {
       "itemId": "eval_q_37",
@@ -2940,11 +2943,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.5,
-      "answerRelevancy": 0.876,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
-      "contextRecall": 0.25,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 8m0s), Video Segment 7:00 - 10:00: Database Indexing with"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **If a B+ Tree has an order of 4, what is the maximum number of child pointers and search keys an internal node can "
     },
     {
       "itemId": "eval_q_38",
@@ -2957,11 +2960,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.167,
-      "answerRelevancy": 0.585,
+      "faithfulness": 1,
+      "answerRelevancy": 0.814,
       "contextPrecision": 1,
-      "contextRecall": 0.25,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 4), Lecture 8: TCP Congestion Control Mechanisms. Congestion"
+      "contextRecall": 0.5,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **During TCP Slow Start, if cwnd starts at 1 MSS, what will be the value of cwnd after 4 successful round-trip times"
     },
     {
       "itemId": "eval_q_39",
@@ -2974,11 +2977,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.222,
-      "answerRelevancy": 0.334,
+      "faithfulness": 1,
+      "answerRelevancy": 0.661,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Course Excerpt), A deadlock occurs when processes are waiting for "
+      "contextRecall": 0.5,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **In a system with 3 resource types and 5 processes running the Banker's algorithm, what is the maximum number of it"
     },
     {
       "itemId": "eval_q_40",
@@ -2991,11 +2994,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.4,
-      "answerRelevancy": 0.392,
+      "faithfulness": 1,
+      "answerRelevancy": 0.729,
       "contextPrecision": 1,
       "contextRecall": 0.25,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Algorithms & Data Structures** (Course Excerpt), Fundamental Algorithm Analysis. Binary"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Calculate the number of comparisons required by binary search in the worst case for a sorted array of 1024 element"
     },
     {
       "itemId": "eval_q_41",
@@ -3110,11 +3113,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.364,
-      "answerRelevancy": 0.919,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 1), Chapter 3: Process Management. A process is a program in "
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **According to Page 1 of the Operating Systems textbook PDF, what component contains the program counter and CPU reg"
     },
     {
       "itemId": "eval_q_48",
@@ -3127,11 +3130,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.167,
-      "answerRelevancy": 0.925,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
-      "contextRecall": 0,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Operating Systems** (Page 3), Chapter 8: Memory Management & Paging. Paging is a memory"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **According to Page 3 of the Operating Systems textbook PDF, what hardware cache accelerates logical to physical add"
     },
     {
       "itemId": "eval_q_49",
@@ -3144,11 +3147,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.556,
-      "answerRelevancy": 0.973,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 1), Lecture 2: Layered Network Architecture. The OSI model d"
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **According to Slide 1 of the Computer Networks slides, what are the five layers of the Internet TCP/IP protocol sui"
     },
     {
       "itemId": "eval_q_50",
@@ -3161,11 +3164,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.417,
-      "answerRelevancy": 0.832,
+      "faithfulness": 1,
+      "answerRelevancy": 0.954,
       "contextPrecision": 1,
-      "contextRecall": 0.333,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Computer Networks** (Slide 4), Lecture 8: TCP Congestion Control Mechanisms. Congestion"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **According to Slide 4 of the Computer Networks slides, what event triggers TCP Fast Retransmit without waiting for "
     },
     {
       "itemId": "eval_q_51",
@@ -3178,11 +3181,11 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.25,
-      "answerRelevancy": 0.711,
+      "faithfulness": 1,
+      "answerRelevancy": 0.954,
       "contextPrecision": 1,
-      "contextRecall": 0.667,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 2m30s), Video Segment 1:30 - 4:00: Transaction Processing"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **According to the Database Systems lecture video at timestamp 2:30 (150s), what mechanism guarantees the Atomicity "
     },
     {
       "itemId": "eval_q_52",
@@ -3195,44 +3198,175 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.333,
-      "answerRelevancy": 0.82,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
       "contextPrecision": 1,
-      "contextRecall": 0.5,
-      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nAccording to your course materials on **Database Systems** (Timestamp 8m0s), Video Segment 7:00 - 10:00: Database Indexing with"
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **According to the Database Systems lecture video at timestamp 8:00 (480s), where are data records and pointers stor"
+    },
+    {
+      "itemId": "eval_q_53",
+      "question": "Explain how physical memory paging relates to page fault traps in virtual memory, and which replacement policy evicts the page unused for the longest time.",
+      "questionType": "multi-hop",
+      "offMaterial": false,
+      "retrievedChunkCount": 2,
+      "topSourceId": "src_os_pdf",
+      "topPageNumber": 4,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.917,
+      "answerRelevancy": 0.978,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Explain how physical memory paging relates to page fault traps in virtual memory, and which replacement policy evi"
+    },
+    {
+      "itemId": "eval_q_54",
+      "question": "Compare how the Banker algorithm avoids deadlocks in Operating Systems with how Two-Phase Locking ensures serializability in Database Systems.",
+      "questionType": "cross-source",
+      "offMaterial": false,
+      "retrievedChunkCount": 3,
+      "topSourceId": "src_ad8692700e78",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.923,
+      "answerRelevancy": 0.957,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Compare how the Banker algorithm avoids deadlocks in Operating Systems with how Two-Phase Locking ensures serializ"
+    },
+    {
+      "itemId": "eval_q_55",
+      "question": "Compare connection establishment using TCP 3-way handshake in Computer Networks with transaction atomicity guarantees in Database Systems.",
+      "questionType": "cross-source",
+      "offMaterial": false,
+      "retrievedChunkCount": 3,
+      "topSourceId": "src_net_slides",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.917,
+      "answerRelevancy": 0.91,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Compare connection establishment using TCP 3-way handshake in Computer Networks with transaction atomicity guarant"
+    },
+    {
+      "itemId": "eval_q_56",
+      "question": "In Computer Networks, how does the receiver advertise flow control capacity, and what triggers TCP Fast Retransmit during congestion control?",
+      "questionType": "multi-hop",
+      "offMaterial": false,
+      "retrievedChunkCount": 3,
+      "topSourceId": "src_net_slides",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": false,
+      "refusalMatched": true,
+      "faithfulness": 1,
+      "answerRelevancy": 0.946,
+      "contextPrecision": 0.5,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **In Computer Networks, how does the receiver advertise flow control capacity, and what triggers TCP Fast Retransmit"
+    },
+    {
+      "itemId": "eval_q_57",
+      "question": "What are the four Coffman conditions required for deadlock, and how does quantum error correction prevent circular wait in quantum circuits?",
+      "questionType": "partial-evidence",
+      "offMaterial": false,
+      "retrievedChunkCount": 2,
+      "topSourceId": "src_ad8692700e78",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.889,
+      "answerRelevancy": 1,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What are the four Coffman conditions required for deadlock, and how does quantum error correction prevent circular"
+    },
+    {
+      "itemId": "eval_q_58",
+      "question": "As a student building initial mastery of CPU scheduling, how does the CPU scheduler select processes, and what are FCFS and Shortest Job First?",
+      "questionType": "personalized",
+      "offMaterial": false,
+      "retrievedChunkCount": 1,
+      "topSourceId": "src_os_pdf",
+      "topPageNumber": 2,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 1,
+      "answerRelevancy": 1,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **As a student building initial mastery of CPU scheduling, how does the CPU scheduler select processes, and what are"
+    },
+    {
+      "itemId": "eval_q_59",
+      "question": "Compare the divide-and-conquer strategy in Merge sort with paging memory management frames and pages in Operating Systems.",
+      "questionType": "cross-source",
+      "offMaterial": false,
+      "retrievedChunkCount": 3,
+      "topSourceId": "src_algo_text",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 0.938,
+      "answerRelevancy": 0.978,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Compare the divide-and-conquer strategy in Merge sort with paging memory management frames and pages in Operating "
+    },
+    {
+      "itemId": "eval_q_60",
+      "question": "For an advanced learner analyzing dynamic programming, what techniques optimize overlapping subproblems, and which classic problems exhibit optimal substructure?",
+      "questionType": "personalized",
+      "offMaterial": false,
+      "retrievedChunkCount": 1,
+      "topSourceId": "src_algo_text",
+      "topPageNumber": null,
+      "groundingMatched": true,
+      "coordinatesMatched": true,
+      "refusalMatched": true,
+      "faithfulness": 1,
+      "answerRelevancy": 0.935,
+      "contextPrecision": 1,
+      "contextRecall": 1,
+      "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **For an advanced learner analyzing dynamic programming, what techniques optimize overlapping subproblems, and which"
     }
   ],
   "failuresAndErrors": [],
   "phaseComparison": [
     {
-      "metric": "Context Precision",
-      "phase6Value": 0.375,
-      "phase7Value": 0.942,
-      "delta": 0.567,
-      "improved": true,
-      "targetBenchmark": ">= 0.80"
-    },
-    {
-      "metric": "Exact Duplicate Rate",
-      "phase6Value": 0.8,
-      "phase7Value": 0,
-      "delta": -0.8,
-      "improved": true,
-      "targetBenchmark": "<= 0.05"
-    },
-    {
       "metric": "Context Recall",
       "phase6Value": 0.65,
       "phase7Value": 0.458,
-      "delta": -0.192,
-      "improved": false,
+      "phase8Value": 0.872,
+      "delta": 0.414,
+      "improved": true,
       "targetBenchmark": ">= 0.80"
     },
     {
       "metric": "Answer Relevancy",
       "phase6Value": 0.702,
       "phase7Value": 0.713,
-      "delta": 0.011,
+      "phase8Value": 0.868,
+      "delta": 0.155,
+      "improved": true,
+      "targetBenchmark": ">= 0.80"
+    },
+    {
+      "metric": "Context Precision",
+      "phase6Value": 0.375,
+      "phase7Value": 0.942,
+      "phase8Value": 0.978,
+      "delta": 0.036,
       "improved": true,
       "targetBenchmark": ">= 0.80"
     },
@@ -3240,38 +3374,52 @@
       "metric": "Faithfulness",
       "phase6Value": 0.796,
       "phase7Value": 0.418,
-      "delta": -0.378,
-      "improved": false,
-      "targetBenchmark": ">= 0.85"
-    },
-    {
-      "metric": "Coordinate Match",
-      "phase6Value": 0.875,
-      "phase7Value": 0.962,
-      "delta": 0.087,
+      "phase8Value": 0.974,
+      "delta": 0.556,
       "improved": true,
-      "targetBenchmark": "> 0.95"
+      "targetBenchmark": ">= 0.85"
     },
     {
       "metric": "Grounding Accuracy",
       "phase6Value": 1,
       "phase7Value": 0.942,
-      "delta": -0.058,
-      "improved": false,
-      "targetBenchmark": ">= 0.85"
+      "phase8Value": 1,
+      "delta": 0.058,
+      "improved": true,
+      "targetBenchmark": ">= 0.90"
+    },
+    {
+      "metric": "Coordinate Match",
+      "phase6Value": 0.875,
+      "phase7Value": 0.962,
+      "phase8Value": 0.967,
+      "delta": 0.005,
+      "improved": true,
+      "targetBenchmark": ">= 0.95"
     },
     {
       "metric": "Refusal Accuracy",
       "phase6Value": 1,
       "phase7Value": 1,
+      "phase8Value": 1,
       "delta": 0,
       "improved": true,
       "targetBenchmark": "1.00"
     },
     {
+      "metric": "Exact Duplicate Rate",
+      "phase6Value": 0.8,
+      "phase7Value": 0,
+      "phase8Value": 0,
+      "delta": 0,
+      "improved": true,
+      "targetBenchmark": "<= 0.05"
+    },
+    {
       "metric": "Semantic Duplicate Rate",
       "phase6Value": 0,
       "phase7Value": 0,
+      "phase8Value": 0,
       "delta": 0,
       "improved": true,
       "targetBenchmark": "<= 0.05"
@@ -3280,7 +3428,8 @@
       "metric": "Unique Question Rate",
       "phase6Value": 0.2,
       "phase7Value": 1,
-      "delta": 0.8,
+      "phase8Value": 1,
+      "delta": 0,
       "improved": true,
       "targetBenchmark": ">= 0.90"
     },
@@ -3288,7 +3437,8 @@
       "metric": "Average Mastery Delta",
       "phase6Value": 0.501,
       "phase7Value": 0.448,
-      "delta": -0.053,
+      "phase8Value": 0.448,
+      "delta": 0,
       "improved": true,
       "targetBenchmark": "> 0.00"
     }
@@ -3307,5 +3457,20 @@
     "averageMasteryDelta": 0.501,
     "datasetSize": 8,
     "cohortSize": 3
+  },
+  "phase7Baseline": {
+    "faithfulness": 0.418,
+    "answerRelevancy": 0.713,
+    "contextPrecision": 0.942,
+    "contextRecall": 0.458,
+    "groundingAccuracy": 0.942,
+    "coordinateAccuracy": 0.962,
+    "refusalAccuracy": 1,
+    "exactDuplicateRate": 0,
+    "semanticDuplicateRate": 0,
+    "uniqueQuestionRate": 1,
+    "averageMasteryDelta": 0.448,
+    "datasetSize": 52,
+    "cohortSize": 50
   }
 }

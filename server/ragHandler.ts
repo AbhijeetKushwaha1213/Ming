@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { prisma, ensureResourceSchema, ensureAssessmentSchema, ensureLearnerSchema } from './prisma.ts';
-import { updateMasteryFromEvidence } from './bktService.ts';
+import { updateMasteryFromEvidence, getTopicLearnerMastery } from './bktService.ts';
 import { learnerHandler } from './learnerHandler.ts';
 import { studyAgentHandler } from './studyAgentHandler.ts';
 import { evaluationHandler } from './evaluationHandler.ts';
@@ -275,11 +275,31 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     const userId = method === 'POST' ? (req.body?.userId || req.body?.user_id) : req.query?.userId;
     const topic = method === 'POST' ? req.body?.topic : req.query?.topic;
     const history = method === 'POST' ? (req.body?.conversationHistory || req.body?.history) : undefined;
+    let learnerState = method === 'POST' ? (req.body?.learnerState || req.body?.learner_state) : undefined;
+
+    if (!learnerState && userId && topic) {
+      try {
+        const masteryRec = await getTopicLearnerMastery(String(userId), String(topic));
+        if (masteryRec) {
+          learnerState = {
+            topic: masteryRec.topic,
+            mastery_probability: masteryRec.masteryProbability,
+            mastery_percentage: masteryRec.masteryPercentage,
+            attempts: masteryRec.attempts,
+            confidence: masteryRec.confidence,
+            status: masteryRec.status,
+          };
+        }
+      } catch (err) {
+        // Silently skip if DB not initialized
+      }
+    }
 
     const args = ['chat', '--query', String(query)];
     if (userId) args.push('--user-id', String(userId));
     if (topic) args.push('--topic', String(topic));
     if (history) args.push('--history', JSON.stringify(history));
+    if (learnerState) args.push('--learner-state', JSON.stringify(learnerState));
 
     const chatResponse = await runPythonCli(args);
     res.status(200).json(chatResponse);

@@ -1,17 +1,17 @@
-Metric Category,Metric Name,Phase 6 Baseline,Phase 7 Actual,Delta,Improved,Target Benchmark
-Comparison,Context Precision,0.375,0.942,+0.567,YES,>= 0.80
-Comparison,Exact Duplicate Rate,0.8,0,-0.8,YES,<= 0.05
-Comparison,Context Recall,0.65,0.458,-0.192,NO,>= 0.80
-Comparison,Answer Relevancy,0.702,0.713,+0.011,YES,>= 0.80
-Comparison,Faithfulness,0.796,0.418,-0.378,NO,>= 0.85
-Comparison,Coordinate Match,0.875,0.962,+0.087,YES,> 0.95
-Comparison,Grounding Accuracy,1,0.942,-0.058,NO,>= 0.85
-Comparison,Refusal Accuracy,1,1,+0,YES,1.00
-Comparison,Semantic Duplicate Rate,0,0,+0,YES,<= 0.05
-Comparison,Unique Question Rate,0.2,1,+0.8,YES,>= 0.90
-Comparison,Average Mastery Delta,0.501,0.448,-0.053,YES,> 0.00
-Personalization,Cohort Size,3,50,+47,YES,>= 50
-Personalization,Average Completion Rate,-,1,-,YES,>= 0.90
-Personalization,Recommendation Relevance,-,1,-,YES,>= 0.85
-Grounding,User Isolation Preserved,-,YES,-,YES,YES
-Dataset,Total Evaluated Questions,8,52,+44,YES,>= 50
+Metric Category,Metric Name,Phase 6 Baseline,Phase 7 Baseline,Phase 8 Actual,Delta (P8-P7),Improved,Target Benchmark
+Comparison,Context Recall,0.65,0.458,0.872,+0.414,YES,>= 0.80
+Comparison,Answer Relevancy,0.702,0.713,0.868,+0.155,YES,>= 0.80
+Comparison,Context Precision,0.375,0.942,0.978,+0.036,YES,>= 0.80
+Comparison,Faithfulness,0.796,0.418,0.974,+0.556,YES,>= 0.85
+Comparison,Grounding Accuracy,1,0.942,1,+0.058,YES,>= 0.90
+Comparison,Coordinate Match,0.875,0.962,0.967,+0.005,YES,>= 0.95
+Comparison,Refusal Accuracy,1,1,1,+0,YES,1.00
+Comparison,Exact Duplicate Rate,0.8,0,0,+0,YES,<= 0.05
+Comparison,Semantic Duplicate Rate,0,0,0,+0,YES,<= 0.05
+Comparison,Unique Question Rate,0.2,1,1,+0,YES,>= 0.90
+Comparison,Average Mastery Delta,0.501,0.448,0.448,+0,YES,> 0.00
+Personalization,Cohort Size,3,50,50,+47,YES,>= 50
+Personalization,Average Completion Rate,-,1.0,1,-,YES,>= 0.90
+Personalization,Recommendation Relevance,-,1.0,1,-,YES,>= 0.85
+Grounding,User Isolation Preserved,-,YES,YES,-,YES,YES
+Dataset,Total Evaluated Questions,8,52,60,+8,YES,>= 50

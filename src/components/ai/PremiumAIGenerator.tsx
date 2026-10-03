@@ -150,6 +150,7 @@ export const PremiumAIGenerator = () => {
   const [previewItem, setPreviewItem] = useState<any | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editableMarkdown, setEditableMarkdown] = useState('');
+  const [isSavedToVault, setIsSavedToVault] = useState(false);
 
   const stats = {
     generated: 120,
@@ -201,6 +202,7 @@ export const PremiumAIGenerator = () => {
   const handleGenerate = async () => {
     if (!selectedType) return;
     
+    setIsSavedToVault(false);
     setStep('generating');
     setGenerationStage(0);
     
@@ -1224,6 +1226,14 @@ export const PremiumAIGenerator = () => {
   };
 
   const handleSaveToVault = () => {
+    if (isSavedToVault) {
+      toast({
+        title: "Already Saved",
+        description: "This study material is already saved in your vault.",
+      });
+      return;
+    }
+
     try {
       const title = generatedTopic || topic || `${selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) : 'Study'} Notes`;
       const markdown = getFormattedMarkdown();
@@ -1295,23 +1305,7 @@ export const PremiumAIGenerator = () => {
         source: 'AI Generator'
       });
 
-      // 3. Keep local resources key updated for legacy compatibility
-      const vaultKey = `studymate_vault_resources_${user?.user_id || user?.id || 'guest'}`;
-      const newResource = {
-        id: `res_${Date.now()}`,
-        title,
-        description: `AI generated ${selectedType || 'notes'} for ${topic || 'studies'}`,
-        type: 'NOTE',
-        noteContent: markdown,
-        folder: topic || 'General',
-        tags: [selectedType || 'notes', 'AI-Generated'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const existingRaw = localStorage.getItem(vaultKey);
-      const existing = existingRaw ? JSON.parse(existingRaw) : [];
-      localStorage.setItem(vaultKey, JSON.stringify([newResource, ...existing]));
+      setIsSavedToVault(true);
 
       toast({
         title: "Saved to Vault! 🔒",
@@ -1440,11 +1434,12 @@ export const PremiumAIGenerator = () => {
 
           <Button 
             onClick={handleSaveToVault}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm" 
+            disabled={isSavedToVault}
+            className={isSavedToVault ? "bg-emerald-700/80 text-white gap-2 shadow-sm cursor-default" : "bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm"}
             size="default"
           >
             <Check className="w-4 h-4" />
-            <span>Save to Vault</span>
+            <span>{isSavedToVault ? "Saved to Vault ✓" : "Save to Vault"}</span>
           </Button>
 
           <Button 
@@ -1704,9 +1699,14 @@ export const PremiumAIGenerator = () => {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={handleSaveToVault} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs">
+              <Button 
+                size="sm" 
+                onClick={handleSaveToVault} 
+                disabled={isSavedToVault}
+                className={isSavedToVault ? "bg-emerald-700/80 text-white gap-1.5 text-xs cursor-default" : "bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs"}
+              >
                 <Check className="w-3.5 h-3.5" />
-                <span>Save to Vault</span>
+                <span>{isSavedToVault ? "Saved to Vault ✓" : "Save to Vault"}</span>
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setIsPreviewOpen(false)} className="text-xs">
                 Close

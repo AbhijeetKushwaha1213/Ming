@@ -36,10 +36,41 @@ export interface StudyMaterial {
 
 // Helper to migrate legacy items saved in studymate_vault_resources_* to local materials
 const getMergedLocalStudyMaterials = (userId?: string): StudyMaterial[] => {
-  const localList = localStore.getStudyMaterials();
+  let localList = localStore.getStudyMaterials();
   const existingIds = new Set(localList.map(m => m.id));
   let modified = false;
 
+  // 1. Purge ghost notes that were shadow copies of diagrams, mindmaps, or quizzes
+  const isGhostNote = (m: StudyMaterial): boolean => {
+    if (m.type !== 'notes') return false;
+    const summary = (m.content?.summary || (typeof m.content === 'string' ? m.content : '')).toLowerCase();
+    const isShadow = /ai generated (diagram|mindmap|quiz|flashcard)/i.test(summary);
+    if (!isShadow) return false;
+    const normTitle = (m.title || '').trim().toLowerCase();
+    return localList.some(other => other.id !== m.id && (other.title || '').trim().toLowerCase() === normTitle && other.type !== 'notes');
+  };
+
+  const initialCount = localList.length;
+  localList = localList.filter(m => !isGhostNote(m));
+  if (localList.length !== initialCount) {
+    modified = true;
+  }
+
+  // 2. Deduplicate local list by title::type
+  const dedupedLocal: StudyMaterial[] = [];
+  const seenLocal = new Set<string>();
+  for (const item of localList) {
+    const key = `${(item.title || '').trim().toLowerCase()}::${(item.type || '').toLowerCase()}`;
+    if (!seenLocal.has(key)) {
+      seenLocal.add(key);
+      dedupedLocal.push(item);
+    } else {
+      modified = true;
+    }
+  }
+  localList = dedupedLocal;
+
+  // 3. Check legacy keys (only migrate genuine standalone items, never shadow copies)
   try {
     const keysToCheck = [
       `studymate_vault_resources_${userId || 'guest'}`,
@@ -53,13 +84,22 @@ const getMergedLocalStudyMaterials = (userId?: string): StudyMaterial[] => {
         if (Array.isArray(parsed)) {
           for (const item of parsed) {
             const mappedId = item.id || `migrated-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-            if (!existingIds.has(mappedId)) {
+            const desc = (item.description || '').toLowerCase();
+            // Discard any AI generator shadow copies
+            if (/ai generated (diagram|mindmap|quiz|flashcard)/i.test(desc)) {
+              continue;
+            }
+
+            const rawType = (item.type || '').toLowerCase();
+            const mappedType = rawType === 'flashcard' ? 'flashcards' :
+                              rawType === 'quiz' ? 'quizzes' :
+                              rawType === 'mindmap' ? 'mindmaps' :
+                              rawType === 'diagram' ? 'diagrams' : 'notes';
+            const titleTypeKey = `${(item.title || '').trim().toLowerCase()}::${mappedType}`;
+
+            if (!existingIds.has(mappedId) && !seenLocal.has(titleTypeKey)) {
               existingIds.add(mappedId);
-              const rawType = (item.type || '').toLowerCase();
-              const mappedType = rawType === 'flashcard' ? 'flashcards' :
-                                rawType === 'quiz' ? 'quizzes' :
-                                rawType === 'mindmap' ? 'mindmaps' :
-                                rawType === 'diagram' ? 'diagrams' : 'notes';
+              seenLocal.add(titleTypeKey);
               const migrated: StudyMaterial = {
                 id: mappedId,
                 title: item.title || 'Study Material',
@@ -84,11 +124,12 @@ const getMergedLocalStudyMaterials = (userId?: string): StudyMaterial[] => {
         }
       }
     }
-    if (modified) {
-      localStorage.setItem('studymate-local-materials', JSON.stringify(localList));
-    }
   } catch (err) {
     console.warn('Migration error in getMergedLocalStudyMaterials:', err);
+  }
+
+  if (modified) {
+    localStorage.setItem('studymate-local-materials', JSON.stringify(localList));
   }
 
   return localList;
@@ -127,15 +168,28 @@ export const useFlashcards = () => {
         }
 
         const remoteCards = (data || []) as Flashcard[];
-        const mergedMap = new Map<string, Flashcard>();
-        remoteCards.forEach(fc => mergedMap.set(fc.id, fc));
-        localCards.forEach(fc => {
-          if (!mergedMap.has(fc.id)) {
-            mergedMap.set(fc.id, fc);
+        const seenQuestion = new Set<string>();
+        const mergedList: Flashcard[] = [];
+
+        remoteCards.forEach(fc => {
+          const key = (fc.question || fc.title || '').trim().toLowerCase();
+          if (!seenQuestion.has(key)) {
+            seenQuestion.add(key);
+            mergedList.push(fc);
           }
         });
 
-        return Array.from(mergedMap.values()).sort(
+        localCards.forEach(fc => {
+          const key = (fc.question || fc.title || '').trim().toLowerCase();
+          if (!seenQuestion.has(key) && !mergedList.some(r => r.id === fc.id)) {
+            seenQuestion.add(key);
+            mergedList.push(fc);
+          } else {
+            localStore.deleteFlashcard(fc.id);
+          }
+        });
+
+        return mergedList.sort(
           (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
       } catch (err) {
@@ -173,15 +227,42 @@ export const useFlashcards = () => {
         }
 
         const remoteMaterials = (data || []) as StudyMaterial[];
-        const mergedMap = new Map<string, StudyMaterial>();
-        remoteMaterials.forEach(m => mergedMap.set(m.id, m));
-        localMaterials.forEach(m => {
-          if (!mergedMap.has(m.id)) {
-            mergedMap.set(m.id, m);
+        const seenTitleType = new Set<string>();
+        const mergedList: StudyMaterial[] = [];
+
+        // 1. Remote materials take precedence
+        for (const rem of remoteMaterials) {
+          const key = `${(rem.title || '').trim().toLowerCase()}::${(rem.type || '').toLowerCase()}`;
+          if (!seenTitleType.has(key)) {
+            seenTitleType.add(key);
+            mergedList.push(rem);
           }
+        }
+
+        // 2. Add local materials only if not already present in remote
+        for (const loc of localMaterials) {
+          const key = `${(loc.title || '').trim().toLowerCase()}::${(loc.type || '').toLowerCase()}`;
+          if (!seenTitleType.has(key) && !mergedList.some(r => r.id === loc.id)) {
+            seenTitleType.add(key);
+            mergedList.push(loc);
+          } else {
+            // Already synced to remote, delete orphan local copy
+            localStore.deleteStudyMaterial(loc.id);
+          }
+        }
+
+        // 3. Purge any ghost notes if a rich version (diagram, mindmap, quiz) exists with the same title
+        const filteredList = mergedList.filter(item => {
+          if (item.type !== 'notes') return true;
+          const summary = (item.content?.summary || (typeof item.content === 'string' ? item.content : '')).toLowerCase();
+          const isGhost = /ai generated (diagram|mindmap|quiz|flashcard)/i.test(summary);
+          if (!isGhost) return true;
+          const normTitle = (item.title || '').trim().toLowerCase();
+          const hasRichVersion = mergedList.some(other => other.id !== item.id && (other.title || '').trim().toLowerCase() === normTitle && other.type !== 'notes');
+          return !hasRichVersion;
         });
 
-        return Array.from(mergedMap.values()).sort(
+        return filteredList.sort(
           (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
       } catch (err) {
@@ -220,6 +301,8 @@ export const useFlashcards = () => {
             .single();
 
           if (!error && data) {
+            // Remove local placeholder since remote Supabase record was created
+            localStore.deleteFlashcard(savedLocal.id);
             return data;
           }
         } catch (syncErr) {
@@ -266,6 +349,8 @@ export const useFlashcards = () => {
             .single();
 
           if (!error && data) {
+            // Remove local placeholder since remote Supabase record was created
+            localStore.deleteStudyMaterial(savedLocal.id);
             return data;
           }
         } catch (syncErr) {
@@ -372,6 +457,25 @@ export const useFlashcards = () => {
   const deleteStudyMaterial = useMutation({
     mutationFn: async (id: string) => {
       localStore.deleteStudyMaterial(id);
+
+      // Clean up matching items from legacy vault keys
+      try {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith('studymate_vault_resources_'));
+        for (const k of keys) {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              const filtered = parsed.filter((item: any) => item.id !== id && !item.id?.includes(id));
+              if (filtered.length !== parsed.length) {
+                localStorage.setItem(k, JSON.stringify(filtered));
+              }
+            }
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
 
       if (!isLocalMode() && user?.user_id) {
         try {

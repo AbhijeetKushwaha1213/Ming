@@ -317,11 +317,39 @@ export const FlashcardVault = () => {
   const filteredFlashcards = filterContent(flashcards, 'flashcards');
   const filteredMaterials = filterContent(studyMaterials);
   
-  // Combine all for unified display
-  const allFilteredContent = [
+  // Combine all for unified display and ensure strict deduplication
+  const rawCombined = [
     ...filteredFlashcards.map(f => ({ ...f, type: 'flashcards' })),
     ...filteredMaterials
   ];
+
+  const seenKeys = new Set<string>();
+  const seenIds = new Set<string>();
+
+  const allFilteredContent = rawCombined.filter(item => {
+    if (!item) return false;
+    if (item.id && seenIds.has(item.id)) return false;
+
+    // Suppress ghost notes if a rich version (diagram, mindmap, quiz) exists
+    if (item.type === 'notes') {
+      const summary = (item.content?.summary || item.description || (typeof item.content === 'string' ? item.content : '')).toLowerCase();
+      const isGhost = /ai generated (diagram|mindmap|quiz|flashcard)/i.test(summary);
+      if (isGhost) {
+        const normTitle = (item.title || '').trim().toLowerCase();
+        const hasRich = rawCombined.some(other => other.id !== item.id && (other.title || '').trim().toLowerCase() === normTitle && other.type !== 'notes');
+        if (hasRich) return false;
+      }
+    }
+
+    const key = `${(item.title || item.question || '').trim().toLowerCase()}::${(item.type || '').toLowerCase()}`;
+    if (seenKeys.has(key)) {
+      return false;
+    }
+
+    if (item.id) seenIds.add(item.id);
+    seenKeys.add(key);
+    return true;
+  });
 
   return (
     <div className="space-y-6">

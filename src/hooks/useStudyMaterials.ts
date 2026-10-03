@@ -62,15 +62,31 @@ export const useStudyMaterials = (type?: MaterialType) => {
         }
 
         const remoteList = (data || []) as StudyMaterial[];
-        const map = new Map<string, StudyMaterial>();
-        remoteList.forEach(m => map.set(m.id, m));
-        localList.forEach(m => {
-          if (!map.has(m.id)) {
-            map.set(m.id, m);
-          }
-        });
+        const seenTitleType = new Set<string>();
+        const mergedList: StudyMaterial[] = [];
 
-        return Array.from(map.values()).sort(
+        // 1. Remote materials take precedence
+        for (const rem of remoteList) {
+          const key = `${(rem.title || '').trim().toLowerCase()}::${(rem.type || '').toLowerCase()}`;
+          if (!seenTitleType.has(key)) {
+            seenTitleType.add(key);
+            mergedList.push(rem);
+          }
+        }
+
+        // 2. Add local materials only if not already in remote
+        for (const loc of localList) {
+          const key = `${(loc.title || '').trim().toLowerCase()}::${(loc.type || '').toLowerCase()}`;
+          if (!seenTitleType.has(key) && !mergedList.some(r => r.id === loc.id)) {
+            seenTitleType.add(key);
+            mergedList.push(loc);
+          } else {
+            // Already synced to remote, delete local duplicate
+            localStore.deleteStudyMaterial(loc.id);
+          }
+        }
+
+        return mergedList.sort(
           (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
       } catch (err) {
@@ -98,7 +114,10 @@ export const useStudyMaterials = (type?: MaterialType) => {
             .select()
             .single();
 
-          if (!error && data) return data;
+          if (!error && data) {
+            localStore.deleteStudyMaterial(savedLocal.id);
+            return data;
+          }
         } catch (syncErr) {
           console.warn('Supabase sync notice, saved locally:', syncErr);
         }
@@ -215,7 +234,10 @@ export const useStudyMaterials = (type?: MaterialType) => {
             .insert(materialsWithUserId)
             .select();
 
-          if (!error && data) return data;
+          if (!error && data) {
+            savedLocalList.forEach(m => localStore.deleteStudyMaterial(m.id));
+            return data;
+          }
         } catch (syncErr) {
           console.warn('Supabase bulk sync notice, saved locally:', syncErr);
         }

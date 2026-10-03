@@ -62,6 +62,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   onComplete,
 }) => {
   const { toast } = useToast();
+  const [questionList, setQuestionList] = useState<QuizQuestion[]>(questions);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<any[]>(new Array(questions.length).fill(null));
   const [showResults, setShowResults] = useState(false);
@@ -69,7 +70,13 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   const [textInput, setTextInput] = useState('');
   const [diagnosticReport, setDiagnosticReport] = useState<DiagnosticReport | null>(null);
 
-  const currentQuestion = questions[currentIndex];
+  useEffect(() => {
+    setQuestionList(questions);
+    setSelectedAnswers(new Array(questions.length).fill(null));
+    setCurrentIndex(0);
+  }, [questions]);
+
+  const currentQuestion = questionList[currentIndex] || questions[currentIndex];
   const qType = (currentQuestion?.type || 'MCQ').toUpperCase();
   const currentAnswer = selectedAnswers[currentIndex];
 
@@ -129,7 +136,40 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   };
 
   const nextQuestion = () => {
-    if (currentIndex < questions.length - 1) {
+    if (currentIndex < questionList.length - 1) {
+      const isCurrentCorrect = checkAnswerCorrectness(
+        questionList[currentIndex],
+        selectedAnswers[currentIndex]
+      );
+      const curSubtopic = questionList[currentIndex]?.subtopic;
+      const curDiff = questionList[currentIndex]?.difficulty || difficulty;
+
+      // Adaptively sequence remaining questions
+      const remaining = [...questionList];
+      let bestSwapIdx = -1;
+
+      if (!isCurrentCorrect) {
+        // Struggled: Prioritize another question targeting the same concept from a different angle or easier level
+        bestSwapIdx = remaining.findIndex(
+          (q, idx) =>
+            idx > currentIndex + 1 &&
+            ((curSubtopic && q.subtopic === curSubtopic) || q.difficulty === 'easy')
+        );
+      } else {
+        // Mastered: Gradually increase difficulty (easy -> medium, medium -> hard)
+        const targetDiff = curDiff === 'easy' ? 'medium' : 'hard';
+        bestSwapIdx = remaining.findIndex(
+          (q, idx) => idx > currentIndex + 1 && q.difficulty === targetDiff
+        );
+      }
+
+      if (bestSwapIdx > currentIndex + 1) {
+        const temp = remaining[currentIndex + 1];
+        remaining[currentIndex + 1] = remaining[bestSwapIdx];
+        remaining[bestSwapIdx] = temp;
+        setQuestionList(remaining);
+      }
+
       setCurrentIndex((prev) => prev + 1);
       setShowResults(false);
     } else {
@@ -154,14 +194,14 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
     setQuizCompleted(true);
 
     // Build immediate diagnostic report
-    const total = questions.length;
+    const total = questionList.length;
     let correctCount = 0;
     const incorrectList: any[] = [];
     const recommendedList: any[] = [];
     const topicPerf: Record<string, { total: number; correct: number; percentage: number }> = {};
     const diffPerf: Record<string, { total: number; correct: number; percentage: number }> = {};
 
-    questions.forEach((q, idx) => {
+    questionList.forEach((q, idx) => {
       const ans = selectedAnswers[idx];
       const isCorrect = checkAnswerCorrectness(q, ans);
       if (isCorrect) correctCount++;
@@ -211,6 +251,16 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
       diffPerf[k].percentage = Math.round((diffPerf[k].correct / diffPerf[k].total) * 100);
     });
 
+    const strongConcepts: string[] = [];
+    const weakConcepts: string[] = [];
+    Object.entries(topicPerf).forEach(([concept, perf]) => {
+      if (perf.percentage >= 70) {
+        strongConcepts.push(concept);
+      } else {
+        weakConcepts.push(concept);
+      }
+    });
+
     const report: DiagnosticReport = {
       overallScore: `${correctCount}/${total}`,
       percentage: Math.round((correctCount / total) * 100),
@@ -218,6 +268,8 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
       correctCount,
       topicPerformance: topicPerf,
       difficultyPerformance: diffPerf,
+      strongConcepts,
+      weakConcepts,
       incorrectAnswers: incorrectList,
       likelyMisconceptions: incorrectList.map(
         (i) => `Difficulty understanding: "${i.question.slice(0, 50)}...". Expected: ${i.correctAnswer}`
@@ -236,7 +288,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
         topic,
         subtopic,
         difficulty,
-        questions: questions as any,
+        questions: questionList as any,
         answers: selectedAnswers,
       });
       // Notify all BKT listeners (Learning Progress, LearnerMasteryCard, etc.)
@@ -253,6 +305,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
 
   const restartQuiz = () => {
     setCurrentIndex(0);
+    setQuestionList(questions);
     setSelectedAnswers(new Array(questions.length).fill(null));
     setTextInput('');
     setShowResults(false);
@@ -359,11 +412,50 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
           </Card>
         )}
 
+        {/* Strong vs Weak Concepts Diagnostic */}
+        {(diagnosticReport.strongConcepts?.length || diagnosticReport.weakConcepts?.length) ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="p-5 border-emerald-200 bg-emerald-50/40">
+              <h4 className="text-sm font-semibold text-emerald-900 mb-2 flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-emerald-600" /> Strong Concepts (Mastered)
+              </h4>
+              {diagnosticReport.strongConcepts && diagnosticReport.strongConcepts.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {diagnosticReport.strongConcepts.map((c, i) => (
+                    <Badge key={i} variant="outline" className="border-emerald-300 bg-white text-emerald-800 text-xs font-medium">
+                      {c}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-emerald-700 italic">No concepts reached mastery threshold (≥70%) yet.</p>
+              )}
+            </Card>
+
+            <Card className="p-5 border-rose-200 bg-rose-50/40">
+              <h4 className="text-sm font-semibold text-rose-900 mb-2 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600" /> Weak Concepts (Needs Review)
+              </h4>
+              {diagnosticReport.weakConcepts && diagnosticReport.weakConcepts.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {diagnosticReport.weakConcepts.map((c, i) => (
+                    <Badge key={i} variant="outline" className="border-rose-300 bg-white text-rose-800 text-xs font-medium">
+                      {c}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-rose-700 italic">Excellent! No weak concepts identified.</p>
+              )}
+            </Card>
+          </div>
+        ) : null}
+
         {/* Question Review */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Question Review</h3>
           <div className="space-y-4">
-            {questions.map((question, index) => {
+            {questionList.map((question, index) => {
               const userAnswer = selectedAnswers[index];
               const isCorrect = checkAnswerCorrectness(question, userAnswer);
 
@@ -439,7 +531,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
               {qType === 'MCQ' ? 'Multiple Choice' : qType === 'NUMERICAL' ? 'Numerical' : 'Short Answer'}
             </Badge>
             <span className="text-sm text-muted-foreground">
-              Question {currentIndex + 1} of {questions.length}
+              Question {currentIndex + 1} of {questionList.length}
             </span>
           </div>
         </div>
@@ -454,40 +546,81 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
       <div className="space-y-2">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>Progress</span>
-          <span>{Math.round(((currentIndex + 1) / questions.length) * 100)}%</span>
+          <span>{Math.round(((currentIndex + 1) / questionList.length) * 100)}%</span>
         </div>
-        <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-2" />
+        <Progress value={((currentIndex + 1) / questionList.length) * 100} className="h-2" />
       </div>
 
       {/* Question Card */}
       <Card className="p-8 space-y-6">
         {/* Source Citation Badge */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Grounded Source Evidence:</span>
-            {currentQuestion.page_number && (
-              <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
-                <FileText className="w-3 h-3 mr-1" /> Page {currentQuestion.page_number}
-              </Badge>
-            )}
-            {currentQuestion.slide_number && (
-              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-                <Presentation className="w-3 h-3 mr-1" /> Slide {currentQuestion.slide_number}
-              </Badge>
-            )}
-            {currentQuestion.timestamp_start !== null && currentQuestion.timestamp_start !== undefined && (
-              <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                <Video className="w-3 h-3 mr-1" /> {formatTime(currentQuestion.timestamp_start)}
-              </Badge>
-            )}
-            {!currentQuestion.page_number && !currentQuestion.slide_number && currentQuestion.timestamp_start === null && (
-              <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
-                <BookOpen className="w-3 h-3 mr-1" /> Course Notes
-              </Badge>
-            )}
-          </div>
-        </div>
+        {(() => {
+          const isCurriculum =
+            currentQuestion.source_id === 'src_curriculum_standard' ||
+            (currentQuestion.chunk_id && currentQuestion.chunk_id.startsWith('chunk_curriculum_')) ||
+            (!currentQuestion.source_id &&
+              !currentQuestion.chunk_id &&
+              !currentQuestion.page_number &&
+              !currentQuestion.slide_number &&
+              (currentQuestion.timestamp_start === null || currentQuestion.timestamp_start === undefined));
+
+          const hasCoords =
+            Boolean(currentQuestion.page_number) ||
+            Boolean(currentQuestion.slide_number) ||
+            (currentQuestion.timestamp_start !== null && currentQuestion.timestamp_start !== undefined);
+
+          if (isCurriculum) {
+            return (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono flex-wrap">
+                  <BookOpen className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>Topic Diagnostic Question:</span>
+                  <Badge variant="outline" className="border-indigo-200 bg-indigo-50 text-indigo-700">
+                    {currentQuestion.topic || topic}
+                    {currentQuestion.subtopic ? ` • ${currentQuestion.subtopic}` : ''}
+                  </Badge>
+                  <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                    Curriculum Standard (No Uploaded Document)
+                  </Badge>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono flex-wrap">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Grounded Source Evidence:</span>
+                {currentQuestion.page_number && (
+                  <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                    <FileText className="w-3 h-3 mr-1" /> Page {currentQuestion.page_number}
+                  </Badge>
+                )}
+                {currentQuestion.slide_number && (
+                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                    <Presentation className="w-3 h-3 mr-1" /> Slide {currentQuestion.slide_number}
+                  </Badge>
+                )}
+                {currentQuestion.timestamp_start !== null && currentQuestion.timestamp_start !== undefined && (
+                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                    <Video className="w-3 h-3 mr-1" /> {formatTime(currentQuestion.timestamp_start)}
+                  </Badge>
+                )}
+                {!hasCoords && (
+                  <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+                    <BookOpen className="w-3 h-3 mr-1" /> {currentQuestion.citation_label || 'Course Material'}
+                  </Badge>
+                )}
+                {currentQuestion.chunk_id && (
+                  <span className="text-[10px] text-muted-foreground font-mono" title={currentQuestion.chunk_id}>
+                    [{currentQuestion.chunk_id.length > 22 ? currentQuestion.chunk_id.slice(0, 20) + '...' : currentQuestion.chunk_id}]
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         <h3 className="text-xl font-semibold text-foreground">{currentQuestion.question}</h3>
 
@@ -584,7 +717,11 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
         {/* Explanation callout */}
         {showResults && currentQuestion.explanation && (
           <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <h4 className="font-medium text-foreground mb-1 text-sm">Grounded Course Explanation:</h4>
+            <h4 className="font-medium text-foreground mb-1 text-sm">
+              {currentQuestion.source_id && currentQuestion.source_id !== 'src_curriculum_standard'
+                ? 'Grounded Course Explanation:'
+                : 'Concept Diagnostic Explanation:'}
+            </h4>
             <p className="text-xs text-muted-foreground leading-relaxed">{currentQuestion.explanation}</p>
           </div>
         )}
@@ -603,7 +740,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
 
           {showResults && (
             <Button onClick={nextQuestion}>
-              {currentIndex === questions.length - 1 ? 'Finish Assessment' : 'Next Question'}
+              {currentIndex === questionList.length - 1 ? 'Finish Assessment' : 'Next Question'}
             </Button>
           )}
         </div>

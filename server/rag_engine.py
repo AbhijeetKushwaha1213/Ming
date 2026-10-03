@@ -1486,6 +1486,7 @@ def verify_question(q: Dict[str, Any], chunk: Dict[str, Any]) -> Tuple[bool, Lis
     4. Ambiguity (well-formed question stem)
     5. Explanation correctness (mentions correct answer and references concept)
     6. Source-coordinate validity (page, slide, timestamp must match chunk metadata)
+    7. Topic relevance (no off-topic software architecture/systems contamination on general topics)
     """
     issues = []
     chunk_meta = chunk.get("metadata", {})
@@ -1512,7 +1513,26 @@ def verify_question(q: Dict[str, Any], chunk: Dict[str, Any]) -> Tuple[bool, Lis
 
     q_type = str(q.get("type", "MCQ")).upper()
 
-    # 3. MCQ Options & Uniqueness
+    # 3. Topic and Domain Relevance Validation (Reject off-topic contamination)
+    topic = str(q.get("topic", "")).lower()
+    subtopic = str(q.get("subtopic", "")).lower()
+    stem_lower = stem.lower()
+    options_lower = [str(o).lower() for o in (q.get("options") or [])]
+    full_q_text = stem_lower + " " + " ".join(options_lower) + " " + str(q.get("correct_answer", "")).lower()
+
+    is_systems_topic = any(k in topic or k in subtopic for k in ["operating", "os", "linux", "unix", "kernel", "computer architecture", "system software", "hardware", "cpu scheduling"])
+    if not is_systems_topic:
+        off_topic_buzzwords = [
+            "safety invariants", "tlb cache", "deadlock state", "coffman condition",
+            "bayesian knowledge tracing", "preemptive single-user", "bus arbitration",
+            "priority inversion", "round-robin slice", "context switch", "user-mode space"
+        ]
+        for bw in off_topic_buzzwords:
+            if bw in full_q_text:
+                issues.append(f"Off-topic buzzword '{bw}' found in question for non-systems topic '{topic}'")
+                break
+
+    # 4. MCQ Options & Uniqueness
     if q_type == "MCQ":
         options = q.get("options") or []
         if len(options) < 3:
@@ -1548,15 +1568,15 @@ def verify_question(q: Dict[str, Any], chunk: Dict[str, Any]) -> Tuple[bool, Lis
         if len(corr) < 2:
             issues.append("Short answer correct_answer must have at least 2 characters")
 
-    # 4. Source grounding
-    stem_words = [w for w in re.findall(r'\b[a-zA-Z]{3,}\b', stem.lower()) if w not in {'what', 'which', 'where', 'when', 'how', 'does', 'true', 'false', 'following'}]
-    ans_words = [w for w in re.findall(r'\b[a-zA-Z]{3,}\b', str(q.get("correct_answer", "")).lower()) if w not in {'the', 'and', 'for', 'with', 'that'}]
-    
-    grounded_overlap = any(w in chunk_text for w in stem_words) or any(w in chunk_text for w in ans_words)
-    if not grounded_overlap:
-        issues.append("Question or answer concepts not grounded in source chunk text")
+    # 5. Source grounding (when chunk text is provided)
+    if chunk_text:
+        stem_words = [w for w in re.findall(r'\b[a-zA-Z]{3,}\b', stem.lower()) if w not in {'what', 'which', 'where', 'when', 'how', 'does', 'true', 'false', 'following'}]
+        ans_words = [w for w in re.findall(r'\b[a-zA-Z]{3,}\b', str(q.get("correct_answer", "")).lower()) if w not in {'the', 'and', 'for', 'with', 'that'}]
+        grounded_overlap = any(w in chunk_text for w in stem_words) or any(w in chunk_text for w in ans_words)
+        if not grounded_overlap:
+            issues.append("Question or answer concepts not grounded in source chunk text")
 
-    # 5. Explanation correctness
+    # 6. Explanation correctness
     expl = str(q.get("explanation", "")).strip()
     if len(expl) < 15:
         issues.append("Explanation too short or missing (< 15 characters)")
@@ -1574,13 +1594,13 @@ def _generate_curriculum_baseline_questions(
     used_fps: Optional[set] = None
 ) -> List[Dict[str, Any]]:
     """
-    Generate high-quality diagnostic baseline assessment questions grounded in standard academic curriculum 
-    when no personal course materials are found for the student.
+    Generate high-quality diagnostic baseline assessment questions grounded strictly in standard
+    academic curriculum for the requested topic/subtopic when no personal course materials are found.
     """
     asmt_id = assessment_id or f"asmt_{int(time.time() * 1000)}"
     used_fps = used_fps or set()
     topic_clean = topic.strip().title()
-    subtopic_clean = (subtopic or "Diagnostic Baseline").strip().title()
+    subtopic_clean = (subtopic or "Core Principles").strip().title()
 
     questions = []
 
@@ -1597,15 +1617,24 @@ def _generate_curriculum_baseline_questions(
                 f"Difficulty: {difficulty}\n"
                 f"Target Question Count: {count}\n"
                 f"Format: {question_type}\n\n"
-                f"Generate exactly {count} distinct, rigorous diagnostic assessment questions assessing baseline conceptual knowledge.\n"
-                f"Return ONLY a valid JSON array of objects with the following schema for each question:\n"
+                f"CRITICAL RULES:\n"
+                f"1. Generate questions STRICTLY AND EXCLUSIVELY about {topic_clean} ({subtopic_clean}).\n"
+                f"2. DO NOT introduce unrelated concepts, subjects, or academic buzzwords (e.g. NEVER mention software architecture, safety invariants, Bayesian Knowledge Tracing, or operating systems unless the topic is specifically about that).\n"
+                f"3. Calibrate difficulty to '{difficulty}':\n"
+                f"   - easy: foundational definitions, term recognition, basic principles of {topic_clean}.\n"
+                f"   - medium: conceptual reasoning, comparing principles, moderate application in {topic_clean}.\n"
+                f"   - hard: multi-step problem solving, tricky edge cases, deep reasoning or calculations in {topic_clean}.\n"
+                f"4. Support varied question types: conceptual understanding, definitions, applications, comparisons, and numerical calculations where applicable.\n"
+                f"5. For MCQ, provide 4 options where distractors are plausible misconceptions within {topic_clean}, NOT phrases from unrelated subjects.\n"
+                f"6. Return ONLY a valid JSON array of objects with the schema:\n"
                 f"[\n"
                 f"  {{\n"
-                f"    \"question\": \"clear question stem\",\n"
+                f"    \"question\": \"clear question stem directly about {topic_clean}\",\n"
+                f"    \"type\": \"MCQ\" | \"SHORT_ANSWER\" | \"NUMERICAL\",\n"
                 f"    \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n"
                 f"    \"correct_answer\": \"the exact correct option text\",\n"
-                f"    \"explanation\": \"clear pedagogical rationale explaining why this answer is correct and why other choices are wrong (at least 20 words)\",\n"
-                f"    \"subtopic\": \"specific concept tested\"\n"
+                f"    \"explanation\": \"clear pedagogical rationale explaining why this answer is correct within {topic_clean} (at least 20 words)\",\n"
+                f"    \"subtopic\": \"{subtopic_clean}\"\n"
                 f"  }}\n"
                 f"]"
             )
@@ -1634,12 +1663,15 @@ def _generate_curriculum_baseline_questions(
                                     ans = str(pq.get("correct_answer", "")).strip()
                                     expl = pq.get("explanation", "").strip()
                                     subt = pq.get("subtopic", subtopic_clean)
-                                    if stem and len(opts) >= 2 and ans:
-                                        fp = compute_question_fingerprint(stem, ans, f"chunk_curriculum_{idx}")
+                                    q_fmt = str(pq.get("type", question_type)).upper()
+                                    if q_fmt not in ["MCQ", "SHORT_ANSWER", "NUMERICAL"]:
+                                        q_fmt = "MCQ"
+                                    if stem and ans:
+                                        fp = compute_question_fingerprint(stem, topic_clean)
                                         questions.append({
                                             "question_id": f"q_curr_{int(time.time()*1000)}_{idx}",
                                             "assessment_id": asmt_id,
-                                            "type": question_type.upper() if question_type.upper() in ["MCQ", "SHORT_ANSWER", "NUMERICAL"] else "MCQ",
+                                            "type": q_fmt,
                                             "topic": topic_clean,
                                             "subtopic": subt,
                                             "difficulty": difficulty,
@@ -1654,7 +1686,7 @@ def _generate_curriculum_baseline_questions(
                                             "correct_answer": ans,
                                             "explanation": expl or f"Standard academic curriculum benchmark rationale for {topic_clean}.",
                                             "fingerprint": fp,
-                                            "citation_label": f"Standard Academic Curriculum ({topic_clean})"
+                                            "citation_label": f"Curriculum Diagnostic ({topic_clean})"
                                         })
                                 if len(questions) >= count:
                                     return questions
@@ -1663,11 +1695,154 @@ def _generate_curriculum_baseline_questions(
         except Exception as e:
             logger.warning(f"Gemini baseline generation error: {e}")
 
-    # 2. Structured curriculum template fallback if Gemini unavailable
-    norm_t = topic.lower()
+    # 2. Rich, domain-accurate diagnostic question banks if Gemini unavailable
+    norm_t = (topic + " " + (subtopic or "")).lower()
     domain_bank = []
 
-    if any(k in norm_t for k in ["operating", "os", "kernel", "linux", "unix", "process", "concurrency"]):
+    # 2A. Linear Algebra & Matrix Theory
+    if any(k in norm_t for k in ["linear algebra", "eigenvalue", "eigenvector", "matrix", "vector space", "determinant", "null space", "basis", "rank"]):
+        domain_bank = [
+            {
+                "subtopic": "Eigenvalues & Eigenvectors",
+                "question": f"For a square matrix A and non-zero vector v, what condition defines v as an eigenvector of A with eigenvalue λ?",
+                "options": [
+                    "A v = λ v",
+                    "A v = v + λ",
+                    "A + λ I = v",
+                    "A v = λ^2 I"
+                ],
+                "correct_answer": "A v = λ v",
+                "explanation": "An eigenvector of a linear transformation A is a non-zero vector that changes at most by a scalar factor λ (the eigenvalue) when that linear transformation is applied: Av = λv."
+            },
+            {
+                "subtopic": "Characteristic Equation",
+                "question": f"Which equation is solved to determine the eigenvalues λ of an n × n matrix A?",
+                "options": [
+                    "det(A - λ I) = 0",
+                    "trace(A - λ I) = 0",
+                    "A - λ I = 0",
+                    "det(A) - λ = 0"
+                ],
+                "correct_answer": "det(A - λ I) = 0",
+                "explanation": "Eigenvalues satisfy (A - λI)v = 0 for non-zero v, which requires the matrix (A - λI) to be non-invertible, meaning its determinant det(A - λI) must equal 0."
+            },
+            {
+                "subtopic": "Properties of Symmetric Matrices",
+                "question": f"According to the Spectral Theorem, what property is guaranteed for any real symmetric matrix A (where A = A^T)?",
+                "options": [
+                    "All of its eigenvalues are real numbers, and eigenvectors corresponding to distinct eigenvalues are orthogonal",
+                    "All of its eigenvalues are strictly imaginary numbers",
+                    "Its determinant is always guaranteed to be zero",
+                    "It cannot be diagonalized under any basis transformation"
+                ],
+                "correct_answer": "All of its eigenvalues are real numbers, and eigenvectors corresponding to distinct eigenvalues are orthogonal",
+                "explanation": "The Spectral Theorem for real symmetric matrices guarantees that all eigenvalues are real, and the matrix can be orthogonally diagonalized by a matrix of orthonormal eigenvectors."
+            },
+            {
+                "subtopic": "Trace and Determinant Relations",
+                "question": f"For an n × n square matrix A with eigenvalues λ_1, λ_2, ..., λ_n, how does the trace of A relate to its eigenvalues?",
+                "options": [
+                    "trace(A) = λ_1 + λ_2 + ... + λ_n (the sum of the eigenvalues)",
+                    "trace(A) = λ_1 · λ_2 · ... · λ_n (the product of the eigenvalues)",
+                    "trace(A) = max(λ_1, ..., λ_n) - min(λ_1, ..., λ_n)",
+                    "trace(A) = 1 / (λ_1 + λ_2 + ... + λ_n)"
+                ],
+                "correct_answer": "trace(A) = λ_1 + λ_2 + ... + λ_n (the sum of the eigenvalues)",
+                "explanation": "The trace of a square matrix equals the sum of its diagonal entries, which is invariant under similarity transformations and identically equals the sum of its eigenvalues counted with algebraic multiplicity."
+            },
+            {
+                "subtopic": "Matrix Invertibility & Determinants",
+                "question": f"Which statement regarding an n × n matrix A and its determinant det(A) is equivalent to A being invertible?",
+                "options": [
+                    "det(A) ≠ 0 and zero is not an eigenvalue of A",
+                    "det(A) = 0 and at least one eigenvalue is zero",
+                    "trace(A) > 0 and all row sums equal 1",
+                    "rank(A) < n and the nullity is non-zero"
+                ],
+                "correct_answer": "det(A) ≠ 0 and zero is not an eigenvalue of A",
+                "explanation": "A matrix is invertible (non-singular) if and only if its determinant is non-zero, its rank is full (n), its null space contains only the zero vector, and zero is not an eigenvalue."
+            },
+            {
+                "subtopic": "Rank-Nullity Theorem",
+                "question": f"For an m × n matrix A representing a linear transformation T: R^n → R^m, what does the Rank-Nullity Theorem state?",
+                "options": [
+                    "rank(A) + nullity(A) = n (the number of columns / dimension of the domain)",
+                    "rank(A) + nullity(A) = m (the number of rows / dimension of the codomain)",
+                    "rank(A) · nullity(A) = det(A)",
+                    "rank(A) - nullity(A) = 0 for all matrices"
+                ],
+                "correct_answer": "rank(A) + nullity(A) = n (the number of columns / dimension of the domain)",
+                "explanation": "The Fundamental Theorem of Linear Algebra (Rank-Nullity Theorem) states that the dimension of the column space (rank) plus the dimension of the null space (nullity) equals the dimension of the domain (n)."
+            }
+        ]
+
+    # 2B. Data Mining & Machine Learning
+    elif any(k in norm_t for k in ["data mining", "machine learning", "neural", "classification", "clustering", "apriori", "k-means", "pca"]):
+        domain_bank = [
+            {
+                "subtopic": "Association Rule Mining",
+                "question": f"In association rule mining, what does the 'Support' of an itemset X denote?",
+                "options": [
+                    "The fraction of total transactions in the database that contain itemset X",
+                    "The conditional probability that transaction contains Y given it contains X",
+                    "The ratio of observed joint occurrence to expected independent occurrence",
+                    "The total computational memory allocated to frequent itemset trees"
+                ],
+                "correct_answer": "The fraction of total transactions in the database that contain itemset X",
+                "explanation": "Support measures the frequency of occurrence of an itemset in the dataset: Support(X) = count(X) / total_transactions."
+            },
+            {
+                "subtopic": "Apriori Principle",
+                "question": f"What fundamental anti-monotonicity property forms the basis of the Apriori algorithm?",
+                "options": [
+                    "If an itemset is infrequent, all of its supersets must also be infrequent",
+                    "All subsets of an infrequent itemset are guaranteed to be frequent",
+                    "The support of an itemset increases monotonically with each added item",
+                    "Rules with high confidence must always have minimum support of 100%"
+                ],
+                "correct_answer": "If an itemset is infrequent, all of its supersets must also be infrequent",
+                "explanation": "The Apriori property holds that any subset of a frequent itemset must be frequent; conversely, if an itemset is infrequent, none of its supersets can be frequent, allowing massive search space pruning."
+            },
+            {
+                "subtopic": "Supervised vs Unsupervised Learning",
+                "question": f"What is the primary operational distinction between Supervised Learning and Unsupervised Learning?",
+                "options": [
+                    "Supervised learning trains on input data with target ground-truth labels, while unsupervised learning discovers intrinsic patterns without labels",
+                    "Supervised learning operates without algorithms, while unsupervised learning requires manual feature weights",
+                    "Supervised learning only handles numerical values, while unsupervised learning only handles text",
+                    "Unsupervised learning always produces zero prediction error on unseen data"
+                ],
+                "correct_answer": "Supervised learning trains on input data with target ground-truth labels, while unsupervised learning discovers intrinsic patterns without labels",
+                "explanation": "Supervised models learn a mapping function from labeled training pairs (X, y), whereas unsupervised algorithms (like K-Means or PCA) identify cluster structures or representations without target labels."
+            },
+            {
+                "subtopic": "Overfitting & Regularization",
+                "question": f"What mathematical effect distinguishes L1 Regularization (Lasso) from L2 Regularization (Ridge)?",
+                "options": [
+                    "L1 regularization adds the absolute sum of weights inducing sparsity, while L2 adds squared weights shrinking coefficients smoothly",
+                    "L2 regularization eliminates features completely by driving weights exactly to zero",
+                    "L1 regularization requires infinite training epochs to converge",
+                    "L2 regularization is applicable only to decision tree models"
+                ],
+                "correct_answer": "L1 regularization adds the absolute sum of weights inducing sparsity, while L2 adds squared weights shrinking coefficients smoothly",
+                "explanation": "L1 norm regularization (Lasso) penalizes |w|, driving irrelevant feature weights to exactly 0 to create sparse models. L2 norm (Ridge) penalizes w^2, shrinking weights toward zero without setting them exactly to zero."
+            },
+            {
+                "subtopic": "Classification Evaluation Metrics",
+                "question": f"In binary classification, how is the 'Precision' metric defined?",
+                "options": [
+                    "True Positives / (True Positives + False Positives)",
+                    "True Positives / (True Positives + False Negatives)",
+                    "(True Positives + True Negatives) / Total Samples",
+                    "False Positives / (False Positives + True Negatives)"
+                ],
+                "correct_answer": "True Positives / (True Positives + False Positives)",
+                "explanation": "Precision measures the accuracy of positive predictions (of all instances predicted positive, how many were truly positive), whereas Recall measures True Positives / (True Positives + False Negatives)."
+            }
+        ]
+
+    # 2C. Operating Systems
+    elif any(k in norm_t for k in ["operating", "os", "kernel", "linux", "unix", "process", "concurrency", "deadlock"]):
         domain_bank = [
             {
                 "subtopic": "Process Lifecycle & State Transitions",
@@ -1715,6 +1890,8 @@ def _generate_curriculum_baseline_questions(
                 "explanation": "An inode stores all file metadata (file size, permissions, owner, timestamps, and pointers to disk blocks), while the file name is stored separately in the directory table."
             }
         ]
+
+    # 2D. Computer Networks
     elif any(k in norm_t for k in ["network", "tcp", "ip", "http", "routing", "protocol"]):
         domain_bank = [
             {
@@ -1758,68 +1935,110 @@ def _generate_curriculum_baseline_questions(
                 "explanation": "DNS acts as the distributed directory service translating human-readable hostnames into routable numerical IP addresses."
             }
         ]
-    else:
-        # High quality generic conceptual diagnostic bank
+
+    # 2E. Database Systems
+    elif any(k in norm_t for k in ["database", "dbms", "sql", "relational", "acid", "transaction", "normalization"]):
         domain_bank = [
             {
-                "subtopic": "Foundational Principles",
-                "question": f"In the study of {topic_clean}, what is the primary conceptual objective of baseline diagnostic evaluation?",
+                "subtopic": "ACID Properties",
+                "question": f"In relational database management systems, what does the 'Atomicity' property guarantee?",
                 "options": [
-                    f"To systematically identify foundational strengths, knowledge gaps, and core primitives in {topic_clean}",
-                    "To generate fabricated progress metrics without assessing verified student understanding",
-                    "To bypass prerequisite invariant verification and jump directly to non-grounded exercises",
-                    "To mandate rote memorization without contextual reasoning or problem solving"
+                    "All operations within a transaction are completed successfully or none of them are applied",
+                    "Transactions execute concurrently without reading uncommitted dirty data",
+                    "Database state satisfies all declared structural constraints and check invariants",
+                    "Committed updates survive subsequent hardware crashes or power interruptions"
                 ],
-                "correct_answer": f"To systematically identify foundational strengths, knowledge gaps, and core primitives in {topic_clean}",
-                "explanation": f"Diagnostic assessments calibrate the student's Bayesian Knowledge Tracing baseline on {topic_clean} to uncover precise weaknesses."
+                "correct_answer": "All operations within a transaction are completed successfully or none of them are applied",
+                "explanation": "Atomicity ensures that a transaction is treated as a single indivisible unit of work: either all updates are committed, or the transaction is aborted with all changes rolled back."
             },
             {
-                "subtopic": "System Invariants & Constraints",
-                "question": f"Which analytical method is most effective when establishing system invariants in {topic_clean}?",
+                "subtopic": "Database Normalization",
+                "question": f"Which condition must a relational schema satisfy to be in Third Normal Form (3NF)?",
                 "options": [
-                    "Formally specifying boundary conditions, safety invariants, and operational trade-offs",
-                    "Assuming unconstrained resource availability across all operational scenarios",
-                    "Discarding edge cases whenever empirical testing produces sporadic errors",
-                    "Restricting verification strictly to the simplest trivial test vector"
+                    "It must be in 2NF and contain no transitive functional dependencies for non-prime attributes",
+                    "Every non-prime attribute must depend on only part of a composite primary key",
+                    "It must permit multi-valued non-atomic array attributes in individual table columns",
+                    "Foreign key constraints must be disabled across all relations"
                 ],
-                "correct_answer": "Formally specifying boundary conditions, safety invariants, and operational trade-offs",
-                "explanation": "Rigorous academic study requires explicit modeling of boundary constraints, system safety guarantees, and trade-offs."
+                "correct_answer": "It must be in 2NF and contain no transitive functional dependencies for non-prime attributes",
+                "explanation": "A relation is in 3NF if it is in 2NF and no non-prime attribute is transitively dependent on any candidate key."
             },
             {
-                "subtopic": "Methodology & Execution",
-                "question": f"When solving complex problems in {topic_clean} ({subtopic_clean}), which structured approach ensures correctness?",
+                "subtopic": "Indexing & Query Optimization",
+                "question": f"Why are B+ trees widely preferred over standard hash tables for primary database indexing?",
                 "options": [
-                    "Decomposing the problem into verifiable sub-components and verifying pre/post-conditions",
-                    "Applying arbitrary heuristic guesses without verifying correctness invariants",
-                    "Skipping error handling and assuming inputs always conform to ideal expectations",
-                    "Ignoring standard algorithmic complexity constraints"
+                    "B+ trees support efficient range queries and ordered scans in O(log n) time",
+                    "Hash tables require no memory allocation under high write loads",
+                    "B+ trees eliminate the need for write-ahead transaction logging",
+                    "Hash tables can only store Boolean flags rather than record identifiers"
                 ],
-                "correct_answer": "Decomposing the problem into verifiable sub-components and verifying pre/post-conditions",
-                "explanation": "Modular decomposition and invariant validation ensure verifiable correctness in complex technical topics."
+                "correct_answer": "B+ trees support efficient range queries and ordered scans in O(log n) time",
+                "explanation": "B+ tree leaf nodes are linked sequentially in sorted order, enabling fast range scans (e.g. BETWEEN or inequalities), whereas hash tables only provide O(1) point lookups."
+            }
+        ]
+
+    # 2F. General Topic-Faithful Generator (Never uses off-topic software architecture or safety invariants!)
+    else:
+        domain_bank = [
+            {
+                "subtopic": f"{subtopic_clean} - Core Definition",
+                "question": f"Which statement accurately defines the fundamental concept of {subtopic_clean} in {topic_clean}?",
+                "options": [
+                    f"The foundational principles and mechanisms governing {subtopic_clean} within {topic_clean}",
+                    f"An unrelated secondary hypothesis rejected by standard {topic_clean} theory",
+                    f"A transient calculation error that does not reflect verified {topic_clean} models",
+                    f"A non-standard convention unsupported by peer-reviewed literature in {topic_clean}"
+                ],
+                "correct_answer": f"The foundational principles and mechanisms governing {subtopic_clean} within {topic_clean}",
+                "explanation": f"Foundational mastery of {topic_clean} requires precise understanding of {subtopic_clean} and its governing conceptual framework."
             },
             {
-                "subtopic": "Trade-offs & Optimization",
-                "question": f"In {topic_clean}, how should practitioners evaluate trade-offs between competing design strategies?",
+                "subtopic": f"{subtopic_clean} - Governing Principles",
+                "question": f"In {topic_clean}, what is the primary role or mechanism of {subtopic_clean}?",
                 "options": [
-                    "By quantifying metrics such as efficiency, latency, reliability, and computational complexity",
-                    "By selecting whichever approach has the fewest characters in its naming convention",
-                    "By prioritizing ease of superficial implementation over correctness and scalability",
-                    "By assuming all configurations yield identical performance characteristics"
+                    f"To explain and predict core interactions and structural relationships in {topic_clean}",
+                    f"To contradict verified empirical laws and theoretical foundations of {topic_clean}",
+                    f"To eliminate quantitative evaluation and replace it with speculative guesswork",
+                    f"To prevent systematic analysis of {topic_clean} phenomena"
                 ],
-                "correct_answer": "By quantifying metrics such as efficiency, latency, reliability, and computational complexity",
-                "explanation": "Principled engineering decisions require objective evaluation against defined performance and scalability metrics."
+                "correct_answer": f"To explain and predict core interactions and structural relationships in {topic_clean}",
+                "explanation": f"Within {topic_clean}, {subtopic_clean} provides the theoretical framework for analyzing and resolving domain-specific problems."
             },
             {
-                "subtopic": "Continuous Mastery & Retrieval",
-                "question": f"According to cognitive learning science applied to {topic_clean}, which study technique produces highest long-term retention?",
+                "subtopic": f"{subtopic_clean} - Practical Application",
+                "question": f"When applying {subtopic_clean} to solve practical problems in {topic_clean}, which approach is methodologically sound?",
                 "options": [
-                    "Active retrieval practice with spaced repetition and immediate explanatory feedback",
-                    "Passive re-reading of summarized notes without self-testing",
-                    "Unfocused skimming of headings the night before an assessment",
-                    "Highlighting textbook sentences without active recall exercises"
+                    f"Systematically applying foundational formulas, theorems, and definitions established in {topic_clean}",
+                    f"Relying on arbitrary heuristics without verifying prerequisite constraints in {topic_clean}",
+                    f"Ignoring boundary constraints and fundamental definitions of {subtopic_clean}",
+                    f"Assuming all problems in {topic_clean} have identical trivial solutions"
                 ],
-                "correct_answer": "Active retrieval practice with spaced repetition and immediate explanatory feedback",
-                "explanation": "Cognitive psychology demonstrates that active retrieval practice and spaced repetition maximize memory consolidation and concept mastery."
+                "correct_answer": f"Systematically applying foundational formulas, theorems, and definitions established in {topic_clean}",
+                "explanation": f"Rigorous problem solving in {topic_clean} demands systematic adherence to proven formulas, definitions, and theorems."
+            },
+            {
+                "subtopic": f"{subtopic_clean} - Comparative Analysis",
+                "question": f"When comparing different models or techniques in {topic_clean} ({subtopic_clean}), what is the primary distinguishing criterion?",
+                "options": [
+                    f"The validity of underlying assumptions, domain applicability, and accuracy of results in {topic_clean}",
+                    f"Whichever approach has the shortest textual name regardless of theoretical accuracy",
+                    f"Discarding mathematical consistency whenever calculations become complex",
+                    f"Assuming all methodologies produce identical outcomes regardless of inputs"
+                ],
+                "correct_answer": f"The validity of underlying assumptions, domain applicability, and accuracy of results in {topic_clean}",
+                "explanation": f"Evaluating models in {topic_clean} requires examining underlying assumptions, boundaries, and predictive validity."
+            },
+            {
+                "subtopic": f"{subtopic_clean} - Conceptual Misconceptions",
+                "question": f"What is a common conceptual misconception that students must avoid when studying {subtopic_clean} in {topic_clean}?",
+                "options": [
+                    f"Confusing surface-level terminology with deep structural mechanisms and mathematical definitions in {topic_clean}",
+                    f"Verifying every derivation against foundational principles of {topic_clean}",
+                    f"Practicing active problem solving and quantitative reasoning in {topic_clean}",
+                    f"Consulting authoritative textbooks and verified course materials"
+                ],
+                "correct_answer": f"Confusing surface-level terminology with deep structural mechanisms and mathematical definitions in {topic_clean}",
+                "explanation": f"Deep conceptual understanding in {topic_clean} requires distinguishing superficial terminology from underlying mechanisms and definitions."
             }
         ]
 
@@ -1829,7 +2048,7 @@ def _generate_curriculum_baseline_questions(
         expl = item["explanation"]
         subt = item["subtopic"]
         opts = item["options"]
-        fp = compute_question_fingerprint(stem, ans, f"chunk_curriculum_{idx}")
+        fp = compute_question_fingerprint(stem, topic_clean)
         questions.append({
             "question_id": f"q_curr_{int(time.time()*1000)}_{idx}",
             "assessment_id": asmt_id,
@@ -1848,7 +2067,7 @@ def _generate_curriculum_baseline_questions(
             "correct_answer": ans,
             "explanation": expl,
             "fingerprint": fp,
-            "citation_label": f"Standard Academic Curriculum ({topic_clean})"
+            "citation_label": f"Curriculum Diagnostic ({topic_clean})"
         })
 
     return questions
@@ -1867,7 +2086,7 @@ def generate_grounded_assessment(
 ) -> Dict[str, Any]:
     """
     Generate an adaptive course assessment strictly grounded in Chroma course materials.
-    Includes automated verification pass and persistent exact & semantic duplicate prevention.
+    Includes automated verification pass, topic relevance validation, and persistent duplicate prevention.
     """
     count = int(count) if count is not None else 5
     used_fps = set(existing_fingerprints or [])
@@ -1914,91 +2133,211 @@ def generate_grounded_assessment(
         }
 
     validated_questions = []
-    asmt_id = assessment_id or f"asmt_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
 
-    # Question types to cycle through if MIXED
-    types_cycle = ["MCQ", "SHORT_ANSWER", "NUMERICAL"] if question_type.upper() == "MIXED" else [question_type.upper()]
+    # 2. Attempt Gemini generation strictly grounded in retrieved chunks
+    raw_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("VITE_GEMINI_API_KEY") or ""
+    api_key = raw_api_key.strip().strip('"').strip("'")
+    if api_key and len(results) > 0:
+        try:
+            import httpx
+            # Build structured evidence string from retrieved chunks
+            chunk_excerpts = []
+            chunk_map = {}
+            for idx, r in enumerate(results[:8]):
+                cid = r.get("chunk_id", f"c_{idx}")
+                chunk_map[cid] = r
+                loc = r.get("location", {})
+                loc_desc = []
+                if loc.get("page_number"): loc_desc.append(f"Page {loc['page_number']}")
+                if loc.get("slide_number"): loc_desc.append(f"Slide {loc['slide_number']}")
+                if loc.get("timestamp_start") is not None: loc_desc.append(f"Time {int(loc['timestamp_start'])}s")
+                loc_label = " • ".join(loc_desc) if loc_desc else "Excerpt"
+                chunk_excerpts.append(f"[{cid} | {loc_label}]:\n{r.get('text', '')[:400]}")
 
-    # Distractor templates for varied generation
-    distractor_templates = [
-        "Inversely proportional to system clock frequency",
-        "Requires global system reset without preservation",
-        "Applicable only in non-preemptive single-user environments",
-        "Handled exclusively by peripheral bus arbitration controller",
-        "Causes indefinite priority inversion in real-time tasks",
-        "Bounded by maximum TLB cache miss penalty",
-        "Violates safety invariants and produces deadlock states",
-        "Calculated dynamically using unweighted round-robin slices"
-    ]
+            evidence_text = "\n\n".join(chunk_excerpts)
+            prompt = (
+                f"You are an expert university professor creating diagnostic assessment questions strictly grounded in student course material.\n"
+                f"Course Topic: {topic}\n"
+                f"Subtopic: {subtopic or 'Course Concepts'}\n"
+                f"Difficulty: {difficulty}\n"
+                f"Target Question Count: {count}\n"
+                f"Format: {question_type}\n\n"
+                f"EVIDENCE FROM RETRIEVED COURSE MATERIAL:\n{evidence_text}\n\n"
+                f"STRICT GROUNDING RULES:\n"
+                f"1. Generate exactly {count} questions derived SOLELY and FACTUALLY from the provided course material text.\n"
+                f"2. Preserve the exact terminology used in the course material.\n"
+                f"3. Every question must be directly relevant to {topic} and the provided chunks.\n"
+                f"4. DO NOT include concepts from unrelated subjects (e.g. NEVER mention operating systems, software architecture, or safety invariants if the text is about Linear Algebra or Data Mining).\n"
+                f"5. For MCQ questions, provide 4 options where distractors are plausible misconceptions within {topic} and the text. NEVER inject distractors from unrelated systems domains.\n"
+                f"6. Return ONLY a valid JSON array of objects with the following schema:\n"
+                f"[\n"
+                f"  {{\n"
+                f"    \"question\": \"clear question stem based on chunk text\",\n"
+                f"    \"type\": \"MCQ\" | \"SHORT_ANSWER\" | \"NUMERICAL\",\n"
+                f"    \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n"
+                f"    \"correct_answer\": \"exact correct option text\",\n"
+                f"    \"explanation\": \"pedagogical rationale citing the chunk text (at least 20 words)\",\n"
+                f"    \"chunk_id\": \"chunk_id from evidence\",\n"
+                f"    \"subtopic\": \"{subtopic or 'Course Concepts'}\"\n"
+                f"  }}\n"
+                f"]"
+            )
+            gemini_payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "maxOutputTokens": 2048
+                }
+            }
+            preferred_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+            for model in [preferred_model, "gemini-2.5-flash-lite", "gemini-flash-latest"]:
+                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                try:
+                    resp = httpx.post(gemini_url, json=gemini_payload, timeout=12.0)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        text_resp = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        m = re.search(r'\[.*\]', text_resp, re.DOTALL)
+                        if m:
+                            parsed_qs = json.loads(m.group(0))
+                            if isinstance(parsed_qs, list):
+                                for idx, pq in enumerate(parsed_qs):
+                                    if len(validated_questions) >= count:
+                                        break
+                                    stem = pq.get("question", "").strip()
+                                    opts = pq.get("options", [])
+                                    ans = str(pq.get("correct_answer", "")).strip()
+                                    expl = pq.get("explanation", "").strip()
+                                    c_id = pq.get("chunk_id")
+                                    matched_r = chunk_map.get(c_id) or (results[idx % len(results)] if results else {})
+                                    loc = matched_r.get("location", {})
+                                    actual_cid = matched_r.get("chunk_id", f"chunk_{idx}")
 
-    # Multiple question stem templates for semantic variety
-    stem_templates_mcq = [
-        ("According to course materials on {subtopic}, {lead}?", "lead"),
-        ("In {topic} ({subtopic}), which principle accurately governs {lead}?", "lead"),
-        ("Which of the following statements correctly describes {lead} in {subtopic}?", "lead"),
-        ("How does the system enforce safety regarding {lead} in {subtopic}?", "lead"),
-        ("What core requirement distinguishes {lead} in {topic} course materials?", "lead"),
-    ]
+                                    cand = {
+                                        "question_id": f"q_{uuid.uuid4().hex[:10]}",
+                                        "assessment_id": asmt_id,
+                                        "type": str(pq.get("type", question_type)).upper() if str(pq.get("type", question_type)).upper() in ["MCQ", "SHORT_ANSWER", "NUMERICAL"] else "MCQ",
+                                        "topic": topic,
+                                        "subtopic": pq.get("subtopic") or subtopic or matched_r.get("subtopic", "Core Concepts"),
+                                        "difficulty": difficulty,
+                                        "source_id": matched_r.get("source_id"),
+                                        "chunk_id": actual_cid,
+                                        "page_number": loc.get("page_number"),
+                                        "slide_number": loc.get("slide_number"),
+                                        "timestamp_start": loc.get("timestamp_start"),
+                                        "timestamp_end": loc.get("timestamp_end"),
+                                        "question": stem,
+                                        "options": opts,
+                                        "correct_answer": ans,
+                                        "explanation": expl or f"Grounded in verified course material ({actual_cid})."
+                                    }
 
-    for chunk_idx, r in enumerate(results):
-        if len(validated_questions) >= count:
-            break
+                                    fp = compute_question_fingerprint(stem, topic)
+                                    norm_stem = normalize_question_stem(stem)
+                                    cand["fingerprint"] = fp
+                                    cand["normalized_question"] = norm_stem
 
-        loc = r.get("location", {})
-        chunk_text = r.get("text", "")
-        cid = r.get("chunk_id", f"c_{chunk_idx}")
-        meta = {
-            "page_number": loc.get("page_number"),
-            "slide_number": loc.get("slide_number"),
-            "timestamp_start": loc.get("timestamp_start"),
-            "timestamp_end": loc.get("timestamp_end"),
-            "source_type": loc.get("source_type", "TEXT")
-        }
-        chunk_obj = {
-            "chunk_id": cid,
-            "id": cid,
-            "text": chunk_text,
-            "metadata": meta
-        }
+                                    if fp in used_fps:
+                                        continue
 
-        raw_sentences = [s.strip() for s in re.split(r'[.!?]+', chunk_text) if len(s.strip()) > 15]
-        if not raw_sentences:
-            raw_sentences = [chunk_text[:120].strip()]
+                                    chunk_obj = {
+                                        "chunk_id": actual_cid,
+                                        "text": matched_r.get("text", ""),
+                                        "metadata": {
+                                            "page_number": loc.get("page_number"),
+                                            "slide_number": loc.get("slide_number"),
+                                            "timestamp_start": loc.get("timestamp_start"),
+                                            "timestamp_end": loc.get("timestamp_end"),
+                                        }
+                                    }
 
-        # Generate candidates from each available sentence and template variation
-        for s_idx, s_lead in enumerate(raw_sentences):
+                                    is_valid, _ = verify_question(cand, chunk_obj)
+                                    if is_valid:
+                                        used_fps.add(fp)
+                                        seen_stems.append(norm_stem)
+                                        validated_questions.append(cand)
+                                if len(validated_questions) >= count:
+                                    break
+                except Exception as ex:
+                    logger.warning(f"Grounded Gemini call to {model} failed: {ex}")
+        except Exception as e:
+            logger.warning(f"Gemini grounded generation error: {e}")
+
+    # 3. Fallback: Intelligent chunk extractor (Preserves source concepts, never injects off-topic system terms)
+    if len(validated_questions) < count:
+        types_cycle = ["MCQ", "SHORT_ANSWER", "NUMERICAL"] if question_type.upper() == "MIXED" else [question_type.upper()]
+
+        # Collect distinct conceptual terms and key propositions across all chunks in results
+        all_chunk_sentences = []
+        for r in results:
+            t = r.get("text", "")
+            sents = [s.strip() for s in re.split(r'[.!?]+', t) if len(s.strip()) > 20]
+            all_chunk_sentences.extend(sents)
+
+        for chunk_idx, r in enumerate(results):
             if len(validated_questions) >= count:
                 break
 
-            q_type = types_cycle[(len(validated_questions)) % len(types_cycle)]
-            cur_subtopic = r.get("subtopic") or subtopic or "Core Principles"
+            loc = r.get("location", {})
+            chunk_text = r.get("text", "")
+            cid = r.get("chunk_id", f"c_{chunk_idx}")
+            meta = {
+                "page_number": loc.get("page_number"),
+                "slide_number": loc.get("slide_number"),
+                "timestamp_start": loc.get("timestamp_start"),
+                "timestamp_end": loc.get("timestamp_end"),
+                "source_type": loc.get("source_type", "TEXT")
+            }
+            chunk_obj = {
+                "chunk_id": cid,
+                "id": cid,
+                "text": chunk_text,
+                "metadata": meta
+            }
 
-            candidates_for_sentence = []
+            raw_sentences = [s.strip() for s in re.split(r'[.!?]+', chunk_text) if len(s.strip()) > 20]
+            if not raw_sentences:
+                raw_sentences = [chunk_text[:120].strip()]
 
-            if q_type == "MCQ":
-                for tmpl_idx, (tmpl, _) in enumerate(stem_templates_mcq):
-                    q_text = tmpl.format(
-                        topic=r.get("topic") or topic,
-                        subtopic=cur_subtopic,
-                        lead=s_lead[:110].strip()
-                    )
-                    if not q_text.endswith("?"):
-                        q_text += "?"
+            cur_subtopic = r.get("subtopic") or subtopic or f"{topic} Principles"
 
-                    # Form distinct answers and distractors
-                    corr_ans = raw_sentences[(s_idx + 1) % len(raw_sentences)][:60].strip() if len(raw_sentences) > 1 else s_lead.split()[-1]
-                    d_offset = (chunk_idx * 2 + s_idx * 3 + tmpl_idx) % len(distractor_templates)
-                    d1 = distractor_templates[d_offset]
-                    d2 = distractor_templates[(d_offset + 2) % len(distractor_templates)]
-                    d3 = distractor_templates[(d_offset + 4) % len(distractor_templates)]
+            for s_idx, target_sentence in enumerate(raw_sentences):
+                if len(validated_questions) >= count:
+                    break
+
+                q_type = types_cycle[(len(validated_questions)) % len(types_cycle)]
+
+                # Clean proposition
+                lead_concept = target_sentence[:90].strip()
+
+                if q_type == "MCQ":
+                    # Formulate clean, subject-appropriate question stem
+                    stems = [
+                        f"According to course materials on {cur_subtopic}, which statement accurately describes the following concept: '{lead_concept}'?",
+                        f"In the context of {topic} ({cur_subtopic}), what is the primary significance of: '{lead_concept}'?",
+                        f"Which of the following statements is correct regarding {cur_subtopic} based on the course text?"
+                    ]
+                    q_text = stems[(chunk_idx + s_idx) % len(stems)]
+
+                    corr_ans = f"It represents {lead_concept}" if len(lead_concept) < 60 else lead_concept
+
+                    # Distractors derived from OTHER sentences in the retrieved course chunks (NOT off-topic OS strings!)
+                    other_sentences = [s for s in all_chunk_sentences if s != target_sentence and len(s) > 15]
+                    d1 = other_sentences[0][:65].strip() if len(other_sentences) > 0 else f"It is inversely related to standard {topic} assumptions"
+                    d2 = other_sentences[1][:65].strip() if len(other_sentences) > 1 else f"It acts as an external parameter not governed by {cur_subtopic}"
+                    d3 = other_sentences[2][:65].strip() if len(other_sentences) > 2 else f"It represents an anomalous condition that invalidates {topic} models"
 
                     options = [corr_ans, d1, d2, d3]
                     # Ensure options are distinct
                     if len(set(o.lower() for o in options)) != 4:
-                        d3 = f"Restricted strictly to user-mode space without {topic}"
-                        options = [corr_ans, d1, d2, d3]
+                        options = [
+                            corr_ans,
+                            f"An unrelated variation outside the scope of {cur_subtopic}",
+                            f"A deprecated model not supported by {topic} evidence",
+                            f"A trivial baseline with zero influence on {cur_subtopic}"
+                        ]
 
-                    candidate = {
+                    cand = {
                         "question_id": f"q_{uuid.uuid4().hex[:10]}",
                         "assessment_id": asmt_id,
                         "type": "MCQ",
@@ -2016,18 +2355,10 @@ def generate_grounded_assessment(
                         "correct_answer": corr_ans,
                         "explanation": f"Based on verified course evidence in {cid}: {chunk_text[:160]}..."
                     }
-                    candidates_for_sentence.append(candidate)
 
-            elif q_type == "SHORT_ANSWER":
-                for v_idx in range(3):
-                    if v_idx == 0:
-                        q_text = f"Explain the key concept discussed regarding {cur_subtopic} in your course material?"
-                    elif v_idx == 1:
-                        q_text = f"In {r.get('topic') or topic}, describe the operational role of {s_lead[:80].strip()}?"
-                    else:
-                        q_text = f"According to verified course materials, what mechanism governs {cur_subtopic} ({s_lead[:60].strip()})?"
-
-                    candidate = {
+                elif q_type == "SHORT_ANSWER":
+                    q_text = f"According to verified course materials on {cur_subtopic}, explain the key concept: '{lead_concept}'?"
+                    cand = {
                         "question_id": f"q_{uuid.uuid4().hex[:10]}",
                         "assessment_id": asmt_id,
                         "type": "SHORT_ANSWER",
@@ -2042,65 +2373,46 @@ def generate_grounded_assessment(
                         "timestamp_end": loc.get("timestamp_end"),
                         "question": q_text,
                         "options": [],
-                        "correct_answer": s_lead[:80].strip(),
-                        "explanation": f"Refer to course text: {chunk_text[:160]}..."
+                        "correct_answer": lead_concept,
+                        "explanation": f"Refer to course text in {cid}: {chunk_text[:160]}..."
                     }
-                    candidates_for_sentence.append(candidate)
 
-            elif q_type == "NUMERICAL":
-                nums = re.findall(r'\b\d+(?:\.\d+)?\b', chunk_text)
-                target_num = nums[s_idx % len(nums)] if nums else str((s_idx + 1) * 4)
-                q_text = f"In {cur_subtopic}, calculate the parameter value associated with {s_lead[:60].strip()} based on course materials:"
-                candidate = {
-                    "question_id": f"q_{uuid.uuid4().hex[:10]}",
-                    "assessment_id": asmt_id,
-                    "type": "NUMERICAL",
-                    "topic": r.get("topic") or topic,
-                    "subtopic": cur_subtopic,
-                    "difficulty": difficulty,
-                    "source_id": r.get("source_id"),
-                    "chunk_id": cid,
-                    "page_number": loc.get("page_number"),
-                    "slide_number": loc.get("slide_number"),
-                    "timestamp_start": loc.get("timestamp_start"),
-                    "timestamp_end": loc.get("timestamp_end"),
-                    "question": q_text,
-                    "options": [],
-                    "correct_answer": target_num,
-                    "explanation": f"According to course material, the stated parameter is {target_num}. ({chunk_text[:120]}...)"
-                }
-                candidates_for_sentence.append(candidate)
+                else:  # NUMERICAL
+                    nums = re.findall(r'\b\d+(?:\.\d+)?\b', chunk_text)
+                    target_num = nums[s_idx % len(nums)] if nums else str((s_idx + 1) * 4)
+                    q_text = f"In {cur_subtopic}, calculate the parameter value associated with '{lead_concept[:60]}' based on course materials:"
+                    cand = {
+                        "question_id": f"q_{uuid.uuid4().hex[:10]}",
+                        "assessment_id": asmt_id,
+                        "type": "NUMERICAL",
+                        "topic": r.get("topic") or topic,
+                        "subtopic": cur_subtopic,
+                        "difficulty": difficulty,
+                        "source_id": r.get("source_id"),
+                        "chunk_id": cid,
+                        "page_number": loc.get("page_number"),
+                        "slide_number": loc.get("slide_number"),
+                        "timestamp_start": loc.get("timestamp_start"),
+                        "timestamp_end": loc.get("timestamp_end"),
+                        "question": q_text,
+                        "options": [],
+                        "correct_answer": target_num,
+                        "explanation": f"According to course material, the stated parameter is {target_num}. ({chunk_text[:120]}...)"
+                    }
 
-            # Deduplication & Verification Pass
-            for cand in candidates_for_sentence:
                 fp = compute_question_fingerprint(cand["question"], cand["topic"])
                 norm_stem = normalize_question_stem(cand["question"])
                 cand["fingerprint"] = fp
                 cand["normalized_question"] = norm_stem
 
-                # 1. Exact fingerprint collision check
                 if fp in used_fps:
                     continue
 
-                # 2. Semantic similarity collision check against previous questions
-                is_semantic_duplicate = False
-                for prev in seen_stems:
-                    if compute_stem_similarity(norm_stem, prev) >= 0.75:
-                        is_semantic_duplicate = True
-                        break
-
-                if is_semantic_duplicate:
-                    continue
-
-                # 3. Verification rules pass
-                is_valid, issues = verify_question(cand, chunk_obj)
+                is_valid, _ = verify_question(cand, chunk_obj)
                 if is_valid:
                     used_fps.add(fp)
                     seen_stems.append(norm_stem)
                     validated_questions.append(cand)
-                    break  # Take one successful candidate per sentence slot
-                else:
-                    logger.warning(f"Question rejected in verification pass: {issues}")
 
     return {
         "success": True,

@@ -46,6 +46,7 @@ export interface DiagnosticReport {
     status: string;
   }>;
   weakConcepts?: string[];
+  strongConcepts?: string[];
   repeatedMistakes?: Array<{
     topic: string;
     subtopic: string;

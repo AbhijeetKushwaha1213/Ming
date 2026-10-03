@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wand2, Plus, Loader2, BookOpen, Brain, FileQuestion, GitBranch, FileText, Upload, FileCheck, X, Eye, Search, Headphones } from 'lucide-react';
+import { Wand2, Plus, Loader2, BookOpen, Brain, FileQuestion, GitBranch, FileText, Upload, FileCheck, X, Eye, Search, Headphones, FolderOpen, PlusCircle } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { useStudyMaterials } from '@/hooks/useStudyMaterials';
@@ -17,6 +17,9 @@ import { MindMapViewer } from '@/components/flashcards/MindMapViewer';
 import { StudyNotesViewer } from '@/components/flashcards/StudyNotesViewer';
 import { AudioBriefViewer } from '@/components/flashcards/AudioBriefViewer';
 import { useFlashcards } from '@/hooks/useFlashcards';
+import { useCourseResources } from '@/hooks/useCourseResources';
+import { retrieveGroundedResourceContent } from '@/utils/resourceGrounding';
+import { navigateToTab } from '@/utils/navigation';
 
 type MaterialType = 'flashcards' | 'mindmaps' | 'quizzes' | 'diagrams' | 'notes' | 'audio_briefs';
 
@@ -37,6 +40,9 @@ export const AIStudyMaterialGenerator = () => {
   const { createMultipleMaterials, isBulkCreating } = useStudyMaterials();
   const { createFlashcard, createStudyMaterial } = useFlashcards();
   const { generateContent, isLoading } = useAIAssistant();
+  const [sourceMode, setSourceMode] = useState<'existing' | 'new'>('existing');
+  const [selectedSourceId, setSelectedSourceId] = useState<string>('all');
+  const { resources: availableResources, isLoading: isLoadingResources } = useCourseResources();
   const [content, setContent] = useState('');
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -123,22 +129,54 @@ export const AIStudyMaterialGenerator = () => {
   };
 
   const generateMaterial = async () => {
-    const finalContent = content.trim() || uploadedContent.trim();
-    
-    if (!finalContent && !topic.trim()) {
-      toast({
-        title: "Input Required",
-        description: "Please provide either content to study or a topic.",
-        variant: "destructive",
+    let finalContent = content.trim() || uploadedContent.trim();
+    let groundedOptions: { groundedContext?: string; sourceTitle?: string } | undefined;
+    let materialTopic = topic.trim();
+
+    if (sourceMode === 'existing') {
+      if (availableResources.length === 0) {
+        toast({
+          title: "No Resources Available",
+          description: "Please upload course materials in Resources first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const retrieval = await retrieveGroundedResourceContent({
+        selectedSourceIds: [selectedSourceId],
+        resources: availableResources,
+        topic: topic,
+        userId: user?.user_id || user?.id || 'default_user',
       });
-      return;
+
+      const sourceLabel = selectedSourceId === 'all'
+        ? `All Uploaded Resources (${availableResources.length} files)`
+        : retrieval.sourceTitles.join(', ');
+
+      materialTopic = topic || retrieval.topicRecommendation || retrieval.sourceTitles[0] || 'Course Material';
+      finalContent = materialTopic;
+      groundedOptions = {
+        groundedContext: retrieval.groundedContext,
+        sourceTitle: sourceLabel,
+      };
+    } else {
+      if (!finalContent && !topic.trim()) {
+        toast({
+          title: "Input Required",
+          description: "Please provide either content to study or a topic.",
+          variant: "destructive",
+        });
+        return;
+      }
+      materialTopic = topic || finalContent.substring(0, 30) + '...';
     }
 
     try {
       console.log('AIStudyMaterialGenerator: Starting enhanced generation:', { 
         type: materialType, 
         finalContent, 
-        topic, 
+        topic: materialTopic, 
         difficulty, 
         count 
       });
@@ -146,10 +184,11 @@ export const AIStudyMaterialGenerator = () => {
       const subject = user?.userType === 'college' ? user?.branch : user?.examType;
       const aiResponse = await generateContent(
         materialType,
-        finalContent || topic,
+        finalContent || materialTopic,
         difficulty,
         parseInt(count),
-        subject
+        subject,
+        groundedOptions
       );
 
       console.log('AIStudyMaterialGenerator: Received AI response:', aiResponse);
@@ -580,77 +619,191 @@ export const AIStudyMaterialGenerator = () => {
             </Select>
           </div>
 
-          {/* File Upload */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-gray-700">Upload Study Material</label>
-            
-            {!uploadedFile ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 mb-2">Upload your notes, documents, or study materials</p>
-                <p className="text-xs text-gray-500 mb-3">Supported: PDF, TXT (Max: 50KB)</p>
-                <Input
-                  type="file"
-                  accept=".pdf,.txt"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('file-upload')?.click()}
-                >
-                  Choose File
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <FileCheck className="w-5 h-5 text-green-600" />
-                  <span className="text-sm font-medium text-green-800">{uploadedFile}</span>
+          {/* Source Selection Mode */}
+          <div className="space-y-3 pt-2">
+            <label className="text-sm font-semibold text-foreground block">
+              Choose Study Material Source
+            </label>
+            <div className="flex items-center gap-2 p-1.5 bg-muted/60 dark:bg-muted/40 rounded-xl max-w-md border border-border">
+              <button
+                type="button"
+                onClick={() => setSourceMode('existing')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                  sourceMode === 'existing'
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <FolderOpen className="w-4 h-4 text-indigo-500" />
+                Existing Resources
+                {availableResources.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0 h-4">
+                    {availableResources.length}
+                  </Badge>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSourceMode('new')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                  sourceMode === 'new'
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <PlusCircle className="w-4 h-4 text-purple-500" />
+                New Material
+              </button>
+            </div>
+          </div>
+
+          {sourceMode === 'existing' ? (
+            <div className="space-y-4 pt-1">
+              {isLoadingResources ? (
+                <div className="p-4 border rounded-lg text-center text-xs text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
+                  Loading library materials...
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFile}
-                  className="text-green-600 hover:text-green-800"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+              ) : availableResources.length === 0 ? (
+                <div className="p-4 border-2 border-dashed rounded-lg text-center space-y-2">
+                  <p className="text-xs text-muted-foreground">No resources available in your library yet.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigateToTab('resources')}
+                    className="text-xs text-indigo-600 gap-1"
+                  >
+                    Go to Resources ↗
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Select Resource</label>
+                    <Select
+                      value={selectedSourceId}
+                      onValueChange={(val) => {
+                        setSelectedSourceId(val);
+                        if (val !== 'all') {
+                          const res = availableResources.find(r => r.id === val);
+                          if (res?.folder) {
+                            setTopic(res.folder);
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Uploaded Course Sources" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          All Uploaded Resources ({availableResources.length})
+                        </SelectItem>
+                        {availableResources.map((res) => (
+                          <SelectItem key={res.id} value={res.id}>
+                            <span className="flex items-center gap-2">
+                              <span>{res.icon || (res.isNotionPage ? '📄' : '📑')}</span>
+                              <span className="truncate">{res.title}</span>
+                              <span className="text-[10px] text-muted-foreground uppercase font-mono">
+                                ({res.type})
+                              </span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Focused Concept / Topic (Optional)
+                    </label>
+                    <Input
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      placeholder="e.g. Memory Management, or leave empty for full resource content"
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* File Upload */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-700">Upload Study Material</label>
+                
+                {!uploadedFile ? (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
+                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-2">Upload your notes, documents, or study materials</p>
+                    <p className="text-xs text-gray-500 mb-3">Supported: PDF, TXT (Max: 50KB)</p>
+                    <Input
+                      type="file"
+                      accept=".pdf,.txt"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('file-upload')?.click()}
+                    >
+                      Choose File
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <FileCheck className="w-5 h-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">{uploadedFile}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFile}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="text-center text-sm text-gray-500">OR</div>
+              <div className="text-center text-sm text-gray-500">OR</div>
 
-          {/* Manual Content Input */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Paste Study Content
-            </label>
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Paste your study material, notes, or textbook content here..."
-              rows={4}
-            />
-          </div>
+              {/* Manual Content Input */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Paste Study Content
+                </label>
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Paste your study material, notes, or textbook content here..."
+                  rows={4}
+                />
+              </div>
 
-          <div className="text-center text-sm text-gray-500">OR</div>
+              <div className="text-center text-sm text-gray-500">OR</div>
 
-          {/* Topic Input */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Enter Topic/Subject
-            </label>
-            <Input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Photosynthesis, World War II, Calculus, Machine Learning..."
-            />
-          </div>
+              {/* Topic Input */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Enter Topic/Subject
+                </label>
+                <Input
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g., Photosynthesis, World War II, Calculus, Machine Learning..."
+                />
+              </div>
+            </div>
+          )}
 
           {/* Configuration Options */}
           <div className="grid grid-cols-2 gap-4">

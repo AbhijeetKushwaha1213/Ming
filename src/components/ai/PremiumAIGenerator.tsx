@@ -9,7 +9,8 @@ import {
   Sparkles, BookOpen, Brain, FileQuestion, GitBranch, FileText, 
   Upload, X, Eye, Check, Download, Share2, Edit, RotateCcw,
   Target, Clock, TrendingUp, Zap, ChevronRight, Settings2,
-  FileUp, Type, MessageSquare, Lightbulb, Star, CheckCircle2, Copy
+  FileUp, Type, MessageSquare, Lightbulb, Star, CheckCircle2, Copy,
+  FolderOpen, PlusCircle, Layers, Library, Loader2, ArrowRight
 } from 'lucide-react';
 import {
   Dialog,
@@ -19,6 +20,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
@@ -27,9 +29,13 @@ import { convertAnyContentToMarkdown } from '@/utils/notesFormatter';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { useCourseResources } from '@/hooks/useCourseResources';
+import { retrieveGroundedResourceContent } from '@/utils/resourceGrounding';
+import { navigateToTab } from '@/utils/navigation';
 
 type MaterialType = 'flashcards' | 'mindmaps' | 'quizzes' | 'diagrams' | 'notes' | 'summary' | 'revision';
 type InputMode = 'upload' | 'paste' | 'topic';
+type SourceMode = 'existing' | 'new';
 type Step = 'choose' | 'input' | 'settings' | 'preview' | 'generating' | 'result';
 
 interface GenerationConfig {
@@ -118,12 +124,17 @@ export const PremiumAIGenerator = () => {
   // State management
   const [step, setStep] = useState<Step>('choose');
   const [selectedType, setSelectedType] = useState<MaterialType | null>(null);
+  const [sourceMode, setSourceMode] = useState<SourceMode>('existing');
+  const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>(['all']);
+  const [resourceTopic, setResourceTopic] = useState('');
+  const [generatedTopic, setGeneratedTopic] = useState('');
   const [inputMode, setInputMode] = useState<InputMode>('upload');
   const [content, setContent] = useState('');
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | 'adaptive'>('medium');
   const [outputSize, setOutputSize] = useState(5);
   const [customSize, setCustomSize] = useState(10);
+  const { resources: availableResources, isLoading: isLoadingResources } = useCourseResources();
   const [config, setConfig] = useState<GenerationConfig>({
     includeExamples: true,
     includeMnemonics: false,
@@ -159,7 +170,7 @@ export const PremiumAIGenerator = () => {
     setStep('input');
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
@@ -173,6 +184,14 @@ export const PremiumAIGenerator = () => {
     }
     
     setUploadedFile(file);
+    try {
+      const text = await file.text();
+      if (text) {
+        setContent(text);
+      }
+    } catch {
+      // Non-text file
+    }
     toast({
       title: "File uploaded",
       description: `${file.name} is ready for processing.`,
@@ -197,7 +216,36 @@ export const PremiumAIGenerator = () => {
     }, 1500);
     
     try {
-      const inputContent = content || topic;
+      let inputContent = '';
+      let effectiveTopic = '';
+      let groundedOptions: { groundedContext?: string; sourceTitle?: string } | undefined;
+
+      if (sourceMode === 'existing') {
+        const retrieval = await retrieveGroundedResourceContent({
+          selectedSourceIds: selectedResourceIds,
+          resources: availableResources,
+          topic: resourceTopic || topic,
+          userId: user?.user_id || user?.id || 'default_user',
+        });
+
+        const sourceLabel = selectedResourceIds.includes('all')
+          ? `All Uploaded Resources (${availableResources.length} files)`
+          : retrieval.sourceTitles.join(', ');
+
+        effectiveTopic = resourceTopic || retrieval.topicRecommendation || topic || retrieval.sourceTitles[0] || 'Course Material';
+        inputContent = effectiveTopic;
+        setGeneratedTopic(effectiveTopic);
+
+        groundedOptions = {
+          groundedContext: retrieval.groundedContext,
+          sourceTitle: sourceLabel,
+        };
+      } else {
+        inputContent = content || topic || (uploadedFile ? uploadedFile.name : 'Study Material');
+        effectiveTopic = topic || (uploadedFile ? uploadedFile.name.replace(/\.[^/.]+$/, '') : inputContent.slice(0, 30));
+        setGeneratedTopic(effectiveTopic);
+      }
+
       const subject = user?.userType === 'college' ? user?.branch : user?.examType;
       
       const result = await generateContent(
@@ -205,7 +253,8 @@ export const PremiumAIGenerator = () => {
         inputContent,
         difficulty === 'adaptive' ? 'medium' : difficulty,
         outputSize === 0 ? customSize : outputSize,
-        subject
+        subject,
+        groundedOptions
       );
       
       clearInterval(stageInterval);
@@ -302,127 +351,355 @@ export const PremiumAIGenerator = () => {
     </div>
   );
 
+  const isInputStepValid = sourceMode === 'existing'
+    ? (availableResources.length > 0 && selectedResourceIds.length > 0)
+    : (!!uploadedFile || !!content.trim() || !!topic.trim());
+
   const renderInputStep = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Provide Study Material</h2>
-          <p className="text-muted-foreground">Upload files, paste notes, or enter a topic</p>
+          <h2 className="text-2xl font-bold text-foreground mb-1">Choose Study Material Source</h2>
+          <p className="text-muted-foreground text-sm">Select existing resources from your library or provide new material</p>
         </div>
-        <Button variant="ghost" onClick={() => setStep('choose')}>
+        <Button variant="ghost" size="sm" onClick={() => setStep('choose')}>
           Change Type
         </Button>
       </div>
 
-      <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as InputMode)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="upload" className="flex items-center gap-2">
-            <FileUp className="w-4 h-4" />
-            Upload File
-          </TabsTrigger>
-          <TabsTrigger value="paste" className="flex items-center gap-2">
-            <Type className="w-4 h-4" />
-            Paste Notes
-          </TabsTrigger>
-          <TabsTrigger value="topic" className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Enter Topic
-          </TabsTrigger>
-        </TabsList>
+      {/* Source Selection Area: [ Existing Resources ] [ New Material ] */}
+      <div className="flex items-center gap-2 p-1.5 bg-muted/60 dark:bg-muted/40 rounded-xl mb-6 max-w-md border border-border">
+        <button
+          type="button"
+          onClick={() => setSourceMode('existing')}
+          className={`flex-1 py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+            sourceMode === 'existing'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <FolderOpen className="w-4 h-4 text-indigo-500" />
+          Existing Resources
+          {availableResources.length > 0 && (
+            <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0 h-4">
+              {availableResources.length}
+            </Badge>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSourceMode('new')}
+          className={`flex-1 py-2 px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+            sourceMode === 'new'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <PlusCircle className="w-4 h-4 text-purple-500" />
+          New Material
+        </button>
+      </div>
 
-        <TabsContent value="upload" className="space-y-4">
-          <Card className="p-8 border-2 border-dashed border-border hover:border-primary/50 transition-colors">
-            {!uploadedFile ? (
-              <div className="text-center">
-                <div className="w-20 h-20 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Upload className="w-10 h-10 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Drop your files here, or browse
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Supports PDF, TXT files up to 50KB
-                </p>
-                <Input
-                  type="file"
-                  id="file-upload"
-                  className="hidden"
-                  accept=".pdf,.txt"
-                  onChange={handleFileUpload}
-                />
+      {/* SOURCE 1: EXISTING RESOURCES */}
+      {sourceMode === 'existing' ? (
+        <div className="space-y-5">
+          {isLoadingResources ? (
+            <Card className="p-8 text-center space-y-3">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
+              <p className="text-sm text-muted-foreground">Loading course materials from your library...</p>
+            </Card>
+          ) : availableResources.length === 0 ? (
+            <Card className="p-8 border-2 border-dashed border-border text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center mx-auto">
+                <FolderOpen className="w-6 h-6" />
+              </div>
+              <h4 className="font-semibold text-foreground text-base">No resources available</h4>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                You haven't uploaded any study materials yet. Upload textbooks, lecture slides, notes, or videos in Resources to generate grounded materials.
+              </p>
+              <div className="pt-2 flex justify-center gap-3">
                 <Button
-                  onClick={() => document.getElementById('file-upload')?.click()}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  variant="outline"
+                  onClick={() => navigateToTab('resources')}
+                  className="text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 gap-1.5"
                 >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Choose File
+                  <FolderOpen className="w-4 h-4 mr-1" />
+                  Go to Resources ↗
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setSourceMode('new')}
+                  className="text-xs text-muted-foreground"
+                >
+                  Or use New Material instead
                 </Button>
               </div>
-            ) : (
+            </Card>
+          ) : (
+            <Card className="p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <CheckCircle2 className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">{uploadedFile.name}</p>
-                    <p className="text-sm text-muted-foreground">{(uploadedFile.size / 1024).toFixed(2)} KB</p>
-                  </div>
+                <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-indigo-600" />
+                  Select Course Material
+                </Label>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {selectedResourceIds.includes('all')
+                    ? 'All Resources selected'
+                    : `${selectedResourceIds.length} of ${availableResources.length} selected`}
+                </span>
+              </div>
+
+              {/* Resource Selector Dropdown */}
+              <Select
+                value={selectedResourceIds.includes('all') ? 'all' : selectedResourceIds.length === 1 ? selectedResourceIds[0] : 'multiple'}
+                onValueChange={(val) => {
+                  if (val === 'all') {
+                    setSelectedResourceIds(['all']);
+                  } else if (val === 'multiple') {
+                    // retain current selection
+                  } else {
+                    setSelectedResourceIds([val]);
+                    const found = availableResources.find(r => r.id === val);
+                    if (found?.folder) {
+                      setResourceTopic(found.folder);
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select course material..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <span className="font-semibold flex items-center gap-2">
+                      <span>📚</span>
+                      <span>All Uploaded Resources ({availableResources.length})</span>
+                    </span>
+                  </SelectItem>
+                  {availableResources.map((res) => (
+                    <SelectItem key={res.id} value={res.id}>
+                      <span className="flex items-center gap-2">
+                        <span>{res.icon || (res.isNotionPage ? '📄' : '📑')}</span>
+                        <span className="truncate max-w-[280px]">{res.title}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase font-mono ml-1">
+                          ({res.type})
+                        </span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Individual Resources List with rich metadata */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+                  <span>Available Resources & Notes</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedResourceIds.includes('all')) {
+                        setSelectedResourceIds(availableResources.slice(0, 1).map(r => r.id));
+                      } else {
+                        setSelectedResourceIds(['all']);
+                      }
+                    }}
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    {selectedResourceIds.includes('all') ? 'Pick Specific Resource' : 'Select All Resources'}
+                  </button>
                 </div>
+
+                <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                  {availableResources.map((res) => {
+                    const isSelected = selectedResourceIds.includes('all') || selectedResourceIds.includes(res.id);
+                    return (
+                      <div
+                        key={res.id}
+                        onClick={() => {
+                          if (selectedResourceIds.includes('all')) {
+                            setSelectedResourceIds([res.id]);
+                          } else if (selectedResourceIds.includes(res.id)) {
+                            const next = selectedResourceIds.filter(id => id !== res.id);
+                            setSelectedResourceIds(next.length === 0 ? ['all'] : next);
+                          } else {
+                            setSelectedResourceIds([...selectedResourceIds, res.id]);
+                          }
+                          if (res.folder && !resourceTopic) {
+                            setResourceTopic(res.folder);
+                          }
+                        }}
+                        className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between gap-3 text-xs ${
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/40 shadow-xs'
+                            : 'border-border bg-card hover:border-border/80'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-lg shrink-0">{res.icon || (res.isNotionPage ? '📄' : '📑')}</span>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground truncate" title={res.title}>
+                              {res.title}
+                            </p>
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase font-mono">
+                                {res.type}
+                              </Badge>
+                              {res.folder && (
+                                <span className="truncate">📁 {res.folder}</span>
+                              )}
+                              {res.createdAt && (
+                                <span>📅 {new Date(res.createdAt).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          {isSelected ? (
+                            <div className="w-5 h-5 rounded-md bg-indigo-600 flex items-center justify-center text-white">
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-md border border-border" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Optional Topic / Subtopic Field */}
+              <div className="pt-3 border-t border-border space-y-1.5">
+                <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  Focused Topic / Concept (Optional)
+                </Label>
+                <Input
+                  value={resourceTopic}
+                  onChange={(e) => setResourceTopic(e.target.value)}
+                  placeholder="e.g. CPU Scheduling, Memory Management, or leave blank to cover whole material"
+                  className="text-xs h-9"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Directs the AI to focus on a particular concept inside the selected resource(s).
+                </p>
+              </div>
+            </Card>
+          )}
+        </div>
+      ) : (
+        /* SOURCE 2: NEW MATERIAL (Existing Upload / Paste / Enter Topic) */
+        <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as InputMode)} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="upload" className="flex items-center gap-2">
+              <FileUp className="w-4 h-4" />
+              Upload File
+            </TabsTrigger>
+            <TabsTrigger value="paste" className="flex items-center gap-2">
+              <Type className="w-4 h-4" />
+              Paste Notes
+            </TabsTrigger>
+            <TabsTrigger value="topic" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Enter Topic
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="upload" className="space-y-4">
+            <Card className="p-8 border-2 border-dashed border-border hover:border-primary/50 transition-colors">
+              {!uploadedFile ? (
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Upload className="w-10 h-10 text-purple-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    Drop your files here, or browse
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Supports PDF, TXT files up to 50KB
+                  </p>
+                  <Input
+                    type="file"
+                    id="file-upload"
+                    className="hidden"
+                    accept=".pdf,.txt"
+                    onChange={handleFileUpload}
+                  />
+                  <Button
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose File
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle2 className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">{uploadedFile.name}</p>
+                      <p className="text-sm text-muted-foreground">{(uploadedFile.size / 1024).toFixed(2)} KB</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setUploadedFile(null)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="paste" className="space-y-4">
+            <Card className="p-6">
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Paste your study notes, lecture content, or textbook excerpts here..."
+                className="min-h-[300px] text-base font-mono border-0 focus-visible:ring-0 resize-none"
+              />
+              <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                <span>{content.length} characters</span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setUploadedFile(null)}
+                  onClick={() => setContent('')}
+                  disabled={!content}
                 >
-                  <X className="w-4 h-4" />
+                  Clear
                 </Button>
               </div>
-            )}
-          </Card>
-        </TabsContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="paste" className="space-y-4">
-          <Card className="p-6">
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Paste your study notes, lecture content, or textbook excerpts here..."
-              className="min-h-[300px] text-base font-mono border-0 focus-visible:ring-0 resize-none"
-            />
-            <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-              <span>{content.length} characters</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setContent('')}
-                disabled={!content}
-              >
-                Clear
-              </Button>
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="topic" className="space-y-4">
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-full flex items-center justify-center">
-                <Lightbulb className="w-5 h-5 text-blue-600" />
+          <TabsContent value="topic" className="space-y-4">
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-full flex items-center justify-center">
+                  <Lightbulb className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">What would you like to learn?</h3>
+                  <p className="text-sm text-muted-foreground">Enter any topic and AI will generate content</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-foreground">What would you like to learn?</h3>
-                <p className="text-sm text-muted-foreground">Enter any topic and AI will generate content</p>
-              </div>
-            </div>
-            <Input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Photosynthesis, Machine Learning, World War II..."
-              className="text-lg py-6"
-            />
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <Input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g., Photosynthesis, Machine Learning, World War II..."
+                className="text-lg py-6"
+              />
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={() => setStep('choose')}>
@@ -430,7 +707,7 @@ export const PremiumAIGenerator = () => {
         </Button>
         <Button
           onClick={() => setStep('settings')}
-          disabled={!uploadedFile && !content && !topic}
+          disabled={!isInputStepValid}
           className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
         >
           Continue
@@ -440,14 +717,57 @@ export const PremiumAIGenerator = () => {
     </div>
   );
 
-  const renderSettingsStep = () => (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Generation Settings</h2>
-        <p className="text-muted-foreground">Customize your AI-generated content</p>
-      </div>
+  const renderSettingsStep = () => {
+    const sourceLabel = sourceMode === 'existing'
+      ? selectedResourceIds.includes('all')
+        ? `All Uploaded Resources (${availableResources.length} files)`
+        : selectedResourceIds.length === 1
+        ? (availableResources.find(r => r.id === selectedResourceIds[0])?.title || 'Selected Resource')
+        : `${selectedResourceIds.length} Selected Resources`
+      : uploadedFile
+      ? `Uploaded File: ${uploadedFile.name}`
+      : content
+      ? `Pasted Notes (${content.length} chars)`
+      : topic
+      ? `Topic: ${topic}`
+      : 'New Material';
 
-      <Card className="p-6 space-y-6">
+    return (
+      <div className="space-y-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Generation Settings</h2>
+          <p className="text-muted-foreground">Customize your AI-generated content</p>
+        </div>
+
+        <Card className="p-6 space-y-6">
+          {/* Selected Source Summary Banner */}
+          <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                {sourceMode === 'existing' ? <FolderOpen className="w-4 h-4" /> : <FileUp className="w-4 h-4" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">
+                  Source: {sourceLabel}
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {sourceMode === 'existing'
+                    ? resourceTopic
+                      ? `Focused Concept: ${resourceTopic} • Grounded in Course Material`
+                      : 'Grounded in existing course library'
+                    : 'Custom input material'}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setStep('input')}
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline h-7 px-2 shrink-0"
+            >
+              Change
+            </Button>
+          </div>
         {/* Difficulty */}
         <div>
           <Label className="text-base font-semibold mb-3 block">Difficulty Level</Label>
@@ -556,10 +876,13 @@ export const PremiumAIGenerator = () => {
       </div>
     </div>
   );
+};
 
   const renderPreviewStep = () => {
     const selectedCard = materialCards.find(c => c.type === selectedType);
     if (!selectedCard) return null;
+
+    const previewTopic = resourceTopic || topic || (sourceMode === 'existing' ? (availableResources.find(r => selectedResourceIds.includes(r.id))?.title || 'Course Material') : 'the main concept');
 
     return (
       <div className="space-y-6">
@@ -569,14 +892,21 @@ export const PremiumAIGenerator = () => {
         </div>
 
         <Card className={`p-6 bg-gradient-to-r ${selectedCard.gradient} text-white`}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-              <selectedCard.icon className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                <selectedCard.icon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">{selectedCard.title}</h3>
+                <p className="text-white/90 text-sm">{outputSize === 0 ? customSize : outputSize} items • {sourceMode === 'existing' ? 'Grounded in Library Materials' : 'Custom Input'}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold">{selectedCard.title}</h3>
-              <p className="text-white/90 text-sm">{outputSize === 0 ? customSize : outputSize} items</p>
-            </div>
+            {sourceMode === 'existing' && (
+              <Badge className="bg-white/20 text-white border-white/30 text-xs">
+                {selectedResourceIds.includes('all') ? 'All Resources' : `${selectedResourceIds.length} Resource(s)`}
+              </Badge>
+            )}
           </div>
         </Card>
 
@@ -586,11 +916,11 @@ export const PremiumAIGenerator = () => {
             <>
               <Card className="p-4 animate-fade-in">
                 <Badge className="mb-2">Question</Badge>
-                <p className="text-sm text-foreground">What is {topic || 'the main concept'}?</p>
+                <p className="text-sm text-foreground">What is {previewTopic}?</p>
               </Card>
               <Card className="p-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
                 <Badge className="mb-2">Answer</Badge>
-                <p className="text-sm text-foreground">Detailed explanation with examples...</p>
+                <p className="text-sm text-foreground">Detailed explanation strictly grounded in source material...</p>
               </Card>
             </>
           )}
@@ -679,7 +1009,7 @@ export const PremiumAIGenerator = () => {
     if (typeof generatedResult === 'string') return generatedResult;
     if (generatedResult.content && typeof generatedResult.content === 'string') return generatedResult.content;
 
-    let md = `# 📚 ${topic || 'StudyMate AI Study Notes'}\n\n`;
+    let md = `# 📚 ${generatedTopic || topic || 'StudyMate AI Study Notes'}\n\n`;
 
     if (generatedResult.notes) {
       const n = generatedResult.notes;
@@ -895,7 +1225,7 @@ export const PremiumAIGenerator = () => {
 
   const handleSaveToVault = () => {
     try {
-      const title = topic || `${selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) : 'Study'} Notes`;
+      const title = generatedTopic || topic || `${selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) : 'Study'} Notes`;
       const markdown = getFormattedMarkdown();
       const currentDifficulty: 'easy' | 'medium' | 'hard' = difficulty === 'adaptive' ? 'medium' : difficulty;
 

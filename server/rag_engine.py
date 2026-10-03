@@ -844,13 +844,21 @@ def search_relevant_chunks(
                     {"user_id": {"$eq": "test_student_42"}}
                 ]
             })
-        if source_id:
-            where_conditions.append({
-                "$or": [
-                    {"source_id": {"$eq": str(source_id)}},
-                    {"document_id": {"$eq": str(source_id)}}
-                ]
-            })
+        if source_id and str(source_id).strip().lower() not in ["all", "*", "none"]:
+            s_ids = [s.strip() for s in str(source_id).split(',') if s.strip() and s.strip().lower() not in ["all", "*", "none"]]
+            if len(s_ids) == 1:
+                where_conditions.append({
+                    "$or": [
+                        {"source_id": {"$eq": str(s_ids[0])}},
+                        {"document_id": {"$eq": str(s_ids[0])}}
+                    ]
+                })
+            elif len(s_ids) > 1:
+                multi_ors = []
+                for sid in s_ids:
+                    multi_ors.append({"source_id": {"$eq": str(sid)}})
+                    multi_ors.append({"document_id": {"$eq": str(sid)}})
+                where_conditions.append({"$or": multi_ors})
         elif sq_topic:
             where_conditions.append({"topic": {"$eq": str(sq_topic)}})
 
@@ -868,13 +876,21 @@ def search_relevant_chunks(
             # If no results with strict filter, retry relaxed search to ensure course materials are always accessible
             if (not results or not results.get("ids") or len(results["ids"][0]) == 0):
                 fallback_where = []
-                if source_id:
-                    fallback_where.append({
-                        "$or": [
-                            {"source_id": {"$eq": str(source_id)}},
-                            {"document_id": {"$eq": str(source_id)}}
-                        ]
-                    })
+                if source_id and str(source_id).strip().lower() not in ["all", "*", "none"]:
+                    s_ids = [s.strip() for s in str(source_id).split(',') if s.strip() and s.strip().lower() not in ["all", "*", "none"]]
+                    if len(s_ids) == 1:
+                        fallback_where.append({
+                            "$or": [
+                                {"source_id": {"$eq": str(s_ids[0])}},
+                                {"document_id": {"$eq": str(s_ids[0])}}
+                            ]
+                        })
+                    elif len(s_ids) > 1:
+                        multi_ors = []
+                        for sid in s_ids:
+                            multi_ors.append({"source_id": {"$eq": str(sid)}})
+                            multi_ors.append({"document_id": {"$eq": str(sid)}})
+                        fallback_where.append({"$or": multi_ors})
                 query_fallback = {
                     "query_texts": [sq_norm or sq_text],
                     "n_results": candidate_k

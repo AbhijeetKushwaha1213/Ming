@@ -12,6 +12,8 @@ export interface GeminiRequest {
   count?: number;
   systemPrompt?: string;
   inlineData?: { mimeType: string; data: string };
+  groundedContext?: string;
+  sourceTitle?: string;
 }
 
 export interface GeminiResponse {
@@ -205,13 +207,17 @@ Rules:
       
       Always be helpful, encouraging, accurate, and concise. Format key points cleanly with markdown.`);
 
-    const userPrompt = contentType ? 
+    let userPrompt = contentType ? 
       `Topic: ${topic || message}
       Difficulty Level: ${difficulty || 'medium'}
       Subject Context: ${subject || 'general'}
       
       Generate ${contentType} content STRICTLY for "${topic || message}" ONLY. Focus exclusively on the provided topic and ensure all content is accurate, relevant, and directly related to "${topic || message}". DO NOT include any concepts from other subjects or unrelated topics.` 
       : (topic && topic !== 'General' && !['hy', 'hi', 'hello', 'hey'].includes(topic.toLowerCase().trim()) ? `[Context Topic: ${topic}]\n${message}` : message);
+
+    if (req.groundedContext && req.groundedContext.trim()) {
+      userPrompt += `\n\n=== VERIFIED GROUNDED COURSE SOURCE MATERIAL (${req.sourceTitle || 'Selected Course Resource'}) ===\n${req.groundedContext}\n=======================================================\nCRITICAL GROUNDING REQUIREMENT: All generated ${contentType || 'study material'} (questions, answers, branches, formulas, key points) MUST be strictly grounded in, derived from, and faithful to the provided course source material above. Do not invent facts or concepts not found in this material.`;
+    }
 
     const historyParts = context && context.length > 0 
       ? "\n\nConversation History:\n" + context.map(c => `${c.role === 'user' ? 'User' : 'Assistant'}: ${c.content}`).join("\n") + "\n"

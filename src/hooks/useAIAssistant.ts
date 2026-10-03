@@ -115,7 +115,17 @@ export const useAIAssistant = () => {
     }
   };
 
-  const generateContent = async (contentType: string, topic: string, difficulty: string, count: number, subject?: string) => {
+  const generateContent = async (
+    contentType: string,
+    topic: string,
+    difficulty: string,
+    count: number,
+    subject?: string,
+    options?: {
+      groundedContext?: string;
+      sourceTitle?: string;
+    }
+  ) => {
     setIsLoading(true);
     
     try {
@@ -149,13 +159,17 @@ export const useAIAssistant = () => {
       try {
         const { data, error } = await supabase.functions.invoke('ai-assistant', {
           body: {
-            message: sanitizedTopic,
+            message: options?.groundedContext
+              ? `${options.groundedContext}\n\nTask: Generate ${validContentType} on topic: ${sanitizedTopic}`
+              : sanitizedTopic,
             contentType: validContentType,
             topic: sanitizedTopic,
             difficulty: validDifficulty,
             count: validCount,
             subject: subject ? sanitizeHtml(subject) : undefined,
-            userType: user?.userType || 'exam'
+            userType: user?.userType || 'exam',
+            groundedContext: options?.groundedContext,
+            sourceTitle: options?.sourceTitle,
           }
         });
 
@@ -170,7 +184,9 @@ export const useAIAssistant = () => {
           difficulty: validDifficulty,
           count: validCount,
           subject: subject ? sanitizeHtml(subject) : undefined,
-          userType: user?.userType || 'exam'
+          userType: user?.userType || 'exam',
+          groundedContext: options?.groundedContext,
+          sourceTitle: options?.sourceTitle,
         });
         if (directRes.error) {
           throw new Error(`${directRes.error}: ${directRes.details || ''}`);

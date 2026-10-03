@@ -15,31 +15,23 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { getLearnerMastery, getLearnerEvents, LearnerMasteryRecord, LearnerEventRecord, MasteryStatus } from '@/api/learnerAPI';
+import { getLearnerMastery, LearnerMasteryRecord, MasteryStatus } from '@/api/learnerAPI';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { navigateToTab } from '@/utils/navigation';
 
 export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void }> = ({ onNavigateToAssessment }) => {
   const { user } = useAuth();
   const [masteryList, setMasteryList] = useState<LearnerMasteryRecord[]>([]);
-  const [recentEvents, setRecentEvents] = useState<LearnerEventRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showEventLog, setShowEventLog] = useState(false);
 
   const userId = user?.user_id || user?.id || 'default_user';
 
   const loadMastery = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const [masteryRes, eventsRes] = await Promise.all([
-        getLearnerMastery(userId),
-        getLearnerEvents(userId, 5),
-      ]);
+      const masteryRes = await getLearnerMastery(userId);
       if (masteryRes.success && Array.isArray(masteryRes.mastery)) {
         setMasteryList(masteryRes.mastery);
-      }
-      if (eventsRes.success && Array.isArray(eventsRes.events)) {
-        setRecentEvents(eventsRes.events);
       }
     } catch {
       // Cold start or offline fallback
@@ -225,45 +217,6 @@ export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void 
             </div>
           </div>
         </>
-      )}
-
-      {/* Auditable Event History Collapsible */}
-      {recentEvents.length > 0 && (
-        <div className="pt-2 border-t border-border">
-          <button
-            type="button"
-            onClick={() => setShowEventLog(!showEventLog)}
-            className="flex items-center justify-between w-full text-xs font-medium text-muted-foreground hover:text-foreground py-1"
-          >
-            <span className="flex items-center gap-1.5">
-              <History className="w-3.5 h-3.5 text-indigo-500" />
-              Recent BKT Audit Events ({recentEvents.length})
-            </span>
-            {showEventLog ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-
-          {showEventLog && (
-            <div className="mt-2 space-y-1.5 animate-fade-in">
-              {recentEvents.map((evt) => (
-                <div key={evt.id} className="text-xs p-2 rounded-md bg-muted/40 border border-border flex items-center justify-between">
-                  <div>
-                    <span className="font-medium text-foreground">{evt.topic}</span>
-                    <span className="text-muted-foreground ml-2">[{evt.eventType}]</span>
-                    <p className="text-[11px] text-muted-foreground">{evt.evidenceDetails}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-semibold text-indigo-600">
-                      {Math.round(evt.priorMastery * 100)}% → {Math.round(evt.posteriorMastery * 100)}%
-                    </span>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       )}
     </Card>
   );

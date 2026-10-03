@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,10 +21,12 @@ import {
   AlertCircle,
   ExternalLink,
   UploadCloud,
+  TrendingUp,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
-import { generateAssessment, getAssessmentHistory, AssessmentQuestion, DiagnosticReport } from '@/api/assessmentAPI';
+import { generateAssessment, getAssessmentHistory, getDiagnosticAttempt, AssessmentQuestion, DiagnosticReport } from '@/api/assessmentAPI';
 import { listResources } from '@/api/resourceAPI';
 import { getAllPages } from '@/api/pageAPI';
 import { exportPageToMarkdown } from '@/api/exportAPI';
@@ -32,6 +34,7 @@ import { ingestSource } from '@/api/ragAPI';
 import { cleanAiResponseToReadableNotes } from '@/utils/notesFormatter';
 import { QuizViewer } from '@/components/flashcards/QuizViewer';
 import { navigateToTab } from '@/utils/navigation';
+import { AssessmentAnalyticsModal, AssessmentAttemptGroup } from './AssessmentAnalyticsModal';
 
 export interface AssessmentSourceItem {
   id: string;
@@ -96,6 +99,10 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
   const [activeQuestions, setActiveQuestions] = useState<AssessmentQuestion[] | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [generationNotice, setGenerationNotice] = useState<string | null>(null);
+
+  const [analyticsModalGroup, setAnalyticsModalGroup] = useState<AssessmentAttemptGroup | null>(null);
+  const [analyticsModalAttempt, setAnalyticsModalAttempt] = useState<any | null>(null);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
 
   useEffect(() => {
     const handlePrefill = (e: any) => {
@@ -223,9 +230,9 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
   // Fetch assessment history
   useEffect(() => {
     async function loadHistory() {
-      if (!user?.user_id) return;
+      const effectiveUserId = user?.user_id || user?.id || 'default_user';
       try {
-        const res = await getAssessmentHistory(user.user_id);
+        const res = await getAssessmentHistory(effectiveUserId);
         if (res.success && res.history) {
           setHistory(res.history);
         }
@@ -234,7 +241,130 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
       }
     }
     loadHistory();
+
+    const handleRefresh = () => loadHistory();
+    window.addEventListener('studymate-bkt-refresh', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
+    return () => {
+      window.removeEventListener('studymate-bkt-refresh', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+    };
   }, [user, activeQuestions]);
+
+  // Logically group assessment attempts by normalized title & topic
+  const attemptGroups: AssessmentAttemptGroup[] = useMemo(() => {
+    const map = new Map<string, AssessmentAttemptGroup>();
+
+    history.forEach((att) => {
+      const normTitle = (att.title || 'Course Assessment').trim();
+      const normTopic = (att.topic || '').trim().toLowerCase();
+      const key = `${normTitle.toLowerCase()}:::${normTopic}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          title: normTitle,
+          topic: att.topic,
+          subtopic: att.subtopic,
+          difficulty: att.difficulty,
+          bestScore: att.percentage,
+          latestScore: att.percentage,
+          totalQuestions: att.totalQuestions,
+          attempts: [att],
+          latestAttempt: att,
+        });
+      } else {
+        const group = map.get(key)!;
+        group.attempts.push(att);
+        if (att.percentage > group.bestScore) {
+          group.bestScore = att.percentage;
+        }
+      }
+    });
+
+    map.forEach((group) => {
+      group.attempts.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+      group.latestAttempt = group.attempts[0];
+      group.latestScore = group.attempts[0].percentage;
+    });
+
+    return Array.from(map.values());
+  }, [history]);
+
+  const handleOpenAnalytics = (group: AssessmentAttemptGroup, attempt?: any) => {
+    setAnalyticsModalGroup(group);
+    setAnalyticsModalAttempt(attempt || group.latestAttempt);
+    setIsAnalyticsOpen(true);
+  };
+
+  const handleRetakeAssessment = async (group: AssessmentAttemptGroup, attempt?: any) => {
+    const targetAttempt = attempt || group.latestAttempt;
+    setIsGenerating(true);
+    setGenerationNotice(null);
+
+    // 1. First, try to retrieve the original attempt's questions so the student retakes the exact same assessment items
+    try {
+      if (targetAttempt?.id) {
+        const diagData = await getDiagnosticAttempt(targetAttempt.id, user?.user_id || user?.id || 'default_user');
+        if (diagData && Array.isArray(diagData.questions) && diagData.questions.length > 0) {
+          setActiveQuestions(diagData.questions);
+          setTopic(targetAttempt.topic || group.topic);
+          setSubtopic(targetAttempt.subtopic || group.subtopic || '');
+          setDifficulty((targetAttempt.difficulty as any) || (group.difficulty as any) || 'medium');
+          setIsGenerating(false);
+          toast({
+            title: 'Retaking Assessment',
+            description: `Starting new attempt for ${group.title}. Previous attempt scores are preserved.`,
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load cached questions for retake, generating new attempt questions:', e);
+    }
+
+    // 2. Fallback: Generate fresh grounded questions using the exact same parameters
+    try {
+      const result = await generateAssessment({
+        userId: user?.user_id || user?.id || 'default_user',
+        topic: targetAttempt.topic || group.topic,
+        subtopic: targetAttempt.subtopic || group.subtopic || undefined,
+        difficulty: (targetAttempt.difficulty as any) || (group.difficulty as any) || 'medium',
+        count: targetAttempt.totalQuestions || 5,
+        questionType: 'MCQ',
+      });
+
+      if (result.questions && result.questions.length > 0) {
+        setActiveQuestions(result.questions);
+        setTopic(targetAttempt.topic || group.topic);
+        setSubtopic(targetAttempt.subtopic || group.subtopic || '');
+        setDifficulty((targetAttempt.difficulty as any) || (group.difficulty as any) || 'medium');
+        toast({
+          title: 'Retaking Assessment',
+          description: `Generated fresh items for ${group.title}. Previous attempt scores are preserved.`,
+        });
+        return;
+      }
+    } catch (err: any) {
+      // 3. Client offline fallback
+      const diagQuestions = generateClientTopicQuestions(
+        targetAttempt.topic || group.topic,
+        targetAttempt.subtopic || group.subtopic || '',
+        (targetAttempt.difficulty as any) || 'medium',
+        targetAttempt.totalQuestions || 5,
+        'MCQ'
+      );
+      setActiveQuestions(diagQuestions);
+      setTopic(targetAttempt.topic || group.topic);
+      setSubtopic(targetAttempt.subtopic || group.subtopic || '');
+      toast({
+        title: 'Retaking Assessment',
+        description: `Starting new diagnostic attempt for ${group.title}.`,
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Client-side subject-faithful diagnostic generator (Used when offline or as instant fallback)
   const generateClientTopicQuestions = (
@@ -961,51 +1091,156 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
       </Card>
 
       {/* Recent Assessment Attempts History */}
-      {history.length > 0 && (
+      {attemptGroups.length > 0 && (
         <Card className="p-6 space-y-4">
-          <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-            <History className="w-4 h-4 text-indigo-600" />
-            Recent Assessment History & Diagnostic Reports
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <History className="w-4 h-4 text-indigo-600" />
+              Recent Assessment History & Diagnostic Reports
+            </h3>
+            <Badge variant="outline" className="text-xs text-muted-foreground font-normal">
+              {attemptGroups.length} Assessment{attemptGroups.length > 1 ? 's' : ''} ({history.length} Attempt{history.length > 1 ? 's' : ''})
+            </Badge>
+          </div>
 
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {history.map((att) => (
-              <Card key={att.id} className="p-4 border bg-gray-50/60 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-semibold text-sm text-gray-900">{att.title}</h4>
-                    <p className="text-xs text-gray-500">
-                      {att.topic} {att.subtopic ? `• ${att.subtopic}` : ''}
-                    </p>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {attemptGroups.map((group) => {
+              const isMultiple = group.attempts.length > 1;
+              const latest = group.latestAttempt;
+
+              return (
+                <Card
+                  key={group.key}
+                  className="p-4 border bg-gray-50/60 dark:bg-card space-y-3 shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-semibold text-sm text-foreground truncate" title={group.title}>
+                          {group.title}
+                        </h4>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {group.topic} {group.subtopic ? `• ${group.subtopic}` : ''}
+                        </p>
+                      </div>
+
+                      {isMultiple ? (
+                        <Badge
+                          variant="outline"
+                          className={
+                            group.bestScore >= 80
+                              ? 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-semibold shrink-0'
+                              : group.bestScore >= 60
+                              ? 'border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 text-xs font-semibold shrink-0'
+                              : 'border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-300 text-xs font-semibold shrink-0'
+                          }
+                        >
+                          Best Score: {group.bestScore}%
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className={
+                            latest.percentage >= 80
+                              ? 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0'
+                              : latest.percentage >= 60
+                              ? 'border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 shrink-0'
+                              : 'border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-300 shrink-0'
+                          }
+                        >
+                          {latest.percentage}%
+                        </Badge>
+                      )}
+                    </div>
+
+                    {!isMultiple ? (
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/60">
+                        <span className="flex items-center gap-1 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Score: {latest.score}/{latest.totalQuestions}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          Date: {new Date(latest.completedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-border/60 space-y-1 text-xs">
+                        <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
+                          {group.attempts.map((att, idx) => {
+                            const attemptNumber = group.attempts.length - idx;
+                            return (
+                              <div
+                                key={att.id}
+                                onClick={() => handleOpenAnalytics(group, att)}
+                                className="flex items-center justify-between py-1 px-1.5 rounded-md hover:bg-muted/80 cursor-pointer transition-colors text-muted-foreground text-[11px]"
+                                title="Click to view analytics for this attempt"
+                              >
+                                <span className="font-medium text-foreground">
+                                  Attempt {attemptNumber}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`font-semibold ${
+                                      att.percentage >= 80
+                                        ? 'text-emerald-600'
+                                        : att.percentage >= 60
+                                        ? 'text-amber-600'
+                                        : 'text-rose-600'
+                                    }`}
+                                  >
+                                    {att.percentage}%
+                                  </span>
+                                  <span>—</span>
+                                  <span>{new Date(att.completedAt).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      att.percentage >= 80
-                        ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
-                        : att.percentage >= 60
-                        ? 'border-amber-300 text-amber-700 bg-amber-50'
-                        : 'border-rose-300 text-rose-700 bg-rose-50'
-                    }
-                  >
-                    {att.percentage}%
-                  </Badge>
-                </div>
 
-                <div className="flex items-center justify-between text-xs text-gray-600 pt-2 border-t">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    Score: {att.score}/{att.totalQuestions}
-                  </span>
-                  <span className="text-gray-400">
-                    {new Date(att.completedAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </Card>
-            ))}
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/60 mt-auto">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenAnalytics(group, latest)}
+                      className="flex-1 h-8 text-xs gap-1.5 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/40"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                      View Analytics
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRetakeAssessment(group, latest)}
+                      className="flex-1 h-8 text-xs gap-1.5 hover:bg-purple-50 hover:text-purple-700 dark:hover:bg-purple-950/40"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-purple-600" />
+                      Retake
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </Card>
       )}
+
+      {/* Dedicated Assessment Analytics Modal */}
+      <AssessmentAnalyticsModal
+        isOpen={isAnalyticsOpen}
+        onClose={() => setIsAnalyticsOpen(false)}
+        group={analyticsModalGroup}
+        selectedAttempt={analyticsModalAttempt}
+        userId={user?.user_id || user?.id || 'default_user'}
+        onRetake={(att) => {
+          if (analyticsModalGroup) {
+            handleRetakeAssessment(analyticsModalGroup, att);
+          }
+        }}
+      />
     </div>
   );
 };

@@ -312,6 +312,9 @@ export const ResourceSpace = () => {
       resetForm();
       setShowAddDialog(false);
 
+      window.dispatchEvent(new CustomEvent('studymate-resource-added', { detail: resource }));
+      window.dispatchEvent(new CustomEvent('studymate-resources-changed'));
+
       toast({
         title: 'Resource saved',
         description: `${resource.title} is now available in your vault.`,
@@ -340,6 +343,7 @@ export const ResourceSpace = () => {
 
       await deleteResource(resource.id);
       setResources((current) => current.filter((item) => item.id !== resource.id));
+      window.dispatchEvent(new CustomEvent('studymate-resources-changed'));
 
       toast({
         title: 'Resource deleted',

@@ -25,6 +25,7 @@ import {
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { generateAssessment, getAssessmentHistory, AssessmentQuestion, DiagnosticReport } from '@/api/assessmentAPI';
+import { listResources } from '@/api/resourceAPI';
 import { QuizViewer } from '@/components/flashcards/QuizViewer';
 import { navigateToTab } from '@/utils/navigation';
 
@@ -65,18 +66,43 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
   useEffect(() => {
     async function loadSources() {
       try {
-        const res = await fetch(`/api/resources?userId=${encodeURIComponent(user?.user_id || 'default_user')}`);
+        // 1. First try authorized listResources() from resourceAPI
+        try {
+          const resList = await listResources();
+          if (Array.isArray(resList) && resList.length > 0) {
+            setAvailableSources(resList);
+            return;
+          }
+        } catch {
+          // Token might not be present; proceed to direct API query
+        }
+
+        // 2. Direct API call with userId query param fallback
+        const effectiveUserId = user?.user_id || user?.id || 'default_user';
+        const res = await fetch(`/api/resources?userId=${encodeURIComponent(effectiveUserId)}`);
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) {
-            setAvailableSources(data);
+          const items = Array.isArray(data) ? data : Array.isArray(data?.resources) ? data.resources : [];
+          if (items.length > 0) {
+            setAvailableSources(items);
+            return;
           }
         }
-      } catch {
-        // Fallback
+      } catch (err) {
+        console.warn('Could not load course resources for assessment dropdown:', err);
       }
     }
     loadSources();
+
+    const handleRefresh = () => loadSources();
+    window.addEventListener('studymate-resource-added', handleRefresh);
+    window.addEventListener('studymate-resources-changed', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
+    return () => {
+      window.removeEventListener('studymate-resource-added', handleRefresh);
+      window.removeEventListener('studymate-resources-changed', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+    };
   }, [user]);
 
   // Fetch assessment history
@@ -589,15 +615,32 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
           {/* Source / Course Selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">Course Source Material</label>
-            <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
+            <Select
+              value={selectedSourceId}
+              onValueChange={(val) => {
+                setSelectedSourceId(val);
+                if (val !== 'all') {
+                  const src = availableSources.find((s) => s.id === val);
+                  if (src) {
+                    if (src.folder && (!topic || topic === 'Foundational Course Review')) {
+                      setTopic(src.folder);
+                    } else if (src.title && (!topic || topic === 'Foundational Course Review')) {
+                      setTopic(src.title);
+                    }
+                  }
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="All Uploaded Materials" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Uploaded Course Sources</SelectItem>
+                <SelectItem value="all">
+                  All Uploaded Course Sources{availableSources.length > 0 ? ` (${availableSources.length})` : ''}
+                </SelectItem>
                 {availableSources.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.title} ({s.type})
+                    {s.title} ({s.type || 'DOCUMENT'})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -614,7 +657,10 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
                 </button>
               </p>
             ) : (
-              <p className="text-xs text-muted-foreground">Select a specific textbook, slide deck, or all uploaded materials.</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <span className="text-emerald-600 font-semibold">{availableSources.length} source{availableSources.length > 1 ? 's' : ''} available</span>
+                <span>• Choose a specific material or keep 'All Uploaded Course Sources'.</span>
+              </p>
             )}
           </div>
 

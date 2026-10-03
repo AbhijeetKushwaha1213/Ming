@@ -97,6 +97,7 @@ export interface FileBlock extends BaseBlock {
   filename: string;
   file_type: string;
   file_size: number;
+  url?: string;
 }
 
 export interface EmbedBlock extends BaseBlock {

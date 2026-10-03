@@ -13,7 +13,22 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { getFile, uploadFile } from '@/api/fileAPI';
-import { Trash2, Upload, Download, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Trash2,
+  Upload,
+  Download,
+  Plus,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  FileText,
+  Maximize2,
+  Minimize2,
+  Loader2,
+  FileCode,
+  Image as ImageIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface BlockRendererProps {
@@ -697,11 +712,94 @@ function ImageBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRen
   );
 }
 
-// File block renderer
+// File block renderer with integrated viewer & preview
 function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRendererProps, 'onSlashCommand'>) {
   if (block.type !== 'file') return null;
 
   const [isUploading, setIsUploading] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [resolvedUrl, setResolvedUrl] = useState<string>('');
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [textContent, setTextContent] = useState<string | null>(null);
+
+  // Convert base64 data URLs to clean Blob URLs for native browser PDF and file viewing
+  const toBlobUrl = useCallback((dataOrHttpUrl: string): string => {
+    if (!dataOrHttpUrl || !dataOrHttpUrl.startsWith('data:')) {
+      return dataOrHttpUrl;
+    }
+    try {
+      const parts = dataOrHttpUrl.split(',');
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      return URL.createObjectURL(blob);
+    } catch (e) {
+      console.error('Failed to convert data URL to blob:', e);
+      return dataOrHttpUrl;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    let createdUrl: string | null = null;
+
+    const resolveFile = async () => {
+      if (block.url) {
+        const url = toBlobUrl(block.url);
+        if (url.startsWith('blob:')) {
+          createdUrl = url;
+        }
+        setResolvedUrl(url);
+
+        if (block.file_type?.includes('text') || /\.(txt|md|json|js|ts|py|csv)$/i.test(block.filename || '')) {
+          try {
+            const resp = await fetch(url);
+            const text = await resp.text();
+            setTextContent(text);
+          } catch (e) {
+            console.warn('Could not read text content:', e);
+          }
+        }
+        return;
+      }
+
+      if (block.file_id) {
+        setIsLoadingPreview(true);
+        try {
+          const blob = await getFile(block.file_id);
+          const url = URL.createObjectURL(blob);
+          createdUrl = url;
+          setResolvedUrl(url);
+
+          if (block.file_type?.includes('text') || /\.(txt|md|json|js|ts|py|csv)$/i.test(block.filename || '')) {
+            const text = await blob.text();
+            setTextContent(text);
+          }
+        } catch (err) {
+          console.warn('Could not load file blob:', err);
+        } finally {
+          setIsLoadingPreview(false);
+        }
+      } else {
+        setResolvedUrl('');
+        setTextContent(null);
+      }
+    };
+
+    void resolveFile();
+
+    return () => {
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
+    };
+  }, [block.url, block.file_id, block.filename, block.file_type, toBlobUrl]);
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return 'File';
@@ -710,14 +808,19 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const filename = (block.filename || '').toLowerCase();
+  const fileType = (block.file_type || '').toLowerCase();
+  const isPdf = fileType.includes('pdf') || filename.endsWith('.pdf');
+  const isImage = fileType.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(filename);
+  const isText = fileType.includes('text') || /\.(txt|md|json|js|ts|py|html|css|csv)$/i.test(filename);
+
   const handleUpload = async (file?: File | null) => {
     if (!file) return;
 
     setIsUploading(true);
 
-    // Read locally via data URL immediately
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const dataUrl = reader.result as string;
       onUpdate({
         url: dataUrl,
@@ -725,30 +828,32 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
         file_type: file.type || 'application/octet-stream',
         file_size: file.size,
       } as Partial<Block>);
+
+      try {
+        const metadata = await uploadFile(file, pageId);
+        if (metadata?.id) {
+          onUpdate({
+            url: dataUrl,
+            file_id: metadata.id,
+            filename: metadata.filename,
+            file_type: metadata.file_type,
+            file_size: metadata.file_size,
+          } as Partial<Block>);
+        }
+      } catch (error) {
+        console.warn('Remote file upload fallback to local storage:', error);
+      } finally {
+        setIsUploading(false);
+      }
     };
     reader.readAsDataURL(file);
-
-    try {
-      const metadata = await uploadFile(file, pageId);
-      if (metadata?.id) {
-        onUpdate({
-          file_id: metadata.id,
-          filename: metadata.filename,
-          file_type: metadata.file_type,
-          file_size: metadata.file_size,
-        } as Partial<Block>);
-      }
-    } catch (error) {
-      console.warn('Remote file upload fallback to local storage:', error);
-    } finally {
-      setIsUploading(false);
-    }
   };
 
   const handleDownload = async () => {
-    if (block.url) {
+    const targetUrl = resolvedUrl || block.url;
+    if (targetUrl) {
       const link = document.createElement('a');
-      link.href = block.url;
+      link.href = targetUrl;
       link.download = block.filename || 'download';
       link.click();
       return;
@@ -770,45 +875,266 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
 
   const hasFile = Boolean(block.file_id || block.filename || block.url);
 
+  const getFileIcon = () => {
+    if (isPdf) {
+      return (
+        <div className="w-9 h-9 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+          <FileText className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (isImage) {
+      return (
+        <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+          <ImageIcon className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (isText) {
+      return (
+        <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <FileCode className="w-4 h-4" />
+        </div>
+      );
+    }
+    return (
+      <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <Download className="w-4 h-4" />
+      </div>
+    );
+  };
+
   return (
-    <div className="block-content px-3 py-3 border border-border rounded-md flex flex-col gap-3 my-2 bg-card/60">
-      {hasFile ? (
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
-              <Download className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-medium text-xs truncate">{block.filename || 'Attached File'}</div>
-              <div className="text-[11px] text-muted-foreground truncate">
-                {block.file_type || 'Document'} • {formatFileSize(block.file_size)}
+    <div className="block-content my-3 space-y-3">
+      {/* File Card Header */}
+      <div className="p-3.5 border border-border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/80 shadow-2xs">
+        {hasFile ? (
+          <>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {getFileIcon()}
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-sm text-foreground truncate">{block.filename || 'Attached File'}</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                  <span className="truncate">{block.file_type || (isPdf ? 'application/pdf' : 'Document')}</span>
+                  <span>•</span>
+                  <span>{formatFileSize(block.file_size)}</span>
+                  {isPdf && (
+                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-rose-500/30 text-rose-600 dark:text-rose-400">
+                      PDF
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={() => void handleDownload()} className="text-xs h-7 px-2.5">
-            <Download className="mr-1.5 h-3.5 w-3.5" />
-            Download
-          </Button>
-        </div>
-      ) : (
-        <div className="text-xs text-muted-foreground">Upload a file attachment (PDF, slides, documents, etc.)</div>
-      )}
 
-      {editable && (
-        <div className="flex items-center gap-2">
-          <label className="inline-flex cursor-pointer">
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => void handleUpload(e.target.files?.[0])}
-            />
-            <Button type="button" variant="outline" size="sm" disabled={isUploading} asChild>
-              <span className="cursor-pointer text-xs h-7 px-2.5">
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
-                {isUploading ? 'Uploading...' : hasFile ? 'Replace File' : 'Choose File to Upload'}
-              </span>
-            </Button>
-          </label>
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Button
+                type="button"
+                variant={showPreview ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowPreview(!showPreview)}
+                className="text-xs h-8 px-2.5 gap-1.5 font-medium"
+              >
+                {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                <span>{showPreview ? 'Hide Preview' : 'View File'}</span>
+              </Button>
+
+              {resolvedUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(resolvedUrl, '_blank')}
+                  className="text-xs h-8 px-2.5 gap-1.5"
+                  title="Open in new window"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Open</span>
+                </Button>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleDownload()}
+                className="text-xs h-8 px-2.5 gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </Button>
+
+              {editable && (
+                <label className="inline-flex cursor-pointer">
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => void handleUpload(e.target.files?.[0])}
+                  />
+                  <Button type="button" variant="ghost" size="sm" disabled={isUploading} asChild>
+                    <span className="cursor-pointer text-xs h-8 px-2 gap-1 text-muted-foreground hover:text-foreground">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span className="hidden md:inline">{isUploading ? 'Uploading...' : 'Replace'}</span>
+                    </span>
+                  </Button>
+                </label>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-between gap-3 w-full">
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <FileText className="w-4 h-4 text-muted-foreground" />
+              <span>Upload a file attachment (PDF, slides, documents, etc.)</span>
+            </div>
+            {editable && (
+              <label className="inline-flex cursor-pointer">
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => void handleUpload(e.target.files?.[0])}
+                />
+                <Button type="button" variant="outline" size="sm" disabled={isUploading} asChild>
+                  <span className="cursor-pointer text-xs h-8 px-3 gap-1.5">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isUploading ? 'Uploading...' : 'Choose File to Upload'}</span>
+                  </span>
+                </Button>
+              </label>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Embedded File Viewer & Reader Panel */}
+      {hasFile && showPreview && (
+        <div className="mt-2">
+          {isLoadingPreview ? (
+            <div className="flex items-center justify-center p-12 bg-muted/20 rounded-2xl border border-border gap-2.5 text-xs text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span>Loading document preview...</span>
+            </div>
+          ) : resolvedUrl ? (
+            isPdf ? (
+              <div
+                className={cn(
+                  "w-full rounded-2xl overflow-hidden border border-border shadow-xs bg-muted/10 transition-all",
+                  isFullscreen
+                    ? "fixed inset-0 z-50 h-screen w-screen rounded-none bg-background/95 p-4 flex flex-col"
+                    : "relative"
+                )}
+              >
+                {/* PDF Viewer Header Toolbar */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b border-border text-xs">
+                  <div className="flex items-center gap-2 font-medium text-foreground min-w-0">
+                    <FileText className="w-4 h-4 text-rose-500 shrink-0" />
+                    <span className="truncate max-w-xs sm:max-w-md">{block.filename}</span>
+                    <Badge variant="outline" className="text-[10px] border-rose-500/30 text-rose-600 dark:text-rose-400 shrink-0">
+                      PDF Document
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(resolvedUrl, '_blank')}
+                      className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                      title="Open in new browser tab"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">New Tab</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsFullscreen(!isFullscreen)}
+                      className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Native PDF Reader Iframe / Object */}
+                <div className={cn("w-full bg-slate-900/5 dark:bg-slate-900/40 relative", isFullscreen ? "flex-1" : "h-[700px]")}>
+                  <object
+                    data={resolvedUrl}
+                    type="application/pdf"
+                    className="w-full h-full border-0"
+                  >
+                    <iframe
+                      src={resolvedUrl}
+                      className="w-full h-full border-0"
+                      title={block.filename || 'PDF Document'}
+                    />
+                    <div className="flex flex-col items-center justify-center p-8 text-center space-y-3 h-full">
+                      <FileText className="w-12 h-12 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Unable to render PDF directly in this frame.</p>
+                      <Button onClick={() => window.open(resolvedUrl, '_blank')} size="sm">
+                        <ExternalLink className="w-4 h-4 mr-1.5" /> Open PDF in New Tab
+                      </Button>
+                    </div>
+                  </object>
+                </div>
+              </div>
+            ) : isImage ? (
+              <div className="w-full rounded-2xl overflow-hidden border border-border p-4 bg-muted/10 flex justify-center">
+                <img
+                  src={resolvedUrl}
+                  alt={block.filename || 'Attached image'}
+                  className="max-h-[550px] w-auto rounded-xl object-contain cursor-pointer hover:opacity-95 transition-opacity shadow-sm"
+                  onClick={() => window.open(resolvedUrl, '_blank')}
+                />
+              </div>
+            ) : isText && textContent !== null ? (
+              <div className="w-full rounded-2xl overflow-hidden border border-border bg-muted/20">
+                <div className="px-4 py-2 bg-muted/50 border-b border-border flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">{block.filename}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={() => navigator.clipboard.writeText(textContent)}
+                  >
+                    Copy Text
+                  </Button>
+                </div>
+                <pre className="p-4 text-xs font-mono max-h-[450px] overflow-auto whitespace-pre-wrap break-words leading-relaxed text-foreground/90">
+                  {textContent}
+                </pre>
+              </div>
+            ) : (
+              <div className="p-5 rounded-2xl border border-border bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2.5">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <span className="font-medium text-foreground">Document is attached and ready to view.</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(resolvedUrl, '_blank')}
+                  className="h-8 text-xs gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Open Document
+                </Button>
+              </div>
+            )
+          ) : (
+            <div className="p-6 rounded-2xl border border-dashed border-border text-center text-xs text-muted-foreground space-y-2">
+              <p>Preview not generated yet for this file.</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void handleDownload()} className="text-xs">
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                Download to View
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

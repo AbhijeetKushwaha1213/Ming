@@ -26,8 +26,57 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { generateAssessment, getAssessmentHistory, AssessmentQuestion, DiagnosticReport } from '@/api/assessmentAPI';
 import { listResources } from '@/api/resourceAPI';
+import { getAllPages } from '@/api/pageAPI';
+import { exportPageToMarkdown } from '@/api/exportAPI';
+import { ingestSource } from '@/api/ragAPI';
+import { cleanAiResponseToReadableNotes } from '@/utils/notesFormatter';
 import { QuizViewer } from '@/components/flashcards/QuizViewer';
 import { navigateToTab } from '@/utils/navigation';
+
+export interface AssessmentSourceItem {
+  id: string;
+  pageId?: string;
+  title: string;
+  rawTitle: string;
+  parentTitle?: string;
+  type: string;
+  icon?: string;
+  isNotionPage: boolean;
+  pageData?: any;
+  resourceData?: any;
+}
+
+function extractPageContentText(page: any): string {
+  if (!page) return '';
+  if (typeof page.content === 'string') return page.content;
+  if (!Array.isArray(page.content)) return '';
+
+  const chunks: string[] = [];
+  if (page.title) chunks.push(`# ${page.title}`);
+
+  for (const block of page.content) {
+    if (!block) continue;
+    if (typeof block === 'string') {
+      chunks.push(block);
+      continue;
+    }
+    if (block.content) {
+      if (typeof block.content === 'string') {
+        chunks.push(block.content);
+      } else if (block.content.text) {
+        chunks.push(block.content.text);
+      }
+    }
+    if (Array.isArray(block.items)) {
+      for (const item of block.items) {
+        if (typeof item === 'string') chunks.push(item);
+        else if (item?.text) chunks.push(item.text);
+      }
+    }
+  }
+
+  return chunks.join('\n\n');
+}
 
 export const AdaptiveAssessmentGenerator: React.FC = () => {
   const { user } = useAuth();
@@ -41,7 +90,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
   const [count, setCount] = useState<number>(5);
   const [questionType, setQuestionType] = useState<'MCQ' | 'SHORT_ANSWER' | 'NUMERICAL' | 'MIXED'>('MCQ');
   const [selectedSourceId, setSelectedSourceId] = useState<string>('all');
-  const [availableSources, setAvailableSources] = useState<any[]>([]);
+  const [availableSources, setAvailableSources] = useState<AssessmentSourceItem[]>([]);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeQuestions, setActiveQuestions] = useState<AssessmentQuestion[] | null>(null);
@@ -62,32 +111,90 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
     };
   }, []);
 
-  // Fetch student's course materials
+  // Fetch student's course materials (Both Notion workspace pages and uploaded course files)
   useEffect(() => {
     async function loadSources() {
       try {
-        // 1. First try authorized listResources() from resourceAPI
+        const combinedSources: AssessmentSourceItem[] = [];
+        const seenKeys = new Set<string>();
+
+        // 1. Fetch student's Notion workspace pages (Resources tab)
         try {
-          const resList = await listResources();
-          if (Array.isArray(resList) && resList.length > 0) {
-            setAvailableSources(resList);
-            return;
+          const pages = await getAllPages();
+          if (Array.isArray(pages) && pages.length > 0) {
+            const pageMap = new Map<string, any>();
+            pages.forEach((p) => pageMap.set(p.id, p));
+
+            for (const page of pages) {
+              if (page.deleted_at) continue;
+              const parent = page.parent_id ? pageMap.get(page.parent_id) : null;
+              const parentTitle = parent?.title?.trim();
+              const pageTitle = (page.title || 'Untitled').trim();
+              const displayTitle = parentTitle ? `${parentTitle} / ${pageTitle}` : pageTitle;
+
+              const dedupeKey = `page::${displayTitle.toLowerCase()}`;
+              if (!seenKeys.has(dedupeKey)) {
+                seenKeys.add(dedupeKey);
+                combinedSources.push({
+                  id: `notion_page_${page.id}`,
+                  pageId: page.id,
+                  title: displayTitle,
+                  rawTitle: pageTitle,
+                  parentTitle: parentTitle || undefined,
+                  type: parent ? 'SUBPAGE' : 'PAGE',
+                  icon: page.icon || (parent ? '↳' : '📄'),
+                  isNotionPage: true,
+                  pageData: page,
+                });
+              }
+            }
           }
-        } catch {
-          // Token might not be present; proceed to direct API query
+        } catch (pageErr) {
+          console.warn('Could not load Notion pages for assessment dropdown:', pageErr);
         }
 
-        // 2. Direct API call with userId query param fallback
-        const effectiveUserId = user?.user_id || user?.id || 'default_user';
-        const res = await fetch(`/api/resources?userId=${encodeURIComponent(effectiveUserId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          const items = Array.isArray(data) ? data : Array.isArray(data?.resources) ? data.resources : [];
-          if (items.length > 0) {
-            setAvailableSources(items);
-            return;
+        // 2. Fetch Uploaded Course Files from /api/resources
+        try {
+          let fileList: any[] = [];
+          try {
+            const resList = await listResources();
+            if (Array.isArray(resList) && resList.length > 0) {
+              fileList = resList;
+            }
+          } catch {
+            // fallback
           }
+
+          if (fileList.length === 0) {
+            const effectiveUserId = user?.user_id || user?.id || 'default_user';
+            const res = await fetch(`/api/resources?userId=${encodeURIComponent(effectiveUserId)}`);
+            if (res.ok) {
+              const data = await res.json();
+              fileList = Array.isArray(data) ? data : Array.isArray(data?.resources) ? data.resources : [];
+            }
+          }
+
+          for (const item of fileList) {
+            const title = (item.title || 'Document').trim();
+            const dedupeKey = `file::${title.toLowerCase()}::${(item.type || '').toLowerCase()}`;
+            if (!seenKeys.has(dedupeKey)) {
+              seenKeys.add(dedupeKey);
+              combinedSources.push({
+                id: item.id || `file_${title}`,
+                title: title,
+                rawTitle: title,
+                type: item.type || 'DOCUMENT',
+                icon: item.type === 'PDF' ? '📕' : item.type === 'VIDEO' ? '🎥' : '📑',
+                isNotionPage: false,
+                resourceData: item,
+              });
+            }
+          }
+        } catch (fileErr) {
+          console.warn('Could not load uploaded course files for assessment dropdown:', fileErr);
         }
+
+        setAvailableSources(combinedSources);
       } catch (err) {
         console.warn('Could not load course resources for assessment dropdown:', err);
       }
@@ -97,10 +204,18 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
     const handleRefresh = () => loadSources();
     window.addEventListener('studymate-resource-added', handleRefresh);
     window.addEventListener('studymate-resources-changed', handleRefresh);
+    window.addEventListener('studymate-resources-updated', handleRefresh);
+    window.addEventListener('studymate-page-created', handleRefresh);
+    window.addEventListener('studymate-page-updated', handleRefresh);
+    window.addEventListener('studymate-page-deleted', handleRefresh);
     window.addEventListener('focus', handleRefresh);
     return () => {
       window.removeEventListener('studymate-resource-added', handleRefresh);
       window.removeEventListener('studymate-resources-changed', handleRefresh);
+      window.removeEventListener('studymate-resources-updated', handleRefresh);
+      window.removeEventListener('studymate-page-created', handleRefresh);
+      window.removeEventListener('studymate-page-updated', handleRefresh);
+      window.removeEventListener('studymate-page-deleted', handleRefresh);
       window.removeEventListener('focus', handleRefresh);
     };
   }, [user]);
@@ -444,6 +559,43 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
     setIsGenerating(true);
     setGenerationNotice(null);
 
+    const selectedSource = availableSources.find((s) => s.id === selectedSourceId);
+    let effectiveSourceId: string | undefined = selectedSourceId !== 'all' ? selectedSourceId : undefined;
+
+    // If a Notion workspace page is selected, ingest its notes content into ChromaDB first so questions are 100% grounded in the student's actual notes
+    if (selectedSource?.isNotionPage && selectedSource.pageData) {
+      try {
+        let pageText = '';
+        try {
+          pageText = await exportPageToMarkdown(selectedSource.pageData.id, true);
+        } catch {
+          pageText = extractPageContentText(selectedSource.pageData);
+        }
+
+        if (pageText) {
+          const cleanText = cleanAiResponseToReadableNotes(pageText);
+          const ingestRes = await ingestSource({
+            text: cleanText,
+            title: selectedSource.title,
+            topic: topic.trim(),
+            subtopic: subtopic.trim() || undefined,
+            userId: user?.user_id || user?.id || 'default_user',
+            sourceType: 'NOTE',
+            sourceId: selectedSource.pageData.id,
+            documentId: selectedSource.pageData.id,
+          });
+          if (ingestRes?.sourceId || ingestRes?.documentId) {
+            effectiveSourceId = ingestRes.sourceId || ingestRes.documentId;
+          } else {
+            effectiveSourceId = selectedSource.pageData.id;
+          }
+        }
+      } catch (ingestErr) {
+        console.warn('Could not ingest Notion page for grounded assessment:', ingestErr);
+        effectiveSourceId = selectedSource.pageData.id;
+      }
+    }
+
     try {
       const result = await generateAssessment({
         userId: user?.user_id || user?.id || 'default_user',
@@ -452,7 +604,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
         difficulty,
         count,
         questionType,
-        sourceId: selectedSourceId !== 'all' ? selectedSourceId : undefined,
+        sourceId: effectiveSourceId,
       });
 
       if (!result.questions || result.questions.length === 0) {
@@ -622,17 +774,27 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
                 if (val !== 'all') {
                   const src = availableSources.find((s) => s.id === val);
                   if (src) {
-                    if (src.folder && (!topic || topic === 'Foundational Course Review')) {
-                      setTopic(src.folder);
-                    } else if (src.title && (!topic || topic === 'Foundational Course Review')) {
-                      setTopic(src.title);
+                    if (src.isNotionPage) {
+                      if (src.parentTitle) {
+                        setTopic(src.parentTitle);
+                        setSubtopic(src.rawTitle);
+                      } else {
+                        setTopic(src.rawTitle);
+                        setSubtopic('');
+                      }
+                    } else {
+                      if (src.resourceData?.folder) {
+                        setTopic(src.resourceData.folder);
+                      } else if (src.rawTitle) {
+                        setTopic(src.rawTitle);
+                      }
                     }
                   }
                 }
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="All Uploaded Materials" />
+                <SelectValue placeholder="All Uploaded Materials & Notes" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
@@ -640,7 +802,13 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
                 </SelectItem>
                 {availableSources.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.title} ({s.type || 'DOCUMENT'})
+                    <span className="flex items-center gap-1.5">
+                      <span>{s.icon || (s.isNotionPage ? '📄' : '📑')}</span>
+                      <span>{s.title}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase font-mono ml-1">
+                        ({s.type})
+                      </span>
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>

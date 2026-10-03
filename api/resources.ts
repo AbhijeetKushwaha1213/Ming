@@ -199,7 +199,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
             OR: [
               { userId: targetUserId },
               { userId: 'default_user' },
-              { userId: 'test_student_42' },
             ],
           },
           orderBy: { createdAt: 'desc' },
@@ -214,7 +213,18 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         });
       }
 
-      json(res, 200, { resources: resources.map(serializeResource) });
+      // Deduplicate resources by title to avoid duplicate dropdown entries
+      const seenTitles = new Set<string>();
+      const deduped: any[] = [];
+      for (const r of resources) {
+        const key = (r.title || '').trim().toLowerCase();
+        if (!seenTitles.has(key)) {
+          seenTitles.add(key);
+          deduped.push(r);
+        }
+      }
+
+      json(res, 200, { resources: deduped.map(serializeResource) });
       return;
     }
 

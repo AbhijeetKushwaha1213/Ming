@@ -14,8 +14,10 @@ export async function ingestSource(params: {
   userId?: string;
   title?: string;
   sourceType?: string;
+  sourceId?: string;
+  documentId?: string;
 }): Promise<RagIngestResponse> {
-  const { file, url, text, transcript, topic = 'General', subtopic = 'Main', userId = 'default_user', title, sourceType } = params;
+  const { file, url, text, transcript, topic = 'General', subtopic = 'Main', userId = 'default_user', title, sourceType, sourceId, documentId } = params;
 
   let base64Data: string | undefined;
   let fileName: string | undefined;
@@ -46,6 +48,8 @@ export async function ingestSource(params: {
     url,
     text,
     transcript,
+    sourceId,
+    documentId,
   };
 
   const res = await fetch(`${API_BASE}/ingest`, {

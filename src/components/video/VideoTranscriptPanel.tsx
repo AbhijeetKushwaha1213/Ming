@@ -1,15 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import type { TranscriptSegment } from '@/types/video';
 import { formatTimestamp } from '@/utils/videoUtils';
-import { Search, Clock, FileText, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Search, Clock, FileText, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export interface VideoTranscriptPanelProps {
   segments: TranscriptSegment[];
   currentTime: number;
   onSeek: (seconds: number) => void;
   isLoading?: boolean;
+  isGenerating?: boolean;
+  onGenerateTranscript?: () => void;
   transcriptStatus?: string;
   className?: string;
 }
@@ -19,6 +22,8 @@ export const VideoTranscriptPanel: React.FC<VideoTranscriptPanelProps> = ({
   currentTime,
   onSeek,
   isLoading = false,
+  isGenerating = false,
+  onGenerateTranscript,
   transcriptStatus = 'ready',
   className = '',
 }) => {
@@ -97,9 +102,31 @@ export const VideoTranscriptPanel: React.FC<VideoTranscriptPanelProps> = ({
             </p>
             <p className="text-xs text-muted-foreground mt-1 max-w-xs">
               {transcriptStatus === 'pending'
-                ? 'Uploaded educational videos are automatically indexed with timestamped transcripts.'
-                : 'Once processing completes, timestamped segments will appear here.'}
+                ? 'Generate timestamped conceptual segments to inspect lecture notes and query the AI tutor.'
+                : transcriptStatus === 'processing'
+                ? 'Extracting conceptual lecture segments and indexing into StudyMate RAG...'
+                : 'No transcript available for this video.'}
             </p>
+            {onGenerateTranscript && transcriptStatus !== 'ready' && (
+              <Button
+                size="sm"
+                onClick={onGenerateTranscript}
+                disabled={isGenerating || transcriptStatus === 'processing'}
+                className="mt-4 bg-brand-gradient text-white shadow-glow text-xs"
+              >
+                {isGenerating || transcriptStatus === 'processing' ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Generating Transcript & Indexing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                    Generate AI Transcript & Index
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         ) : filteredSegments.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">

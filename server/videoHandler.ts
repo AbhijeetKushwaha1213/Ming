@@ -117,6 +117,13 @@ export async function videoHandler(req: VideoApiRequest, res: VideoApiResponse):
           transcript: body.transcript,
         });
 
+        // Trigger asynchronous background processing job if transcript not already ready
+        if (video.transcriptStatus !== 'ready') {
+          processVideoJob(video.id, userId, body.transcript).catch((err) => {
+            console.error(`Background video processing failed for ${video.id}:`, err);
+          });
+        }
+
         res.status(201).json({ success: true, video });
         return;
       }

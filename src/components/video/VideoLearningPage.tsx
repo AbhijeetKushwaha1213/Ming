@@ -32,6 +32,7 @@ export const VideoLearningPage: React.FC = () => {
   const [isLoadingTranscript, setIsLoadingTranscript] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isGeneratingTranscript, setIsGeneratingTranscript] = useState<boolean>(false);
 
   const playerRef = useRef<VideoPlayerRef | null>(null);
 
@@ -101,6 +102,29 @@ export const VideoLearningPage: React.FC = () => {
   const handleSeek = (seconds: number) => {
     if (playerRef.current) {
       playerRef.current.seekTo(seconds);
+    }
+  };
+
+  // Generate / Extract transcript on-demand
+  const handleGenerateTranscript = async () => {
+    if (!activeVideo || isGeneratingTranscript) return;
+    setIsGeneratingTranscript(true);
+    try {
+      toast.info(`Generating transcript and indexing "${activeVideo.title}"...`);
+      const updated = await processVideoById(activeVideo.id);
+      setActiveVideo(updated);
+      setVideos((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
+      if (updated.transcriptJson) {
+        try {
+          const segs = JSON.parse(updated.transcriptJson);
+          setTranscriptSegments(segs);
+        } catch {}
+      }
+      toast.success(`"${updated.title}" successfully indexed into StudyMate RAG!`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to generate transcript');
+    } finally {
+      setIsGeneratingTranscript(false);
     }
   };
 
@@ -202,6 +226,8 @@ export const VideoLearningPage: React.FC = () => {
                 currentTime={currentTime}
                 onSeek={handleSeek}
                 isLoading={isLoadingTranscript}
+                isGenerating={isGeneratingTranscript}
+                onGenerateTranscript={handleGenerateTranscript}
                 transcriptStatus={activeVideo.transcriptStatus}
               />
             </div>

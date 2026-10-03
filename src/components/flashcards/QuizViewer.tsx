@@ -239,12 +239,15 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
         questions: questions as any,
         answers: selectedAnswers,
       });
+      // Notify all BKT listeners (Learning Progress, LearnerMasteryCard, etc.)
+      window.dispatchEvent(new CustomEvent('studymate-bkt-refresh', { detail: { topic, subtopic } }));
       toast({
         title: 'Assessment Attempt Saved',
         description: 'Your score and diagnostic report have been saved to your profile.',
       });
     } catch {
-      // Local report still displays seamlessly
+      // Local report still displays seamlessly; trigger refresh in case local state updated
+      window.dispatchEvent(new CustomEvent('studymate-bkt-refresh', { detail: { topic, subtopic } }));
     }
   };
 

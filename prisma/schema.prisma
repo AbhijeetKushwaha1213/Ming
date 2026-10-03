@@ -207,4 +207,27 @@ model AssessmentMisconception {
   @@map("assessment_misconceptions")
 }
 
+model Video {
+  id               String   @id @default(cuid())
+  userId           String
+  title            String
+  sourceType       String   // 'youtube' | 'upload'
+  youtubeUrl       String?
+  youtubeVideoId   String?
+  storagePath      String?
+  fileUrl          String?
+  status           String   @default("pending") // 'pending' | 'processing' | 'ready' | 'failed'
+  durationSeconds  Float    @default(0)
+  thumbnailUrl     String?
+  transcriptStatus String   @default("pending") // 'pending' | 'processing' | 'ready' | 'failed'
+  transcriptJson   String?
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([userId, sourceType])
+  @@map("videos")
+}
+
 

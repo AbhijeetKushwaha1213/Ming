@@ -11,6 +11,7 @@ import { DiscoverResources } from '../discover/DiscoverResources';
 import { IntegrationsPage } from '../integrations/IntegrationsPage';
 import { useAuth } from '../auth/AuthProvider';
 import { NotionResourceManager } from '../notion/NotionResourceManager';
+import { VideoLearningPage } from '../video/VideoLearningPage';
 
 interface ContentRendererProps {
   activeTab: string;
@@ -46,6 +47,8 @@ export const ContentRenderer = ({ activeTab, onNavigate }: ContentRendererProps)
         return <IntegrationsPage />;
       case 'resources':
         return <NotionResourceManager />;
+      case 'video-learning':
+        return <VideoLearningPage />;
       case 'notifications':
         return <NotificationCenter onNavigate={handleNavigate} />;
       case 'discover':

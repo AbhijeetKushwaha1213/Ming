@@ -14,7 +14,8 @@ import {
   Settings,
   User,
   LogOut,
-  Plug
+  Plug,
+  Video
 } from 'lucide-react';
 
 interface DesktopSidebarProps {
@@ -40,6 +41,7 @@ export const DesktopSidebar = ({ activeTab, onTabChange, onSignOut, isCollapsed 
 
   const mainNavItems = [
     { id: 'home', label: 'Dashboard', icon: Home },
+    { id: 'video-learning', label: 'Video Learning', icon: Video },
     { id: 'flashcards', label: 'AI Generator', icon: Wand2 },
     { id: 'ai', label: 'AI Chat', icon: Bot },
     { id: 'achievements', label: 'Achievements', icon: Trophy },

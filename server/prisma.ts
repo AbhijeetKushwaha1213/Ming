@@ -333,5 +333,45 @@ export async function ensureStudyPlanSchema() {
   return studyPlanSchemaPromise;
 }
 
+let videoSchemaPromise: Promise<void> | null = null;
+
+async function createVideoSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS videos (
+      id TEXT PRIMARY KEY NOT NULL,
+      userId TEXT NOT NULL,
+      title TEXT NOT NULL,
+      sourceType TEXT NOT NULL,
+      youtubeUrl TEXT,
+      youtubeVideoId TEXT,
+      storagePath TEXT,
+      fileUrl TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      durationSeconds REAL NOT NULL DEFAULT 0,
+      thumbnailUrl TEXT,
+      transcriptStatus TEXT NOT NULL DEFAULT 'pending',
+      transcriptJson TEXT,
+      errorMessage TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS videos_userId_createdAt_idx ON videos(userId, createdAt)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS videos_userId_sourceType_idx ON videos(userId, sourceType)',
+  );
+}
+
+export async function ensureVideoSchema() {
+  if (!videoSchemaPromise) {
+    videoSchemaPromise = createVideoSchema();
+  }
+
+  return videoSchemaPromise;
+}
+
 
 

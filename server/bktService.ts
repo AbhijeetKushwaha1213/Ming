@@ -339,6 +339,7 @@ export async function updateMasteryFromEvidence(params: {
     subtopic: params.subtopic || null,
     priorMastery: prior,
     masteryProbability: posterior,
+    posteriorMastery: posterior,
     attempts,
     confidence,
     status,

@@ -4,8 +4,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { RotateCcw, ThumbsUp, ThumbsDown, Shuffle, X } from 'lucide-react';
+import { RotateCcw, ThumbsUp, ThumbsDown, Shuffle, X, Brain } from 'lucide-react';
 import { Flashcard } from '@/hooks/useFlashcards';
+import { updateLearnerMastery } from '@/api/learnerAPI';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 interface FlashcardReviewProps {
   flashcards: Flashcard[];
@@ -14,6 +16,8 @@ interface FlashcardReviewProps {
 }
 
 export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: FlashcardReviewProps) => {
+  const { user } = useAuth();
+  const userId = user?.user_id || user?.id || 'default_user';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set());
@@ -46,6 +50,20 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
   const handleAnswer = (correct: boolean) => {
     onUpdateMastery(currentCard.id, correct);
     setReviewedCards(prev => new Set([...prev, currentCard.id]));
+
+    // Record BKT Bayesian Knowledge Tracing evidence
+    const topic = currentCard.tags?.[0] || currentCard.title || 'Flashcards';
+    updateLearnerMastery({
+      userId,
+      topic,
+      isCorrect: correct,
+      difficulty: currentCard.difficulty || 'medium',
+      eventType: 'ASSESSMENT_ANSWER',
+      evidenceDetails: `Flashcard Practice (${correct ? 'Correct' : 'Incorrect'}): "${(currentCard.question || '').slice(0, 40)}"`,
+    }).then(() => {
+      window.dispatchEvent(new CustomEvent('studymate-bkt-refresh', { detail: { topic } }));
+    }).catch(() => {});
+
     setTimeout(handleNext, 500);
   };
 

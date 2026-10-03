@@ -42,7 +42,13 @@ import {
   Play,
   RotateCcw,
   Clock,
-  Sparkles
+  Sparkles,
+  Brain,
+  CheckCircle2,
+  AlertCircle,
+  Activity,
+  ShieldCheck,
+  TrendingUp,
 } from 'lucide-react';
 import ProjectFocusView from '../projects/ProjectFocusView';
 import { AddProjectDialog } from '../projects/AddProjectDialog';
@@ -52,10 +58,12 @@ import { useAuth } from '../auth/AuthProvider';
 import { useProjects } from '@/hooks/useProjects';
 import { useSkills, getSkillCategory, parseSkillDetails } from '@/hooks/useSkills';
 import { useUserStats } from '@/hooks/useUserStats';
+import { useLearnerMastery } from '@/hooks/useLearnerMastery';
 import { FloatingStudyAgentBar } from './FloatingStudyAgentBar';
 import { DashboardCoverWidget } from './DashboardCoverWidget';
 import { LearnerMasteryCard } from './LearnerMasteryCard';
 import { CoursePrerequisiteGraph } from '../planner/CoursePrerequisiteGraph';
+import { SkillBKTQuickAssessmentModal } from './SkillBKTQuickAssessmentModal';
 import { navigateToTab } from '@/utils/navigation';
 
 export const CollegeDashboard = () => {
@@ -68,6 +76,12 @@ export const CollegeDashboard = () => {
   const { projects, updateProject, deleteProject } = useProjects();
   const { skills, updateSkill, deleteSkill } = useSkills();
   const { userStats } = useUserStats();
+  const { getSkillMastery, stats: bktStats, refresh: refreshBKT } = useLearnerMastery();
+  const [bktModalSkill, setBktModalSkill] = useState<{
+    skillName: string;
+    categoryName?: string;
+  } | null>(null);
+  const [skillFilter, setSkillFilter] = useState<'all' | 'needs-calibration' | 'mastered'>('all');
 
   // Filter Active vs Completed Projects
   const activeProjects = projects.filter(p => p.status !== 'completed' && (p.progress ?? 0) < 100);
@@ -305,18 +319,69 @@ export const CollegeDashboard = () => {
       {/* Track D: Visual Course Flow Map & Prerequisite DAG */}
       <CoursePrerequisiteGraph onSelectTopic={(topic) => navigateToTab('chat')} />
 
-      {/* 1. Learning Progress Block (Moved ABOVE Active Projects as requested) */}
+      {/* 1. Learning Progress Block (Integrated with Bayesian Knowledge Tracing BKT) */}
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-foreground">Learning Progress</h3>
-          <AddSkillDialog />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-foreground">Learning Progress</h3>
+              <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-200/60 font-semibold gap-1">
+                <Brain className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                BKT Mastery Model Active
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cognitive mastery computed dynamically via Bayesian Knowledge Tracing alongside your daily syllabus roadmap.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {skills.length > 0 && (
+              <div className="hidden sm:flex items-center gap-1.5 p-1 bg-muted/40 border border-border rounded-lg text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSkillFilter('all')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    skillFilter === 'all'
+                      ? 'bg-background shadow-xs font-semibold text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  All ({skills.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSkillFilter('needs-calibration')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    skillFilter === 'needs-calibration'
+                      ? 'bg-background shadow-xs font-semibold text-amber-700 dark:text-amber-300'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Needs Calibration
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSkillFilter('mastered')}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    skillFilter === 'mastered'
+                      ? 'bg-background shadow-xs font-semibold text-emerald-700 dark:text-emerald-300'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Mastered
+                </button>
+              </div>
+            )}
+            <AddSkillDialog />
+          </div>
         </div>
         
         {skills.length === 0 ? (
           <div className="text-center py-8">
             <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h4 className="text-lg font-medium text-foreground mb-2">No Skills Added</h4>
-            <p className="text-muted-foreground mb-4">Start by adding your first skill to track your learning progress</p>
+            <p className="text-muted-foreground mb-4">Start by adding your first skill to track your learning progress with BKT</p>
             <AddSkillDialog trigger={
               <Button variant="premium">
                 <Plus className="w-4 h-4 mr-2" />
@@ -326,19 +391,38 @@ export const CollegeDashboard = () => {
           </div>
         ) : (
           (() => {
-            const activeSkills = skills.filter(item => item.progress < 100);
-            const completedSkills = skills.filter(item => item.progress === 100);
+            const filteredSkills = skills.filter((item) => {
+              const bkt = getSkillMastery(item.skill);
+              if (skillFilter === 'needs-calibration') {
+                return bkt.attempts === 0 || bkt.status === 'developing';
+              }
+              if (skillFilter === 'mastered') {
+                return bkt.status === 'mastered';
+              }
+              return true;
+            });
+
+            const activeSkills = filteredSkills.filter(item => item.progress < 100);
+            const completedSkills = filteredSkills.filter(item => item.progress === 100);
 
             return (
               <div className="space-y-4">
                 {activeSkills.length === 0 && completedSkills.length > 0 ? (
                   <div className="text-center py-4 border border-dashed rounded-xl bg-muted/20">
-                    <p className="text-sm text-muted-foreground">All your added skills are fully mastered! 🏆</p>
+                    <p className="text-sm text-muted-foreground">All filtered skills in this view are completed! 🏆</p>
+                  </div>
+                ) : activeSkills.length === 0 && skills.length > 0 ? (
+                  <div className="text-center py-6 border border-dashed rounded-xl bg-muted/20 space-y-2">
+                    <p className="text-sm text-muted-foreground">No skills match the current filter "{skillFilter}".</p>
+                    <Button variant="outline" size="sm" onClick={() => setSkillFilter('all')}>
+                      View All Skills ({skills.length})
+                    </Button>
                   </div>
                 ) : (
                   activeSkills.map((item) => {
                     const details = parseSkillDetails(item.category);
                     const isExpanded = expandedSkillId === item.id;
+                    const bkt = getSkillMastery(item.skill);
                     
                     const syllabus = details.syllabus || [];
                     const firstUncompleted = syllabus.find(t => !t.completed);
@@ -353,6 +437,41 @@ export const CollegeDashboard = () => {
                     const isSyllabusEmpty = syllabus.length === 0;
                     const isTodayCompleted = todayTargets.length === 0;
 
+                    const getBktBadge = () => {
+                      if (bkt.attempts === 0) {
+                        return (
+                          <Badge variant="outline" className="text-xs border-dashed border-border text-muted-foreground flex items-center gap-1">
+                            <Brain className="w-3 h-3 text-muted-foreground" />
+                            BKT: Unassessed
+                          </Badge>
+                        );
+                      }
+                      switch (bkt.status) {
+                        case 'mastered':
+                          return (
+                            <Badge className="text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-300 flex items-center gap-1 font-semibold">
+                              <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              BKT: {bkt.masteryPercentage}% Mastered
+                            </Badge>
+                          );
+                        case 'proficient':
+                          return (
+                            <Badge className="text-xs bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-300 flex items-center gap-1 font-semibold">
+                              <CheckCircle2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                              BKT: {bkt.masteryPercentage}% Proficient
+                            </Badge>
+                          );
+                        case 'developing':
+                        default:
+                          return (
+                            <Badge className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-300 flex items-center gap-1 font-semibold">
+                              <Activity className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                              BKT: {bkt.masteryPercentage}% Developing
+                            </Badge>
+                          );
+                      }
+                    };
+
                     return (
                       <div 
                         key={item.id} 
@@ -360,14 +479,15 @@ export const CollegeDashboard = () => {
                       >
                         <div 
                           onClick={() => setExpandedSkillId(isExpanded ? null : item.id)}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors gap-4"
+                          className="flex flex-col lg:flex-row lg:items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors gap-4"
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2.5 mb-2">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span className="font-bold text-foreground text-base tracking-tight">{item.skill}</span>
                               <Badge variant="secondary" className="text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-100/50">
                                 {details.categoryName}
                               </Badge>
+                              {getBktBadge()}
                               {isTodayCompleted && !isSyllabusEmpty ? (
                                 <Badge className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-0">
                                   Today Done 🎉
@@ -379,18 +499,67 @@ export const CollegeDashboard = () => {
                               ) : null}
                             </div>
                             
-                            <div className="flex items-center space-x-3">
-                              <Progress value={item.progress} className="h-2 w-32 bg-secondary" />
-                              <span className="text-sm font-semibold text-foreground">{item.progress}%</span>
-                              {!isSyllabusEmpty && (
-                                <span className="text-xs text-muted-foreground hidden md:inline-block">
-                                  • Day {activeDay} of {Math.max(...syllabus.map(t => t.dayNumber))}
+                            {/* Dual Progress: Syllabus checklist + Bayesian Knowledge Tracing Probability */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 pt-0.5">
+                              {/* Syllabus Checklist Progress */}
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-muted-foreground font-medium">Syllabus:</span>
+                                <Progress value={item.progress} className="h-2 w-28 bg-secondary" />
+                                <span className="text-xs font-semibold text-foreground">{item.progress}%</span>
+                                {!isSyllabusEmpty && (
+                                  <span className="text-xs text-muted-foreground hidden md:inline-block">
+                                    • Day {activeDay} of {Math.max(...syllabus.map(t => t.dayNumber))}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* BKT Knowledge Mastery Probability */}
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                                  <Brain className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                  BKT Mastery:
                                 </span>
-                              )}
+                                <div className="w-28 h-2 rounded-full bg-secondary overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-500 ${
+                                      bkt.attempts === 0
+                                        ? 'bg-muted-foreground/30'
+                                        : bkt.status === 'mastered'
+                                        ? 'bg-emerald-500'
+                                        : bkt.status === 'proficient'
+                                        ? 'bg-blue-500'
+                                        : 'bg-amber-500'
+                                    }`}
+                                    style={{ width: `${bkt.attempts > 0 ? bkt.masteryPercentage : 0}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-bold text-foreground">
+                                  {bkt.attempts > 0 ? `${bkt.masteryPercentage}%` : 'Unassessed'}
+                                </span>
+                                {bkt.attempts > 0 && (
+                                  <span className="text-[11px] text-muted-foreground hidden xl:inline-block">
+                                    ({bkt.attempts} trials • {Math.round(bkt.confidence * 100)}% conf)
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center space-x-2 self-end sm:self-center">
+                          <div className="flex items-center space-x-2 self-end lg:self-center shrink-0">
+                            {/* BKT Quick Test Trigger */}
+                            <Button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBktModalSkill({ skillName: item.skill, categoryName: details.categoryName });
+                              }}
+                              size="sm" 
+                              variant="outline"
+                              className="h-8 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-950/30 gap-1.5 font-semibold"
+                            >
+                              <Brain className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                              <span>Test Mastery (BKT)</span>
+                            </Button>
+
                             <Button 
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -430,6 +599,74 @@ export const CollegeDashboard = () => {
 
                         {isExpanded && (
                           <div className="border-t border-border/60 bg-muted/10 p-5 space-y-5 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {/* BKT Cognitive Mastery Breakdown Panel */}
+                            <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-card dark:from-indigo-950/20 dark:via-purple-950/10 dark:to-card border border-indigo-100/80 dark:border-indigo-900/40 space-y-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-300">
+                                    BKT Cognitive Mastery Breakdown
+                                  </span>
+                                  <Badge variant="outline" className="text-[10px] bg-white dark:bg-card border-indigo-200">
+                                    Bayesian Model
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setBktModalSkill({ skillName: item.skill, categoryName: details.categoryName });
+                                    }}
+                                    className="h-7 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-100/60 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900/30 gap-1 font-semibold"
+                                  >
+                                    <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                    Quick BKT Test
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigateToTab('ai-generator', undefined, { topic: item.skill });
+                                    }}
+                                    className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                                  >
+                                    Full Assessment
+                                    <ArrowRight className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                <div className="p-2.5 rounded-lg bg-background/80 border border-border/80">
+                                  <span className="text-[11px] text-muted-foreground block">Mastery Probability P(L)</span>
+                                  <span className="text-base font-extrabold text-foreground">
+                                    {bkt.attempts > 0 ? `${bkt.masteryPercentage}%` : 'Unassessed'}
+                                  </span>
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-background/80 border border-border/80">
+                                  <span className="text-[11px] text-muted-foreground block">Mastery Status</span>
+                                  <span className="text-sm font-bold capitalize text-foreground">
+                                    {bkt.status}
+                                  </span>
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-background/80 border border-border/80">
+                                  <span className="text-[11px] text-muted-foreground block">Calibration Trials</span>
+                                  <span className="text-base font-extrabold text-foreground">
+                                    {bkt.attempts} <span className="text-xs font-normal text-muted-foreground">({bkt.correctCount} correct)</span>
+                                  </span>
+                                </div>
+                                <div className="p-2.5 rounded-lg bg-background/80 border border-border/80">
+                                  <span className="text-[11px] text-muted-foreground block">Model Confidence</span>
+                                  <span className="text-base font-extrabold text-foreground">
+                                    {Math.round(bkt.confidence * 100)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
                             <div className="flex flex-wrap items-center justify-between gap-3 text-sm border-b border-border/40 pb-4">
                               <div className="flex items-center gap-4 text-muted-foreground">
                                 <div>
@@ -481,22 +718,36 @@ export const CollegeDashboard = () => {
                                   <div className="grid grid-cols-1 gap-2">
                                     {todayTargets.map((topic) => (
                                       <div 
-                                        key={topic.id}
-                                        className="flex items-center space-x-3 p-3 bg-card border border-border/80 rounded-xl hover:bg-muted/40 transition-colors"
+                                        key={topic.id} 
+                                        className="flex items-center justify-between p-3 bg-card border border-border/80 rounded-xl hover:bg-muted/40 transition-colors gap-3"
                                       >
-                                        <input 
-                                          type="checkbox" 
-                                          checked={topic.completed}
-                                          onChange={(e) => {
-                                            e.stopPropagation();
-                                            handleToggleTopic(item, topic.id);
-                                          }}
-                                          className="w-4.5 h-4.5 text-indigo-600 border-border rounded focus:ring-indigo-500 cursor-pointer accent-indigo-600"
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-sm font-medium text-foreground truncate">{topic.topic}</p>
-                                          <p className="text-xs text-muted-foreground">Day {topic.dayNumber}</p>
+                                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                          <input 
+                                            type="checkbox" 
+                                            checked={topic.completed}
+                                            onChange={(e) => {
+                                              e.stopPropagation();
+                                              handleToggleTopic(item, topic.id);
+                                            }}
+                                            className="w-4.5 h-4.5 text-indigo-600 border-border rounded focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                                          />
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-foreground truncate">{topic.topic}</p>
+                                            <p className="text-xs text-muted-foreground">Day {topic.dayNumber}</p>
+                                          </div>
                                         </div>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setBktModalSkill({ skillName: topic.topic, categoryName: item.skill });
+                                          }}
+                                          className="h-7 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 gap-1 font-medium"
+                                        >
+                                          <Brain className="w-3 h-3" />
+                                          <span>Test BKT</span>
+                                        </Button>
                                       </div>
                                     ))}
                                   </div>
@@ -1017,6 +1268,20 @@ export const CollegeDashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Track D: Skill BKT Quick Assessment & Calibration Modal */}
+      {bktModalSkill && (
+        <SkillBKTQuickAssessmentModal
+          isOpen={!!bktModalSkill}
+          onClose={() => setBktModalSkill(null)}
+          skillName={bktModalSkill.skillName}
+          categoryName={bktModalSkill.categoryName}
+          currentMastery={getSkillMastery(bktModalSkill.skillName)}
+          onMasteryUpdated={() => {
+            refreshBKT();
+          }}
+        />
+      )}
     </div>
   );
 };

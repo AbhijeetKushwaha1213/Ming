@@ -268,7 +268,30 @@ def extract_video_or_audio(file_path_or_url: str, custom_transcript: Optional[st
     }]
 
 def _parse_timestamped_transcript(transcript: str) -> List[Dict[str, Any]]:
-    """Parse text with timestamps (e.g., [01:30] or 00:01:30 --> text) into segments."""
+    """Parse text or JSON with timestamps into segments."""
+    cleaned = transcript.strip()
+    if (cleaned.startswith("[") and cleaned.endswith("]")) or (cleaned.startswith("{") and cleaned.endswith("}")):
+        try:
+            parsed = json.loads(cleaned)
+            items = parsed if isinstance(parsed, list) else [parsed]
+            json_segments = []
+            for item in items:
+                start_val = float(item.get("timestamp_start", item.get("start", 0.0)))
+                end_val = float(item.get("timestamp_end", item.get("end", start_val + 30.0)))
+                txt_val = str(item.get("text", "")).strip()
+                if txt_val:
+                    json_segments.append({
+                        "timestamp_start": start_val,
+                        "timestamp_end": end_val,
+                        "topic": str(item.get("topic") or "Lecture Segment"),
+                        "subtopic": str(item.get("subtopic") or "Key Concepts"),
+                        "text": txt_val
+                    })
+            if json_segments:
+                return json_segments
+        except Exception:
+            pass
+
     segments = []
     # Match patterns like [00:15] or [1:20:30] or 00:15 - 00:45
     lines = transcript.strip().split("\n")
@@ -1060,7 +1083,8 @@ def grounded_chat(
     min_confidence: float = 0.55,
     top_k: int = 5,
     learner_state: Optional[Dict[str, Any]] = None,
-    language: Optional[str] = "english"
+    language: Optional[str] = "english",
+    source_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Source-Grounded AI Tutor Engine (Phase 8 + Phase 11 Multilingual):
@@ -1075,6 +1099,7 @@ def grounded_chat(
     search_data = search_relevant_chunks(
         query=query,
         user_id=user_id,
+        source_id=source_id,
         topic=topic,
         top_k=top_k,
         similarity_threshold=min_confidence
@@ -2089,6 +2114,7 @@ def main():
     chat_p = subparsers.add_parser("chat")
     chat_p.add_argument("--query", required=True)
     chat_p.add_argument("--user-id", default=None)
+    chat_p.add_argument("--source-id", default=None)
     chat_p.add_argument("--topic", default=None)
     chat_p.add_argument("--history", default=None)
     chat_p.add_argument("--learner-state", default=None)
@@ -2162,7 +2188,8 @@ def main():
             conversation_history=history,
             topic=args.topic,
             learner_state=learner_st,
-            language=getattr(args, "language", "english") or "english"
+            language=getattr(args, "language", "english") or "english",
+            source_id=args.source_id
         )
         print(json.dumps(res))
     elif args.command == "assessment-generate":

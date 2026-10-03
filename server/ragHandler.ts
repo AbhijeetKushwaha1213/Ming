@@ -297,9 +297,11 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     }
 
     const language = method === 'POST' ? (req.body?.language || req.body?.lang) : (req.query?.language || req.query?.lang);
+    const sourceId = method === 'POST' ? (req.body?.sourceId || req.body?.source_id) : (req.query?.sourceId || req.query?.source_id);
 
     const args = ['chat', '--query', String(query)];
     if (userId) args.push('--user-id', String(userId));
+    if (sourceId) args.push('--source-id', String(sourceId));
     if (topic) args.push('--topic', String(topic));
     if (history) args.push('--history', JSON.stringify(history));
     if (learnerState) args.push('--learner-state', JSON.stringify(learnerState));

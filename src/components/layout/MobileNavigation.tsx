@@ -17,7 +17,8 @@ import {
   LogOut,
   X,
   ChevronRight,
-  Plug
+  Plug,
+  Video
 } from 'lucide-react';
 
 interface MobileNavigationProps {
@@ -30,6 +31,7 @@ interface MobileNavigationProps {
 
 const navigationItems = [
   { id: 'home', label: 'Dashboard', icon: Home },
+  { id: 'video-learning', label: 'Video Learning', icon: Video },
   { id: 'flashcards', label: 'AI Generator', icon: Zap },
   { id: 'resources', label: 'Resources', icon: FileText },
   { id: 'achievements', label: 'Achievements', icon: Trophy },

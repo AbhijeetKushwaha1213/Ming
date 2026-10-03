@@ -201,6 +201,7 @@ export const AppLayout = ({
 
             <h1 className="text-xl font-bold tracking-tight text-gradient">
               {activeTab === 'home' ? 'Dashboard' :
+               activeTab === 'video-learning' ? 'Video Learning' :
                activeTab === 'flashcards' ? 'AI Generator' :
                activeTab === 'ai' ? 'AI Chat' :
                activeTab === 'achievements' ? 'Achievements' :

@@ -5,40 +5,75 @@ import type { Block, RichText, TextMark } from '@/types/notion';
  */
 
 /**
+ * Safely converts inline markdown formatting (**bold**, *italic*, `code`) into HTML.
+ */
+export function inlineMarkdownToHTML(text: string): string {
+  if (!text) return '';
+
+  // Escape HTML characters if plain text
+  let escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Bold: **text** or __text__
+  escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
+  escaped = escaped.replace(/__(.+?)__/g, '<strong class="font-semibold text-foreground">$1</strong>');
+
+  // Inline code: `code`
+  escaped = escaped.replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-muted/80 font-mono text-xs text-primary font-medium">$1</code>');
+
+  // Italic: *text* or _text_
+  escaped = escaped.replace(/(^|[^*_])\*([^*_\n]+)\*([^*_]|$)/g, '$1<em>$2</em>$3');
+  escaped = escaped.replace(/(^|[^*_])_([^*_\n]+)_([^*_]|$)/g, '$1<em>$2</em>$3');
+
+  return escaped;
+}
+
+/**
  * Convert RichText to HTML string for TipTap
  */
 export function richTextToHTML(richText: RichText): string {
-  let html = richText.text;
+  if (!richText) return '';
+  let html = inlineMarkdownToHTML(richText.text || '');
   
   // Apply marks in order
-  richText.marks.forEach(mark => {
-    switch (mark.type) {
-      case 'bold':
-        html = `<strong>${html}</strong>`;
-        break;
-      case 'italic':
-        html = `<em>${html}</em>`;
-        break;
-      case 'underline':
-        html = `<u>${html}</u>`;
-        break;
-      case 'strikethrough':
-        html = `<s>${html}</s>`;
-        break;
-      case 'code':
-        html = `<code>${html}</code>`;
-        break;
-      case 'link':
-        html = `<a href="${mark.attrs?.href || ''}">${html}</a>`;
-        break;
-      case 'color':
-        const style = [];
-        if (mark.attrs?.color) style.push(`color: ${mark.attrs.color}`);
-        if (mark.attrs?.backgroundColor) style.push(`background-color: ${mark.attrs.backgroundColor}`);
-        html = `<span style="${style.join('; ')}">${html}</span>`;
-        break;
-    }
-  });
+  if (Array.isArray(richText.marks)) {
+    richText.marks.forEach(mark => {
+      switch (mark.type) {
+        case 'bold':
+          if (!html.includes('<strong')) {
+            html = `<strong>${html}</strong>`;
+          }
+          break;
+        case 'italic':
+          if (!html.includes('<em')) {
+            html = `<em>${html}</em>`;
+          }
+          break;
+        case 'underline':
+          html = `<u>${html}</u>`;
+          break;
+        case 'strikethrough':
+          html = `<s>${html}</s>`;
+          break;
+        case 'code':
+          if (!html.includes('<code')) {
+            html = `<code>${html}</code>`;
+          }
+          break;
+        case 'link':
+          html = `<a href="${mark.attrs?.href || ''}">${html}</a>`;
+          break;
+        case 'color':
+          const style = [];
+          if (mark.attrs?.color) style.push(`color: ${mark.attrs.color}`);
+          if (mark.attrs?.backgroundColor) style.push(`background-color: ${mark.attrs.backgroundColor}`);
+          html = `<span style="${style.join('; ')}">${html}</span>`;
+          break;
+      }
+    });
+  }
   
   return html;
 }

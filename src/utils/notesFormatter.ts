@@ -29,6 +29,83 @@ export interface StructuredNotes {
 }
 
 /**
+ * Safely extracts a balanced JSON object containing notes, summary, or key_points
+ * from messy AI output that may contain markdown headings or multiple blocks.
+ */
+export function extractBalancedJsonObject(str: string): any {
+  if (!str || typeof str !== 'string') return null;
+
+  // Search for candidate opening braces near key identifiers
+  const searchTerms = ['"notes"', '"key_points"', '"summary"', '"title"'];
+  let candidateIndices: number[] = [];
+
+  for (const term of searchTerms) {
+    let pos = 0;
+    while ((pos = str.indexOf(term, pos)) !== -1) {
+      const openBrace = str.lastIndexOf('{', pos);
+      if (openBrace !== -1 && !candidateIndices.includes(openBrace)) {
+        candidateIndices.push(openBrace);
+      }
+      pos += term.length;
+    }
+  }
+
+  // Also try the very first '{'
+  const firstBrace = str.indexOf('{');
+  if (firstBrace !== -1 && !candidateIndices.includes(firstBrace)) {
+    candidateIndices.push(firstBrace);
+  }
+
+  candidateIndices.sort((a, b) => a - b);
+
+  for (const startIndex of candidateIndices) {
+    let openBraces = 0;
+    let inString = false;
+    let escapeNext = false;
+
+    for (let i = startIndex; i < str.length; i++) {
+      const char = str[i];
+
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString) {
+        if (char === '{') {
+          openBraces++;
+        } else if (char === '}') {
+          openBraces--;
+          if (openBraces === 0) {
+            const candidate = str.substring(startIndex, i + 1);
+            try {
+              const res = JSON.parse(candidate);
+              if (res && typeof res === 'object') {
+                return res;
+              }
+            } catch {
+              // continue scanning
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Normalizes any input (JSON string, raw object, nested notes object, or markdown)
  * into a strongly-typed StructuredNotes structure.
  */
@@ -55,35 +132,41 @@ export function normalizeNotesContent(input: any, defaultTitle?: string): Struct
   if (typeof input === 'string') {
     const trimmed = input.trim();
     const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-    const objectMatch = trimmed.match(/\{[\s\S]*\}/);
 
-    let candidate = '';
+    let parsedSuccess = false;
+
     if (codeBlockMatch) {
-      candidate = codeBlockMatch[1].trim();
-    } else if (trimmed.startsWith('{') || trimmed.includes('"notes":') || trimmed.includes('"key_points":') || trimmed.includes('"summary":')) {
-      candidate = objectMatch ? objectMatch[0] : trimmed;
+      try {
+        parsed = JSON.parse(codeBlockMatch[1].trim());
+        parsedSuccess = true;
+      } catch {}
     }
 
-    if (candidate) {
-      try {
-        parsed = JSON.parse(candidate);
-      } catch (e) {
-        try {
-          parsed = JSON.parse(trimmed);
-        } catch (e2) {
-          return parseMarkdownToStructuredNotes(trimmed, fallbackTitle);
-        }
+    if (!parsedSuccess) {
+      const balanced = extractBalancedJsonObject(trimmed);
+      if (balanced && typeof balanced === 'object') {
+        parsed = balanced;
+        parsedSuccess = true;
       }
-    } else {
-      return parseMarkdownToStructuredNotes(trimmed, fallbackTitle);
+    }
+
+    if (!parsedSuccess) {
+      try {
+        parsed = JSON.parse(trimmed);
+        parsedSuccess = true;
+      } catch (e) {
+        return parseMarkdownToStructuredNotes(trimmed, fallbackTitle);
+      }
     }
   }
 
   // 2. If object is wrapped in { notes: { ... } } or { content: { ... } }
-  if (parsed.notes && typeof parsed.notes === 'object') {
-    parsed = parsed.notes;
-  } else if (parsed.content && typeof parsed.content === 'object' && (parsed.content.summary || parsed.content.key_points)) {
-    parsed = parsed.content;
+  if (parsed && typeof parsed === 'object') {
+    if (parsed.notes && typeof parsed.notes === 'object') {
+      parsed = parsed.notes;
+    } else if (parsed.content && typeof parsed.content === 'object' && (parsed.content.summary || parsed.content.key_points)) {
+      parsed = parsed.content;
+    }
   }
 
   // 3. Extract title
@@ -116,6 +199,32 @@ export function normalizeNotesContent(input: any, defaultTitle?: string): Struct
         heading: kp.heading || kp.title || kp.name || `Concept ${idx + 1}`,
         content: kp.content || kp.description || kp.explanation || '',
         importance: kp.importance || 'medium',
+      };
+    });
+
+    // Check if the only key point is an accidentally stringified nested notes object
+    if (
+      keyPoints.length === 1 &&
+      typeof keyPoints[0].content === 'string' &&
+      (keyPoints[0].content.includes('"notes"') || keyPoints[0].content.includes('"key_points"') || keyPoints[0].content.includes('"summary"'))
+    ) {
+      const innerBalanced = extractBalancedJsonObject(keyPoints[0].content);
+      if (innerBalanced && typeof innerBalanced === 'object') {
+        const nested = normalizeNotesContent(innerBalanced, defaultTitle);
+        if (nested.keyPoints.length > 0) {
+          return nested;
+        }
+      }
+    }
+
+    // Clean any accidental markdown headers or raw JSON leftovers from key points
+    keyPoints = keyPoints.map((kp) => {
+      let cleanContent = kp.content;
+      cleanContent = cleanContent.replace(/^#+\s+[^\n]+\n+/gm, '').trim();
+      return {
+        ...kp,
+        heading: kp.heading.replace(/^#+\s+/, '').replace(/^[\p{Emoji}\s]+/u, '').trim(),
+        content: cleanContent,
       };
     });
   }
@@ -248,12 +357,38 @@ function processSection(
     examTips: string[];
   }
 ) {
+  let cleanContent = content.trim();
+
+  // If content contains an embedded raw JSON notes block, extract its true contents!
+  if (cleanContent.includes('"notes"') || cleanContent.includes('"key_points"') || cleanContent.includes('"summary"')) {
+    const balanced = extractBalancedJsonObject(cleanContent);
+    if (balanced && typeof balanced === 'object') {
+      const extracted = balanced.notes || balanced;
+      if (extracted.summary && typeof extracted.summary === 'string') {
+        collectors.setSummary(extracted.summary);
+      }
+      if (Array.isArray(extracted.key_points) && extracted.key_points.length > 0) {
+        extracted.key_points.forEach((kp: any, idx: number) => {
+          collectors.keyPoints.push({
+            heading: kp.heading || kp.title || `Concept ${idx + 1}`,
+            content: kp.content || kp.description || '',
+            importance: kp.importance || 'medium',
+          });
+        });
+        return;
+      }
+    }
+  }
+
+  // Strip any raw markdown headers repeated in content (e.g. # Title or ## Heading)
+  cleanContent = cleanContent.replace(/^#+\s+[^\n]+\n*/gm, '').trim();
+
   const norm = heading.toLowerCase();
 
   if (norm.includes('summary') || norm.includes('overview') || norm.includes('introduction')) {
-    collectors.setSummary(content);
+    collectors.setSummary(cleanContent);
   } else if (norm.includes('formula') || norm.includes('equation')) {
-    const formulaLines = content.split('\n').filter((l) => l.trim().length > 0);
+    const formulaLines = cleanContent.split('\n').filter((l) => l.trim().length > 0);
     formulaLines.forEach((fl, idx) => {
       collectors.formulas.push({
         name: `Formula ${idx + 1}`,
@@ -261,19 +396,19 @@ function processSection(
       });
     });
   } else if (norm.includes('fact') || norm.includes('takeaway') || norm.includes('highlight')) {
-    const factLines = content.split('\n').filter((l) => l.trim().length > 0);
+    const factLines = cleanContent.split('\n').filter((l) => l.trim().length > 0);
     factLines.forEach((fl) => {
       collectors.quickFacts.push(fl.replace(/^[-*•]\s*/, '').trim());
     });
   } else if (norm.includes('tip') || norm.includes('pitfall') || norm.includes('exam')) {
-    const tipLines = content.split('\n').filter((l) => l.trim().length > 0);
+    const tipLines = cleanContent.split('\n').filter((l) => l.trim().length > 0);
     tipLines.forEach((tl) => {
       collectors.examTips.push(tl.replace(/^[-*•]\s*/, '').trim());
     });
   } else {
     collectors.keyPoints.push({
-      heading,
-      content,
+      heading: heading.replace(/^#+\s+/, '').replace(/^[\p{Emoji}\s]+/u, '').trim(),
+      content: cleanContent,
       importance: norm.includes('key') || norm.includes('core') ? 'high' : 'medium',
     });
   }
@@ -372,8 +507,13 @@ export function cleanAiResponseToReadableNotes(text: string): string {
       const formatted = convertAnyContentToMarkdown(parsed);
       return text.replace(jsonMatch[0], formatted).trim();
     } catch (e) {
-      // ignore
+      // ignore and try balanced extractor
     }
+  }
+
+  const balanced = extractBalancedJsonObject(text);
+  if (balanced && typeof balanced === 'object' && (balanced.notes || balanced.key_points || balanced.summary)) {
+    return convertAnyContentToMarkdown(balanced);
   }
 
   return text;

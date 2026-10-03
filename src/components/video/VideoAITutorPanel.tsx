@@ -35,6 +35,156 @@ export interface VideoAITutorPanelProps {
   className?: string;
 }
 
+// Formatted markdown and timestamp citation renderer for video tutor messages
+const VideoTutorFormattedContent: React.FC<{
+  content: string;
+  onSeek: (seconds: number) => void;
+}> = ({ content, onSeek }) => {
+  // 1. Clean raw chunk identifiers
+  const cleaned = content
+    .replace(/\[CHUNK\s+[^\]]+\]/g, '')
+    .replace(/\[[a-zA-Z0-9_\-]+_t\d+_c\d+\]/g, '')
+    .replace(/\[vid_[a-zA-Z0-9_\-]+\]/g, '')
+    .trim();
+
+  // Split into paragraphs / blocks
+  const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
+
+  const renderInlineFormatted = (text: string) => {
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    const tokenRegex = /(\[?(\d{1,2}):(\d{2})\]?|\(Timestamp\s*(\d+)m(\d+)s\)|\*\*([^*]+)\*\*|`([^`]+)`)/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = tokenRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+
+      if (match[2] && match[3]) {
+        // [mm:ss] format
+        const m = parseInt(match[2], 10);
+        const s = parseInt(match[3], 10);
+        const secs = m * 60 + s;
+        parts.push(
+          <button
+            key={`ts_${match.index}`}
+            type="button"
+            onClick={() => onSeek(secs)}
+            title={`Seek video to ${match[2]}:${match[3]}`}
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 rounded bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-mono text-[11px] font-semibold transition-colors cursor-pointer border border-primary/20 align-baseline"
+          >
+            <Clock className="w-2.5 h-2.5" />
+            {match[2]}:{match[3]}
+          </button>
+        );
+      } else if (match[4] && match[5]) {
+        // (Timestamp XmYs)
+        const m = parseInt(match[4], 10);
+        const s = parseInt(match[5], 10);
+        const secs = m * 60 + s;
+        const timeLabel = `${m}:${s < 10 ? '0' : ''}${s}`;
+        parts.push(
+          <button
+            key={`ts_${match.index}`}
+            type="button"
+            onClick={() => onSeek(secs)}
+            title={`Seek video to ${timeLabel}`}
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 rounded bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-mono text-[11px] font-semibold transition-colors cursor-pointer border border-primary/20 align-baseline"
+          >
+            <Clock className="w-2.5 h-2.5" />
+            {timeLabel}
+          </button>
+        );
+      } else if (match[6]) {
+        // **bold**
+        parts.push(
+          <strong key={`b_${match.index}`} className="font-semibold text-foreground">
+            {match[6]}
+          </strong>
+        );
+      } else if (match[7]) {
+        // `code`
+        parts.push(
+          <code key={`c_${match.index}`} className="px-1 py-0.5 rounded bg-muted/80 font-mono text-[11px] text-primary">
+            {match[7]}
+          </code>
+        );
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+
+    return parts;
+  };
+
+  return (
+    <div className="space-y-2 text-xs leading-relaxed">
+      {blocks.map((block, bIdx) => {
+        const trimmed = block.trim();
+
+        // 1. Heading 3 (e.g. ### 📚 Course Material Evidence)
+        if (trimmed.startsWith('### ')) {
+          const headingText = trimmed.replace(/^###\s+/, '').replace(/^[\p{Emoji}\s]+/u, '').trim();
+          return (
+            <div
+              key={bIdx}
+              className="flex items-center gap-1.5 font-bold text-xs text-primary pb-1.5 border-b border-border/40 mt-1 mb-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span>{headingText}</span>
+            </div>
+          );
+        }
+
+        // 2. Heading 2 or Heading 1
+        if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+          const headingText = trimmed.replace(/^#+\s+/, '').replace(/^[\p{Emoji}\s]+/u, '').trim();
+          return (
+            <h4 key={bIdx} className="font-bold text-xs text-foreground mt-2 mb-1">
+              {headingText}
+            </h4>
+          );
+        }
+
+        // 3. Bullet list (contains lines starting with * or -)
+        if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || trimmed.includes('\n* ') || trimmed.includes('\n- ')) {
+          const lines = trimmed.split('\n').filter((l) => l.trim().length > 0);
+          return (
+            <div key={bIdx} className="space-y-1.5 my-1.5">
+              {lines.map((line, lIdx) => {
+                const isBullet = line.trim().startsWith('* ') || line.trim().startsWith('- ');
+                const cleanLine = line.trim().replace(/^[-*]\s+/, '');
+                return (
+                  <div key={lIdx} className="flex items-start gap-2 group/bullet">
+                    {isBullet && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/70 mt-1.5 shrink-0" />
+                    )}
+                    <div className="flex-1 text-foreground/90 group-hover/bullet:text-foreground transition-colors leading-relaxed">
+                      {renderInlineFormatted(cleanLine)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }
+
+        // 4. Regular paragraph
+        return (
+          <p key={bIdx} className="text-foreground/90 leading-relaxed">
+            {renderInlineFormatted(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
   video,
   onSeek,
@@ -211,7 +361,11 @@ export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
                     </div>
                   )}
 
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
+                  {isUser ? (
+                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                  ) : (
+                    <VideoTutorFormattedContent content={msg.content} onSeek={onSeek} />
+                  )}
 
                   {/* Render Verified Timestamp Citations */}
                   {msg.citations && msg.citations.length > 0 && (

@@ -518,6 +518,15 @@ export async function askVideoQuestion(
         citation_label: hasTime ? `[${formattedTime}]` : (c.citation_label || '[00:00]'),
       };
     });
+  // Clean internal raw chunk references from response text so students see clean prose
+  if (response && typeof response.response === 'string') {
+    response.response = response.response
+      .replace(/\[CHUNK\s+[^\]]+\]/g, '')
+      .replace(/\[[a-zA-Z0-9_\-]+_t\d+_c\d+\]/g, '')
+      .replace(/\[vid_[a-zA-Z0-9_\-]+\]/g, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   return response;

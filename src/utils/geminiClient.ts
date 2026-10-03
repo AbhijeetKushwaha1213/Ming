@@ -250,9 +250,12 @@ Rules:
               }],
               generationConfig: {
                 temperature: 0.1,
-                maxOutputTokens: 2048,
+                maxOutputTokens: 4096,
                 topP: 0.8,
-                topK: 10
+                topK: 10,
+                ...(contentType && ['notes', 'flashcards', 'quizzes', 'mindmaps'].includes(contentType)
+                  ? { responseMimeType: 'application/json' }
+                  : {}),
               }
             }),
           });

@@ -7,7 +7,7 @@ import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import type { Block } from '@/types/notion';
-import { richTextToHTML, htmlToRichText } from './serialization';
+import { richTextToHTML, htmlToRichText, inlineMarkdownToHTML } from './serialization';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -212,14 +212,113 @@ function TextBlockRenderer({ block, editable, onUpdate, onSlashCommand }: BlockR
   );
 }
 
+// List item renderer with multi-line wrapping, auto-resizing, and inline markdown formatting
+interface ListItemRendererProps {
+  text: string;
+  index: number;
+  isNumbered: boolean;
+  editable: boolean;
+  totalItems: number;
+  onChange: (newText: string) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  onDelete: () => void;
+}
+
+function ListItemRenderer({
+  text,
+  index,
+  isNumbered,
+  editable,
+  totalItems,
+  onChange,
+  onKeyDown,
+  onDelete,
+}: ListItemRendererProps) {
+  const [isEditing, setIsEditing] = useState(editable && text === '');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.max(24, textareaRef.current.scrollHeight)}px`;
+    }
+  };
+
+  React.useEffect(() => {
+    if (isEditing) {
+      adjustHeight();
+      textareaRef.current?.focus();
+    }
+  }, [isEditing]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+  };
+
+  return (
+    <li className="flex items-start gap-2.5 group/item py-1">
+      {/* Marker */}
+      {isNumbered ? (
+        <span className="text-sm font-semibold text-muted-foreground select-none shrink-0 min-w-[1.25rem] mt-0.5 text-right">
+          {index + 1}.
+        </span>
+      ) : (
+        <span className="w-1.5 h-1.5 rounded-full bg-primary/80 shrink-0 mt-2" />
+      )}
+
+      {/* Item Content */}
+      <div className="flex-1 min-w-0 flex items-start gap-2">
+        {editable && isEditing ? (
+          <textarea
+            ref={textareaRef}
+            value={text}
+            rows={1}
+            onChange={(e) => {
+              onChange(e.target.value);
+              adjustHeight();
+            }}
+            onBlur={handleBlur}
+            onKeyDown={onKeyDown}
+            placeholder="List item... (Press Enter on empty line to exit)"
+            className="w-full bg-transparent outline-none focus:bg-accent/15 px-1.5 py-0.5 rounded transition-colors resize-none overflow-hidden leading-relaxed text-sm break-words border-0"
+          />
+        ) : (
+          <div
+            onClick={() => {
+              if (editable) setIsEditing(true);
+            }}
+            className={cn(
+              "w-full px-1.5 py-0.5 rounded transition-colors break-words whitespace-pre-wrap leading-relaxed text-sm text-foreground/90",
+              editable ? "cursor-text hover:bg-accent/10" : ""
+            )}
+            dangerouslySetInnerHTML={{
+              __html: inlineMarkdownToHTML(text) || (editable ? '<span class="text-muted-foreground/50 italic text-xs">Empty item (click to edit)...</span>' : ''),
+            }}
+          />
+        )}
+
+        {editable && totalItems > 1 && (
+          <button
+            onClick={onDelete}
+            className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-destructive/10 rounded transition-all shrink-0 mt-0.5 text-muted-foreground hover:text-destructive"
+            aria-label="Delete item"
+            title="Delete item"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
 // List block renderer
 interface ListBlockRendererProps extends Omit<BlockRendererProps, 'onSlashCommand'> {}
 
 function ListBlockRenderer({ block, editable, onUpdate, onInsertAfter, onDeleteBlock }: ListBlockRendererProps) {
   if (block.type !== 'bulletList' && block.type !== 'numberedList') return null;
 
-  const ListTag = block.type === 'bulletList' ? 'ul' : 'ol';
-  const listClass = block.type === 'bulletList' ? 'list-disc' : 'list-decimal';
+  const isNumbered = block.type === 'numberedList';
   const items = block.items || [];
 
   const handleItemChange = (index: number, newText: string) => {
@@ -246,10 +345,10 @@ function ListBlockRenderer({ block, editable, onUpdate, onInsertAfter, onDeleteB
     onUpdate({ items: newItems } as Partial<Block>);
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLElement>) => {
     const currentText = (typeof items[index] === 'string' ? items[index] : items[index]?.text || '').trim();
 
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
 
       // If current item is empty, BREAK OUT of list into a new text block
@@ -277,22 +376,10 @@ function ListBlockRenderer({ block, editable, onUpdate, onInsertAfter, onDeleteB
         ...items.slice(index + 1)
       ];
       onUpdate({ items: newItems } as Partial<Block>);
-      // Focus next item after a short delay
-      setTimeout(() => {
-        const nextInput = e.currentTarget.parentElement?.nextElementSibling?.querySelector('input');
-        nextInput?.focus();
-      }, 10);
     } else if (e.key === 'Backspace' && currentText === '') {
       e.preventDefault();
       if (items.length > 1) {
         handleDeleteItem(index);
-        // Focus previous item
-        if (index > 0) {
-          setTimeout(() => {
-            const prevInput = e.currentTarget.parentElement?.previousElementSibling?.querySelector('input');
-            prevInput?.focus();
-          }, 10);
-        }
       } else {
         // If it's the only bullet and it's empty, convert to regular text block
         onUpdate({
@@ -304,39 +391,28 @@ function ListBlockRenderer({ block, editable, onUpdate, onInsertAfter, onDeleteB
   };
 
   return (
-    <div className="block-content px-3 py-2">
-      <ListTag className={`${listClass} list-inside space-y-1`}>
-        {items.map((item, index) => (
-          <li key={index} className="flex items-center gap-2 group/item">
-            {editable ? (
-              <>
-                <input
-                  type="text"
-                  value={typeof item === 'string' ? item : item.text}
-                  onChange={(e) => handleItemChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="flex-1 bg-transparent outline-none focus:bg-accent/20 px-1 py-0.5 rounded transition-colors"
-                  placeholder="List item... (Press Enter on empty line to exit list)"
-                />
-                {items.length > 1 && (
-                  <button
-                    onClick={() => handleDeleteItem(index)}
-                    className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-destructive/10 rounded transition-all"
-                    aria-label="Delete item"
-                    title="Delete item"
-                  >
-                    <Trash2 className="w-3 h-3 text-destructive" />
-                  </button>
-                )}
-              </>
-            ) : (
-              <span>{typeof item === 'string' ? item : item.text}</span>
-            )}
-          </li>
-        ))}
-      </ListTag>
+    <div className="block-content px-3 py-1 group/list">
+      <ul className="space-y-0.5 list-none">
+        {items.map((item, index) => {
+          const text = typeof item === 'string' ? item : item.text;
+          return (
+            <ListItemRenderer
+              key={index}
+              text={text}
+              index={index}
+              isNumbered={isNumbered}
+              editable={editable}
+              totalItems={items.length}
+              onChange={(newText) => handleItemChange(index, newText)}
+              onKeyDown={(e) => handleKeyDown(index, e)}
+              onDelete={() => handleDeleteItem(index)}
+            />
+          );
+        })}
+      </ul>
+
       {editable && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 pt-1 border-t border-border/30">
+        <div className="mt-1 flex flex-wrap items-center gap-2 pt-1 border-t border-border/20 opacity-0 group-hover/list:opacity-100 transition-opacity">
           <Button
             type="button"
             variant="ghost"
@@ -345,7 +421,7 @@ function ListBlockRenderer({ block, editable, onUpdate, onInsertAfter, onDeleteB
             className="text-xs h-6 px-2 text-muted-foreground hover:text-foreground"
           >
             <Plus className="w-3 h-3 mr-1" />
-            Add list item
+            Add item
           </Button>
           <span className="text-muted-foreground/30 text-xs">|</span>
           <Button
@@ -356,9 +432,9 @@ function ListBlockRenderer({ block, editable, onUpdate, onInsertAfter, onDeleteB
             className="text-xs h-6 px-2 text-primary hover:text-primary/80 hover:bg-primary/10"
           >
             <Plus className="w-3 h-3 mr-1" />
-            New Block Below (Break out)
+            Break out (New Block)
           </Button>
-          <span className="text-[10px] text-muted-foreground/60 ml-auto hidden sm:inline">
+          <span className="text-[10px] text-muted-foreground/50 ml-auto hidden sm:inline">
             Press Enter on empty line to exit list
           </span>
         </div>
@@ -370,40 +446,54 @@ function ListBlockRenderer({ block, editable, onUpdate, onInsertAfter, onDeleteB
 // Checkbox block renderer
 function CheckboxBlockRenderer({ block, editable, onUpdate }: Omit<BlockRendererProps, 'onSlashCommand'>) {
   if (block.type !== 'checkbox') return null;
+  const [isEditing, setIsEditing] = useState(editable && block.content.text === '');
+  const text = block.content?.text || '';
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTextChange = (newText: string) => {
     onUpdate({ 
-      content: { text: e.target.value, marks: [] } 
+      content: { text: newText, marks: [] } 
     } as Partial<Block>);
   };
 
   return (
-    <div className="block-content px-3 py-2 flex items-start gap-2">
+    <div className="block-content px-3 py-1.5 flex items-start gap-2.5 group/todo">
       <Checkbox
         checked={block.checked}
         onCheckedChange={(checked) => {
-          console.log('Checkbox changed:', checked);
           onUpdate({ checked: checked as boolean });
         }}
         disabled={!editable}
         className="mt-1"
       />
-      {editable ? (
-        <input
-          type="text"
-          value={block.content.text}
-          onChange={handleTextChange}
-          autoFocus={block.content.text === ''}
-          className={`flex-1 bg-transparent outline-none focus:bg-accent/20 px-1 py-0.5 rounded transition-colors ${
-            block.checked ? 'line-through text-muted-foreground' : ''
-          }`}
-          placeholder="To-do item..."
-        />
-      ) : (
-        <span className={block.checked ? 'line-through text-muted-foreground' : ''}>
-          {block.content.text}
-        </span>
-      )}
+      <div className="flex-1 min-w-0">
+        {editable && isEditing ? (
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => handleTextChange(e.target.value)}
+            onBlur={() => setIsEditing(false)}
+            autoFocus
+            className={`w-full bg-transparent outline-none focus:bg-accent/20 px-1 py-0.5 rounded transition-colors text-sm break-words ${
+              block.checked ? 'line-through text-muted-foreground' : ''
+            }`}
+            placeholder="To-do item..."
+          />
+        ) : (
+          <div
+            onClick={() => {
+              if (editable) setIsEditing(true);
+            }}
+            className={cn(
+              "px-1 py-0.5 rounded transition-colors break-words leading-relaxed text-sm text-foreground/90",
+              block.checked ? "line-through text-muted-foreground" : "",
+              editable ? "cursor-text hover:bg-accent/10" : ""
+            )}
+            dangerouslySetInnerHTML={{
+              __html: inlineMarkdownToHTML(text) || (editable ? '<span class="text-muted-foreground/50 italic text-xs">To-do item...</span>' : ''),
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -411,33 +501,40 @@ function CheckboxBlockRenderer({ block, editable, onUpdate }: Omit<BlockRenderer
 // Callout block renderer
 function CalloutBlockRenderer({ block, editable, onUpdate }: Omit<BlockRendererProps, 'onSlashCommand'>) {
   if (block.type !== 'callout') return null;
+  const [isEditing, setIsEditing] = useState(editable && block.content.text === '');
+  const text = block.content?.text || '';
 
   return (
     <div
-      className="block-content px-3 py-2 rounded-md flex items-start gap-2"
-      style={{ backgroundColor: block.backgroundColor || '#f0f0f0' }}
+      className="block-content px-4 py-3 rounded-xl flex items-start gap-3 border border-border/50 shadow-2xs my-1"
+      style={{ backgroundColor: block.backgroundColor || 'hsl(var(--muted) / 0.45)' }}
     >
-      {editable ? (
-        <>
-          <Input
-            value={block.icon || '💡'}
-            onChange={(e) => onUpdate({ icon: e.target.value })}
-            className="w-16 bg-white/80"
-          />
-          <Input
-            value={block.content.text}
+      <span className="text-xl shrink-0 mt-0.5 select-none">{block.icon || '💡'}</span>
+      <div className="flex-1 min-w-0">
+        {editable && isEditing ? (
+          <Textarea
+            value={text}
             onChange={(e) => onUpdate({ content: { text: e.target.value, marks: [] } } as Partial<Block>)}
-            className="flex-1 bg-white/80"
+            onBlur={() => setIsEditing(false)}
+            autoFocus
+            className="w-full bg-background/80 text-sm leading-relaxed min-h-[4rem] resize-none"
             placeholder="Callout text..."
-            autoFocus={block.content.text === ''}
           />
-        </>
-      ) : (
-        <>
-          <span className="text-xl">{block.icon || '💡'}</span>
-          <span>{block.content.text}</span>
-        </>
-      )}
+        ) : (
+          <div
+            onClick={() => {
+              if (editable) setIsEditing(true);
+            }}
+            className={cn(
+              "text-sm leading-relaxed text-foreground/90 break-words whitespace-pre-wrap",
+              editable ? "cursor-text hover:opacity-90" : ""
+            )}
+            dangerouslySetInnerHTML={{
+              __html: inlineMarkdownToHTML(text) || (editable ? '<span class="text-muted-foreground/50 italic text-xs">Callout text...</span>' : ''),
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

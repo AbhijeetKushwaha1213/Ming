@@ -376,13 +376,28 @@ export function markdownToBlocks(markdown: string): Block[] {
       continue;
     }
 
-    // Numbered list items (collect consecutive)
+    // Numbered list items or section headings
     if (/^\d+\.\s+/.test(line)) {
       const numItems: string[] = [];
+      const startLine = line.trim();
       while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
         numItems.push(lines[i].replace(/^\d+\.\s+/, '').trim());
         i++;
       }
+
+      // If only 1 numbered line and followed by bullets or bold definition, it is an outline concept heading
+      if (numItems.length === 1 && i < lines.length && (/^[-*]\s+/.test(lines[i]) || lines[i].trim().startsWith('**'))) {
+        blocks.push({
+          id: createId('h3'),
+          type: 'heading3',
+          position: blockCounter,
+          created_at: now,
+          updated_at: now,
+          content: { text: startLine, marks: [{ type: 'bold' }] },
+        } as Block);
+        continue;
+      }
+
       blocks.push({
         id: createId('numbers'),
         type: 'numberedList',

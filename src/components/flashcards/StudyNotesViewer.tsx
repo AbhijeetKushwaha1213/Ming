@@ -18,11 +18,93 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { normalizeNotesContent, notesToMarkdown, StructuredNotes } from '@/utils/notesFormatter';
+import {
+  normalizeNotesContent,
+  notesToMarkdown,
+  cleanAiResponseToReadableNotes,
+  extractBalancedJsonObject,
+  StructuredNotes,
+} from '@/utils/notesFormatter';
+import { inlineMarkdownToHTML } from '@/components/notion/editor/serialization';
 import { copyVaultItemToResources } from '@/utils/vaultToResources';
 import { navigateToTab } from '@/utils/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { pageKeys } from '@/hooks/usePages';
+
+/**
+ * Formats and renders concept card content, gracefully handling embedded JSON,
+ * markdown bullet points, bold terms, and inline code snippets.
+ */
+function FormattedNotePointContent({ content }: { content: string }) {
+  if (!content) return null;
+
+  // 1. If content is an accidentally stringified JSON object or contains JSON brackets
+  let cleanText = content.trim();
+  if (cleanText.startsWith('{') || cleanText.includes('"notes"') || cleanText.includes('"key_points"')) {
+    const balanced = extractBalancedJsonObject(cleanText);
+    if (balanced && typeof balanced === 'object') {
+      const notesObj = balanced.notes || balanced;
+      if (notesObj.summary && typeof notesObj.summary === 'string') {
+        cleanText = notesObj.summary;
+      } else if (Array.isArray(notesObj.key_points) && notesObj.key_points.length > 0) {
+        cleanText = notesObj.key_points
+          .map((kp: any) => `${kp.heading ? `**${kp.heading}**: ` : ''}${kp.content || ''}`)
+          .join('\n\n');
+      }
+    }
+  }
+
+  // 2. Remove any repeated markdown # headers inside the card content
+  cleanText = cleanText.replace(/^#+\s+[^\n]+\n*/gm, '').trim();
+
+  // 3. Process paragraphs and bullet items
+  const lines = cleanText.split('\n');
+  const renderedElements: React.ReactNode[] = [];
+  let currentBullets: string[] = [];
+
+  const flushBullets = () => {
+    if (currentBullets.length > 0) {
+      renderedElements.push(
+        <ul key={`bullets-${renderedElements.length}`} className="space-y-1.5 my-2 pl-1">
+          {currentBullets.map((bullet, bIdx) => (
+            <li key={bIdx} className="flex items-start gap-2 text-xs sm:text-sm text-foreground/90 leading-relaxed">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/70 shrink-0 mt-2" />
+              <span
+                dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(bullet) }}
+                className="flex-1 break-words"
+              />
+            </li>
+          ))}
+        </ul>
+      );
+      currentBullets = [];
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) {
+      flushBullets();
+      continue;
+    }
+
+    if (/^[-*•]\s+/.test(line)) {
+      currentBullets.push(line.replace(/^[-*•]\s+/, ''));
+    } else {
+      flushBullets();
+      renderedElements.push(
+        <p
+          key={`p-${renderedElements.length}`}
+          className="text-xs sm:text-sm text-foreground/90 leading-relaxed mb-2 break-words"
+          dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(line) }}
+        />
+      );
+    }
+  }
+  flushBullets();
+
+  return <div className="pl-8 space-y-1">{renderedElements}</div>;
+}
 
 interface StudyNotesViewerProps {
   notes: any;
@@ -131,6 +213,18 @@ export const StudyNotesViewer: React.FC<StudyNotesViewerProps> = ({
     }
   };
 
+  const displaySummary = React.useMemo(() => {
+    if (!structured.summary) return '';
+    const clean = structured.summary.trim();
+    if (clean.toLowerCase().startsWith('ai generated notes') && structured.keyPoints.length > 0) {
+      const firstPoint = structured.keyPoints[0];
+      return firstPoint.content.length > 250
+        ? firstPoint.content.slice(0, 250) + '...'
+        : firstPoint.content;
+    }
+    return clean;
+  }, [structured.summary, structured.keyPoints]);
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Top Action & Navigation Bar */}
@@ -218,15 +312,16 @@ export const StudyNotesViewer: React.FC<StudyNotesViewerProps> = ({
         /* Structured Visual Cards Mode */
         <div className="space-y-6">
           {/* 1. Executive Summary Callout */}
-          {structured.summary && (
+          {displaySummary && (
             <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 shadow-xs space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                 <Lightbulb className="w-4 h-4" />
                 <span>Executive Summary & Overview</span>
               </div>
-              <p className="text-sm leading-relaxed text-foreground font-medium">
-                {structured.summary}
-              </p>
+              <p
+                className="text-sm leading-relaxed text-foreground font-medium"
+                dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(displaySummary) }}
+              />
             </div>
           )}
 
@@ -266,9 +361,7 @@ export const StudyNotesViewer: React.FC<StudyNotesViewerProps> = ({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed pl-8 whitespace-pre-line">
-                        {point.content}
-                      </p>
+                      <FormattedNotePointContent content={point.content} />
                     </Card>
                   );
                 })}
@@ -317,7 +410,10 @@ export const StudyNotesViewer: React.FC<StudyNotesViewerProps> = ({
                 {structured.quickFacts.map((fact, idx) => (
                   <div key={idx} className="flex items-start gap-2.5 text-xs text-foreground/90">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <span className="leading-relaxed">{fact}</span>
+                    <span
+                      className="leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(fact) }}
+                    />
                   </div>
                 ))}
               </div>
@@ -335,7 +431,10 @@ export const StudyNotesViewer: React.FC<StudyNotesViewerProps> = ({
                 {structured.examTips.map((tip, idx) => (
                   <div key={idx} className="flex items-start gap-2 text-xs text-rose-900 dark:text-rose-200">
                     <span className="font-bold">•</span>
-                    <span>{tip}</span>
+                    <span
+                      className="leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(tip) }}
+                    />
                   </div>
                 ))}
               </div>

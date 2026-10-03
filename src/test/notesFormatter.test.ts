@@ -130,4 +130,14 @@ describe('Universal Notes Formatter & Normalizer', () => {
     const cleaned = cleanAiResponseToReadableNotes(normalChat);
     expect(cleaned).toBe(normalChat);
   });
+
+  it('extracts structured notes from mixed markdown and embedded JSON blocks', () => {
+    const mixedInput = `# 📚 Machine Learning\n\n## 💡 Overview\n{\n  "notes": {\n    "title": "Machine Learning",\n    "summary": "Machine Learning enables computers to learn from data.",\n    "key_points": [\n      {\n        "heading": "Supervised Learning",\n        "content": "Uses labeled datasets to train algorithms.",\n        "importance": "high"\n      }\n    ]\n  }\n}`;
+    const normalized = normalizeNotesContent(mixedInput);
+    expect(normalized.title).toBe('Machine Learning');
+    expect(normalized.summary).toContain('enables computers to learn from data');
+    expect(normalized.keyPoints).toHaveLength(1);
+    expect(normalized.keyPoints[0].heading).toBe('Supervised Learning');
+    expect(normalized.keyPoints[0].content).not.toContain('"notes":');
+  });
 });

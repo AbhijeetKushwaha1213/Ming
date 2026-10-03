@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { validateAIInput, sanitizeHtml, checkRateLimit, createSafeError } from '@/lib/security';
 import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 import { geminiClient } from '@/utils/geminiClient';
-import { cleanAiResponseToReadableNotes } from '@/utils/notesFormatter';
+import { cleanAiResponseToReadableNotes, normalizeNotesContent } from '@/utils/notesFormatter';
 
 export interface ChatMessage {
   id: string;
@@ -270,7 +270,20 @@ export const useAIAssistant = () => {
         };
       case 'notes':
       case 'summary':
-      case 'revision':
+      case 'revision': {
+        const normalized = normalizeNotesContent(response, topic || 'Study Notes');
+        if (normalized.keyPoints && normalized.keyPoints.length > 0) {
+          return {
+            notes: {
+              title: normalized.title,
+              summary: normalized.summary,
+              key_points: normalized.keyPoints,
+              formulas: normalized.formulas,
+              quick_facts: normalized.quickFacts,
+              exam_tips: normalized.examTips,
+            },
+          };
+        }
         return {
           notes: {
             title: topic || 'Study Notes',
@@ -279,12 +292,13 @@ export const useAIAssistant = () => {
               {
                 heading: `Overview of ${topic || 'Key Concepts'}`,
                 content: response,
-                importance: 'high'
-              }
+                importance: 'high',
+              },
             ],
-            quick_facts: [`Study material generated for ${topic || 'selected topic'}`]
-          }
+            quick_facts: [`Study material generated for ${topic || 'selected topic'}`],
+          },
         };
+      }
       default:
         return { content: response };
     }

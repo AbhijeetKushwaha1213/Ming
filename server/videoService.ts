@@ -518,6 +518,8 @@ export async function askVideoQuestion(
         citation_label: hasTime ? `[${formattedTime}]` : (c.citation_label || '[00:00]'),
       };
     });
+  }
+
   // Clean internal raw chunk references from response text so students see clean prose
   if (response && typeof response.response === 'string') {
     response.response = response.response

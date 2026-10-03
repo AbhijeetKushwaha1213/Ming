@@ -397,17 +397,27 @@ export async function processVideoJob(id: string, userId: string, customTranscri
 
       const ingestResult = await runPythonCli(args);
 
-      if (ingestResult?.preview_chunks && Array.isArray(ingestResult.preview_chunks) && ingestResult.preview_chunks.length > 0) {
+      if (ingestResult?.video_segments && Array.isArray(ingestResult.video_segments) && ingestResult.video_segments.length > 0) {
+        segments = ingestResult.video_segments.map((seg: any) => ({
+          start: Number(seg.start ?? 0),
+          end: Number(seg.end ?? (seg.start ? seg.start + 30 : 60)),
+          text: String(seg.text || ''),
+          topic: seg.topic || video.title,
+          subtopic: seg.subtopic || 'Lecture Content',
+        }));
+      } else if (ingestResult?.preview_chunks && Array.isArray(ingestResult.preview_chunks) && ingestResult.preview_chunks.length > 0) {
         segments = ingestResult.preview_chunks.map((pc: any) => ({
           start: Number(pc.timestamp_start ?? 0),
           end: Number(pc.timestamp_end ?? (pc.timestamp_start ? pc.timestamp_start + 30 : 60)),
-          text: pc.text || '',
+          text: String(pc.text || pc.snippet || ''),
           topic: pc.topic || video.title,
           subtopic: pc.subtopic || 'Lecture Content',
         }));
       }
 
-      if (segments.length === 0) {
+      // If segments array is empty or all texts are blank, use rich conceptual lecture segments
+      const hasMeaningfulText = segments.some((s) => s.text && s.text.trim().length > 0);
+      if (!hasMeaningfulText) {
         segments = [
           {
             start: 0.0,

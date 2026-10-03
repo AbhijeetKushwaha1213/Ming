@@ -617,6 +617,17 @@ def ingest_source(
                 metadatas=metadatas[i:i+batch_size]
             )
 
+        video_segs = []
+        if stype in ["VIDEO", "AUDIO", "YOUTUBE"] and 'segments' in locals() and isinstance(segments, list):
+            for seg in segments:
+                video_segs.append({
+                    "start": float(seg.get("timestamp_start", 0.0)),
+                    "end": float(seg.get("timestamp_end", float(seg.get("timestamp_start", 0.0)) + 30.0)),
+                    "text": str(seg.get("text", "")),
+                    "topic": str(seg.get("topic") or topic),
+                    "subtopic": str(seg.get("subtopic") or subtopic)
+                })
+
         result_data = {
             "job_id": job_id,
             "status": "completed",
@@ -627,6 +638,7 @@ def ingest_source(
             "topic": topic,
             "subtopic": subtopic,
             "chunk_count": len(chunks_to_add),
+            "video_segments": video_segs,
             "preview_chunks": [
                 {
                     "chunk_id": c["id"],
@@ -634,9 +646,10 @@ def ingest_source(
                     "slide_number": c["metadata"]["slide_number"] if c["metadata"]["slide_number"] != -1 else None,
                     "timestamp_start": c["metadata"]["timestamp_start"] if c["metadata"]["timestamp_start"] != -1.0 else None,
                     "timestamp_end": c["metadata"]["timestamp_end"] if c["metadata"]["timestamp_end"] != -1.0 else None,
-                    "snippet": c["text"][:140] + "..." if len(c["text"]) > 140 else c["text"]
+                    "snippet": c["text"][:140] + "..." if len(c["text"]) > 140 else c["text"],
+                    "text": c["text"]
                 }
-                for c in chunks_to_add[:3]
+                for c in chunks_to_add[:10]
             ]
         }
         _save_job_status(job_id, result_data)
@@ -888,8 +901,12 @@ def search_relevant_chunks(
                 chunk_topic = (meta.get("topic") or "").lower()
                 chunk_subtopic = (meta.get("subtopic") or "").lower()
                 target_topic = (sq_topic or topic or "").lower()
+                target_tokens = [w for w in re.findall(r'\b[a-zA-Z0-9_-]{3,}\b', target_topic) if w not in stop_words]
+
                 if target_topic and (target_topic in chunk_topic or chunk_topic in target_topic):
                     topic_boost = 1.0
+                elif any(ttok in chunk_topic or ttok.rstrip('ing') in chunk_topic for ttok in target_tokens):
+                    topic_boost = 0.9
                 elif subtopic and (subtopic.lower() in chunk_subtopic or chunk_subtopic in subtopic.lower()):
                     topic_boost = 0.8
                 elif any(tok in chunk_topic or tok in chunk_subtopic for tok in (sq_tokens or q_tokens)):
@@ -902,8 +919,15 @@ def search_relevant_chunks(
                 is_diag_query = any(k in (sq_norm or "").lower() for k in ["diagram", "figure", "fig", "chart", "graph", "flowchart", "architecture", "schematic", "visual", "illustration"])
                 diag_boost = 0.15 if (is_diag_query and is_diag) else 0.0
 
+                # Source-specific targeted query boost (e.g. dedicated video tutor viewing a single source)
+                source_boost = 0.20 if (source_id and str(meta.get("source_id")) == str(source_id)) else 0.0
+
+                # Source overview / summary query boost for conceptual questions
+                is_overview_query = any(k in (sq_norm or norm_query).lower() for k in ["key concept", "key concepts", "overview", "summary", "summarize", "main point", "main points", "what is this video", "what is this lecture", "about this video", "about this lecture", "explained in this video", "explained in this lecture", "covered in this"])
+                overview_boost = 0.15 if (is_overview_query and source_id and str(meta.get("source_id")) == str(source_id)) else 0.0
+
                 composite_score = round(
-                    min(1.0, 0.50 * vector_score + 0.35 * lexical_score + 0.15 * topic_boost + diag_boost),
+                    min(1.0, 0.45 * vector_score + 0.30 * lexical_score + 0.15 * topic_boost + diag_boost + source_boost + overview_boost),
                     4
                 )
 

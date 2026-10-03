@@ -717,7 +717,7 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
   if (block.type !== 'file') return null;
 
   const [isUploading, setIsUploading] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [resolvedUrl, setResolvedUrl] = useState<string>('');
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
@@ -907,13 +907,27 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
   return (
     <div className="block-content my-3 space-y-3">
       {/* File Card Header */}
-      <div className="p-3.5 border border-border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/80 shadow-2xs">
+      <div className="p-3.5 border border-border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/80 shadow-2xs hover:border-border/80 transition-colors">
         {hasFile ? (
           <>
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div
+              className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer select-none group"
+              onClick={() => setShowPreview(!showPreview)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setShowPreview(!showPreview);
+                }
+              }}
+              title={showPreview ? "Click to collapse preview" : "Click to view file"}
+            >
               {getFileIcon()}
               <div className="min-w-0 flex-1">
-                <div className="font-semibold text-sm text-foreground truncate">{block.filename || 'Attached File'}</div>
+                <div className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                  {block.filename || 'Attached File'}
+                </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
                   <span className="truncate">{block.file_type || (isPdf ? 'application/pdf' : 'Document')}</span>
                   <span>•</span>

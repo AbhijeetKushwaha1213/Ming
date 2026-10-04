@@ -6,24 +6,23 @@ import Landing from '../pages/Landing';
 import { Hero } from '../components/landing/Hero';
 import ProductShowcase from '../components/landing/ProductShowcase';
 
-describe('Landing Page Integration & Authentic Engineering Hero', () => {
+describe('Landing Page Integration & Friend PR Fixes', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
 
-  it('renders the complete landing page with authentic Hero, ProductShowcase, Features, TrustSection, and Footer', () => {
+  it('renders the complete landing page with Hero, ProductShowcase, Features, TrustSection, and Footer', () => {
     const { container } = render(
       <MemoryRouter>
         <Landing />
       </MemoryRouter>
     );
 
-    // Authentic Hero verification
-    expect(screen.getByText(/Turn heavy lecture slides into/i)).toBeInTheDocument();
-    expect(screen.getByText(/BUILT FOR B.TECH & ENGINEERING STUDENTS/i)).toBeInTheDocument();
-    expect(screen.getByText(/Operating Systems · Unit 3: Deadlocks/i)).toBeInTheDocument();
+    // Hero verification
+    expect(screen.getByText(/Study smarter/i)).toBeInTheDocument();
+    expect(screen.getByText(/Archival Rigor · Neural Precision/i)).toBeInTheDocument();
 
-    // ProductShowcase verification
+    // ProductShowcase verification (was dead code before our fix)
     expect(screen.getByText(/From lecture to lab to placement/i)).toBeInTheDocument();
     expect(screen.getByText(/BUILT FOR B.TECH CSE/i)).toBeInTheDocument();
 
@@ -39,7 +38,7 @@ describe('Landing Page Integration & Authentic Engineering Hero', () => {
     expect(container.querySelector('#impact')).toBeInTheDocument();
   });
 
-  it('renders valid brand logo without broken assets', () => {
+  it('renders valid image paths without missing assets', () => {
     render(
       <MemoryRouter>
         <Hero />
@@ -49,21 +48,26 @@ describe('Landing Page Integration & Authentic Engineering Hero', () => {
     const images = screen.getAllByRole('img');
     const srcList = images.map((img) => img.getAttribute('src'));
     expect(srcList).toContain('/assets/studymate-logo.png');
+    expect(srcList).toContain('/assets/hero-student.png');
   });
 
-  it('supports interactive SM-2 rating buttons on the product mockup flashcard', () => {
+  it('supports interactive SM-2 review simulation state toggles', () => {
     render(
       <MemoryRouter>
         <Hero />
       </MemoryRouter>
     );
 
-    const goodBtn = screen.getByText('Good');
-    expect(screen.queryByText(/SM-2 matrix updated/i)).not.toBeInTheDocument();
+    const reviewBtn = screen.getByText(/Review \(12h\)/i);
+    const masteredBtn = screen.getByText(/Mastered \(4d\)/i);
 
-    fireEvent.click(goodBtn);
-    expect(screen.getByText(/SM-2 matrix updated/i)).toBeInTheDocument();
-    expect(screen.getByText(/Scheduled for next revision!/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Interval rescheduled/i)).not.toBeInTheDocument();
+
+    fireEvent.click(reviewBtn);
+    expect(screen.getByText(/Interval rescheduled. SM-2 decay matrix updated./i)).toBeInTheDocument();
+
+    fireEvent.click(masteredBtn);
+    expect(screen.getByText(/Interval rescheduled. SM-2 decay matrix updated./i)).toBeInTheDocument();
   });
 
   it('auto-rotates ProductShowcase slides on timer interval', () => {

@@ -1,88 +1,96 @@
-
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Star, Users, Clock, Award } from 'lucide-react';
+import { Shield, AlertTriangle, UserCheck, Lock, CheckCircle2 } from 'lucide-react';
 
-export const TrustSection = () => {
-  const stats = [
-    {
-      icon: Users,
-      number: '10K+',
-      label: 'Active Learners',
-      gradient: 'from-blue-500 to-cyan-500'
-    },
-    {
-      icon: Clock,
-      number: '1M+',
-      label: 'Study Hours',
-      gradient: 'from-green-500 to-emerald-500'
-    },
-    {
-      icon: Award,
-      number: '50K+',
-      label: 'Flashcards Created',
-      gradient: 'from-purple-500 to-pink-500'
-    },
-    {
-      icon: Star,
-      number: '4.9/5',
-      label: 'User Rating',
-      gradient: 'from-yellow-500 to-orange-500'
-    }
-  ];
-
+export const TrustSection: React.FC = () => {
   return (
-    <section id="impact" className="py-20 px-4 scroll-mt-20">
-      <div className="max-w-6xl mx-auto">
+    <section
+      id="trust"
+      className="py-16 lg:py-24 bg-muted/20 border-b border-border scroll-mt-16"
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Trusted by Students 
-            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> Worldwide</span>
+        <div className="max-w-3xl mx-auto text-center space-y-3 mb-16">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-primary">
+            Honest Guarantees & Real Limitations
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Join thousands of students who are already achieving their academic goals with StudyMate AI.
+          <h3 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            Built with transparency, not marketing claims.
+          </h3>
+          <p className="text-muted-foreground text-base">
+            No fake metrics, no exaggerated claims. Here is exactly how your data is handled, where AI can fail, and why this tool was built.
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <Card 
-                key={index}
-                className="p-6 text-center hover:shadow-lg transition-all duration-300 border-0 bg-white/70 backdrop-blur-sm"
-              >
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.gradient} flex items-center justify-center mx-auto mb-4`}>
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {stat.number}
-                </div>
-                <div className="text-gray-600 font-medium">
-                  {stat.label}
-                </div>
-              </Card>
-            );
-          })}
+        {/* 3 Trust Pillars */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          
+          {/* Pillar 1: Data Privacy & Storage */}
+          <div className="rounded-xl border border-border bg-card p-6 sm:p-7 space-y-4 shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Lock className="h-5 w-5" />
+            </div>
+            <h4 className="text-lg font-bold text-foreground">
+              Your notes stay in your private vault
+            </h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Uploaded syllabus files, PPTs, and flashcards are stored privately in your authenticated account and local offline cache. We do not sell your academic coursework to third parties or train public foundation models on your private class materials.
+            </p>
+            <div className="pt-2 border-t border-border flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Encrypted at rest & in transit</span>
+            </div>
+          </div>
+
+          {/* Pillar 2: AI Limitations & Cross-Verification */}
+          <div className="rounded-xl border border-border bg-card p-6 sm:p-7 space-y-4 shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <h4 className="text-lg font-bold text-foreground">
+              AI makes mistakes — always verify
+            </h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Language models can occasionally misinterpret complex mathematical proofs, blurry handwritten scans, or ambiguous teacher notes. That is why StudyMate explicitly links every card back to its exact slide source so you can cross-check with standard reference books (Galvin, Korth, Tanenbaum).
+            </p>
+            <div className="pt-2 border-t border-border flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              <CheckCircle2 className="h-3.5 w-3.5 text-amber-600" />
+              <span>Exact slide citations included on every card</span>
+            </div>
+          </div>
+
+          {/* Pillar 3: Built by an Engineering Student */}
+          <div className="rounded-xl border border-border bg-card p-6 sm:p-7 space-y-4 shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <UserCheck className="h-5 w-5" />
+            </div>
+            <h4 className="text-lg font-bold text-foreground">
+              Built by an engineering student
+            </h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              StudyMate wasn't dreamed up in a corporate board room. It was built out of the painful reality of cramming 400-slide professor PPTs the night before semester mid-terms. It is tailored specifically for the Indian engineering curriculum (AKTU, VTU, Anna Univ, SPPU, etc.).
+            </p>
+            <div className="pt-2 border-t border-border flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+              <span>Designed for real university syllabi</span>
+            </div>
+          </div>
+
         </div>
 
-        {/* Testimonial Placeholder */}
-        <div className="bg-gradient-to-r from-white/80 to-indigo-50/80 backdrop-blur-sm rounded-2xl p-8 text-center border border-indigo-100">
-          <div className="flex justify-center mb-4">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
-            ))}
-          </div>
-          <blockquote className="text-xl text-gray-700 mb-4 font-medium italic">
-            "StudyMate AI transformed how I study. The AI-generated flashcards and personalized study plans helped me ace my exams!"
-          </blockquote>
-          <div className="text-gray-600">
-            <div className="font-semibold">Sarah Chen</div>
-            <div className="text-sm">Computer Science Student</div>
-          </div>
+        {/* Real User Stats Block with Clearly Marked Placeholders */}
+        <div className="rounded-xl border border-border bg-card p-6 text-center max-w-2xl mx-auto shadow-xs">
+          <span className="text-xs uppercase font-bold tracking-wider text-muted-foreground">
+            Current Community Status
+          </span>
+          <p className="text-sm text-foreground mt-2 font-mono">
+            Currently serving <strong className="text-primary font-bold">{"{{REAL_USER_COUNT}}"}</strong> engineering students across <strong className="text-primary font-bold">{"{{REAL_CAMPUS_COUNT}}"}</strong> college campuses during the open academic beta.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 font-sans">
+            Open-source and student-driven. Star and inspect the code on GitHub.
+          </p>
         </div>
+
       </div>
     </section>
   );

@@ -1,375 +1,261 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
-  Clock,
-  Moon,
-  ShieldCheck,
-  Sparkles,
-  Brain,
+  FileText,
+  RotateCw,
   CheckCircle2,
-  GraduationCap,
-  Lock,
-  Zap,
-  Compass,
-  Timer,
-  Award,
-  Star,
+  Calendar,
+  Sparkles,
+  ExternalLink,
+  ShieldCheck,
+  Layers,
+  HelpCircle,
 } from 'lucide-react';
 
-export const Hero = () => {
+export const Hero: React.FC = () => {
   const navigate = useNavigate();
-  const [scrollY, setScrollY] = useState(0);
-  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
-  const [heroInView, setHeroInView] = useState(false);
-  const [activeReviewState, setActiveReviewState] = useState<'idle' | 'reviewed' | 'mastered'>('idle');
-  const heroRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const { innerWidth, innerHeight } = window;
-      const x = (e.clientX / innerWidth - 0.5) * 16;
-      const y = (e.clientY / innerHeight - 0.5) * 16;
-      setMouseOffset({ x, y });
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-
-    const timer = setTimeout(() => setHeroInView(true), 150);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(timer);
-    };
-  }, []);
+  const [flipped, setFlipped] = useState(false);
+  const [selectedInterval, setSelectedInterval] = useState<'1d' | '3d' | null>(null);
+  const [quizAnswer, setQuizAnswer] = useState<string | null>(null);
 
   return (
-    <>
-      {/* Fixed Top Header / Navbar */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f6fbf3]/90 backdrop-blur-xl border-b border-[#dfe4dd]/60 transition-all duration-300">
-        <div className="h-20 max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-12 flex items-center justify-between gap-6">
-          {/* Official StudyMate AI Green Learning Logo */}
-          <div
-            onClick={() => navigate('/')}
-            className="flex items-center gap-3 cursor-pointer group"
-          >
-            <img
-              src="/assets/studymate-logo.png"
-              alt="StudyMate AI Official Logo"
-              className="h-10 w-10 rounded-xl object-cover shadow-sm transition-transform duration-300 group-hover:scale-105"
-            />
-            <div className="flex items-center gap-1.5">
-              <span className="font-['Newsreader'] text-2xl font-bold tracking-tight text-[#002313]">
-                StudyMate AI
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#a3f1bf] text-[#217048] font-['Plus_Jakarta_Sans'] text-[10px] uppercase font-bold tracking-wider">
-                v2.4 Pro
-              </span>
+    <section className="relative overflow-hidden bg-background pt-12 pb-16 lg:pt-20 lg:pb-24 border-b border-border">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+          
+          {/* Left Column: Outcome Headline & Subhead */}
+          <div className="lg:col-span-6 space-y-6">
+            {/* Context Pill */}
+            <div className="inline-flex items-center gap-2 rounded-md border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Built for Engineering Students in India
+            </div>
+
+            {/* Headline */}
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl leading-[1.12]">
+              Turn 80-slide lecture decks into exam-ready revision packs in 30 seconds.
+            </h1>
+
+            {/* Subhead */}
+            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+              Upload your semester PDFs and syllabi to get verified flashcards, practice quizzes, and an active recall revision plan grounded in your own course material.
+            </p>
+
+            {/* Primary & Secondary Actions */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => navigate('/auth')}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
+              >
+                <span>Upload Slides — It's Free</span>
+                <ArrowRight className="h-5 w-5" aria-hidden="true" />
+              </button>
+
+              <a
+                href="#interactive-sample"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-3.5 text-base font-semibold text-foreground shadow-2xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span>See a Sample</span>
+              </a>
+            </div>
+
+            {/* Micro Assurances (No buzzwords, factual) */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Private local vault</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Grounded with slide citations</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Free during academic beta</span>
+              </div>
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-8 text-[#414843] font-['Plus_Jakarta_Sans'] text-[13px] font-semibold">
-            <a
-              href="#showcase"
-              className="text-[#002313] hover:text-[#1b6b44] transition-colors"
-            >
-              Showcase
-            </a>
-            <a
-              href="#features"
-              className="hover:text-[#002313] transition-colors"
-            >
-              Features
-            </a>
-            <a
-              href="#impact"
-              className="hover:text-[#002313] transition-colors"
-            >
-              Scholarly Impact
-            </a>
-          </nav>
-
-          {/* Actions */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/auth')}
-              className="hidden sm:inline-flex text-[#414843] hover:text-[#002313] px-3 py-1.5 font-['Plus_Jakarta_Sans'] text-[13px] font-semibold transition-colors"
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => navigate('/auth')}
-              className="inline-flex items-center justify-center h-[38px] px-4 rounded-lg bg-[#002313] text-white font-['Plus_Jakarta_Sans'] text-[13px] font-semibold hover:bg-[#1b6b44] transition-all shadow-sm hover:shadow-md gap-1.5 active:scale-95"
-            >
-              <span>Start Free</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Hero Section with Cinematic Editorial Composition */}
-      <section
-        id="hero"
-        ref={heroRef}
-        className="relative w-full overflow-hidden bg-[#f6fbf3] pt-28 pb-16 lg:pt-36 lg:pb-24 border-b border-[#dfe4dd]/60"
-      >
-        {/* Subtle Archival Grid Backdrop with Slow Parallax */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-35 bg-grid-pattern"
-          style={{
-            transform: `translateY(${scrollY * 0.12}px)`
-          }}
-        />
-
-        <div className="relative max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-
-            {/* Left Content Column */}
-            <div className="lg:col-span-6 flex flex-col items-start space-y-5 z-10">
-              {/* Eyebrow badge */}
-              <div className="reveal stagger-1 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#a3f1bf]/50 border border-[#1b6b44]/20 text-[#217048] font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-[#1b6b44] animate-pulse" />
-                Archival Rigor · Neural Precision
-              </div>
-
-              {/* Main Headline */}
-              <h1 className="reveal stagger-2 font-['Newsreader'] text-4xl sm:text-5xl lg:text-[56px] text-[#002313] tracking-tight font-normal leading-[1.08]">
-                Study smarter.<br />
-                Make{' '}
-                <span className="relative inline-block text-[#1b6b44] font-medium italic">
-                  every hour count
-                  <span className="absolute bottom-1.5 left-0 w-full h-[3px] bg-[#1b6b44]/25 rounded-full" />
-                </span>
-                .
-              </h1>
-
-              {/* Punchy Scannable Badges */}
-              <div className="reveal stagger-3 flex flex-wrap gap-2 pt-1 pb-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <Clock className="w-4 h-4 text-[#1b6b44]" />
-                  Algorithmic SM-2 Recall
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <Moon className="w-4 h-4 text-[#1b6b44]" />
-                  Circadian Scheduling
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <ShieldCheck className="w-4 h-4 text-[#1b6b44]" />
-                  Zero Hallucinations
+          {/* Right Column: Faithful Product UI Mockup */}
+          <div className="lg:col-span-6">
+            <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+              
+              {/* Window Title Bar */}
+              <div className="flex items-center justify-between border-b border-border bg-muted/60 px-4 py-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                  <span className="ml-2 font-mono font-medium text-foreground">
+                    CS304_Unit4_Virtual_Memory.pdf
+                  </span>
+                </div>
+                <span className="hidden sm:inline-block font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  42 slides · 18 cards generated
                 </span>
               </div>
 
-              {/* Body Prose */}
-              <p className="reveal stagger-4 font-['Plus_Jakarta_Sans'] text-base sm:text-lg text-[#414843] max-w-lg leading-relaxed">
-                Transforms complex syllabi and raw lecture slides into mathematically spaced retrieval cycles, structured DAG prerequisite trees, and verified citations.
-              </p>
-
-              {/* Primary Actions */}
-              <div className="reveal stagger-5 flex flex-wrap items-center gap-3 pt-2 w-full sm:w-auto">
+              {/* Sub-header Tabs */}
+              <div className="flex items-center gap-4 border-b border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground">
                 <button
-                  onClick={() => navigate('/auth')}
-                  className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-lg bg-[#002313] text-white font-['Plus_Jakarta_Sans'] text-sm font-semibold hover:bg-[#1b6b44] transition-all shadow-md hover:shadow-lg active:scale-98"
+                  type="button"
+                  className="border-b-2 border-primary pb-1 font-semibold text-primary"
                 >
-                  <span>Start Free Study Session</span>
-                  <ArrowRight className="w-4 h-4" />
+                  Flashcards (18)
                 </button>
-                <a
-                  href="#showcase"
-                  className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-lg bg-white text-[#181d19] border border-[#c1c8c1]/70 font-['Plus_Jakarta_Sans'] text-sm font-semibold hover:bg-[#ebefe8] transition-colors shadow-sm"
+                <button
+                  type="button"
+                  className="pb-1 hover:text-foreground transition-colors"
                 >
-                  <Compass className="w-4 h-4 text-[#1b6b44]" />
-                  <span>Explore Interactive Showcase</span>
-                </a>
+                  Practice Quiz (10)
+                </button>
+                <button
+                  type="button"
+                  className="pb-1 hover:text-foreground transition-colors"
+                >
+                  Prerequisite Map
+                </button>
               </div>
 
-              {/* Quick Verification Pill Row */}
-              <div className="reveal stagger-6 pt-2 flex flex-wrap items-center gap-3 sm:gap-4 text-[#414843] font-['Plus_Jakarta_Sans'] text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-[#1b6b44]" />
-                  <span>3-min quick setup</span>
-                </div>
-                <span className="w-1 h-1 rounded-full bg-[#c1c8c1]" />
-                <div className="flex items-center gap-1.5">
-                  <GraduationCap className="w-4 h-4 text-[#1b6b44]" />
-                  <span>120k+ Top Scholars</span>
-                </div>
-                <span className="w-1 h-1 rounded-full bg-[#c1c8c1]" />
-                <div className="flex items-center gap-1.5">
-                  <Lock className="w-4 h-4 text-[#1b6b44]" />
-                  <span>Private Local Vault</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Hero Showcase with Zoom Parallax & Precision UI Dock */}
-            <div
-              className="lg:col-span-6 mt-6 lg:mt-0 relative"
-              style={{
-                transform: `translate(${mouseOffset.x * 0.4}px, ${mouseOffset.y * 0.4}px)`
-              }}
-            >
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-[#c1c8c1]/60 bg-white">
-
-                {/* Atmospheric Photographic Layer with Zoom Parallax */}
-                <div className="relative h-52 sm:h-64 w-full overflow-hidden zoom-parallax-container">
-                  <img
-                    src="/assets/hero-student.png"
-                    alt="University student at study desk sanctuary near window"
-                    className={`w-full h-full object-cover object-center filter brightness-[0.94] contrast-[1.03] zoom-parallax-image ${heroInView ? 'in-view' : ''
-                      }`}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-white via-white/30 to-transparent" />
-
-                  {/* Floating Photographic Badges with Parallax depth */}
-                  <div className="absolute top-4 left-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#002313]/85 backdrop-blur-md text-[#c2ecd0] font-['Plus_Jakarta_Sans'] text-[10px] uppercase font-bold tracking-wider shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5 text-[#a5f3c2]" />
-                    Dusk Focus Session · 2h 14m Logged
+              {/* Main Mockup Body: Interactive Card Display */}
+              <div className="p-5 sm:p-6 space-y-4 bg-muted/20">
+                {/* Active Card Container */}
+                <div
+                  className="relative rounded-lg border border-border bg-background p-5 shadow-xs transition-all"
+                  aria-live="polite"
+                >
+                  <div className="flex items-center justify-between pb-3 border-b border-border text-xs">
+                    <span className="font-semibold text-primary">Card 3 of 18 · Page Replacement</span>
+                    <span className="font-mono text-muted-foreground">SM-2 Interval: 2 days</span>
                   </div>
 
-                  <div className="absolute top-4 right-4 flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[#002313] font-['Plus_Jakarta_Sans'] text-xs font-semibold shadow-sm">
-                    <span className="w-2 h-2 rounded-full bg-[#1b6b44] animate-ping" />
-                    <span className="font-mono font-bold">SM-2 Interval: +48h</span>
-                  </div>
-                </div>
-
-                {/* Precision Interactive UI Dock */}
-                <div className="p-5 pt-2 space-y-4">
-                  {/* Live Target Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-[#dfe4dd]">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                        <Brain className="w-4.5 h-4.5 text-[#1b6b44]" />
+                  {/* Card Content (Flip state toggle) */}
+                  <div className="py-4 min-h-[140px] flex flex-col justify-between">
+                    {!flipped ? (
+                      <div className="space-y-2">
+                        <span className="text-[11px] uppercase font-bold tracking-wider text-muted-foreground">
+                          Prompt / Question
+                        </span>
+                        <p className="text-sm sm:text-base font-medium text-foreground leading-snug">
+                          What is <strong className="text-primary">Belady’s Anomaly</strong> in FIFO page replacement, and under what condition does it occur?
+                        </p>
                       </div>
-                      <div>
-                        <div className="font-['Plus_Jakarta_Sans'] text-sm text-[#002313] font-bold">
-                          Distributed Deadlock Resolution
-                        </div>
-                        <div className="text-[11px] text-[#414843] font-mono">
-                          Set 3 of 12 · USMLE & EECS Standards
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#a3f1bf] text-[#217048] font-['Plus_Jakarta_Sans'] text-xs font-bold">
-                        88% Mastery
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Active Interactive Card Preview */}
-                  <div className="p-4 rounded-xl bg-[#f0f5ee] border border-[#c1c8c1]/40 space-y-3">
-                    <div className="flex items-center justify-between text-[11px] text-[#414843]">
-                      <span className="font-['Plus_Jakarta_Sans'] font-bold uppercase text-[#1b6b44] tracking-wider text-[10px]">
-                        Active Prompt
-                      </span>
-                      <span className="font-mono">Next: 3 Days</span>
-                    </div>
-                    <p className="font-['Plus_Jakarta_Sans'] text-[15px] font-semibold text-[#002313] leading-snug">
-                      "Differentiate Dijkstra’s Banker’s Algorithm from Wait-For Graph cycle detection under distributed state machines."
-                    </p>
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#414843]">
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#1b6b44]" />
-                        <span>Silberschatz §19.4 Verified</span>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => setActiveReviewState('reviewed')}
-                          className={`px-2.5 py-1 rounded font-['Plus_Jakarta_Sans'] text-xs transition-colors ${activeReviewState === 'reviewed'
-                              ? 'bg-[#1b6b44] text-white font-bold'
-                              : 'bg-[#ebefe8] hover:bg-[#dfe4dd] text-[#181d19]'
-                            }`}
-                        >
-                          Review (12h)
-                        </button>
-                        <button
-                          onClick={() => setActiveReviewState('mastered')}
-                          className={`px-2.5 py-1 rounded font-['Plus_Jakarta_Sans'] text-xs shadow-sm transition-colors ${activeReviewState === 'mastered'
-                              ? 'bg-[#1b6b44] text-white font-bold'
-                              : 'bg-[#002313] text-white hover:bg-[#1b6b44]'
-                            }`}
-                        >
-                          Mastered (4d)
-                        </button>
-                      </div>
-                    </div>
-                    {activeReviewState !== 'idle' && (
-                      <div className="text-[11px] text-[#1b6b44] bg-[#a3f1bf]/40 p-2 rounded border border-[#1b6b44]/20 animate-fade-in flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#1b6b44]" />
-                        <span>Interval rescheduled. SM-2 decay matrix updated.</span>
+                    ) : (
+                      <div className="space-y-2">
+                        <span className="text-[11px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400">
+                          Answer / Definition
+                        </span>
+                        <p className="text-xs sm:text-sm text-foreground leading-relaxed">
+                          Belady’s Anomaly is the phenomenon where allocating <em>more page frames</em> results in an <em>increase</em> in page faults for FIFO page replacement (e.g. reference string 1,2,3,4,1,2,5,1,2,3,4,5 has 9 faults with 3 frames, but 10 faults with 4 frames).
+                        </p>
                       </div>
                     )}
+
+                    {/* Grounded Citation */}
+                    <div className="mt-3 flex items-center justify-between pt-2 border-t border-dashed border-border text-[11px]">
+                      <span className="font-mono text-muted-foreground flex items-center gap-1">
+                        <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span>Source: Slide 14 · "Belady’s Anomaly Demonstration"</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFlipped(!flipped)}
+                        className="font-medium text-primary hover:underline flex items-center gap-1"
+                      >
+                        <RotateCw className="h-3 w-3" />
+                        <span>{flipped ? 'Show Prompt' : 'Reveal Answer'}</span>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Real-time Streak Bar */}
-                  <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                    <div className="p-2 rounded-lg bg-[#f0f5ee]">
-                      <div className="text-[10px] uppercase font-['Plus_Jakarta_Sans'] font-bold text-[#414843]">Retention</div>
-                      <div className="font-['Plus_Jakarta_Sans'] text-[#002313] font-bold text-base">94.6%</div>
-                    </div>
-                    <div className="p-2 rounded-lg bg-[#f0f5ee]">
-                      <div className="text-[10px] uppercase font-['Plus_Jakarta_Sans'] font-bold text-[#1b6b44] font-bold text-base">18 Days</div>
-                    </div>
-                    <div className="p-2 rounded-lg bg-[#f0f5ee]">
-                      <div className="text-[10px] uppercase font-['Plus_Jakarta_Sans'] font-bold text-[#414843]">Cognitive Load</div>
-                      <div className="font-['Plus_Jakarta_Sans'] text-[#002313] font-bold text-base">Balanced</div>
+                  {/* Review Actions */}
+                  <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">Rate your recall:</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInterval('1d')}
+                        className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                          selectedInterval === '1d'
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-muted hover:bg-muted/80 text-foreground'
+                        }`}
+                      >
+                        Review Tomorrow
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInterval('3d')}
+                        className={`rounded px-2.5 py-1 text-xs font-semibold transition-colors ${
+                          selectedInterval === '3d'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        }`}
+                      >
+                        Mastered (+3d)
+                      </button>
                     </div>
                   </div>
 
+                  {selectedInterval && (
+                    <div className="mt-2.5 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>Next review scheduled in {selectedInterval === '1d' ? '24 hours' : '3 days'}. Spaced-repetition queue updated.</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
 
+                {/* Attached Quiz Snippet */}
+                <div className="rounded-lg border border-border bg-background p-4 text-xs space-y-2">
+                  <div className="flex items-center justify-between font-semibold text-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <HelpCircle className="h-3.5 w-3.5 text-primary" />
+                      <span>End-Sem MCQ Preview</span>
+                    </span>
+                    <span className="text-[11px] font-mono text-muted-foreground">Gate / University 2-Mark</span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Which of the following algorithms NEVER suffers from Belady’s Anomaly?
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
+                    {[
+                      { id: 'a', text: 'A) FIFO', correct: false },
+                      { id: 'b', text: 'B) LRU (Stack Algo)', correct: true },
+                      { id: 'c', text: 'C) Second Chance', correct: false },
+                      { id: 'd', text: 'D) Random', correct: false },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setQuizAnswer(opt.id)}
+                        className={`p-2 rounded border text-left transition-colors ${
+                          quizAnswer === opt.id
+                            ? opt.correct
+                              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold'
+                              : 'border-rose-500 bg-rose-500/10 text-rose-800 dark:text-rose-300'
+                            : 'border-border bg-card hover:bg-muted text-foreground'
+                        }`}
+                      >
+                        {opt.text}
+                      </button>
+                    ))}
+                  </div>
+                  {quizAnswer === 'b' && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-sans pt-1">
+                      ✓ Correct: LRU is a stack algorithm, so the set of pages in memory for n frames is always a subset of n+1 frames.
+                    </p>
+                  )}
+                </div>
+
+              </div>
+
+            </div>
           </div>
+
         </div>
-      </section>
-
-      {/* Institutional Impact Metric Ribbon */}
-      <section id="impact" className="w-full bg-white py-8 border-b border-[#dfe4dd]/60 scroll-mt-20">
-        <div className="max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center md:text-left">
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <GraduationCap className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
-              <div>
-                <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">120,000+</div>
-                <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Scholars at Oxford, Stanford & MIT</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Timer className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
-              <div>
-                <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">4.2M+</div>
-                <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Hours of Active Recall Logged</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Award className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
-              <div>
-                <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#1b6b44]">94.6%</div>
-                <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">90-Day Exam Concept Retention</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Star className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
-              <div>
-                <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">4.9 / 5.0</div>
-                <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Bar, USMLE & PhD Endorsement</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 };

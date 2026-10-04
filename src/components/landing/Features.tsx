@@ -1,187 +1,209 @@
-
-import React, { useEffect, useRef, useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { 
-  Brain, 
-  BookOpen, 
-  Target, 
-  Zap, 
-  BarChart3, 
-  MessageSquare,
-  FileText,
-  Trophy
+import React from 'react';
+import {
+  FileCheck,
+  GraduationCap,
+  GitFork,
+  CalendarClock,
+  CheckCircle2,
+  ExternalLink,
+  ArrowRight,
 } from 'lucide-react';
 
-export const Features = () => {
-  const [visibleCards, setVisibleCards] = useState<number[]>([]);
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const cards = entry.target.querySelectorAll('[data-card-index]');
-            cards.forEach((card, index) => {
-              setTimeout(() => {
-                setVisibleCards(prev => [...prev, index]);
-              }, index * 100);
-            });
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
+export const Features: React.FC = () => {
   const features = [
     {
-      icon: Brain,
-      title: 'AI-Powered Flashcards',
-      description: 'Generate smart flashcards from any content using advanced AI technology.',
-      gradient: 'from-purple-500 to-pink-500',
-      shadowColor: 'shadow-purple-500/50'
+      id: 'citations',
+      icon: FileCheck,
+      badge: 'Grounded Accuracy',
+      title: 'Every card cited to your professor’s exact slide',
+      description:
+        'University evaluators grade against standard course syllabi. StudyMate attaches the exact slide number, diagram reference, and quote to every generated answer so you can verify before writing exams.',
+      uiSnippet: (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3 font-mono text-xs">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground border-b border-border pb-2">
+            <span className="font-semibold text-foreground">Card Citation Inspector</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">100% Match</span>
+          </div>
+          <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-900 dark:text-emerald-200 font-sans space-y-1">
+            <div className="font-semibold flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Grounded in Source: Slide 28, Unit 2</span>
+            </div>
+            <p className="text-[11px] font-mono text-muted-foreground">
+              "Dijkstra’s Banker's Algorithm requires 3 data structures: Available[m], Max[n][m], Allocation[n][m], and Need[n][m] where Need = Max - Allocation."
+            </p>
+          </div>
+          <div className="text-[11px] text-muted-foreground flex justify-between items-center font-sans">
+            <span>Evaluator match confidence:</span>
+            <span className="font-mono text-foreground font-semibold">Strict Syllabus Aligned</span>
+          </div>
+        </div>
+      ),
     },
     {
-      icon: MessageSquare,
-      title: 'AI Study Assistant',
-      description: 'Get instant help with explanations, concepts, and problem-solving.',
-      gradient: 'from-blue-500 to-cyan-500',
-      shadowColor: 'shadow-blue-500/50'
+      id: 'formats',
+      icon: GraduationCap,
+      badge: 'Exam & GATE Formats',
+      title: 'Built for 2-mark, 5-mark & technical placement questions',
+      description:
+        'Instead of generic paragraphs, StudyMate formats content into the exact structures Indian engineering papers require: concise definitions for 2-markers, comparison tables for 5-markers, and GATE-style numericals.',
+      uiSnippet: (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3 font-mono text-xs">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground border-b border-border pb-2">
+            <span className="font-semibold text-foreground">Question Format Preset</span>
+            <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">5-Mark Comparison</span>
+          </div>
+          <div className="space-y-1.5 font-sans">
+            <p className="font-semibold text-foreground text-xs">
+              Q: Differentiate Paging and Segmentation (5 Marks)
+            </p>
+            <div className="rounded border border-border bg-muted/40 p-2 text-[11px] space-y-1">
+              <div className="grid grid-cols-2 gap-2 text-muted-foreground font-mono">
+                <div>• Paging: Fixed size blocks (Frames & Pages)</div>
+                <div>• Segmentation: Variable size user logical units</div>
+                <div>• Paging: No external fragmentation</div>
+                <div>• Segmentation: External fragmentation possible</div>
+              </div>
+            </div>
+          </div>
+          <span className="text-[10px] text-muted-foreground font-sans block">
+            Generated following standard university answer schemes.
+          </span>
+        </div>
+      ),
     },
     {
-      icon: Target,
-      title: 'Personalized Study Plans',
-      description: 'Customized learning paths based on your goals and progress.',
-      gradient: 'from-green-500 to-emerald-500',
-      shadowColor: 'shadow-green-500/50'
+      id: 'dag',
+      icon: GitFork,
+      badge: 'Concept Dependency Graph',
+      title: 'Prerequisite maps so you don’t study out of order',
+      description:
+        'Tackling Virtual Memory without understanding Page Tables or Hardware TLB leads to rote memorization that fails during placement interviews. StudyMate draws a prerequisite DAG showing what to master first.',
+      uiSnippet: (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3 font-mono text-xs">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground border-b border-border pb-2">
+            <span className="font-semibold text-foreground">Prerequisite Flow (DAG)</span>
+            <span className="text-primary font-bold">4 Levels</span>
+          </div>
+          <div className="space-y-2 font-sans text-xs">
+            <div className="flex items-center gap-2">
+              <span className="h-6 px-2 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 flex items-center font-mono text-[11px]">
+                01. Logical Address
+              </span>
+              <span className="text-muted-foreground">→</span>
+              <span className="h-6 px-2 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 flex items-center font-mono text-[11px]">
+                02. Page Table
+              </span>
+            </div>
+            <div className="flex items-center gap-2 pl-4">
+              <span className="text-muted-foreground">↳</span>
+              <span className="h-6 px-2 rounded bg-primary/20 text-primary border border-primary/30 flex items-center font-mono text-[11px] font-bold">
+                03. TLB & Address Translation
+              </span>
+              <span className="text-muted-foreground">→</span>
+              <span className="h-6 px-2 rounded bg-muted text-muted-foreground border border-border flex items-center font-mono text-[11px]">
+                04. Inverted Page Table
+              </span>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground font-sans pt-1">
+            Topic 03 unlocked after mastering Logical Address & Page Table.
+          </p>
+        </div>
+      ),
     },
     {
-      icon: BarChart3,
-      title: 'Progress Tracking',
-      description: 'Monitor your learning journey with detailed analytics and insights.',
-      gradient: 'from-orange-500 to-red-500',
-      shadowColor: 'shadow-orange-500/50'
+      id: 'sm2',
+      icon: CalendarClock,
+      badge: 'Spaced Repetition',
+      title: 'SM-2 scheduling timed for semester internals & finals',
+      description:
+        'Instead of frantic all-nighters, StudyMate calculates when your memory of a formula or algorithm begins to decay, scheduling quick 5-minute active recall drills so knowledge sticks permanently.',
+      uiSnippet: (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3 font-mono text-xs">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground border-b border-border pb-2">
+            <span className="font-semibold text-foreground">Active Recall Decay Tracker</span>
+            <span className="text-amber-600 font-bold">Recall Score: 86%</span>
+          </div>
+          <div className="space-y-2 font-sans text-xs">
+            <div className="flex justify-between text-[11px]">
+              <span className="text-muted-foreground">Deadlock Detection:</span>
+              <span className="font-mono text-emerald-600 font-medium">Due in 5 days</span>
+            </div>
+            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full w-[78%]" />
+            </div>
+            <div className="flex justify-between text-[11px]">
+              <span className="text-muted-foreground">Paging TLB Formula:</span>
+              <span className="font-mono text-amber-600 font-medium">Review Tomorrow (24h)</span>
+            </div>
+            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-amber-500 rounded-full w-[45%]" />
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground pt-1">
+            Optimized to reach 90%+ retention by exam date.
+          </p>
+        </div>
+      ),
     },
-    {
-      icon: Zap,
-      title: 'Quick Review Sessions',
-      description: 'Efficient spaced repetition system for optimal retention.',
-      gradient: 'from-yellow-500 to-orange-500',
-      shadowColor: 'shadow-yellow-500/50'
-    },
-    {
-      icon: FileText,
-      title: 'Study Materials',
-      description: 'Organize and manage all your study resources in one place.',
-      gradient: 'from-indigo-500 to-purple-500',
-      shadowColor: 'shadow-indigo-500/50'
-    },
-    {
-      icon: Trophy,
-      title: 'Achievement System',
-      description: 'Stay motivated with gamified learning and progress rewards.',
-      gradient: 'from-pink-500 to-rose-500',
-      shadowColor: 'shadow-pink-500/50'
-    },
-    {
-      icon: BookOpen,
-      title: 'Resource Library',
-      description: 'Access curated study materials and educational content.',
-      gradient: 'from-teal-500 to-cyan-500',
-      shadowColor: 'shadow-teal-500/50'
-    }
   ];
 
   return (
-    <section id="features" ref={sectionRef} className="py-24 px-4 bg-gradient-to-b from-white via-indigo-50/30 to-purple-50/30 relative overflow-hidden scroll-mt-20">
-      {/* Background Decoration */}
-      <div className="absolute top-0 left-0 w-full h-full opacity-30">
-        <div className="absolute top-20 right-20 w-72 h-72 bg-purple-300 rounded-full filter blur-3xl animate-float"></div>
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-blue-300 rounded-full filter blur-3xl animate-float-delayed"></div>
-      </div>
-
-      <div className="max-w-7xl mx-auto relative z-10">
+    <section
+      id="features"
+      className="py-16 lg:py-24 bg-background border-b border-border scroll-mt-16"
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        
         {/* Section Header */}
-        <div className="text-center mb-20">
-          <div className="inline-block mb-4">
-            <span className="px-4 py-2 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full text-sm font-semibold">
-              ✨ Powerful Features
-            </span>
-          </div>
-          <h2 className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-6">
-            Everything You Need to 
-            <br />
-            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">
-              Excel
-            </span>
+        <div className="max-w-3xl mx-auto text-center space-y-3 mb-16">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-primary">
+            Engineered For Exam Performance
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Powerful AI-driven tools designed to make studying more effective, engaging, and personalized to your learning style.
+          <h3 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            Everything you need to master tough engineering syllabi.
+          </h3>
+          <p className="text-muted-foreground text-base">
+            Engineered for real engineering coursework: no superficial summaries, no fabricated citations, and no generic answers.
           </p>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            const isVisible = visibleCards.includes(index);
+        {/* 4 Features Grid (2x2) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {features.map((f) => {
+            const Icon = f.icon;
             return (
-              <Card 
-                key={index}
-                data-card-index={index}
-                className={`relative p-8 hover:shadow-2xl transition-all duration-500 transform border-0 bg-white/80 backdrop-blur-sm group overflow-hidden ${
-                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-                }`}
-                style={{ transitionDelay: `${index * 50}ms` }}
+              <div
+                key={f.id}
+                className="rounded-xl border border-border bg-card p-6 sm:p-8 flex flex-col justify-between space-y-6 shadow-xs hover:border-primary/40 transition-colors"
               >
-                {/* Gradient Background on Hover */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
-                
-                {/* Icon Container */}
-                <div className="relative">
-                  <div className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} rounded-xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300`}></div>
-                  <div className={`relative w-14 h-14 rounded-xl bg-gradient-to-r ${feature.gradient} flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${feature.shadowColor} shadow-lg`}>
-                    <Icon className="w-7 h-7 text-white" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      {f.badge}
+                    </span>
                   </div>
+
+                  <h4 className="text-xl font-bold text-foreground leading-snug">
+                    {f.title}
+                  </h4>
+
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {f.description}
+                  </p>
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:from-indigo-600 group-hover:to-purple-600 transition-all duration-300">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {feature.description}
-                </p>
-
-                {/* Hover Arrow */}
-                <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300">
-                  <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${feature.gradient} flex items-center justify-center`}>
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              </Card>
+                {/* UI Snippet */}
+                <div className="pt-2">{f.uiSnippet}</div>
+              </div>
             );
           })}
         </div>
 
-        {/* Bottom CTA */}
-        <div className="text-center mt-20">
-          <div className="inline-flex items-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer group">
-            <Zap className="w-6 h-6 mr-3 group-hover:rotate-12 transition-transform" />
-            <span className="font-bold text-lg">Start your learning journey today</span>
-            <svg className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </div>
-        </div>
       </div>
     </section>
   );

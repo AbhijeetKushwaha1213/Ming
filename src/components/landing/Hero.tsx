@@ -1,5 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  ArrowRight,
+  Clock,
+  Moon,
+  ShieldCheck,
+  Sparkles,
+  Brain,
+  CheckCircle2,
+  GraduationCap,
+  Lock,
+  Zap,
+  Compass,
+  Timer,
+  Award,
+  Star,
+} from 'lucide-react';
 
 export const Hero = () => {
   const navigate = useNavigate();
@@ -36,7 +52,7 @@ export const Hero = () => {
   return (
     <>
       {/* Fixed Top Header / Navbar */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f6fbf3]/85 backdrop-blur-xl border-b border-[#dfe4dd]/60 transition-all duration-300">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f6fbf3]/90 backdrop-blur-xl border-b border-[#dfe4dd]/60 transition-all duration-300">
         <div className="h-20 max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-12 flex items-center justify-between gap-6">
           {/* Official StudyMate AI Green Learning Logo */}
           <div
@@ -46,7 +62,7 @@ export const Hero = () => {
             <img
               src="/assets/studymate-logo.png"
               alt="StudyMate AI Official Logo"
-              className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              className="h-10 w-10 rounded-xl object-cover shadow-sm transition-transform duration-300 group-hover:scale-105"
             />
             <div className="flex items-center gap-1.5">
               <span className="font-['Newsreader'] text-2xl font-bold tracking-tight text-[#002313]">
@@ -61,28 +77,22 @@ export const Hero = () => {
           {/* Navigation Links */}
           <nav className="hidden lg:flex items-center gap-8 text-[#414843] font-['Plus_Jakarta_Sans'] text-[13px] font-semibold">
             <a
-              href="#features"
+              href="#showcase"
               className="text-[#002313] hover:text-[#1b6b44] transition-colors"
+            >
+              Showcase
+            </a>
+            <a
+              href="#features"
+              className="hover:text-[#002313] transition-colors"
             >
               Features
             </a>
             <a
-              href="#story"
+              href="#impact"
               className="hover:text-[#002313] transition-colors"
             >
-              Day in the Life
-            </a>
-            <a
-              href="#workspace"
-              className="hover:text-[#002313] transition-colors"
-            >
-              Studio Lab
-            </a>
-            <a
-              href="#methodology"
-              className="hover:text-[#002313] transition-colors"
-            >
-              Protocol
+              Scholarly Impact
             </a>
           </nav>
 
@@ -99,7 +109,7 @@ export const Hero = () => {
               className="inline-flex items-center justify-center h-[38px] px-4 rounded-lg bg-[#002313] text-white font-['Plus_Jakarta_Sans'] text-[13px] font-semibold hover:bg-[#1b6b44] transition-all shadow-sm hover:shadow-md gap-1.5 active:scale-95"
             >
               <span>Start Free</span>
-              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -144,15 +154,15 @@ export const Hero = () => {
               {/* Punchy Scannable Badges */}
               <div className="reveal stagger-3 flex flex-wrap gap-2 pt-1 pb-1">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <span className="material-symbols-outlined text-[#1b6b44] text-[16px]">schedule</span>
+                  <Clock className="w-4 h-4 text-[#1b6b44]" />
                   Algorithmic SM-2 Recall
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <span className="material-symbols-outlined text-[#1b6b44] text-[16px]">bedtime</span>
+                  <Moon className="w-4 h-4 text-[#1b6b44]" />
                   Circadian Scheduling
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <span className="material-symbols-outlined text-[#1b6b44] text-[16px]">verified</span>
+                  <ShieldCheck className="w-4 h-4 text-[#1b6b44]" />
                   Zero Hallucinations
                 </span>
               </div>
@@ -169,31 +179,31 @@ export const Hero = () => {
                   className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-lg bg-[#002313] text-white font-['Plus_Jakarta_Sans'] text-sm font-semibold hover:bg-[#1b6b44] transition-all shadow-md hover:shadow-lg active:scale-98"
                 >
                   <span>Start Free Study Session</span>
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
                 <a
-                  href="#story"
+                  href="#showcase"
                   className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-lg bg-white text-[#181d19] border border-[#c1c8c1]/70 font-['Plus_Jakarta_Sans'] text-sm font-semibold hover:bg-[#ebefe8] transition-colors shadow-sm"
                 >
-                  <span className="material-symbols-outlined text-[18px] text-[#1b6b44]">explore</span>
-                  <span>Explore A Day in the Life</span>
+                  <Compass className="w-4 h-4 text-[#1b6b44]" />
+                  <span>Explore Interactive Showcase</span>
                 </a>
               </div>
 
               {/* Quick Verification Pill Row */}
               <div className="reveal stagger-6 pt-2 flex flex-wrap items-center gap-3 sm:gap-4 text-[#414843] font-['Plus_Jakarta_Sans'] text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[#1b6b44] text-[16px]">bolt</span>
+                  <Zap className="w-4 h-4 text-[#1b6b44]" />
                   <span>3-min quick setup</span>
                 </div>
                 <span className="w-1 h-1 rounded-full bg-[#c1c8c1]" />
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[#1b6b44] text-[16px]">school</span>
+                  <GraduationCap className="w-4 h-4 text-[#1b6b44]" />
                   <span>120k+ Top Scholars</span>
                 </div>
                 <span className="w-1 h-1 rounded-full bg-[#c1c8c1]" />
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[#1b6b44] text-[16px]">encrypted</span>
+                  <Lock className="w-4 h-4 text-[#1b6b44]" />
                   <span>Private Local Vault</span>
                 </div>
               </div>
@@ -220,7 +230,7 @@ export const Hero = () => {
 
                   {/* Floating Photographic Badges with Parallax depth */}
                   <div className="absolute top-4 left-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#002313]/85 backdrop-blur-md text-[#c2ecd0] font-['Plus_Jakarta_Sans'] text-[10px] uppercase font-bold tracking-wider shadow-sm">
-                    <span className="material-symbols-outlined text-[14px] text-[#a5f3c2]">nightlight</span>
+                    <Sparkles className="w-3.5 h-3.5 text-[#a5f3c2]" />
                     Dusk Focus Session · 2h 14m Logged
                   </div>
 
@@ -235,7 +245,9 @@ export const Hero = () => {
                   {/* Live Target Header */}
                   <div className="flex items-center justify-between pb-3 border-b border-[#dfe4dd]">
                     <div className="flex items-center gap-2.5">
-                      <span className="material-symbols-outlined text-[#1b6b44] text-[20px]">psychology</span>
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                        <Brain className="w-4.5 h-4.5 text-[#1b6b44]" />
+                      </div>
                       <div>
                         <div className="font-['Plus_Jakarta_Sans'] text-sm text-[#002313] font-bold">
                           Distributed Deadlock Resolution
@@ -265,7 +277,7 @@ export const Hero = () => {
                     </p>
                     <div className="flex items-center justify-between pt-1">
                       <div className="flex items-center gap-1.5 text-[11px] text-[#414843]">
-                        <span className="material-symbols-outlined text-[#1b6b44] text-[15px]">verified</span>
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#1b6b44]" />
                         <span>Silberschatz §19.4 Verified</span>
                       </div>
                       <div className="flex gap-1.5">
@@ -291,7 +303,7 @@ export const Hero = () => {
                     </div>
                     {activeReviewState !== 'idle' && (
                       <div className="text-[11px] text-[#1b6b44] bg-[#a3f1bf]/40 p-2 rounded border border-[#1b6b44]/20 animate-fade-in flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#1b6b44]" />
                         <span>Interval rescheduled. SM-2 decay matrix updated.</span>
                       </div>
                     )}
@@ -321,11 +333,11 @@ export const Hero = () => {
       </section>
 
       {/* Institutional Impact Metric Ribbon */}
-      <section className="w-full bg-white py-8 border-b border-[#dfe4dd]/60">
+      <section id="impact" className="w-full bg-white py-8 border-b border-[#dfe4dd]/60 scroll-mt-20">
         <div className="max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center md:text-left">
             <div className="flex items-center gap-3 justify-center md:justify-start">
-              <span className="material-symbols-outlined text-[#1b6b44] text-[32px]">school</span>
+              <GraduationCap className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
               <div>
                 <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">120,000+</div>
                 <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Scholars at Oxford, Stanford & MIT</p>
@@ -333,7 +345,7 @@ export const Hero = () => {
             </div>
 
             <div className="flex items-center gap-3 justify-center md:justify-start">
-              <span className="material-symbols-outlined text-[#1b6b44] text-[32px]">timer</span>
+              <Timer className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
               <div>
                 <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">4.2M+</div>
                 <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Hours of Active Recall Logged</p>
@@ -341,7 +353,7 @@ export const Hero = () => {
             </div>
 
             <div className="flex items-center gap-3 justify-center md:justify-start">
-              <span className="material-symbols-outlined text-[#1b6b44] text-[32px]">verified_user</span>
+              <Award className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
               <div>
                 <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#1b6b44]">94.6%</div>
                 <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">90-Day Exam Concept Retention</p>
@@ -349,7 +361,7 @@ export const Hero = () => {
             </div>
 
             <div className="flex items-center gap-3 justify-center md:justify-start">
-              <span className="material-symbols-outlined text-[#1b6b44] text-[32px]">hotel_class</span>
+              <Star className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
               <div>
                 <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">4.9 / 5.0</div>
                 <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Bar, USMLE & PhD Endorsement</p>

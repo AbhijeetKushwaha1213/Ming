@@ -100,7 +100,7 @@ export const Features = () => {
   ];
 
   return (
-    <section ref={sectionRef} className="py-24 px-4 bg-gradient-to-b from-white via-indigo-50/30 to-purple-50/30 relative overflow-hidden">
+    <section id="features" ref={sectionRef} className="py-24 px-4 bg-gradient-to-b from-white via-indigo-50/30 to-purple-50/30 relative overflow-hidden scroll-mt-20">
       {/* Background Decoration */}
       <div className="absolute top-0 left-0 w-full h-full opacity-30">
         <div className="absolute top-20 right-20 w-72 h-72 bg-purple-300 rounded-full filter blur-3xl animate-float"></div>

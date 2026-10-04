@@ -268,7 +268,11 @@ export default function ProductShowcase() {
 
     // fade-in when scrolled into view
     useEffect(() => {
-        const io = new IntersectionObserver(([e]) => e.isIntersecting && setVisible(true), { threshold: 0.2 });
+        if (typeof IntersectionObserver === 'undefined') {
+            setVisible(true);
+            return;
+        }
+        const io = new IntersectionObserver(([e]) => e && e.isIntersecting && setVisible(true), { threshold: 0.1 });
         if (ref.current) io.observe(ref.current);
         return () => io.disconnect();
     }, []);
@@ -282,7 +286,7 @@ export default function ProductShowcase() {
     }, [n]);
 
     return (
-        <section ref={ref} className="relative overflow-hidden bg-[#f6f8f4] py-20">
+        <section id="showcase" ref={ref} className="relative overflow-hidden bg-[#f6f8f4] py-20 scroll-mt-20">
             {/* heading */}
             <div className="mx-auto mb-10 max-w-3xl px-5 text-center">
                 <span className="rounded-full bg-emerald-900 px-4 py-1.5 text-xs font-medium tracking-wide text-emerald-100">

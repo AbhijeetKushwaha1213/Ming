@@ -1,112 +1,84 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
-  Clock,
-  Moon,
-  ShieldCheck,
-  Sparkles,
-  Brain,
   CheckCircle2,
-  GraduationCap,
-  Lock,
-  Zap,
-  Compass,
-  Timer,
-  Award,
-  Star,
+  Clock,
+  Sparkles,
+  GitBranch,
+  FileText,
+  BookOpen,
+  ShieldCheck,
+  Code2,
+  Layers,
+  CalendarClock,
+  Play,
+  RotateCcw,
 } from 'lucide-react';
 
 export const Hero = () => {
   const navigate = useNavigate();
-  const [scrollY, setScrollY] = useState(0);
-  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
-  const [heroInView, setHeroInView] = useState(false);
-  const [activeReviewState, setActiveReviewState] = useState<'idle' | 'reviewed' | 'mastered'>('idle');
-  const heroRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const { innerWidth, innerHeight } = window;
-      const x = (e.clientX / innerWidth - 0.5) * 16;
-      const y = (e.clientY / innerHeight - 0.5) * 16;
-      setMouseOffset({ x, y });
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-
-    const timer = setTimeout(() => setHeroInView(true), 150);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(timer);
-    };
-  }, []);
+  const [selectedRating, setSelectedRating] = useState<string | null>(null);
+  const [showExplanation, setShowExplanation] = useState(true);
 
   return (
     <>
-      {/* Fixed Top Header / Navbar */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f6fbf3]/90 backdrop-blur-xl border-b border-[#dfe4dd]/60 transition-all duration-300">
-        <div className="h-20 max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-12 flex items-center justify-between gap-6">
-          {/* Official StudyMate AI Green Learning Logo */}
+      {/* Top Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f8fafc]/90 backdrop-blur-md border-b border-slate-200/80 transition-all">
+        <div className="h-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+          {/* Logo */}
           <div
             onClick={() => navigate('/')}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group"
           >
             <img
               src="/assets/studymate-logo.png"
-              alt="StudyMate AI Official Logo"
-              className="h-10 w-10 rounded-xl object-cover shadow-sm transition-transform duration-300 group-hover:scale-105"
+              alt="StudyMate AI Logo"
+              className="h-9 w-9 rounded-lg object-cover shadow-sm group-hover:scale-105 transition-transform"
             />
-            <div className="flex items-center gap-1.5">
-              <span className="font-['Newsreader'] text-2xl font-bold tracking-tight text-[#002313]">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-lg tracking-tight text-slate-900">
                 StudyMate AI
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#a3f1bf] text-[#217048] font-['Plus_Jakarta_Sans'] text-[10px] uppercase font-bold tracking-wider">
-                v2.4 Pro
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-medium border border-emerald-200">
+                Free Student Beta
               </span>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-8 text-[#414843] font-['Plus_Jakarta_Sans'] text-[13px] font-semibold">
+          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-600">
             <a
               href="#showcase"
-              className="text-[#002313] hover:text-[#1b6b44] transition-colors"
+              className="hover:text-emerald-700 transition-colors"
             >
-              Showcase
+              Product Tour
             </a>
             <a
               href="#features"
-              className="hover:text-[#002313] transition-colors"
+              className="hover:text-emerald-700 transition-colors"
             >
-              Features
+              Core Features
             </a>
             <a
               href="#impact"
-              className="hover:text-[#002313] transition-colors"
+              className="hover:text-emerald-700 transition-colors"
             >
-              Scholarly Impact
+              How It Works
             </a>
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/auth')}
-              className="hidden sm:inline-flex text-[#414843] hover:text-[#002313] px-3 py-1.5 font-['Plus_Jakarta_Sans'] text-[13px] font-semibold transition-colors"
+              className="hidden sm:inline-flex text-slate-700 hover:text-slate-900 px-3 py-1.5 text-sm font-medium transition-colors"
             >
               Log In
             </button>
             <button
               onClick={() => navigate('/auth')}
-              className="inline-flex items-center justify-center h-[38px] px-4 rounded-lg bg-[#002313] text-white font-['Plus_Jakarta_Sans'] text-[13px] font-semibold hover:bg-[#1b6b44] transition-all shadow-sm hover:shadow-md gap-1.5 active:scale-95"
+              className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-all shadow-sm gap-1.5 active:scale-98"
             >
               <span>Start Free</span>
               <ArrowRight className="w-4 h-4" />
@@ -115,212 +87,252 @@ export const Hero = () => {
         </div>
       </header>
 
-      {/* Main Hero Section with Cinematic Editorial Composition */}
+      {/* Main Hero Section */}
       <section
         id="hero"
-        ref={heroRef}
-        className="relative w-full overflow-hidden bg-[#f6fbf3] pt-28 pb-16 lg:pt-36 lg:pb-24 border-b border-[#dfe4dd]/60"
+        className="relative w-full overflow-hidden bg-gradient-to-b from-[#f8fafc] via-white to-[#f0fdf4]/30 pt-28 pb-16 lg:pt-36 lg:pb-20 border-b border-slate-200/80"
       >
-        {/* Subtle Archival Grid Backdrop with Slow Parallax */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-35 bg-grid-pattern"
-          style={{
-            transform: `translateY(${scrollY * 0.12}px)`
-          }}
-        />
-
-        <div className="relative max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
 
             {/* Left Content Column */}
-            <div className="lg:col-span-6 flex flex-col items-start space-y-5 z-10">
-              {/* Eyebrow badge */}
-              <div className="reveal stagger-1 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#a3f1bf]/50 border border-[#1b6b44]/20 text-[#217048] font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-[#1b6b44] animate-pulse" />
-                Archival Rigor · Neural Precision
+            <div className="lg:col-span-6 flex flex-col items-start space-y-6">
+              {/* Honest Audience Eyebrow */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-semibold tracking-wide">
+                <Code2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>BUILT FOR B.TECH & ENGINEERING STUDENTS</span>
               </div>
 
               {/* Main Headline */}
-              <h1 className="reveal stagger-2 font-['Newsreader'] text-4xl sm:text-5xl lg:text-[56px] text-[#002313] tracking-tight font-normal leading-[1.08]">
-                Study smarter.<br />
-                Make{' '}
-                <span className="relative inline-block text-[#1b6b44] font-medium italic">
-                  every hour count
-                  <span className="absolute bottom-1.5 left-0 w-full h-[3px] bg-[#1b6b44]/25 rounded-full" />
+              <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-bold text-slate-900 tracking-tight leading-[1.12]">
+                Turn heavy lecture slides into{' '}
+                <span className="text-emerald-700 underline decoration-emerald-300 decoration-wavy underline-offset-4">
+                  verified revision cards & quizzes
                 </span>
                 .
               </h1>
 
-              {/* Punchy Scannable Badges */}
-              <div className="reveal stagger-3 flex flex-wrap gap-2 pt-1 pb-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <Clock className="w-4 h-4 text-[#1b6b44]" />
-                  Algorithmic SM-2 Recall
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <Moon className="w-4 h-4 text-[#1b6b44]" />
-                  Circadian Scheduling
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f0f5ee] text-[#002313] border border-[#c1c8c1]/50 font-['Plus_Jakarta_Sans'] text-[13px] font-medium hover:border-[#1b6b44]/40 transition-colors">
-                  <ShieldCheck className="w-4 h-4 text-[#1b6b44]" />
-                  Zero Hallucinations
-                </span>
-              </div>
-
-              {/* Body Prose */}
-              <p className="reveal stagger-4 font-['Plus_Jakarta_Sans'] text-base sm:text-lg text-[#414843] max-w-lg leading-relaxed">
-                Transforms complex syllabi and raw lecture slides into mathematically spaced retrieval cycles, structured DAG prerequisite trees, and verified citations.
+              {/* Honest, Clear Subtitle */}
+              <p className="text-base sm:text-lg text-slate-600 max-w-xl leading-relaxed">
+                Upload your semester PPTs, syllabus PDFs, and textbook chapters. StudyMate builds interactive concept dependency graphs, generates active-recall flashcards with exact slide citations, and auto-schedules spaced reviews.
               </p>
 
-              {/* Primary Actions */}
-              <div className="reveal stagger-5 flex flex-wrap items-center gap-3 pt-2 w-full sm:w-auto">
+              {/* Real Value Pillars (No Buzzwords) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl pt-1">
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/70">
+                  <FileText className="w-4 h-4 text-emerald-700 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900">Exact Citations</div>
+                    <div className="text-[11px] text-slate-500">Every card cites the slide & page #</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/70">
+                  <GitBranch className="w-4 h-4 text-emerald-700 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900">Concept DAGs</div>
+                    <div className="text-[11px] text-slate-500">Prerequisite learning paths</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/70">
+                  <CalendarClock className="w-4 h-4 text-emerald-700 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900">SM-2 Spaced Recall</div>
+                    <div className="text-[11px] text-slate-500">Exam-ready retention schedules</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Call to Action */}
+              <div className="flex flex-wrap items-center gap-3 pt-2 w-full sm:w-auto">
                 <button
                   onClick={() => navigate('/auth')}
-                  className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-lg bg-[#002313] text-white font-['Plus_Jakarta_Sans'] text-sm font-semibold hover:bg-[#1b6b44] transition-all shadow-md hover:shadow-lg active:scale-98"
+                  className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-lg bg-emerald-700 text-white font-medium hover:bg-emerald-800 transition-all shadow-md hover:shadow-lg active:scale-98"
                 >
-                  <span>Start Free Study Session</span>
+                  <span>Start Studying Free</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <a
                   href="#showcase"
-                  className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-lg bg-white text-[#181d19] border border-[#c1c8c1]/70 font-['Plus_Jakarta_Sans'] text-sm font-semibold hover:bg-[#ebefe8] transition-colors shadow-sm"
+                  className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-lg bg-white text-slate-700 border border-slate-300 font-medium hover:bg-slate-50 transition-colors shadow-sm"
                 >
-                  <Compass className="w-4 h-4 text-[#1b6b44]" />
-                  <span>Explore Interactive Showcase</span>
+                  <Play className="w-4 h-4 text-emerald-700 fill-emerald-100" />
+                  <span>See Interactive Tour</span>
                 </a>
               </div>
 
-              {/* Quick Verification Pill Row */}
-              <div className="reveal stagger-6 pt-2 flex flex-wrap items-center gap-3 sm:gap-4 text-[#414843] font-['Plus_Jakarta_Sans'] text-xs">
+              {/* Honest Micro-Proof */}
+              <div className="flex flex-wrap items-center gap-4 text-slate-500 text-xs pt-1">
                 <div className="flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-[#1b6b44]" />
-                  <span>3-min quick setup</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Free during beta</span>
                 </div>
-                <span className="w-1 h-1 rounded-full bg-[#c1c8c1]" />
+                <span className="w-1 h-1 rounded-full bg-slate-300" />
                 <div className="flex items-center gap-1.5">
-                  <GraduationCap className="w-4 h-4 text-[#1b6b44]" />
-                  <span>120k+ Top Scholars</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>No credit card required</span>
                 </div>
-                <span className="w-1 h-1 rounded-full bg-[#c1c8c1]" />
+                <span className="w-1 h-1 rounded-full bg-slate-300" />
                 <div className="flex items-center gap-1.5">
-                  <Lock className="w-4 h-4 text-[#1b6b44]" />
-                  <span>Private Local Vault</span>
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Local-first vault</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Hero Showcase with Zoom Parallax & Precision UI Dock */}
-            <div
-              className="lg:col-span-6 mt-6 lg:mt-0 relative"
-              style={{
-                transform: `translate(${mouseOffset.x * 0.4}px, ${mouseOffset.y * 0.4}px)`
-              }}
-            >
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-[#c1c8c1]/60 bg-white">
+            {/* Right Column: Genuine Product Mockup */}
+            <div className="lg:col-span-6 mt-4 lg:mt-0">
+              <div className="rounded-2xl border border-slate-300 shadow-2xl bg-white overflow-hidden ring-1 ring-slate-900/5">
 
-                {/* Atmospheric Photographic Layer with Zoom Parallax */}
-                <div className="relative h-52 sm:h-64 w-full overflow-hidden zoom-parallax-container">
-                  <img
-                    src="/assets/hero-student.png"
-                    alt="University student at study desk sanctuary near window"
-                    className={`w-full h-full object-cover object-center filter brightness-[0.94] contrast-[1.03] zoom-parallax-image ${heroInView ? 'in-view' : ''
-                      }`}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-white via-white/30 to-transparent" />
-
-                  {/* Floating Photographic Badges with Parallax depth */}
-                  <div className="absolute top-4 left-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#002313]/85 backdrop-blur-md text-[#c2ecd0] font-['Plus_Jakarta_Sans'] text-[10px] uppercase font-bold tracking-wider shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5 text-[#a5f3c2]" />
-                    Dusk Focus Session · 2h 14m Logged
+                {/* Simulated App Window Header */}
+                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-100/90 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-rose-400" />
+                    <span className="h-3 w-3 rounded-full bg-amber-400" />
+                    <span className="h-3 w-3 rounded-full bg-emerald-400" />
+                    <span className="ml-2 text-xs font-medium text-slate-600 font-mono">
+                      studymate.ai/workspace/operating-systems
+                    </span>
                   </div>
-
-                  <div className="absolute top-4 right-4 flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[#002313] font-['Plus_Jakarta_Sans'] text-xs font-semibold shadow-sm">
-                    <span className="w-2 h-2 rounded-full bg-[#1b6b44] animate-ping" />
-                    <span className="font-mono font-bold">SM-2 Interval: +48h</span>
-                  </div>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                    Active Study Session
+                  </span>
                 </div>
 
-                {/* Precision Interactive UI Dock */}
-                <div className="p-5 pt-2 space-y-4">
-                  {/* Live Target Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-[#dfe4dd]">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                        <Brain className="w-4.5 h-4.5 text-[#1b6b44]" />
+                {/* Product Workspace Body */}
+                <div className="p-5 sm:p-6 bg-slate-50/60 space-y-4">
+
+                  {/* Course & Module Context */}
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+                        Semester 5 · Core CS
                       </div>
-                      <div>
-                        <div className="font-['Plus_Jakarta_Sans'] text-sm text-[#002313] font-bold">
-                          Distributed Deadlock Resolution
-                        </div>
-                        <div className="text-[11px] text-[#414843] font-mono">
-                          Set 3 of 12 · USMLE & EECS Standards
-                        </div>
+                      <div className="text-base font-bold text-slate-900">
+                        Operating Systems · Unit 3: Deadlocks
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#a3f1bf] text-[#217048] font-['Plus_Jakarta_Sans'] text-xs font-bold">
-                        88% Mastery
-                      </span>
+                      <div className="text-xs text-slate-500 font-medium">Concept Mastery</div>
+                      <div className="text-sm font-bold text-emerald-700">8 / 10 Mastered (80%)</div>
                     </div>
                   </div>
 
-                  {/* Active Interactive Card Preview */}
-                  <div className="p-4 rounded-xl bg-[#f0f5ee] border border-[#c1c8c1]/40 space-y-3">
-                    <div className="flex items-center justify-between text-[11px] text-[#414843]">
-                      <span className="font-['Plus_Jakarta_Sans'] font-bold uppercase text-[#1b6b44] tracking-wider text-[10px]">
-                        Active Prompt
+                  {/* Mini Prerequisite DAG Breadcrumb Bar */}
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between text-xs text-slate-600">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <GitBranch className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      <span className="text-slate-400">Prerequisites:</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px]">Process Sync</span>
+                      <span className="text-slate-400">→</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px]">Semaphores</span>
+                      <span className="text-slate-400">→</span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">Deadlock Conditions</span>
+                    </div>
+                    <span className="hidden sm:inline text-[11px] text-emerald-700 font-medium">DAG Level 3</span>
+                  </div>
+
+                  {/* The Active Recall Card */}
+                  <div className="p-4 sm:p-5 rounded-xl bg-white border border-slate-200 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        Flashcard · Active Recall Mode
                       </span>
-                      <span className="font-mono">Next: 3 Days</span>
+                      <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                        Silberschatz OS §8.5 · Slide 24
+                      </span>
                     </div>
-                    <p className="font-['Plus_Jakarta_Sans'] text-[15px] font-semibold text-[#002313] leading-snug">
-                      "Differentiate Dijkstra’s Banker’s Algorithm from Wait-For Graph cycle detection under distributed state machines."
-                    </p>
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#414843]">
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#1b6b44]" />
-                        <span>Silberschatz §19.4 Verified</span>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => setActiveReviewState('reviewed')}
-                          className={`px-2.5 py-1 rounded font-['Plus_Jakarta_Sans'] text-xs transition-colors ${activeReviewState === 'reviewed'
-                              ? 'bg-[#1b6b44] text-white font-bold'
-                              : 'bg-[#ebefe8] hover:bg-[#dfe4dd] text-[#181d19]'
-                            }`}
-                        >
-                          Review (12h)
-                        </button>
-                        <button
-                          onClick={() => setActiveReviewState('mastered')}
-                          className={`px-2.5 py-1 rounded font-['Plus_Jakarta_Sans'] text-xs shadow-sm transition-colors ${activeReviewState === 'mastered'
-                              ? 'bg-[#1b6b44] text-white font-bold'
-                              : 'bg-[#002313] text-white hover:bg-[#1b6b44]'
-                            }`}
-                        >
-                          Mastered (4d)
-                        </button>
-                      </div>
+
+                    <div className="space-y-1">
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Question</div>
+                      <p className="text-sm sm:text-base font-semibold text-slate-900 leading-snug">
+                        "What 4 conditions must hold simultaneously for a system deadlock to occur?"
+                      </p>
                     </div>
-                    {activeReviewState !== 'idle' && (
-                      <div className="text-[11px] text-[#1b6b44] bg-[#a3f1bf]/40 p-2 rounded border border-[#1b6b44]/20 animate-fade-in flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#1b6b44]" />
-                        <span>Interval rescheduled. SM-2 decay matrix updated.</span>
+
+                    {showExplanation && (
+                      <div className="p-3 rounded-lg bg-emerald-50/70 border border-emerald-100 text-xs text-slate-700 space-y-1.5 animate-in fade-in duration-200">
+                        <div className="font-semibold text-emerald-900 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Coffman Conditions (Exam Key Points):</span>
+                        </div>
+                        <ol className="list-decimal pl-4 space-y-0.5 text-slate-700 font-medium">
+                          <li><strong className="text-slate-900">Mutual Exclusion:</strong> At least one resource held non-shareably.</li>
+                          <li><strong className="text-slate-900">Hold and Wait:</strong> Process holds 1 resource while requesting others.</li>
+                          <li><strong className="text-slate-900">No Preemption:</strong> Resources can only be released voluntarily.</li>
+                          <li><strong className="text-slate-900">Circular Wait:</strong> P0 waits for P1, P1 for P2... Pn for P0.</li>
+                        </ol>
                       </div>
                     )}
+
+                    {/* Interactive SM-2 Interval Selector */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between pb-2">
+                        <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          How well did you recall this?
+                        </span>
+                        {selectedRating && (
+                          <span className="text-[11px] text-emerald-700 font-semibold">
+                            Scheduled for next revision!
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                        {[
+                          { key: 'again', label: 'Again', time: '< 10m', color: 'hover:border-rose-300 hover:bg-rose-50 text-rose-700' },
+                          { key: 'hard', label: 'Hard', time: '1 day', color: 'hover:border-amber-300 hover:bg-amber-50 text-amber-700' },
+                          { key: 'good', label: 'Good', time: '3 days', color: 'hover:border-emerald-300 hover:bg-emerald-50 text-emerald-700' },
+                          { key: 'easy', label: 'Easy', time: '6 days', color: 'hover:border-blue-300 hover:bg-blue-50 text-blue-700' },
+                        ].map((btn) => (
+                          <button
+                            key={btn.key}
+                            onClick={() => setSelectedRating(btn.key)}
+                            className={`p-1.5 sm:p-2 rounded-lg border text-center transition-all ${
+                              selectedRating === btn.key
+                                ? 'border-emerald-700 bg-emerald-700 text-white shadow-sm'
+                                : `border-slate-200 bg-white ${btn.color}`
+                            }`}
+                          >
+                            <div className="text-[11px] font-bold leading-tight">{btn.label}</div>
+                            <div className={`text-[10px] ${selectedRating === btn.key ? 'text-emerald-100' : 'text-slate-400'}`}>
+                              {btn.time}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+
+                      {selectedRating && (
+                        <div className="mt-2.5 text-[11px] text-emerald-800 bg-emerald-50 p-2 rounded border border-emerald-200/80 flex items-center justify-between">
+                          <span>SM-2 matrix updated. Next review interval saved in your vault.</span>
+                          <button
+                            onClick={() => setSelectedRating(null)}
+                            className="text-slate-400 hover:text-slate-600 flex items-center gap-1 text-[10px]"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Reset
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Real-time Streak Bar */}
-                  <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                    <div className="p-2 rounded-lg bg-[#f0f5ee]">
-                      <div className="text-[10px] uppercase font-['Plus_Jakarta_Sans'] font-bold text-[#414843]">Retention</div>
-                      <div className="font-['Plus_Jakarta_Sans'] text-[#002313] font-bold text-base">94.6%</div>
+                  {/* Summary Bar */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="p-2.5 rounded-lg bg-white border border-slate-200">
+                      <div className="text-[10px] text-slate-500 font-medium uppercase">Lecture Source</div>
+                      <div className="font-semibold text-slate-900 mt-0.5">Slides (Unit 3).pdf</div>
                     </div>
-                    <div className="p-2 rounded-lg bg-[#f0f5ee]">
-                      <div className="text-[10px] uppercase font-['Plus_Jakarta_Sans'] font-bold text-[#1b6b44] font-bold text-base">18 Days</div>
+                    <div className="p-2.5 rounded-lg bg-white border border-slate-200">
+                      <div className="text-[10px] text-slate-500 font-medium uppercase">Cards in Deck</div>
+                      <div className="font-semibold text-emerald-700 mt-0.5">32 Flashcards</div>
                     </div>
-                    <div className="p-2 rounded-lg bg-[#f0f5ee]">
-                      <div className="text-[10px] uppercase font-['Plus_Jakarta_Sans'] font-bold text-[#414843]">Cognitive Load</div>
-                      <div className="font-['Plus_Jakarta_Sans'] text-[#002313] font-bold text-base">Balanced</div>
+                    <div className="p-2.5 rounded-lg bg-white border border-slate-200">
+                      <div className="text-[10px] text-slate-500 font-medium uppercase">Spaced Schedule</div>
+                      <div className="font-semibold text-slate-900 mt-0.5">SM-2 Algorithm</div>
                     </div>
                   </div>
 
@@ -332,41 +344,59 @@ export const Hero = () => {
         </div>
       </section>
 
-      {/* Institutional Impact Metric Ribbon */}
-      <section id="impact" className="w-full bg-white py-8 border-b border-[#dfe4dd]/60 scroll-mt-20">
-        <div className="max-w-[1340px] mx-auto px-5 sm:px-8 lg:px-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center md:text-left">
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <GraduationCap className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
+      {/* Genuine Value Ribbon (Replaces fake 120,000+ metrics) */}
+      <section id="impact" className="w-full bg-white py-10 border-b border-slate-200 scroll-mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center flex-shrink-0 text-emerald-700">
+                <FileText className="w-5 h-5" />
+              </div>
               <div>
-                <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">120,000+</div>
-                <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Scholars at Oxford, Stanford & MIT</p>
+                <div className="text-sm font-bold text-slate-900">100% Slide-Grounded</div>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Every card and quiz answer is linked directly to your uploaded slide page and textbook reference.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Timer className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center flex-shrink-0 text-emerald-700">
+                <GitBranch className="w-5 h-5" />
+              </div>
               <div>
-                <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">4.2M+</div>
-                <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Hours of Active Recall Logged</p>
+                <div className="text-sm font-bold text-slate-900">Prerequisite DAGs</div>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Visual concept trees ensure you never get stuck on complex topics without mastering basics first.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Award className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center flex-shrink-0 text-emerald-700">
+                <CalendarClock className="w-5 h-5" />
+              </div>
               <div>
-                <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#1b6b44]">94.6%</div>
-                <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">90-Day Exam Concept Retention</p>
+                <div className="text-sm font-bold text-slate-900">SM-2 Spaced Recall</div>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Proven spaced repetition calculates your optimal review day so you retain material until semester exams.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 justify-center md:justify-start">
-              <Star className="w-8 h-8 text-[#1b6b44] flex-shrink-0" />
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center flex-shrink-0 text-emerald-700">
+                <Code2 className="w-5 h-5" />
+              </div>
               <div>
-                <div className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#002313]">4.9 / 5.0</div>
-                <p className="text-xs text-[#414843] font-['Plus_Jakarta_Sans']">Bar, USMLE & PhD Endorsement</p>
+                <div className="text-sm font-bold text-slate-900">Built for Core CS & IT</div>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Tailored for engineering subjects: DSA, Operating Systems, DBMS, Computer Networks, and GATE prep.
+                </p>
               </div>
             </div>
+
           </div>
         </div>
       </section>

@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Brain, FileQuestion, GitBranch, FileText, Search, Filter, Play, Trash2, Calendar, FolderPlus, ExternalLink, Loader2 } from 'lucide-react';
+import { BookOpen, Brain, FileQuestion, GitBranch, GitFork, FileText, Search, Filter, Play, Trash2, Calendar, FolderPlus, ExternalLink, Loader2 } from 'lucide-react';
 import { useFlashcards } from '@/hooks/useFlashcards';
 import { FlashcardViewer } from './FlashcardViewer';
 import { QuizViewer } from './QuizViewer';
 import { MindMapViewer } from './MindMapViewer';
 import { StudyNotesViewer } from './StudyNotesViewer';
+import { DAGViewer } from './DAGViewer';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -73,6 +74,8 @@ export const FlashcardVault = () => {
     mindmaps: Brain,
     quizzes: FileQuestion,
     diagrams: GitBranch,
+    dag: GitFork,
+    'learning-path': GitFork,
     notes: FileText
   };
 
@@ -87,6 +90,10 @@ export const FlashcardVault = () => {
 
   const filterContent = (items: any[], type?: string) => {
     return items.filter(item => {
+      // Exclude DAG items from My Vault — DAGs live exclusively in the dedicated DAG Pipeline
+      const isItemDAG = item.content?.type === 'dag' || item.type === 'dag' || item.tags?.includes('dag');
+      if (isItemDAG) return false;
+
       const searchFields = [
         item.title?.toLowerCase() || '',
         item.topic?.toLowerCase() || '',
@@ -104,18 +111,18 @@ export const FlashcardVault = () => {
       const matchesDifficulty = filterDifficulty === 'all' || 
         item.difficulty?.toLowerCase() === filterDifficulty.toLowerCase();
       
-      const matchesType = filterType === 'all' || 
-        (type && type === filterType) || 
-        item.type === filterType;
+      const matchesType = filterType === 'all' || (type && type === filterType) || item.type === filterType;
       
       return matchesSearch && matchesDifficulty && matchesType;
     });
   };
 
   const handleView = (content: any, type: string) => {
-    console.log('Opening viewer for:', type, content);
+    const isDAG = content.content?.type === 'dag' || content.type === 'dag' || content.tags?.includes('dag') || !!content.content?.graphData;
+    const effectiveType = isDAG ? 'dag' : type;
+    console.log('Opening viewer for:', effectiveType, content);
     setViewingContent(content);
-    setViewerType(type);
+    setViewerType(effectiveType);
   };
 
   const handleDelete = (id: string, type: string) => {
@@ -129,8 +136,12 @@ export const FlashcardVault = () => {
   };
 
   const renderContentCard = (item: any, type: string) => {
-    const IconComponent = materialIcons[type as keyof typeof materialIcons] || FileText;
+    const isDAG = item.content?.type === 'dag' || item.type === 'dag' || item.tags?.includes('dag') || !!item.content?.graphData;
+    const IconComponent = isDAG ? GitFork : (materialIcons[type as keyof typeof materialIcons] || FileText);
+    const displayType = isDAG ? 'DAG / Learning Path' : (type === 'flashcards' ? 'flashcard' : type);
     const previewText = 
+      (isDAG && item.content?.summary) ||
+      (isDAG && item.content?.graphData?.nodes?.length ? `${item.content.graphData.nodes.length} Concepts • ${item.content.learningGoal || 'Concept Mastery'}` : '') ||
       item.content?.summary || 
       item.content?.notes?.summary || 
       (typeof item.content?.content === 'string' ? item.content.content : '') ||
@@ -150,7 +161,7 @@ export const FlashcardVault = () => {
               {item.difficulty || 'medium'}
             </Badge>
             <Badge variant="outline" className="text-xs">
-              {type === 'flashcards' ? 'flashcard' : type}
+              {displayType}
             </Badge>
           </div>
         </div>
@@ -277,6 +288,21 @@ export const FlashcardVault = () => {
           <MindMapViewer
             mindmap={mindmapData}
             title={viewingContent.title}
+            difficulty={viewingContent.difficulty}
+            onClose={() => {
+              setViewingContent(null);
+              setViewerType('');
+            }}
+          />
+        );
+
+      case 'dag':
+        const dagGraph = viewingContent.content?.graphData || viewingContent.content;
+        return (
+          <DAGViewer
+            dagData={dagGraph}
+            title={viewingContent.title}
+            topic={viewingContent.topic}
             difficulty={viewingContent.difficulty}
             onClose={() => {
               setViewingContent(null);

@@ -152,6 +152,28 @@ export const PremiumAIGenerator = () => {
   const [editableMarkdown, setEditableMarkdown] = useState('');
   const [isSavedToVault, setIsSavedToVault] = useState(false);
 
+  // Listen for navigation prefill from DAG Pipeline or other features
+  React.useEffect(() => {
+    const handlePrefill = (e: any) => {
+      const topicParam = e.detail?.params?.topic;
+      const sourceIdParam = e.detail?.params?.sourceId;
+      if (topicParam) {
+        setTopic(topicParam);
+        setResourceTopic(topicParam);
+      }
+      if (sourceIdParam) {
+        setSelectedResourceIds([sourceIdParam]);
+        setSourceMode('existing');
+      }
+    };
+    window.addEventListener('studymate-navigate', handlePrefill);
+    window.addEventListener('studymate-subtab', handlePrefill);
+    return () => {
+      window.removeEventListener('studymate-navigate', handlePrefill);
+      window.removeEventListener('studymate-subtab', handlePrefill);
+    };
+  }, []);
+
   const stats = {
     generated: 120,
     sessions: 35,

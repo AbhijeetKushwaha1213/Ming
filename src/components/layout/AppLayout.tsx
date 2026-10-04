@@ -87,11 +87,17 @@ export const AppLayout = ({
       setTodoSidebarOpen(true);
       setChatPanelOpen(false);
     };
+    const handleOpenChatPanel = () => {
+      setChatPanelOpen(true);
+      setTodoSidebarOpen(false);
+    };
     window.addEventListener('studymate-navigate', handleNavEvent);
     window.addEventListener('open-daily-plan', handleDailyPlanEvent);
+    window.addEventListener('open-chat-panel', handleOpenChatPanel);
     return () => {
       window.removeEventListener('studymate-navigate', handleNavEvent);
       window.removeEventListener('open-daily-plan', handleDailyPlanEvent);
+      window.removeEventListener('open-chat-panel', handleOpenChatPanel);
     };
   }, []);
 

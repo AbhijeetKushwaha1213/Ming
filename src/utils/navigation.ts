@@ -5,8 +5,8 @@
  */
 
 export interface NavigationTarget {
-  tab: 'home' | 'flashcards' | 'ai' | 'achievements' | 'resources' | 'settings' | 'integrations';
-  subtab?: 'assessment' | 'generate' | 'vault' | string;
+  tab: 'home' | 'flashcards' | 'ai' | 'achievements' | 'resources' | 'settings' | 'integrations' | 'ai-generator';
+  subtab?: 'assessment' | 'generate' | 'dag' | 'vault' | string;
   topic?: string;
   sourceId?: string;
   initialMessage?: string;
@@ -18,6 +18,8 @@ export const navigateToTab = (
   params?: Record<string, any>
 ) => {
   if (typeof window === 'undefined') return;
+
+  const targetTab = tab === 'ai-generator' ? 'flashcards' : tab;
 
   // Persist requested subtab so target component picks it up immediately
   if (subtab) {
@@ -32,7 +34,7 @@ export const navigateToTab = (
   window.dispatchEvent(
     new CustomEvent('studymate-navigate', {
       detail: {
-        tab,
+        tab: targetTab,
         subtab,
         params,
       },

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wand2, Library, ShieldCheck } from 'lucide-react';
+import { Wand2, Library, ShieldCheck, GitFork } from 'lucide-react';
 import { PremiumAIGenerator } from '../ai/PremiumAIGenerator';
 import { AdaptiveAssessmentGenerator } from '../ai/AdaptiveAssessmentGenerator';
+import { DAGPipeline } from '../ai/DAGPipeline';
 import '../ai/animations.css';
 import { FlashcardVault } from './FlashcardVault';
 
@@ -33,23 +34,27 @@ export const AIGeneratorPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gradient">AI Assessment & Materials</h1>
-          <p className="text-muted-foreground mt-1">Generate grounded adaptive assessments, flashcards, and study guides from your course materials</p>
+          <p className="text-muted-foreground mt-1">Generate grounded adaptive assessments, flashcards, concept DAGs, and study guides from your course materials</p>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs: 1. Adaptive Assessment, 2. AI Materials, 3. DAG Pipeline, 4. My Vault */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full max-w-xl grid-cols-3">
+        <TabsList className="grid w-full max-w-2xl grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="assessment" className="flex items-center space-x-2">
             <ShieldCheck className="w-4 h-4 text-indigo-500" />
             <span>Adaptive Assessment</span>
           </TabsTrigger>
           <TabsTrigger value="generate" className="flex items-center space-x-2">
-            <Wand2 className="w-4 h-4" />
+            <Wand2 className="w-4 h-4 text-purple-500" />
             <span>AI Materials</span>
           </TabsTrigger>
+          <TabsTrigger value="dag" className="flex items-center space-x-2">
+            <GitFork className="w-4 h-4 text-emerald-500" />
+            <span>DAG Pipeline</span>
+          </TabsTrigger>
           <TabsTrigger value="vault" className="flex items-center space-x-2">
-            <Library className="w-4 h-4" />
+            <Library className="w-4 h-4 text-amber-500" />
             <span>My Vault</span>
           </TabsTrigger>
         </TabsList>
@@ -60,6 +65,10 @@ export const AIGeneratorPage = () => {
 
         <TabsContent value="generate" className="mt-6">
           <PremiumAIGenerator />
+        </TabsContent>
+
+        <TabsContent value="dag" className="mt-6">
+          <DAGPipeline />
         </TabsContent>
 
         <TabsContent value="vault" className="mt-6">

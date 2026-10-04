@@ -632,7 +632,64 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     return;
   }
 
+  // 13. AI DAG Concept Graph Generation
+  if (method === 'POST' && pathname === '/api/rag/dag/generate') {
+    try {
+      const body = req.body || {};
+      const topic = body.topic;
+      const subtopic = body.subtopic || '';
+      const depth = body.depth || 'Standard';
+      const targetCount = Number(body.targetCount || 8);
+      const sourceId = body.sourceId;
+      const sourceTitle = body.sourceTitle || 'Course Material';
+
+      if (!topic) {
+        res.status(400).json({ error: 'Topic is required for DAG generation' });
+        return;
+      }
+
+      // Query chunks if sourceId is provided
+      let evidenceText = '';
+      if (sourceId) {
+        try {
+          const searchRes = await runPythonCli([
+            'search',
+            '--query',
+            `${topic} ${subtopic}`.trim(),
+            '--source-id',
+            String(sourceId),
+            '--top-k',
+            '8',
+          ]);
+          if (searchRes && Array.isArray(searchRes.results)) {
+            evidenceText = searchRes.results
+              .map((r: any) => `[${r.chunk_id || 'chunk'} | ${r.location?.page_number ? `Page ${r.location.page_number}` : r.location?.slide_number ? `Slide ${r.location.slide_number}` : 'Excerpt'}]: ${r.text?.slice(0, 300) || ''}`)
+              .join('\n\n');
+          }
+        } catch (searchErr) {
+          console.warn('DAG generation chunk search notice:', searchErr);
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        topic,
+        subtopic,
+        depth,
+        sourceId,
+        sourceTitle,
+        evidenceAvailable: !!evidenceText,
+      });
+      return;
+    } catch (err: any) {
+      console.error('DAG generation error:', err);
+      res.status(500).json({ error: 'Failed to generate DAG', details: err.message });
+      return;
+    }
+  }
+
   res.status(404).json({ error: `RAG endpoint not found: ${method} ${pathname}` });
+
 
 }
 

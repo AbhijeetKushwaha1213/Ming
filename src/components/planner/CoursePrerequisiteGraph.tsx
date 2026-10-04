@@ -1,14 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   GitFork, CheckCircle2, Lock, AlertCircle, BookOpen, 
   Presentation, Video, Sparkles, ArrowRight, ChevronRight,
-  Compass, Layers, RotateCcw, Headphones
+  Compass, Layers, RotateCcw, Headphones, ChevronDown, ChevronUp, Zap
 } from 'lucide-react';
 import { navigateToTab } from '@/utils/navigation';
 import { AudioBriefViewer } from '@/components/flashcards/AudioBriefViewer';
+import { useSavedDAGs } from '@/hooks/useSavedDAGs';
+import { PersistedDAGRecord, DAGTutorContext } from '@/types/dag';
 
 export interface ConceptNode {
   id: string;
@@ -375,24 +377,107 @@ const DEFAULT_COURSE_GRAPHS: CourseGraphData[] = [
   }
 ];
 
+// Helper to transform user-saved DAG into CourseGraphData
+function persistedDAGToCourseGraph(dag: PersistedDAGRecord): CourseGraphData {
+  const levels = new Map<string, number>();
+  const getNodeLevel = (nodeId: string, visited = new Set<string>()): number => {
+    if (levels.has(nodeId)) return levels.get(nodeId)!;
+    if (visited.has(nodeId)) return 0;
+    visited.add(nodeId);
+    const n = dag.nodes.find(x => x.id === nodeId);
+    if (!n || !n.prerequisites || n.prerequisites.length === 0) {
+      levels.set(nodeId, 0);
+      return 0;
+    }
+    const maxP = Math.max(...n.prerequisites.map(p => getNodeLevel(p, new Set(visited))));
+    const lvl = maxP + 1;
+    levels.set(nodeId, lvl);
+    return lvl;
+  };
+
+  dag.nodes.forEach(n => getNodeLevel(n.id));
+
+  const levelCounts: Record<number, number> = {};
+  const nodes: ConceptNode[] = dag.nodes.map(n => {
+    const level = levels.get(n.id) ?? 0;
+    const row = levelCounts[level] ?? 0;
+    levelCounts[level] = row + 1;
+
+    let sourceOriginType: 'PDF' | 'PPTX' | 'VIDEO' = 'PDF';
+    const rawType = (n.sourceCoordinates?.type || '').toUpperCase();
+    if (rawType.includes('PPT') || rawType.includes('SLIDE')) sourceOriginType = 'PPTX';
+    else if (rawType.includes('VIDEO') || rawType.includes('MP4') || rawType.includes('AUDIO')) sourceOriginType = 'VIDEO';
+
+    return {
+      id: n.id,
+      title: n.label,
+      topic: n.topic || dag.topic,
+      subtopic: n.subtopic || dag.subtopic || 'Core Concept',
+      level,
+      row,
+      difficulty: n.difficulty || 'Intermediate',
+      prerequisites: n.prerequisites || [],
+      description: n.description || '',
+      sourceOrigin: {
+        type: sourceOriginType,
+        coordinate: n.sourceCoordinates?.coordinate || dag.sourceMaterial?.fileName || 'Concept Reference',
+        documentTitle: n.sourceCoordinates?.documentTitle || dag.sourceMaterial?.title || dag.topic
+      },
+      commonMisconceptions: n.commonMisconceptions
+    };
+  });
+
+  return {
+    courseId: dag.id,
+    courseTitle: dag.title || `${dag.topic} Mastery Path`,
+    category: 'Saved Learning DAGs',
+    nodes
+  };
+}
+
 interface CoursePrerequisiteGraphProps {
   userMasteryMap?: Record<string, number>; // Map of topic -> BKT mastery probability
   onSelectTopic?: (topic: string, subtopic?: string) => void;
   className?: string;
+  compact?: boolean;
 }
 
 export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = ({
   userMasteryMap = {},
   onSelectTopic,
-  className = ''
+  className = '',
+  compact = true,
 }) => {
-  const [activeCourseId, setActiveCourseId] = useState<string>('cs-os');
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('os-5');
+  const { savedDAGs, activeDAG, activeDAGSummary, openDAG } = useSavedDAGs();
+
+  const availableCourses = useMemo(() => {
+    const customCourses = savedDAGs.map(persistedDAGToCourseGraph);
+    return [...customCourses, ...DEFAULT_COURSE_GRAPHS];
+  }, [savedDAGs]);
+
+  const [activeCourseId, setActiveCourseId] = useState<string>(() => {
+    return activeDAG?.id || DEFAULT_COURSE_GRAPHS[0].courseId;
+  });
+
+  useEffect(() => {
+    if (activeDAG && availableCourses.some(c => c.courseId === activeDAG.id)) {
+      setActiveCourseId(activeDAG.id);
+    }
+  }, [activeDAG?.id, availableCourses]);
+
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeAudioBrief, setActiveAudioBrief] = useState<any>(null);
+  const [showFullGraph, setShowFullGraph] = useState(false);
 
   const currentCourse = useMemo(() => {
-    return DEFAULT_COURSE_GRAPHS.find(c => c.courseId === activeCourseId) || DEFAULT_COURSE_GRAPHS[0];
-  }, [activeCourseId]);
+    return availableCourses.find(c => c.courseId === activeCourseId) || availableCourses[0];
+  }, [availableCourses, activeCourseId]);
+
+  useEffect(() => {
+    if (!selectedNodeId || !currentCourse.nodes.some(n => n.id === selectedNodeId)) {
+      setSelectedNodeId(currentCourse.nodes[0]?.id || null);
+    }
+  }, [currentCourse, selectedNodeId]);
 
   // Node helper lookup
   const nodeMap = useMemo(() => {
@@ -408,15 +493,22 @@ export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = (
     const statuses = new Map<string, { status: 'mastered' | 'proficient' | 'weak' | 'locked'; mastery: number }>();
 
     for (const node of currentCourse.nodes) {
-      // Lookup mastery based on topic or subtopic
-      const topicMastery = userMasteryMap[node.topic] ?? userMasteryMap[node.subtopic] ?? 0.55;
+      const savedNode = activeDAG && activeCourseId === activeDAG.id
+        ? activeDAG.nodes.find(n => n.id === node.id)
+        : null;
+
+      // Lookup mastery based on topic or subtopic or saved state
+      const topicMastery = savedNode?.masteryProbability ?? userMasteryMap[node.topic] ?? userMasteryMap[node.subtopic] ?? 0.55;
 
       // Check if prerequisites are fulfilled
       let prereqsFulfilled = true;
       for (const pid of node.prerequisites) {
         const pNode = nodeMap.get(pid);
         if (pNode) {
-          const pMastery = userMasteryMap[pNode.topic] ?? userMasteryMap[pNode.subtopic] ?? 0.55;
+          const pSaved = activeDAG && activeCourseId === activeDAG.id
+            ? activeDAG.nodes.find(n => n.id === pid)
+            : null;
+          const pMastery = pSaved?.masteryProbability ?? userMasteryMap[pNode.topic] ?? userMasteryMap[pNode.subtopic] ?? 0.55;
           if (pMastery < 0.40) {
             prereqsFulfilled = false;
             break;
@@ -426,6 +518,8 @@ export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = (
 
       if (!prereqsFulfilled && node.prerequisites.length > 0) {
         statuses.set(node.id, { status: 'locked', mastery: topicMastery });
+      } else if (savedNode?.status) {
+        statuses.set(node.id, { status: savedNode.status, mastery: topicMastery });
       } else if (topicMastery >= 0.80) {
         statuses.set(node.id, { status: 'mastered', mastery: topicMastery });
       } else if (topicMastery >= 0.45) {
@@ -436,11 +530,53 @@ export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = (
     }
 
     return statuses;
-  }, [currentCourse, userMasteryMap, nodeMap]);
+  }, [currentCourse, userMasteryMap, nodeMap, activeDAG, activeCourseId]);
 
   const selectedNode = useMemo(() => {
-    return currentCourse.nodes.find(n => n.id === selectedNodeId) || currentCourse.nodes[0];
+    return currentCourse.nodes.find(n => n.id === selectedNodeId) || currentCourse.nodes[0] || {
+      id: 'none',
+      title: 'No concept selected',
+      topic: 'General',
+      subtopic: 'General',
+      level: 0,
+      row: 0,
+      difficulty: 'Beginner' as const,
+      prerequisites: [],
+      description: 'Select a concept to inspect',
+      sourceOrigin: { type: 'PDF' as const, coordinate: 'N/A', documentTitle: 'N/A' }
+    };
   }, [currentCourse, selectedNodeId]);
+
+  // Derived current and next concept for compact summary view
+  const learningSummary = useMemo(() => {
+    const nodes = currentCourse.nodes;
+    if (nodes.length === 0) {
+      return {
+        current: { title: 'No Concepts', description: 'Create or generate a learning DAG to track pathways' } as any,
+        next: { title: 'Next Concept', description: 'No prerequisite queued' } as any,
+        masteredCount: 0,
+        total: 0,
+        progressPercent: 0
+      };
+    }
+
+    const current =
+      nodes.find(n => {
+        const s = nodeStatuses.get(n.id)?.status;
+        return s === 'proficient' || s === 'weak';
+      }) || nodes[1] || nodes[0];
+
+    const next =
+      nodes.find(n => {
+        if (n.id === current.id) return false;
+        return n.prerequisites.includes(current.id);
+      }) || nodes[2] || nodes[0];
+
+    const masteredCount = nodes.filter(n => nodeStatuses.get(n.id)?.status === 'mastered').length;
+    const progressPercent = Math.round((masteredCount / nodes.length) * 100);
+
+    return { current, next, masteredCount, total: nodes.length, progressPercent };
+  }, [currentCourse, nodeStatuses]);
 
   // Compute layout coordinates for SVG canvas
   // Column spacing: 260px, Row spacing: 130px, Padding: 40px
@@ -497,16 +633,160 @@ export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = (
   }, [currentCourse, nodePositions, nodeStatuses]);
 
   const handleLaunchChat = (topic: string, subtopic?: string) => {
+    const dagContext: DAGTutorContext = {
+      dagTitle: currentCourse.courseTitle,
+      topic: selectedNode.topic,
+      subtopic: selectedNode.subtopic,
+      learningGoal: 'Concept Mastery',
+      selectedConcept: {
+        id: selectedNode.id,
+        name: selectedNode.title,
+        difficulty: selectedNode.difficulty,
+        description: selectedNode.description,
+        masteryPercentage: Math.round((nodeStatuses.get(selectedNode.id)?.mastery ?? 0.5) * 100),
+        status: nodeStatuses.get(selectedNode.id)?.status || 'proficient',
+        prerequisites: selectedNode.prerequisites,
+        prerequisiteNames: selectedNode.prerequisites.map(pid => nodeMap.get(pid)?.title || pid),
+        downstreamConcepts: currentCourse.nodes
+          .filter(n => n.prerequisites.includes(selectedNode.id))
+          .map(n => n.title),
+        sourceCoordinate: selectedNode.sourceOrigin?.coordinate,
+        sourceDocument: selectedNode.sourceOrigin?.documentTitle,
+      },
+      weakTopics: currentCourse.nodes
+        .filter(n => nodeStatuses.get(n.id)?.status === 'weak')
+        .map(n => n.title),
+      totalConcepts: currentCourse.nodes.length,
+    };
+
+    window.dispatchEvent(new CustomEvent('open-chat-panel', { detail: { dagContext } }));
+
     if (onSelectTopic) {
       onSelectTopic(topic, subtopic);
-    } else {
-      navigateToTab('chat');
     }
   };
 
   const handleLaunchAssessment = () => {
     navigateToTab('ai-generator');
   };
+
+  // If in compact mode on Dashboard and user hasn't toggled full view
+  if (compact && !showFullGraph) {
+    return (
+      <Card className={`rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden ${className}`}>
+        <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 bg-gradient-to-r from-card via-card to-primary/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
+              <Compass className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-foreground">Learning Path</h3>
+                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/30 text-emerald-600 bg-emerald-500/10 font-medium">
+                  Active
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Current Topic: <span className="font-semibold text-foreground">{currentCourse.courseTitle.split('&')[0].trim()}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Course Switcher Pills */}
+          <div className="flex items-center gap-1.5 flex-wrap bg-muted/60 p-1 rounded-xl border border-border">
+            {availableCourses.map(course => {
+              const isSaved = savedDAGs.some(d => d.id === course.courseId);
+              return (
+                <button
+                  key={course.courseId}
+                  type="button"
+                  onClick={() => {
+                    setActiveCourseId(course.courseId);
+                    setSelectedNodeId(course.nodes[0]?.id || null);
+                    if (isSaved) {
+                      openDAG(course.courseId);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeCourseId === course.courseId
+                      ? 'bg-primary text-primary-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {isSaved && <Sparkles className="w-3 h-3 text-amber-400" />}
+                  <span>{course.courseTitle.split('&')[0].trim()}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Compact Learning Path Summary Cards */}
+        <div className="p-5 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+          {/* Current Concept */}
+          <div className="md:col-span-4 p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                Current
+              </span>
+              <Badge className="bg-indigo-600 text-white text-[10px] py-0 px-1.5">In Progress</Badge>
+            </div>
+            <h4 className="font-bold text-sm text-foreground line-clamp-1">{learningSummary.current.title}</h4>
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+              {learningSummary.current.description}
+            </p>
+          </div>
+
+          {/* Arrow connector */}
+          <div className="hidden md:flex md:col-span-1 justify-center text-muted-foreground">
+            <ArrowRight className="w-5 h-5 text-primary/60" />
+          </div>
+
+          {/* Next Concept */}
+          <div className="md:col-span-4 p-4 rounded-xl border border-border bg-muted/20 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                Next
+              </span>
+              <Badge variant="outline" className="text-[10px] py-0 px-1.5">Prerequisite</Badge>
+            </div>
+            <h4 className="font-bold text-sm text-foreground line-clamp-1">{learningSummary.next.title}</h4>
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+              {learningSummary.next.description}
+            </p>
+          </div>
+
+          {/* Open DAG Pipeline CTA & Toggle */}
+          <div className="md:col-span-3 flex flex-col justify-center gap-2 pl-0 md:pl-2">
+            <Button
+              onClick={() => {
+                if (activeDAG && activeCourseId === activeDAG.id) {
+                  openDAG(activeDAG.id);
+                  navigateToTab('flashcards', 'dag', { dagId: activeDAG.id, topic: activeDAG.topic });
+                } else {
+                  navigateToTab('flashcards', 'dag', { topic: currentCourse.courseTitle.split('&')[0].trim() });
+                }
+              }}
+              className="w-full text-xs h-9 gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium shadow-xs"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Open DAG Pipeline</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFullGraph(true)}
+              className="w-full text-xs h-8 text-muted-foreground hover:text-foreground"
+            >
+              <span>Preview Full Map</span>
+              <ChevronDown className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className={`rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden ${className}`}>
@@ -521,7 +801,7 @@ export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = (
               <h3 className="font-bold text-foreground text-base sm:text-lg flex items-center gap-2">
                 Visual Course Flow & Prerequisite Map
                 <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/30 text-emerald-600 bg-emerald-500/10">
-                  Track D (Req 6a)
+                  DAG Preview
                 </Badge>
               </h3>
               <p className="text-xs text-muted-foreground">
@@ -531,25 +811,62 @@ export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = (
           </div>
         </div>
 
-        {/* Course Switcher Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap bg-muted/60 p-1 rounded-xl border border-border">
-          {DEFAULT_COURSE_GRAPHS.map(course => (
-            <button
-              key={course.courseId}
-              type="button"
-              onClick={() => {
-                setActiveCourseId(course.courseId);
-                setSelectedNodeId(course.nodes[0]?.id || null);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                activeCourseId === course.courseId
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
+        {/* Course Switcher Pills & Collapse CTA */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap bg-muted/60 p-1 rounded-xl border border-border">
+            {availableCourses.map(course => {
+              const isSaved = savedDAGs.some(d => d.id === course.courseId);
+              return (
+                <button
+                  key={course.courseId}
+                  type="button"
+                  onClick={() => {
+                    setActiveCourseId(course.courseId);
+                    setSelectedNodeId(course.nodes[0]?.id || null);
+                    if (isSaved) {
+                      openDAG(course.courseId);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeCourseId === course.courseId
+                      ? 'bg-primary text-primary-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {isSaved && <Sparkles className="w-3 h-3 text-amber-400" />}
+                  <span>{course.courseTitle.split('&')[0].trim()}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {compact && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFullGraph(false)}
+              className="text-xs h-8 gap-1 border-border"
             >
-              {course.courseTitle.split('&')[0].trim()}
-            </button>
-          ))}
+              <span>Collapse</span>
+              <ChevronUp className="w-3.5 h-3.5" />
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            onClick={() => {
+              if (activeDAG && activeCourseId === activeDAG.id) {
+                openDAG(activeDAG.id);
+                navigateToTab('flashcards', 'dag', { dagId: activeDAG.id, topic: activeDAG.topic });
+              } else {
+                navigateToTab('flashcards', 'dag', { topic: currentCourse.courseTitle.split('&')[0].trim() });
+              }
+            }}
+            className="text-xs h-8 gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Open DAG Pipeline</span>
+          </Button>
         </div>
       </div>
 

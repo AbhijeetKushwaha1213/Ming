@@ -23,12 +23,15 @@ import { useToast } from '@/hooks/use-toast';
 import { geminiClient } from '@/utils/geminiClient';
 import { navigateToTab } from '@/utils/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
 import { 
   getWorkspaceCatalog, 
   getAgentWorkspacePrompt, 
   parseAgentActions, 
   executeAgentActions 
 } from '@/services/agentActionEngine';
+
+import { DAGTutorContext } from '@/types/dag';
 
 interface AttachedItem {
   name: string;
@@ -58,6 +61,27 @@ interface ChatPanelProps {
 export const ChatPanel = ({ isOpen, onClose }: ChatPanelProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [activeDAGContext, setActiveDAGContext] = useState<DAGTutorContext | null>(null);
+
+  useEffect(() => {
+    const handleOpenWithDAG = (e: any) => {
+      if (e.detail?.dagContext) {
+        setActiveDAGContext(e.detail.dagContext);
+      }
+    };
+    const handleContextUpdate = (e: any) => {
+      if (e.detail?.dagContext) {
+        setActiveDAGContext(e.detail.dagContext);
+      }
+    };
+    window.addEventListener('open-chat-panel', handleOpenWithDAG);
+    window.addEventListener('update-dag-tutor-context', handleContextUpdate);
+    return () => {
+      window.removeEventListener('open-chat-panel', handleOpenWithDAG);
+      window.removeEventListener('update-dag-tutor-context', handleContextUpdate);
+    };
+  }, []);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -178,6 +202,28 @@ export const ChatPanel = ({ isOpen, onClose }: ChatPanelProps) => {
       let finalPrompt = userMsgText;
       if (currentAttachment?.textContent) {
         finalPrompt = `[Attached Document Content: ${currentAttachment.name}]\n${currentAttachment.textContent.slice(0, 3000)}\n\nUser Question/Request:\n${userMsgText}`;
+      }
+
+      if (activeDAGContext) {
+        const dagBlock = `[CANONICAL DAG LEARNING CONTEXT]
+Course / Topic: ${activeDAGContext.topic}
+Subtopic: ${activeDAGContext.subtopic || 'General'}
+DAG Title: ${activeDAGContext.dagTitle}
+Learning Goal: ${activeDAGContext.learningGoal}
+Selected Concept: ${activeDAGContext.selectedConcept.name}
+Description: ${activeDAGContext.selectedConcept.description}
+Difficulty: ${activeDAGContext.selectedConcept.difficulty}
+Current Mastery: ${activeDAGContext.selectedConcept.masteryPercentage}% (Status: ${activeDAGContext.selectedConcept.status})
+Required Prerequisites: ${activeDAGContext.selectedConcept.prerequisiteNames.join(', ') || 'None'}
+Downstream Dependents: ${activeDAGContext.selectedConcept.downstreamConcepts.join(', ') || 'None'}
+Source Document: ${activeDAGContext.selectedConcept.sourceDocument || 'Course Resource'} ${activeDAGContext.selectedConcept.sourceCoordinate ? `(${activeDAGContext.selectedConcept.sourceCoordinate})` : ''}
+Key Formula / Rule: ${activeDAGContext.selectedConcept.formula || 'None'}
+Identified Misconception: ${activeDAGContext.selectedConcept.misconception || 'None'}
+Weak Topics across Graph: ${activeDAGContext.weakTopics.join(', ') || 'None'}
+
+Please tailor your response specifically to this concept and its prerequisite hierarchy in ${activeDAGContext.topic}.\n\n`;
+
+        finalPrompt = `${dagBlock}${finalPrompt}`;
       }
 
       let responseText = '';
@@ -316,41 +362,145 @@ export const ChatPanel = ({ isOpen, onClose }: ChatPanelProps) => {
           </div>
         </div>
 
-        {/* Quick Agent Actions Chips */}
-        <div className="px-3 py-2 border-b border-border/60 bg-muted/20 flex items-center gap-1.5 overflow-x-auto text-xs scrollbar-none">
-          <button
-            onClick={() => sendMessage("Please inspect all my resources and organize them into smart folders based on content similarity and topics.")}
-            disabled={isTyping}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors whitespace-nowrap text-xs font-medium"
-          >
-            <Folder className="w-3 h-3" />
-            Organize Resources
-          </button>
-          <button
-            onClick={() => sendMessage("List my resources and help me edit, improve, or expand the notes in my current pages.")}
-            disabled={isTyping}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors whitespace-nowrap text-xs font-medium"
-          >
-            <Sparkles className="w-3 h-3" />
-            Edit / Expand Content
-          </button>
-          <button
-            onClick={() => sendMessage("Check my workspace for empty, untitled, or duplicate pages and clean them up.")}
-            disabled={isTyping}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors whitespace-nowrap text-xs font-medium"
-          >
-            <X className="w-3 h-3" />
-            Delete / Clean Up
-          </button>
-          <button
-            onClick={() => sendMessage("List my generated vault materials and copy key study summaries to my Resources workspace.")}
-            disabled={isTyping}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary/80 text-secondary-foreground hover:bg-secondary transition-colors whitespace-nowrap text-xs font-medium"
-          >
-            <FileText className="w-3 h-3" />
-            Vault to Resources
-          </button>
-        </div>
+        {/* Active DAG Tutor Context Banner */}
+        {activeDAGContext && (
+          <div className="p-3 bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-pink-500/10 border-b border-purple-500/20 text-xs flex-shrink-0 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                <span className="font-semibold text-foreground truncate max-w-[220px]">
+                  {activeDAGContext.selectedConcept.name}
+                </span>
+                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-purple-400 text-purple-600 dark:text-purple-300 shrink-0">
+                  {activeDAGContext.selectedConcept.difficulty}
+                </Badge>
+              </div>
+              <button
+                onClick={() => setActiveDAGContext(null)}
+                className="text-muted-foreground hover:text-foreground text-[10px] flex items-center gap-0.5 ml-2 shrink-0"
+                title="Exit DAG Tutor Context"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground mb-2">
+              <span className="font-medium text-purple-600 dark:text-purple-400">
+                {activeDAGContext.topic}
+              </span>
+              <span>•</span>
+              <span>Mastery: {activeDAGContext.selectedConcept.masteryPercentage}%</span>
+              {activeDAGContext.selectedConcept.sourceCoordinate && (
+                <>
+                  <span>•</span>
+                  <span className="truncate max-w-[150px] text-indigo-500 font-mono text-[10px]">
+                    {activeDAGContext.selectedConcept.sourceCoordinate}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Contextual Quick Actions */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => sendMessage(`Explain the concept "${activeDAGContext.selectedConcept.name}" clearly with intuitive reasoning, key principles, and why it is critical for ${activeDAGContext.topic}.`)}
+                disabled={isTyping}
+                className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-700 dark:text-purple-300 hover:bg-purple-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+              >
+                💡 Explain concept
+              </button>
+              <button
+                onClick={() => sendMessage(`Why do I need the prerequisite (${activeDAGContext.selectedConcept.prerequisiteNames.join(', ') || 'foundations'}) before learning "${activeDAGContext.selectedConcept.name}"? Explain the conceptual dependency.`)}
+                disabled={isTyping}
+                className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+              >
+                🔗 Explain prerequisite
+              </button>
+              <button
+                onClick={() => sendMessage(`Give me a concrete, real-world example of "${activeDAGContext.selectedConcept.name}" in action with step-by-step walkthrough.`)}
+                disabled={isTyping}
+                className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+              >
+                📝 Give an example
+              </button>
+              <button
+                onClick={() => sendMessage(`Quiz me on "${activeDAGContext.selectedConcept.name}" with 2 short conceptual multiple-choice or short-answer questions to test my understanding. Wait for my answer!`)}
+                disabled={isTyping}
+                className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+              >
+                ⚡ Quiz me
+              </button>
+              <button
+                onClick={() => sendMessage(`Based on the ${activeDAGContext.topic} prerequisite DAG, what should I study next after mastering "${activeDAGContext.selectedConcept.name}"?`)}
+                disabled={isTyping}
+                className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+              >
+                🧭 What to study next?
+              </button>
+              <button
+                onClick={() => sendMessage(`Why might a student struggle or be weak in "${activeDAGContext.selectedConcept.name}"? What are the common misconceptions and how can I resolve them?`)}
+                disabled={isTyping}
+                className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 hover:bg-rose-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+              >
+                ⚠️ Why am I weak here?
+              </button>
+              <button
+                onClick={() => {
+                  navigateToTab('flashcards', 'generate', {
+                    topic: activeDAGContext.selectedConcept.name,
+                    parentTopic: activeDAGContext.topic,
+                    sourceTitle: activeDAGContext.selectedConcept.sourceDocument,
+                  });
+                  toast({
+                    title: 'Generating Study Material',
+                    description: `Configured AI Materials for "${activeDAGContext.selectedConcept.name}".`,
+                  });
+                }}
+                className="px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-700 dark:text-pink-300 hover:bg-pink-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+              >
+                📚 Generate study material
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Agent Actions Chips (Default Workspace Copilot) */}
+        {!activeDAGContext && (
+          <div className="px-3 py-2 border-b border-border/60 bg-muted/20 flex items-center gap-1.5 overflow-x-auto text-xs scrollbar-none flex-shrink-0">
+            <button
+              onClick={() => sendMessage("Please inspect all my resources and organize them into smart folders based on content similarity and topics.")}
+              disabled={isTyping}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors whitespace-nowrap text-xs font-medium"
+            >
+              <Folder className="w-3 h-3" />
+              Organize Resources
+            </button>
+            <button
+              onClick={() => sendMessage("List my resources and help me edit, improve, or expand the notes in my current pages.")}
+              disabled={isTyping}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors whitespace-nowrap text-xs font-medium"
+            >
+              <Sparkles className="w-3 h-3" />
+              Edit / Expand Content
+            </button>
+            <button
+              onClick={() => sendMessage("Check my workspace for empty, untitled, or duplicate pages and clean them up.")}
+              disabled={isTyping}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors whitespace-nowrap text-xs font-medium"
+            >
+              <X className="w-3 h-3" />
+              Delete / Clean Up
+            </button>
+            <button
+              onClick={() => sendMessage("List my generated vault materials and copy key study summaries to my Resources workspace.")}
+              disabled={isTyping}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary/80 text-secondary-foreground hover:bg-secondary transition-colors whitespace-nowrap text-xs font-medium"
+            >
+              <FileText className="w-3 h-3" />
+              Vault to Resources
+            </button>
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 px-4 py-4 overflow-y-auto space-y-4" ref={scrollRef}>

@@ -373,5 +373,48 @@ export async function ensureVideoSchema() {
   return videoSchemaPromise;
 }
 
+let dagSchemaPromise: Promise<void> | null = null;
 
+async function createDAGSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS learning_dags (
+      id TEXT PRIMARY KEY NOT NULL,
+      userId TEXT NOT NULL,
+      title TEXT NOT NULL,
+      courseId TEXT,
+      topic TEXT NOT NULL,
+      subtopic TEXT,
+      sourceMaterialIds TEXT,
+      graphDepth TEXT NOT NULL DEFAULT 'Standard',
+      learningGoal TEXT NOT NULL DEFAULT 'Concept Mastery',
+      nodesJson TEXT NOT NULL,
+      edgesJson TEXT,
+      masteryStatesJson TEXT,
+      sourceReferencesJson TEXT,
+      progressStatus TEXT NOT NULL DEFAULT 'active',
+      progressPercent REAL NOT NULL DEFAULT 0.0,
+      currentConceptId TEXT,
+      nextConceptId TEXT,
+      totalConcepts INTEGER NOT NULL DEFAULT 0,
+      masteredConcepts INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      lastOpenedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS learning_dags_userId_updatedAt_idx ON learning_dags(userId, updatedAt)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS learning_dags_userId_topic_idx ON learning_dags(userId, topic)',
+  );
+}
+
+export async function ensureDAGSchema() {
+  if (!dagSchemaPromise) {
+    dagSchemaPromise = createDAGSchema();
+  }
+
+  return dagSchemaPromise;
+}

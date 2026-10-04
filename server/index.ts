@@ -7,6 +7,7 @@ import { learnerHandler } from './learnerHandler.ts';
 import { studyAgentHandler } from './studyAgentHandler.ts';
 import { evaluationHandler } from './evaluationHandler.ts';
 import { videoHandler } from './videoHandler.ts';
+import { dagHandler } from './dagHandler.ts';
 
 const PORT = Number(process.env.API_PORT || 3001);
 const HOST = process.env.API_HOST || '127.0.0.1';
@@ -164,6 +165,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   if (url.pathname.startsWith('/api/videos')) {
     const body = await readBody(req);
     await videoHandler(
+      {
+        method: req.method,
+        headers: req.headers as Record<string, HeaderValue>,
+        query: Object.fromEntries(url.searchParams.entries()),
+        url: url.toString(),
+        body,
+      },
+      createRouteResponse(res),
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/dag')) {
+    const body = await readBody(req);
+    await dagHandler(
       {
         method: req.method,
         headers: req.headers as Record<string, HeaderValue>,

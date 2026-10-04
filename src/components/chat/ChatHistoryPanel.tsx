@@ -27,8 +27,8 @@ export const ChatHistoryPanel = ({ onSelectSession, onNewChat }: ChatHistoryPane
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-600">Loading chat history...</p>
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="text-sm text-muted-foreground">Loading chat history...</p>
         </div>
       </div>
     );
@@ -38,8 +38,8 @@ export const ChatHistoryPanel = ({ onSelectSession, onNewChat }: ChatHistoryPane
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <History className="w-5 h-5 text-purple-600" />
-          <h3 className="font-semibold text-gray-900">Chat History</h3>
+          <History className="w-5 h-5 text-primary" />
+          <h3 className="font-serif font-bold text-foreground">Chat History</h3>
         </div>
         <Button variant="outline" size="sm" onClick={onNewChat}>
           New Chat
@@ -47,7 +47,7 @@ export const ChatHistoryPanel = ({ onSelectSession, onNewChat }: ChatHistoryPane
       </div>
 
       <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+        <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
         <Input
           placeholder="Search chats..."
           value={searchTerm}
@@ -59,33 +59,33 @@ export const ChatHistoryPanel = ({ onSelectSession, onNewChat }: ChatHistoryPane
       <ScrollArea className="h-96">
         {filteredSessions.length === 0 ? (
           <div className="text-center py-8">
-            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">No chat sessions yet</p>
-            <p className="text-gray-400 text-xs">Start a conversation to see your history</p>
+            <MessageCircle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">No chat sessions yet</p>
+            <p className="text-muted-foreground/70 text-xs">Start a conversation to see your history</p>
           </div>
         ) : (
           <div className="space-y-2">
             {filteredSessions.map((session) => (
               <Card
                 key={session.id}
-                className="p-3 hover:shadow-md transition-shadow cursor-pointer border border-gray-200"
+                className="p-3 hover:shadow-sm transition-all cursor-pointer border border-border hover:border-primary/40 bg-card"
                 onClick={() => onSelectSession(session)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 truncate text-sm">
+                    <h4 className="font-medium text-foreground truncate text-sm">
                       {session.title}
                     </h4>
                     <div className="flex items-center space-x-2 mt-1">
                       <Badge variant="secondary" className="text-xs">
                         {session.topic}
                       </Badge>
-                      <div className="flex items-center text-xs text-gray-500">
+                      <div className="flex items-center text-xs text-muted-foreground">
                         <Clock className="w-3 h-3 mr-1" />
                         {format(new Date(session.updated_at), 'MMM dd, HH:mm')}
                       </div>
                     </div>
-                    <p className="text-xs text-gray-600 mt-1 truncate">
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
                       {session.messages.length} messages
                     </p>
                   </div>
@@ -96,7 +96,7 @@ export const ChatHistoryPanel = ({ onSelectSession, onNewChat }: ChatHistoryPane
                       e.stopPropagation();
                       deleteChatSession(session.id);
                     }}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>

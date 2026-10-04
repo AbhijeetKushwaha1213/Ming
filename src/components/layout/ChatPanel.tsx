@@ -364,14 +364,14 @@ Please tailor your response specifically to this concept and its prerequisite hi
 
         {/* Active DAG Tutor Context Banner */}
         {activeDAGContext && (
-          <div className="p-3 bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-pink-500/10 border-b border-purple-500/20 text-xs flex-shrink-0 animate-in fade-in duration-200">
+          <div className="p-3 bg-secondary/80 border-b border-border text-xs flex-shrink-0 animate-in fade-in duration-200">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5 overflow-hidden">
-                <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
                 <span className="font-semibold text-foreground truncate max-w-[220px]">
                   {activeDAGContext.selectedConcept.name}
                 </span>
-                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-purple-400 text-purple-600 dark:text-purple-300 shrink-0">
+                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-primary/30 text-primary shrink-0 font-medium">
                   {activeDAGContext.selectedConcept.difficulty}
                 </Badge>
               </div>
@@ -385,7 +385,7 @@ Please tailor your response specifically to this concept and its prerequisite hi
             </div>
             
             <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground mb-2">
-              <span className="font-medium text-purple-600 dark:text-purple-400">
+              <span className="font-medium text-primary">
                 {activeDAGContext.topic}
               </span>
               <span>•</span>
@@ -393,7 +393,7 @@ Please tailor your response specifically to this concept and its prerequisite hi
               {activeDAGContext.selectedConcept.sourceCoordinate && (
                 <>
                   <span>•</span>
-                  <span className="truncate max-w-[150px] text-indigo-500 font-mono text-[10px]">
+                  <span className="truncate max-w-[150px] text-muted-foreground font-mono text-[10px]">
                     {activeDAGContext.selectedConcept.sourceCoordinate}
                   </span>
                 </>
@@ -405,42 +405,42 @@ Please tailor your response specifically to this concept and its prerequisite hi
               <button
                 onClick={() => sendMessage(`Explain the concept "${activeDAGContext.selectedConcept.name}" clearly with intuitive reasoning, key principles, and why it is critical for ${activeDAGContext.topic}.`)}
                 disabled={isTyping}
-                className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-700 dark:text-purple-300 hover:bg-purple-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+                className="px-2 py-0.5 rounded-full bg-background border border-border text-foreground hover:bg-accent/60 transition-colors whitespace-nowrap text-[11px] font-medium shadow-xs"
               >
                 💡 Explain concept
               </button>
               <button
                 onClick={() => sendMessage(`Why do I need the prerequisite (${activeDAGContext.selectedConcept.prerequisiteNames.join(', ') || 'foundations'}) before learning "${activeDAGContext.selectedConcept.name}"? Explain the conceptual dependency.`)}
                 disabled={isTyping}
-                className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+                className="px-2 py-0.5 rounded-full bg-background border border-border text-foreground hover:bg-accent/60 transition-colors whitespace-nowrap text-[11px] font-medium shadow-xs"
               >
                 🔗 Explain prerequisite
               </button>
               <button
                 onClick={() => sendMessage(`Give me a concrete, real-world example of "${activeDAGContext.selectedConcept.name}" in action with step-by-step walkthrough.`)}
                 disabled={isTyping}
-                className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+                className="px-2 py-0.5 rounded-full bg-background border border-border text-foreground hover:bg-accent/60 transition-colors whitespace-nowrap text-[11px] font-medium shadow-xs"
               >
                 📝 Give an example
               </button>
               <button
                 onClick={() => sendMessage(`Quiz me on "${activeDAGContext.selectedConcept.name}" with 2 short conceptual multiple-choice or short-answer questions to test my understanding. Wait for my answer!`)}
                 disabled={isTyping}
-                className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+                className="px-2 py-0.5 rounded-full bg-background border border-border text-foreground hover:bg-accent/60 transition-colors whitespace-nowrap text-[11px] font-medium shadow-xs"
               >
                 ⚡ Quiz me
               </button>
               <button
                 onClick={() => sendMessage(`Based on the ${activeDAGContext.topic} prerequisite DAG, what should I study next after mastering "${activeDAGContext.selectedConcept.name}"?`)}
                 disabled={isTyping}
-                className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+                className="px-2 py-0.5 rounded-full bg-background border border-border text-foreground hover:bg-accent/60 transition-colors whitespace-nowrap text-[11px] font-medium shadow-xs"
               >
                 🧭 What to study next?
               </button>
               <button
                 onClick={() => sendMessage(`Why might a student struggle or be weak in "${activeDAGContext.selectedConcept.name}"? What are the common misconceptions and how can I resolve them?`)}
                 disabled={isTyping}
-                className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 hover:bg-rose-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+                className="px-2 py-0.5 rounded-full bg-background border border-border text-foreground hover:bg-accent/60 transition-colors whitespace-nowrap text-[11px] font-medium shadow-xs"
               >
                 ⚠️ Why am I weak here?
               </button>
@@ -456,7 +456,7 @@ Please tailor your response specifically to this concept and its prerequisite hi
                     description: `Configured AI Materials for "${activeDAGContext.selectedConcept.name}".`,
                   });
                 }}
-                className="px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-700 dark:text-pink-300 hover:bg-pink-500/25 transition-colors whitespace-nowrap text-[11px] font-medium"
+                className="px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap text-[11px] font-medium shadow-xs"
               >
                 📚 Generate study material
               </button>

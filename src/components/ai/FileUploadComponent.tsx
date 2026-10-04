@@ -94,10 +94,10 @@ export const FileUploadComponent = ({ onFileContent, topic = 'General', userId =
   };
 
   const getFileIcon = (name: string) => {
-    if (name.endsWith('.pdf')) return <FileText className="w-5 h-5 text-indigo-600" />;
+    if (name.endsWith('.pdf')) return <FileText className="w-5 h-5 text-primary" />;
     if (name.match(/\.pptx?$/i)) return <Presentation className="w-5 h-5 text-amber-600" />;
-    if (name.match(/\.(mp4|webm|mp3|wav|m4a)$/i)) return <Video className="w-5 h-5 text-purple-600" />;
-    return <FileText className="w-5 h-5 text-green-600" />;
+    if (name.match(/\.(mp4|webm|mp3|wav|m4a)$/i)) return <Video className="w-5 h-5 text-primary" />;
+    return <FileText className="w-5 h-5 text-primary" />;
   };
 
   return (

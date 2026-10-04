@@ -164,7 +164,7 @@ export const NewAchievementsPage = () => {
         category: 'practice',
         target: 3,
         xp: 30,
-        color: 'bg-purple-500'
+        color: 'bg-emerald-600'
       },
 
       // Streaks Category
@@ -327,7 +327,7 @@ export const NewAchievementsPage = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-4xl font-bold text-gradient">
+            <h1 className="font-serif text-3xl md:text-4xl font-bold text-foreground">
               🏆 Achievements
             </h1>
             <p className="text-muted-foreground text-lg mt-2">
@@ -377,8 +377,8 @@ export const NewAchievementsPage = () => {
           </Card>
           <Card className="p-4 card-interactive">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-                <Target className="w-5 h-5 text-white" />
+              <div className="w-11 h-11 bg-primary rounded-xl flex items-center justify-center shadow-sm">
+                <Target className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
                 <div className="text-2xl font-bold text-foreground">{achievements.length - stats.unlockedCount}</div>

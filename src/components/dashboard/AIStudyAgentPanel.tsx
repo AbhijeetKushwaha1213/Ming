@@ -407,8 +407,8 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
         );
       case 'PRACTICE_ASSESSMENT':
         return (
-          <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-300 flex items-center gap-1">
-            <Target className="w-3 h-3 text-purple-600" />
+          <Badge className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1">
+            <Target className="w-3 h-3 text-primary" />
             Adaptive Quiz
           </Badge>
         );
@@ -727,7 +727,7 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
                               <Button
                                 size="sm"
                                 onClick={() => handleStartTask(item)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-xs gap-1.5 shadow-xs h-8 px-3"
                               >
                                 <BookOpen className="w-3.5 h-3.5" />
                                 Study Flashcards in Vault
@@ -772,7 +772,7 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
                               <button
                                 type="button"
                                 onClick={() => navigateToTab('flashcards', 'assessment', { topic: item.topic })}
-                                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium px-2 py-1"
+                                className="text-xs text-primary dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium px-2 py-1"
                               >
                                 Assessment Studio <ExternalLink className="w-3 h-3" />
                               </button>
@@ -782,7 +782,7 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
                               <button
                                 type="button"
                                 onClick={() => navigateToTab('flashcards', 'vault')}
-                                className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 font-medium px-2 py-1"
+                                className="text-xs text-primary dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium px-2 py-1"
                               >
                                 My Vault <ExternalLink className="w-3 h-3" />
                               </button>

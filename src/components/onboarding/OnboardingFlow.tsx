@@ -268,19 +268,19 @@ export const OnboardingFlow = () => {
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <Camera className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Camera className="w-10 h-10 text-primary-foreground" />
               </div>
-              <h2 className="text-3xl font-bold text-foreground mb-3">Add Your Profile Photo</h2>
+              <h2 className="font-serif text-3xl font-bold text-foreground mb-3">Add Your Profile Photo</h2>
               <p className="text-lg text-muted-foreground">Make your profile more personal (optional)</p>
             </div>
 
             <div className="flex flex-col items-center space-y-6">
-              <Avatar className="w-32 h-32 border-4 border-gray-200 shadow-lg">
+              <Avatar className="w-32 h-32 border-4 border-border shadow-md">
                 {data.avatarUrl ? (
                   <AvatarImage src={data.avatarUrl} alt="Profile" />
                 ) : (
-                  <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                  <AvatarFallback className="text-2xl font-bold bg-brand-gradient text-white">
                     {data.name ? getInitials(data.name) : 'U'}
                   </AvatarFallback>
                 )}
@@ -296,7 +296,7 @@ export const OnboardingFlow = () => {
                 />
                 <label
                   htmlFor="avatar-upload"
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 cursor-pointer transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg cursor-pointer transition-all duration-200 shadow-sm"
                 >
                   <Upload className="w-5 h-5 mr-2" />
                   Upload Photo
@@ -468,8 +468,8 @@ export const OnboardingFlow = () => {
                       variant={data.studyPreference.includes(pref) ? "default" : "outline"}
                       className={`cursor-pointer p-4 text-center justify-center transition-all duration-200 hover:scale-105 ${
                         data.studyPreference.includes(pref) 
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-md' 
-                          : 'hover:bg-purple-50 hover:border-purple-300'
+                          ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm' 
+                          : 'hover:bg-accent hover:border-primary/40'
                       }`}
                       onClick={() => handleArrayToggle('studyPreference', pref)}
                     >
@@ -586,9 +586,9 @@ export const OnboardingFlow = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
-              <h3 className="font-bold text-blue-900 mb-4 text-lg">Your Profile Summary:</h3>
-              <div className="text-sm text-blue-800 space-y-2">
+            <div className="bg-secondary/60 p-6 rounded-xl border border-border">
+              <h3 className="font-serif font-bold text-foreground mb-4 text-lg">Your Profile Summary:</h3>
+              <div className="text-sm text-foreground space-y-2">
                 <div className="flex items-center space-x-2">
                   <User className="w-4 h-4" />
                   <span><strong>Name:</strong> {data.name}</span>

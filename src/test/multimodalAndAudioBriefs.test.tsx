@@ -140,13 +140,13 @@ describe('Track D Multimodal Figures and Audio Briefs (Req 1d & 6b)', () => {
       snippet: 'Resource allocation graph indicating circular hold and wait.',
     };
 
-    it('renders a purple multimodal Figure / Diagram badge for diagram chunks', () => {
+    it('renders a primary multimodal Figure / Diagram badge for diagram chunks', () => {
       render(<Citation citation={mockDiagramCitation} />);
 
       const citationBtn = screen.getByTestId('citation-test_chunk_diagram_1');
       expect(citationBtn).toBeDefined();
       expect(citationBtn.textContent).toContain('Figure (Page 42)');
-      expect(citationBtn.className).toContain('text-purple-700');
+      expect(citationBtn.className).toContain('text-primary');
     });
 
     it('opens modal with diagram details and copy deep link option', async () => {

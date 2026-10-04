@@ -35,10 +35,10 @@ export default function ProjectHeader({
   return (
     <Card>
       <CardContent className="p-6">
-        <h2 className="text-2xl font-semibold mb-2">{projectName}</h2>
+        <h2 className="font-serif text-2xl font-bold mb-2">{projectName}</h2>
         <p className="text-muted-foreground">{projectType} · Due in {deadline}</p>
         <div className="flex items-center gap-4 mt-4">
-          <Timer className="text-purple-600" />
+          <Timer className="text-primary" />
           <span className="text-xl font-bold">{Math.floor(timer / 60)}:{("0" + (timer % 60)).slice(-2)}</span>
           <Button onClick={onStart} disabled={isRunning} className="ml-4">Start</Button>
           <Button onClick={onPause} disabled={!isRunning} variant="secondary">Pause</Button>

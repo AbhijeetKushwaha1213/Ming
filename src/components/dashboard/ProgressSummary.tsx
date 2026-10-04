@@ -64,7 +64,7 @@ export const ProgressSummary = ({
       icon: BookOpen,
       label: 'Flashcards',
       value: actualFlashcardsCount.toString(),
-      color: 'text-purple-600 bg-purple-100'
+      color: 'text-primary bg-primary/10'
     }
   ];
 
@@ -74,20 +74,20 @@ export const ProgressSummary = ({
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-sm">
+              <TrendingUp className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Level {currentLevel}</h3>
-              <p className="text-sm text-gray-600">{experiencePoints} XP total</p>
+              <h3 className="text-lg font-semibold text-foreground">Level {currentLevel}</h3>
+              <p className="text-sm text-muted-foreground">{experiencePoints} XP total</p>
             </div>
           </div>
           <Badge variant="secondary" className="text-sm">
             {Math.round(progressToNextLevel)}% to Level {currentLevel + 1}
           </Badge>
         </div>
-        <Progress value={progressToNextLevel} className="h-3" />
-        <p className="text-xs text-gray-500 mt-2">
+        <Progress value={progressToNextLevel} className="h-2.5" />
+        <p className="text-xs text-muted-foreground mt-2">
           {1000 - (experiencePoints % 1000)} XP needed for next level
         </p>
       </Card>
@@ -96,15 +96,15 @@ export const ProgressSummary = ({
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-              <Target className="w-5 h-5 text-orange-600" />
+            <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/40 rounded-full flex items-center justify-center">
+              <Target className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Weekly Goal</h3>
-              <p className="text-sm text-gray-600">Study progress this week</p>
+              <h3 className="font-semibold text-foreground">Weekly Goal</h3>
+              <p className="text-sm text-muted-foreground">Study progress this week</p>
             </div>
           </div>
-          <span className="text-2xl font-bold text-orange-600">
+          <span className="text-2xl font-bold text-foreground">
             {Math.round(weeklyGoalProgress)}%
           </span>
         </div>
@@ -120,8 +120,8 @@ export const ProgressSummary = ({
                 <stat.icon className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 truncate">{stat.label}</p>
-                <p className="text-lg font-semibold text-gray-900">{stat.value}</p>
+                <p className="text-sm text-muted-foreground truncate">{stat.label}</p>
+                <p className="text-lg font-semibold text-foreground">{stat.value}</p>
               </div>
             </div>
           </Card>

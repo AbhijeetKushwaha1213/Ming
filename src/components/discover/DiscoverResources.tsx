@@ -311,13 +311,13 @@ export const DiscoverResources = ({ onNavigate }: DiscoverResourcesProps) => {
   return (
     <div className="space-y-6 pb-20">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-foreground mb-2">Discover Resources</h1>
+        <h1 className="font-serif text-3xl font-bold text-foreground mb-2">Discover Resources</h1>
         <p className="text-muted-foreground">Find projects, learn new skills, and explore ideas</p>
       </div>
 
       <Card className="p-6">
         <div className="flex items-center space-x-2 mb-4">
-          <Target className="w-5 h-5 text-indigo-600" />
+          <Target className="w-5 h-5 text-primary" />
           <h2 className="text-lg font-semibold">Manage Skills</h2>
         </div>
         <div className="flex space-x-2 mb-4">
@@ -363,7 +363,7 @@ export const DiscoverResources = ({ onNavigate }: DiscoverResourcesProps) => {
 
       <Card className="p-6">
         <div className="flex items-center space-x-2 mb-4">
-          <Code className="w-5 h-5 text-purple-600" />
+          <Code className="w-5 h-5 text-primary" />
           <h2 className="text-lg font-semibold">Manage Active Projects</h2>
         </div>
         <div className="flex space-x-2 mb-4">

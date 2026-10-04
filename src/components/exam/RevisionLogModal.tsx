@@ -92,10 +92,10 @@ export const RevisionLogModal = ({ open, onOpenChange }: RevisionLogModalProps) 
 
   const getSubjectColor = (subject: string) => {
     switch (subject.toLowerCase()) {
-      case 'physics': return 'bg-blue-100 text-blue-800';
-      case 'chemistry': return 'bg-purple-100 text-purple-800';
-      case 'mathematics': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'physics': return 'bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300';
+      case 'chemistry': return 'bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300';
+      case 'mathematics': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 

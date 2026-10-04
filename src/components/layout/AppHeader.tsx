@@ -43,11 +43,13 @@ export const AppHeader = ({
         </Button>
 
         {/* Logo - visible on mobile only */}
-        <div className="flex items-center space-x-3 lg:hidden">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">S</span>
-          </div>
-          <h1 className="font-bold text-foreground text-lg">StudyMate AI</h1>
+        <div className="flex items-center space-x-2.5 lg:hidden">
+          <img
+            src="/assets/studymate-logo.png"
+            alt="StudyMate AI Logo"
+            className="w-7 h-7 rounded-lg object-cover shadow-sm"
+          />
+          <h1 className="font-serif font-bold text-foreground text-base">StudyMate AI</h1>
         </div>
 
         {/* Right side */}

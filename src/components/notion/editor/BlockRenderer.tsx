@@ -885,7 +885,7 @@ function FileBlockRenderer({ pageId, block, editable, onUpdate }: Omit<BlockRend
     }
     if (isImage) {
       return (
-        <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
           <ImageIcon className="w-4 h-4" />
         </div>
       );

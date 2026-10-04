@@ -65,8 +65,8 @@ export const Citation: React.FC<CitationProps> = ({
         ? `Slide ${citation.slide_number}`
         : 'Visual';
       return {
-        icon: <ImageIcon className="w-3.5 h-3.5 text-purple-600" />,
-        badgeColor: 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100',
+        icon: <ImageIcon className="w-3.5 h-3.5 text-primary" />,
+        badgeColor: 'border-primary/25 bg-secondary text-primary hover:bg-secondary/80',
         label: `Figure (${coord})`,
         typeLabel: 'Multimodal Figure / Diagram',
       };
@@ -175,7 +175,7 @@ export const Citation: React.FC<CitationProps> = ({
           <DialogHeader>
             <div className="flex items-center justify-between gap-2 mr-6">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-indigo-50 text-indigo-700">
+                <div className="p-2 rounded-lg bg-secondary text-primary">
                   {config.icon}
                 </div>
                 <div>
@@ -196,10 +196,10 @@ export const Citation: React.FC<CitationProps> = ({
 
           <div className="space-y-4 py-2">
             {/* Coordinate Highlight Banner */}
-            <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm space-y-1">
-              <div className="flex items-center justify-between font-medium text-gray-900">
+            <div className="p-3 rounded-lg bg-secondary/50 border border-border text-sm space-y-1">
+              <div className="flex items-center justify-between font-medium text-foreground">
                 <span>Exact Source Coordinate</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-mono">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-primary font-mono border border-border">
                   {config.label}
                 </span>
               </div>
@@ -265,12 +265,12 @@ export const Citation: React.FC<CitationProps> = ({
               )}
               {/* Multimodal Diagram Banner */}
               {isDiagram && (
-                <div className="pt-2 flex items-center justify-between text-xs text-purple-900 bg-purple-50/70 p-2 rounded-md border border-purple-200">
+                <div className="pt-2 flex items-center justify-between text-xs text-primary bg-secondary/70 p-2 rounded-md border border-primary/20">
                   <span className="flex items-center gap-1.5 font-medium">
-                    <ImageIcon className="w-3.5 h-3.5 text-purple-600" />
+                    <ImageIcon className="w-3.5 h-3.5 text-primary" />
                     {locationDetails.diagram_caption || citation.diagram_caption || 'Visual Schema / Figure'}
                   </span>
-                  <Badge variant="outline" className="text-[10px] bg-purple-100/50 text-purple-700 border-purple-300">
+                  <Badge variant="outline" className="text-[10px] bg-secondary text-primary border-primary/30">
                     Figure Element
                   </Badge>
                 </div>
@@ -282,11 +282,11 @@ export const Citation: React.FC<CitationProps> = ({
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                 Grounding Evidence Content
               </p>
-              <div className="p-3.5 rounded-lg bg-indigo-50/50 border border-indigo-100 text-sm text-gray-800 leading-relaxed max-h-48 overflow-y-auto">
+              <div className="p-3.5 rounded-lg bg-secondary/40 border border-border text-sm text-foreground leading-relaxed max-h-48 overflow-y-auto">
                 {isLoading ? (
                   <p className="text-xs text-muted-foreground animate-pulse">Loading location snippet...</p>
                 ) : (
-                  <blockquote className="border-l-2 border-indigo-400 pl-3 italic font-serif text-gray-700">
+                  <blockquote className="border-l-2 border-primary/60 pl-3 italic font-serif text-foreground/80">
                     "{locationDetails.preview || locationDetails.snippet || citation.snippet || 'No excerpt available.'}"
                   </blockquote>
                 )}
@@ -304,7 +304,7 @@ export const Citation: React.FC<CitationProps> = ({
                 </span>
               )}
               {isDiagram && (
-                <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                <span className="px-2 py-0.5 rounded bg-secondary text-primary border border-border">
                   visual_unit
                 </span>
               )}
@@ -326,9 +326,9 @@ export const Citation: React.FC<CitationProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleCopyDeepLink}
-                className="text-xs gap-1.5 text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                className="text-xs gap-1.5 text-primary border-border hover:bg-secondary"
               >
-                {linkCopied ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <LinkIcon className="w-3.5 h-3.5" />}
+                {linkCopied ? <Check className="w-3.5 h-3.5 text-primary" /> : <LinkIcon className="w-3.5 h-3.5" />}
                 {linkCopied ? 'Link Copied' : 'Copy Deep Link'}
               </Button>
             </div>

@@ -121,13 +121,13 @@ export const DAGViewer: React.FC<DAGViewerProps> = ({
       {/* Top Header */}
       <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
             <GitFork className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <h2 className="text-xl font-serif font-bold text-foreground flex items-center gap-2">
               {title}
-              <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+              <Badge variant="outline" className="text-xs bg-secondary text-secondary-foreground border-border">
                 Vault DAG
               </Badge>
             </h2>
@@ -151,10 +151,10 @@ export const DAGViewer: React.FC<DAGViewerProps> = ({
               <svg className="absolute inset-0 pointer-events-none" width={canvasWidth} height={canvasHeight}>
                 <defs>
                   <marker id="viewer-arrow-met" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                    <polygon points="0 0, 8 3, 0 6" fill="#10b981" />
+                    <polygon points="0 0, 8 3, 0 6" fill="#165034" />
                   </marker>
                   <marker id="viewer-arrow-gap" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                    <polygon points="0 0, 8 3, 0 6" fill="#f59e0b" />
+                    <polygon points="0 0, 8 3, 0 6" fill="#d97706" />
                   </marker>
                   <marker id="viewer-arrow-unmet" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
                     <polygon points="0 0, 8 3, 0 6" fill="#94a3b8" />
@@ -166,7 +166,7 @@ export const DAGViewer: React.FC<DAGViewerProps> = ({
                     key={idx}
                     d={e.path}
                     fill="none"
-                    stroke={e.isMet ? '#10b981' : e.isGap ? '#f59e0b' : '#94a3b8'}
+                    stroke={e.isMet ? '#165034' : e.isGap ? '#d97706' : '#94a3b8'}
                     strokeWidth={e.isMet ? '2.5' : '1.75'}
                     strokeDasharray={e.isMet ? 'none' : '4 3'}
                     markerEnd={e.isMet ? 'url(#viewer-arrow-met)' : e.isGap ? 'url(#viewer-arrow-gap)' : 'url(#viewer-arrow-unmet)'}
@@ -191,7 +191,7 @@ export const DAGViewer: React.FC<DAGViewerProps> = ({
                       height: '88px',
                     }}
                     className={`p-3 rounded-xl bg-card border cursor-pointer transition-all flex flex-col justify-between ${
-                      isSelected ? 'ring-2 ring-primary border-primary shadow-md' : 'border-border hover:border-primary/50'
+                      isSelected ? 'ring-2 ring-primary border-primary shadow-sm bg-accent/20' : 'border-border hover:border-primary/50'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-1">
@@ -203,7 +203,7 @@ export const DAGViewer: React.FC<DAGViewerProps> = ({
                       ) : (
                         <CheckCircle2
                           className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                            node.status === 'mastered' ? 'text-emerald-500' : 'text-blue-500/60'
+                            node.status === 'mastered' ? 'text-primary' : 'text-sky-600'
                           }`}
                         />
                       )}
@@ -234,7 +234,7 @@ export const DAGViewer: React.FC<DAGViewerProps> = ({
                       {selectedNode.difficulty}
                     </Badge>
                   </div>
-                  <h4 className="text-lg font-bold text-foreground">{selectedNode.title}</h4>
+                  <h4 className="text-lg font-serif font-bold text-foreground">{selectedNode.title}</h4>
                   <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                     {selectedNode.description}
                   </p>

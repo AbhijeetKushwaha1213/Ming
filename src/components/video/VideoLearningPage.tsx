@@ -161,7 +161,7 @@ export const VideoLearningPage: React.FC = () => {
             <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center text-white shadow-glow">
               <Video className="w-5 h-5" />
             </div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="font-serif text-xl md:text-2xl font-bold tracking-tight text-foreground">
               Video Learning
             </h1>
             <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary">

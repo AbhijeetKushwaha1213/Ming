@@ -767,7 +767,7 @@ export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = (
                   navigateToTab('flashcards', 'dag', { topic: currentCourse.courseTitle.split('&')[0].trim() });
                 }
               }}
-              className="w-full text-xs h-9 gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium shadow-xs"
+              className="w-full text-xs h-9 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-xs"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Open DAG Pipeline</span>
@@ -862,7 +862,7 @@ export const CoursePrerequisiteGraph: React.FC<CoursePrerequisiteGraphProps> = (
                 navigateToTab('flashcards', 'dag', { topic: currentCourse.courseTitle.split('&')[0].trim() });
               }
             }}
-            className="text-xs h-8 gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+            className="text-xs h-8 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Open DAG Pipeline</span>

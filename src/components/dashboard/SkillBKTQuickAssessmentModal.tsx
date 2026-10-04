@@ -263,19 +263,19 @@ export const SkillBKTQuickAssessmentModal: React.FC<SkillBKTQuickAssessmentModal
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-xl p-0 overflow-hidden bg-background border border-border shadow-2xl rounded-2xl">
         {/* Modal Header */}
-        <div className="p-6 bg-gradient-to-r from-indigo-50/80 via-purple-50/40 to-pink-50/30 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-background border-b border-border/80">
+        <div className="p-6 bg-secondary/70 border-b border-border">
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Brain className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                <Brain className="w-5 h-5 text-primary" />
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">
                   Bayesian Knowledge Tracing (BKT)
                 </span>
-                <Badge variant="outline" className="text-[11px] bg-white dark:bg-card border-indigo-200">
+                <Badge variant="outline" className="text-[11px] bg-background border-border font-medium">
                   Adaptive Calibration
                 </Badge>
               </div>
-              <DialogTitle className="text-xl font-bold text-foreground">
+              <DialogTitle className="text-xl font-serif font-bold text-foreground">
                 Calibrate Mastery: {skillName}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">

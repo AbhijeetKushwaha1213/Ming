@@ -565,7 +565,7 @@ export const RightSidebar = ({ isOpen, onClose, examDate }: RightSidebarProps) =
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleStartTask(item)}
-                                  className="h-7 text-xs px-2.5 gap-1 border-purple-200 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                                  className="h-7 text-xs px-2.5 gap-1 border-primary/25 text-primary dark:text-emerald-400 hover:bg-primary/10"
                                 >
                                   <BookOpen className="w-3 h-3" />
                                   Revise Vault

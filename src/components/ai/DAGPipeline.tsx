@@ -529,7 +529,7 @@ export const DAGPipeline: React.FC = () => {
             onClick={() => handleGenerateDAG()}
             disabled={isGenerating}
             size="sm"
-            className="text-xs h-9 gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-xs"
+            className="text-xs h-9 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs font-medium"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>{isGenerating ? 'Generating Graph...' : 'Generate Learning DAG'}</span>
@@ -562,7 +562,7 @@ export const DAGPipeline: React.FC = () => {
           onClick={() => setActiveTabArea('generate')}
           className={`h-9 px-4 gap-2 text-xs font-semibold rounded-xl transition-all ${
             activeTabArea === 'generate'
-              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
+              ? 'bg-primary text-primary-foreground shadow-xs'
               : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
           }`}
         >
@@ -576,7 +576,7 @@ export const DAGPipeline: React.FC = () => {
           onClick={() => setActiveTabArea('saved')}
           className={`h-9 px-4 gap-2 text-xs font-semibold rounded-xl transition-all ${
             activeTabArea === 'saved'
-              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
+              ? 'bg-primary text-primary-foreground shadow-xs'
               : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
           }`}
         >
@@ -663,7 +663,7 @@ export const DAGPipeline: React.FC = () => {
                         </div>
                         <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                           <div
-                            className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500"
+                            className="bg-primary h-full rounded-full transition-all duration-500"
                             style={{ width: `${Math.max(dag.progressPercent, 4)}%` }}
                           />
                         </div>

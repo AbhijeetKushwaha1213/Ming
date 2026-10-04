@@ -72,7 +72,14 @@ export const MobileNavigation = ({
             {/* Header */}
             <div className="p-6 border-b border-border">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">StudyMate AI</h2>
+                <div className="flex items-center gap-2">
+                  <img
+                    src="/assets/studymate-logo.png"
+                    alt="StudyMate AI Logo"
+                    className="w-6 h-6 rounded-md object-cover shadow-sm"
+                  />
+                  <h2 className="text-lg font-serif font-bold text-foreground">StudyMate AI</h2>
+                </div>
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -85,8 +92,8 @@ export const MobileNavigation = ({
               
               {user && (
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-brand-gradient rounded-full flex items-center justify-center shadow-glow">
-                    <span className="text-white font-medium text-sm">
+                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-sm">
+                    <span className="text-primary-foreground font-medium text-sm">
                       {user.name?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   </div>
@@ -119,17 +126,17 @@ export const MobileNavigation = ({
                       <button
                         key={item.id}
                         onClick={() => handleNavigation(item.id)}
-                        className={`w-full flex items-center justify-between px-3 py-3 text-left rounded-lg transition-all duration-200 ${
+                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left rounded-lg transition-all duration-200 ${
                           isActive
-                            ? 'bg-brand-gradient text-white shadow-glow'
+                            ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
                             : 'text-foreground hover:bg-accent/50'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
-                          <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
+                          <Icon className={`w-5 h-5 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
                           <span className="font-medium">{item.label}</span>
                         </div>
-                        {isActive && <ChevronRight className="w-4 h-4 text-white" />}
+                        {isActive && <ChevronRight className="w-4 h-4 text-primary-foreground" />}
                       </button>
                     );
                   })}

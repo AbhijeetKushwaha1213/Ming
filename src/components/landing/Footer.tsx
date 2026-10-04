@@ -1,35 +1,40 @@
-
 import React from 'react';
-import { Brain } from 'lucide-react';
 
 export const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white py-12 px-4">
+    <footer className="bg-[#002313] text-[#e8f3ed] py-16 px-4 border-t border-[#165034]/40">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center mb-6 md:mb-0">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mr-3">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+          {/* Logo & Identity */}
+          <div className="flex items-center">
+            <img
+              src="/assets/studymate-logo.png"
+              alt="StudyMate AI Logo"
+              className="w-10 h-10 object-contain mr-3.5 drop-shadow-sm"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div>
-              <div className="text-xl font-bold">StudyMate AI</div>
-              <div className="text-sm text-gray-400">Smart Study Companion</div>
+              <div className="font-serif text-xl font-bold tracking-tight text-white">StudyMate AI</div>
+              <div className="text-xs text-[#a3b899] font-medium tracking-wide">Autonomous Multimodal Academic System</div>
             </div>
           </div>
 
           {/* Links */}
-          <div className="flex flex-wrap gap-8 text-sm">
-            <a href="#" className="text-gray-300 hover:text-white transition-colors">About</a>
-            <a href="#" className="text-gray-300 hover:text-white transition-colors">Features</a>
-            <a href="#" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
-            <a href="#" className="text-gray-300 hover:text-white transition-colors">Support</a>
-            <a href="#" className="text-gray-300 hover:text-white transition-colors">Privacy</a>
+          <div className="flex flex-wrap gap-8 text-sm font-medium">
+            <a href="#features" className="text-[#a3b899] hover:text-white transition-colors">Features</a>
+            <a href="#impact" className="text-[#a3b899] hover:text-white transition-colors">Research Rigor</a>
+            <a href="/login" className="text-[#a3b899] hover:text-white transition-colors">Sign In</a>
+            <a href="/login" className="text-[#a3b899] hover:text-white transition-colors">Get Started</a>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-          <p>&copy; {new Date().getFullYear()} StudyMate AI. All rights reserved. Made with ❤️ for students worldwide.</p>
+        <div className="border-t border-[#165034]/50 mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#7d9472]">
+          <p>&copy; {new Date().getFullYear()} StudyMate AI. All rights reserved.</p>
+          <p className="flex items-center gap-1.5">
+            Crafted for academic rigor, deep comprehension & cognitive mastery.
+          </p>
         </div>
       </div>
     </footer>

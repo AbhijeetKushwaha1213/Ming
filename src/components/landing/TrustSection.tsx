@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { Star, Users, Clock, Award } from 'lucide-react';
+import { Star, Users, Clock, Award, ShieldCheck } from 'lucide-react';
 
 export const TrustSection = () => {
   const stats = [
@@ -9,58 +8,57 @@ export const TrustSection = () => {
       icon: Users,
       number: '10K+',
       label: 'Active Learners',
-      gradient: 'from-blue-500 to-cyan-500'
     },
     {
       icon: Clock,
       number: '1M+',
-      label: 'Study Hours',
-      gradient: 'from-green-500 to-emerald-500'
+      label: 'Study Hours Tracked',
     },
     {
       icon: Award,
       number: '50K+',
-      label: 'Flashcards Created',
-      gradient: 'from-purple-500 to-pink-500'
+      label: 'Study Materials Generated',
     },
     {
       icon: Star,
       number: '4.9/5',
-      label: 'User Rating',
-      gradient: 'from-yellow-500 to-orange-500'
+      label: 'Student Rating',
     }
   ];
 
   return (
-    <section id="impact" className="py-20 px-4 scroll-mt-20">
+    <section id="impact" className="py-24 px-4 scroll-mt-20 bg-[#f6fbf3] border-t border-[#dfe4dd]/60">
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Trusted by Students 
-            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> Worldwide</span>
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[#e8f3ed] text-[#165034] border border-[#165034]/20 mb-4 uppercase tracking-wider">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Academic Validation</span>
+          </div>
+          <h2 className="font-serif text-3xl md:text-5xl font-normal text-[#002313] mb-4 tracking-tight">
+            Trusted by Students <span className="italic font-serif text-[#165034]">Worldwide</span>
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Join thousands of students who are already achieving their academic goals with StudyMate AI.
+          <p className="text-base sm:text-lg text-[#2d4a3e] max-w-2xl mx-auto leading-relaxed">
+            Join thousands of university students and researchers who prepare for complex exams with StudyMate AI.
           </p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <Card 
                 key={index}
-                className="p-6 text-center hover:shadow-lg transition-all duration-300 border-0 bg-white/70 backdrop-blur-sm"
+                className="p-6 text-center hover:shadow-md transition-all duration-300 border border-[#dfe4dd] bg-white/90 rounded-2xl shadow-xs"
               >
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${stat.gradient} flex items-center justify-center mx-auto mb-4`}>
-                  <Icon className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 rounded-xl bg-[#e8f3ed] text-[#165034] flex items-center justify-center mx-auto mb-4">
+                  <Icon className="w-6 h-6 text-[#165034]" />
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">
+                <div className="font-serif text-3xl font-bold text-[#002313] mb-1">
                   {stat.number}
                 </div>
-                <div className="text-gray-600 font-medium">
+                <div className="text-sm font-medium text-[#2d4a3e]">
                   {stat.label}
                 </div>
               </Card>
@@ -68,19 +66,19 @@ export const TrustSection = () => {
           })}
         </div>
 
-        {/* Testimonial Placeholder */}
-        <div className="bg-gradient-to-r from-white/80 to-indigo-50/80 backdrop-blur-sm rounded-2xl p-8 text-center border border-indigo-100">
-          <div className="flex justify-center mb-4">
+        {/* Testimonial Quote */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 sm:p-10 text-center border border-[#dfe4dd] shadow-xs max-w-3xl mx-auto">
+          <div className="flex justify-center gap-1 mb-4">
             {[...Array(5)].map((_, i) => (
-              <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+              <Star key={i} className="w-4 h-4 text-amber-500 fill-amber-500" />
             ))}
           </div>
-          <blockquote className="text-xl text-gray-700 mb-4 font-medium italic">
-            "StudyMate AI transformed how I study. The AI-generated flashcards and personalized study plans helped me ace my exams!"
+          <blockquote className="font-serif text-lg sm:text-xl text-[#002313] mb-6 leading-relaxed italic">
+            "StudyMate AI transformed my coursework workflow. Having an automated prerequisite knowledge graph alongside verifiable source citations makes technical exam prep structured and confident."
           </blockquote>
-          <div className="text-gray-600">
-            <div className="font-semibold">Sarah Chen</div>
-            <div className="text-sm">Computer Science Student</div>
+          <div className="text-[#2d4a3e]">
+            <div className="font-semibold text-sm text-[#002313]">Sarah Chen</div>
+            <div className="text-xs text-[#52796f]">Computer Science & Engineering Student</div>
           </div>
         </div>
       </div>

@@ -839,8 +839,8 @@ export const AIChat = ({
                           </div>
                         )}
                         {message.sender === 'ai' && message.usedGeminiFallback && (
-                          <div className="mb-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
-                            <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                          <div className="mb-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-primary border border-primary/20">
+                            <Sparkles className="w-3 h-3 text-primary" />
                             <span>Answered via Gemini AI</span>
                           </div>
                         )}

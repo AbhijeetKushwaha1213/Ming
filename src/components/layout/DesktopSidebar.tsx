@@ -56,29 +56,39 @@ export const DesktopSidebar = ({ activeTab, onTabChange, onSignOut, isCollapsed 
   return (
     <div className="h-full w-full flex flex-col bg-sidebar border-r border-sidebar-border sticky top-0">
       {/* Header */}
-      <div className="flex items-center h-16 px-6 border-b border-sidebar-border flex-shrink-0">
+      <div className="flex items-center h-16 px-5 border-b border-sidebar-border flex-shrink-0">
         {isCollapsed ? (
-          <div className="w-9 h-9 bg-brand-gradient rounded-xl flex items-center justify-center mx-auto shadow-glow">
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
+          <img
+            src="/assets/studymate-logo.png"
+            alt="StudyMate AI Logo"
+            className="w-8 h-8 rounded-lg object-cover shadow-sm mx-auto"
+          />
         ) : (
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 bg-brand-gradient rounded-xl flex items-center justify-center shadow-glow">
-              <span className="text-white font-bold text-sm">S</span>
-            </div>
+            <img
+              src="/assets/studymate-logo.png"
+              alt="StudyMate AI Logo"
+              className="w-8 h-8 rounded-lg object-cover shadow-sm"
+            />
             <div>
-              <h1 className="font-bold text-foreground text-sm tracking-tight">StudyMate AI</h1>
-              <p className="text-xs text-muted-foreground">
-                {user.userType === 'exam' ? 'Exam Prep' : 'College'}
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-serif font-bold text-foreground text-base tracking-tight leading-none">
+                  StudyMate AI
+                </h1>
+                <span className="px-1.5 py-0.2 rounded-full bg-accent text-accent-foreground font-sans text-[9px] uppercase font-bold tracking-wider">
+                  Pro
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                {user.userType === 'exam' ? 'Exam Prep' : 'College Academic'}
               </p>
             </div>
           </div>
         )}
       </div>
 
-
       {/* Navigation - Scrollable */}
-      <nav className={`flex-1 py-4 space-y-2 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-4'}`}>
+      <nav className={`flex-1 py-4 space-y-2 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-3'}`}>
         <div className="space-y-1">
           {mainNavItems.map((item) => {
             const Icon = item.icon;
@@ -89,25 +99,25 @@ export const DesktopSidebar = ({ activeTab, onTabChange, onSignOut, isCollapsed 
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 title={isCollapsed ? item.label : undefined}
-                className={`group relative w-full h-10 flex items-center rounded-lg transition-all duration-200 ${
+                className={`group relative w-full h-9 flex items-center rounded-lg transition-all duration-200 ${
                   isActive
-                    ? 'bg-brand-gradient text-white shadow-glow'
-                    : 'text-foreground hover:bg-sidebar-accent'
+                    ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent font-medium'
                 } ${isCollapsed ? 'justify-center px-0' : 'justify-start px-3'}`}
               >
                 <Icon className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'} ${
-                  isActive ? 'text-white' : 'text-muted-foreground group-hover:text-foreground'
+                  isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground'
                 }`} />
-                {!isCollapsed && <span className="text-sm truncate font-medium">{item.label}</span>}
+                {!isCollapsed && <span className="text-sm truncate">{item.label}</span>}
               </button>
             );
           })}
         </div>
 
-        <div className="pt-4 border-t border-sidebar-border">
+        <div className="pt-4 mt-2 border-t border-sidebar-border">
           {!isCollapsed && (
-            <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Tools
+            <p className="px-3 text-[10px] font-bold text-muted-foreground/80 uppercase tracking-wider mb-2">
+              Tools & Settings
             </p>
           )}
           <div className="space-y-1">
@@ -120,16 +130,16 @@ export const DesktopSidebar = ({ activeTab, onTabChange, onSignOut, isCollapsed 
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
                   title={isCollapsed ? item.label : undefined}
-                  className={`group relative w-full h-10 flex items-center rounded-lg transition-all duration-200 ${
+                  className={`group relative w-full h-9 flex items-center rounded-lg transition-all duration-200 ${
                     isActive
-                      ? 'bg-brand-gradient text-white shadow-glow'
-                      : 'text-foreground hover:bg-sidebar-accent'
+                      ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent font-medium'
                   } ${isCollapsed ? 'justify-center px-0' : 'justify-start px-3'}`}
                 >
                   <Icon className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'} ${
-                    isActive ? 'text-white' : 'text-muted-foreground group-hover:text-foreground'
+                    isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground'
                   }`} />
-                  {!isCollapsed && <span className="text-sm truncate font-medium">{item.label}</span>}
+                  {!isCollapsed && <span className="text-sm truncate">{item.label}</span>}
                 </button>
               );
             })}

@@ -420,10 +420,10 @@ export const DashboardCoverWidget: React.FC<DashboardCoverWidgetProps> = ({
         onMouseLeave={handleMouseLeave}
         className={`relative overflow-hidden rounded-2xl border transition-all duration-300 min-h-[170px] sm:min-h-[195px] flex flex-col justify-between p-6 shadow-sm hover:shadow-md ${
           config.type === 'quote'
-            ? quoteThemes[config.quoteTheme || 'indigo']
+            ? quoteThemes[config.quoteTheme || 'emerald']
             : config.type === 'default'
-            ? 'bg-gradient-to-r from-violet-600/10 via-indigo-500/10 to-sky-500/10 dark:from-violet-950/40 dark:via-indigo-950/40 dark:to-sky-950/40 border-primary/20 text-foreground'
-            : 'bg-black text-white border-border/60'
+            ? 'bg-gradient-to-r from-primary/10 via-accent/30 to-secondary border-border text-foreground'
+            : 'bg-card text-foreground border-border/60'
         }`}
       >
         {/* --- 1. IMAGE MODE --- */}

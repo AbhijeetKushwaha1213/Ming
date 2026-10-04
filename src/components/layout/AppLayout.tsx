@@ -205,7 +205,7 @@ export const AppLayout = ({
               <Menu className="w-5 h-5" />
             </Button>
 
-            <h1 className="text-xl font-bold tracking-tight text-gradient">
+            <h1 className="text-lg font-serif font-bold tracking-tight text-foreground">
               {activeTab === 'home' ? 'Dashboard' :
                activeTab === 'video-learning' ? 'Video Learning' :
                activeTab === 'flashcards' ? 'AI Generator' :
@@ -344,7 +344,7 @@ export const AppLayout = ({
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-auto bg-gradient-to-br from-background via-background to-accent/20">
+        <div className="flex-1 flex flex-col min-w-0 overflow-auto bg-background bg-grid-subtle">
           <div className="w-full flex-1 flex flex-col min-h-0 pb-20 lg:pb-0 animate-fade-in">
             <ErrorBoundary>
               <ContentRenderer activeTab={activeTab} onNavigate={handleTabChange} />

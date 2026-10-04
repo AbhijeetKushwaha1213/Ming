@@ -295,7 +295,7 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
               </>
             ) : (
               <>
-                <GitFork className="w-5 h-5 text-indigo-500" />
+                <GitFork className="w-5 h-5 text-primary" />
                 <span>Create Learning DAG</span>
               </>
             )}
@@ -318,12 +318,12 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
             type="button"
             onClick={() => setDialogMode('dag')}
             className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              dialogMode === 'dag' ? 'bg-background shadow-xs text-foreground text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground hover:text-foreground'
+              dialogMode === 'dag' ? 'bg-background shadow-xs text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <GitFork className="w-3.5 h-3.5 text-indigo-500" />
+            <GitFork className="w-3.5 h-3.5 text-primary" />
             <span>Create Learning DAG</span>
-            <Badge variant="outline" className="text-[9px] py-0 px-1 border-indigo-400 text-indigo-600 bg-indigo-500/10 font-bold">AI</Badge>
+            <Badge variant="outline" className="text-[9px] py-0 px-1 border-primary/40 text-primary bg-primary/10 font-bold">AI</Badge>
           </button>
         </div>
 
@@ -396,7 +396,7 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
                     name="syllabusType"
                     checked={syllabusType === 'ai'}
                     onChange={() => setSyllabusType('ai')}
-                    className="accent-indigo-600"
+                    className="accent-primary"
                   />
                   AI generated roadmap (Recommended)
                 </label>
@@ -406,7 +406,7 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
                     name="syllabusType"
                     checked={syllabusType === 'manual'}
                     onChange={() => setSyllabusType('manual')}
-                    className="accent-indigo-600"
+                    className="accent-primary"
                   />
                   Custom syllabus
                 </label>
@@ -526,8 +526,8 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
               />
             </div>
 
-            <div className="p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-xs text-muted-foreground flex items-start gap-2">
-              <Sparkles className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-xl bg-secondary/60 border border-border text-xs text-muted-foreground flex items-start gap-2">
+              <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <span>
                 Generates an interactive prerequisite-aware Directed Acyclic Graph (DAG) with BKT mastery tracking, source coordinates, and AI Tutor integration.
               </span>
@@ -540,7 +540,7 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
               <Button
                 type="submit"
                 disabled={isGeneratingDAG || !dagTopic.trim()}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-xs font-medium"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm font-medium"
               >
                 {isGeneratingDAG ? (
                   <>

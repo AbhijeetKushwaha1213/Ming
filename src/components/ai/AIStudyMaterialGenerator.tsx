@@ -436,15 +436,15 @@ export const AIStudyMaterialGenerator = () => {
     return (
       <Card 
         key={material.id} 
-        className={`p-4 transition-all ${
-          material.selected ? 'ring-2 ring-purple-500 bg-purple-50' : 'hover:shadow-md'
+        className={`p-4 transition-all border ${
+          material.selected ? 'ring-2 ring-primary bg-accent/20 border-primary' : 'border-border hover:shadow-md'
         }`}
       >
         <div className="flex items-start justify-between">
           <div className="flex-1" onClick={() => toggleMaterialSelection(material.id)}>
             <div className="flex items-center space-x-2 mb-2">
-              <IconComponent className="w-4 h-4 text-purple-600" />
-              <h4 className="font-medium text-gray-900">{material.title}</h4>
+              <IconComponent className="w-4 h-4 text-primary" />
+              <h4 className="font-medium text-foreground">{material.title}</h4>
               <Badge variant="outline" className="text-xs">
                 {material.difficulty}
               </Badge>
@@ -511,11 +511,11 @@ export const AIStudyMaterialGenerator = () => {
             
             <div>
               {material.selected ? (
-                <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
+                <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                  <span className="text-primary-foreground text-xs">✓</span>
                 </div>
               ) : (
-                <div className="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
+                <div className="w-5 h-5 border-2 border-border rounded-full"></div>
               )}
             </div>
           </div>
@@ -594,14 +594,14 @@ export const AIStudyMaterialGenerator = () => {
     <div className="space-y-6 pb-20">
       <Card className="p-6">
         <div className="flex items-center space-x-2 mb-4">
-          <Wand2 className="w-5 h-5 text-purple-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Enhanced AI Study Material Generator</h2>
+          <Wand2 className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-serif font-bold text-foreground">Enhanced AI Study Material Generator</h2>
         </div>
 
         <div className="space-y-4">
           {/* Material Type Selection */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               What would you like to generate?
             </label>
             <Select value={materialType} onValueChange={(value: MaterialType) => setMaterialType(value)}>
@@ -634,7 +634,7 @@ export const AIStudyMaterialGenerator = () => {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <FolderOpen className="w-4 h-4 text-indigo-500" />
+                <FolderOpen className="w-4 h-4 text-primary" />
                 Existing Resources
                 {availableResources.length > 0 && (
                   <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0 h-4">
@@ -651,7 +651,7 @@ export const AIStudyMaterialGenerator = () => {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <PlusCircle className="w-4 h-4 text-purple-500" />
+                <PlusCircle className="w-4 h-4 text-primary" />
                 New Material
               </button>
             </div>
@@ -845,7 +845,7 @@ export const AIStudyMaterialGenerator = () => {
           <Button 
             onClick={generateMaterial}
             disabled={isLoading || (!content.trim() && !topic.trim() && !uploadedContent.trim())}
-            className="w-full bg-purple-600 hover:bg-purple-700"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-sm"
           >
             {isLoading ? (
               <>

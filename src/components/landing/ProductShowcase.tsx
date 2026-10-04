@@ -301,7 +301,7 @@ export default function ProductShowcase() {
             {/* social proof */}
             <div className="mb-10 flex items-center justify-center gap-3 text-sm text-slate-500">
                 <div className="flex -space-x-2">
-                    {["bg-blue-600", "bg-purple-600", "bg-emerald-700", "bg-orange-700"].map((c) => (
+                    {["bg-emerald-800", "bg-teal-700", "bg-emerald-600", "bg-amber-700"].map((c) => (
                         <span key={c} className={`h-8 w-8 rounded-full border-2 border-white ${c}`} />
                     ))}
                 </div>

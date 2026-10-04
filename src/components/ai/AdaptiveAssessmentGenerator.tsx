@@ -808,28 +808,28 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Hero Banner */}
-      <Card className="p-6 bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-pink-50/40 border-indigo-100">
+      <Card className="p-6 bg-secondary/70 border-border">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <Badge className="bg-indigo-600 text-white gap-1">
+              <Badge className="bg-primary text-primary-foreground gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Grounded Assessment Engine
               </Badge>
-              <Badge variant="outline" className="border-indigo-200 text-indigo-700 bg-white">
+              <Badge variant="outline" className="border-border text-foreground bg-background">
                 ChromaDB Vector Retrieval
               </Badge>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Adaptive Course Knowledge Assessment</h2>
-            <p className="text-sm text-gray-600 max-w-2xl">
+            <h2 className="text-2xl font-serif font-bold text-foreground">Adaptive Course Knowledge Assessment</h2>
+            <p className="text-sm text-muted-foreground max-w-2xl">
               Questions are dynamically extracted from your uploaded textbooks, slide decks, and lecture recordings. Every question is verified for factual grounding and citation accuracy before testing.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="p-3 rounded-2xl bg-white/80 border border-indigo-100 text-center shadow-xs">
+            <div className="p-3 rounded-2xl bg-background border border-border text-center shadow-xs">
               <Trophy className="w-6 h-6 text-amber-500 mx-auto" />
-              <p className="text-xs font-semibold text-gray-700 mt-1">Past Attempts</p>
-              <p className="text-sm font-bold text-indigo-900">{history.length}</p>
+              <p className="text-xs font-semibold text-muted-foreground mt-1">Past Attempts</p>
+              <p className="text-sm font-bold text-foreground">{history.length}</p>
             </div>
           </div>
         </div>
@@ -1215,9 +1215,9 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
                       size="sm"
                       variant="outline"
                       onClick={() => handleRetakeAssessment(group, latest)}
-                      className="flex-1 h-8 text-xs gap-1.5 hover:bg-purple-50 hover:text-purple-700 dark:hover:bg-purple-950/40"
+                      className="flex-1 h-8 text-xs gap-1.5 hover:bg-primary/10 hover:text-primary"
                     >
-                      <RotateCcw className="w-3.5 h-3.5 text-purple-600" />
+                      <RotateCcw className="w-3.5 h-3.5 text-primary" />
                       Retake
                     </Button>
                   </div>

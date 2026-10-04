@@ -293,7 +293,7 @@ export const StudyNotesViewer: React.FC<StudyNotesViewerProps> = ({
             size="sm"
             onClick={handleSaveToResources}
             disabled={isSavingToResources}
-            className="h-8 gap-1.5 text-xs shadow-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white border-0"
+            className="h-8 gap-1.5 text-xs shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground border-0"
           >
             {isSavingToResources ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderPlus className="w-3.5 h-3.5" />}
             <span>Open in Resources</span>
@@ -313,9 +313,9 @@ export const StudyNotesViewer: React.FC<StudyNotesViewerProps> = ({
         <div className="space-y-6">
           {/* 1. Executive Summary Callout */}
           {displaySummary && (
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 shadow-xs space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                <Lightbulb className="w-4 h-4" />
+            <div className="p-5 rounded-2xl bg-secondary/60 border border-border shadow-xs space-y-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
+                <Lightbulb className="w-4 h-4 text-primary" />
                 <span>Executive Summary & Overview</span>
               </div>
               <p

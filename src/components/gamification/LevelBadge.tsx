@@ -18,10 +18,10 @@ export const LevelBadge = ({ level, experiencePoints, className = '' }: LevelBad
   };
 
   const getBadgeColor = (level: number) => {
-    if (level >= 50) return 'bg-gradient-to-r from-purple-500 to-pink-500';
-    if (level >= 25) return 'bg-gradient-to-r from-blue-500 to-indigo-500';
-    if (level >= 10) return 'bg-gradient-to-r from-green-500 to-emerald-500';
-    return 'bg-gradient-to-r from-yellow-500 to-orange-500';
+    if (level >= 50) return 'bg-gradient-to-r from-amber-600 via-amber-500 to-emerald-700 shadow-sm';
+    if (level >= 25) return 'bg-gradient-to-r from-emerald-600 to-teal-700';
+    if (level >= 10) return 'bg-gradient-to-r from-teal-500 to-emerald-600';
+    return 'bg-gradient-to-r from-amber-500 to-amber-600';
   };
 
   const getBadgeTitle = (level: number) => {
@@ -42,7 +42,7 @@ export const LevelBadge = ({ level, experiencePoints, className = '' }: LevelBad
         <Badge variant="secondary" className="text-xs">
           Level {level}
         </Badge>
-        <span className="text-xs text-gray-500">{getBadgeTitle(level)}</span>
+        <span className="text-xs text-muted-foreground">{getBadgeTitle(level)}</span>
       </div>
     </div>
   );

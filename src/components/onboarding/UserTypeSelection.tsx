@@ -89,51 +89,50 @@ export const UserTypeSelection = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background bg-grid-subtle flex items-center justify-center p-4">
       <div className="w-full max-w-4xl">
         <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            What best describes your 
-            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> current goal?</span>
+          <h2 className="font-serif text-3xl md:text-5xl font-bold text-foreground mb-4">
+            What best describes your <span className="italic font-serif text-primary">current goal?</span>
           </h2>
-          <p className="text-xl text-gray-600">Choose your path to get a personalized learning experience</p>
+          <p className="text-lg text-muted-foreground">Choose your path to get a personalized learning experience</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           {/* College Student Card */}
           <Card 
-            className={`p-8 cursor-pointer hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-2 ${
-              selectedType === 'college' ? 'border-purple-500 bg-purple-50 shadow-xl' : 'hover:border-purple-300 bg-white/80 backdrop-blur-sm'
+            className={`p-8 cursor-pointer hover:shadow-md transition-all duration-300 border ${
+              selectedType === 'college' ? 'border-primary bg-accent/20 shadow-sm ring-1 ring-primary' : 'hover:border-primary/40 bg-card'
             }`}
             onClick={() => setSelectedType('college')}
           >
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <GraduationCap className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <GraduationCap className="w-10 h-10 text-primary-foreground" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">College Student</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <h3 className="font-serif text-2xl font-bold text-foreground mb-4">College Student</h3>
+              <p className="text-muted-foreground mb-6 leading-relaxed">
                 Building skills, managing coursework, working on projects, and preparing for your career journey.
               </p>
               
               <div className="flex flex-wrap gap-2 justify-center mb-6">
-                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">Skill Building</Badge>
-                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">Project Tracker</Badge>
-                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">GitHub Integration</Badge>
-                <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">Career Planning</Badge>
+                <Badge variant="secondary" className="text-xs bg-secondary text-primary">Skill Building</Badge>
+                <Badge variant="secondary" className="text-xs bg-secondary text-primary">Project Tracker</Badge>
+                <Badge variant="secondary" className="text-xs bg-secondary text-primary">GitHub Integration</Badge>
+                <Badge variant="secondary" className="text-xs bg-secondary text-primary">Career Planning</Badge>
               </div>
 
               <div className="space-y-3 text-left">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Code className="w-4 h-4 mr-3 text-purple-600" />
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Code className="w-4 h-4 mr-3 text-primary" />
                   <span>Coding practice & skill development</span>
                 </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <FileText className="w-4 h-4 mr-3 text-purple-600" />
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <FileText className="w-4 h-4 mr-3 text-primary" />
                   <span>Assignment & project management</span>
                 </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Trophy className="w-4 h-4 mr-3 text-purple-600" />
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Trophy className="w-4 h-4 mr-3 text-primary" />
                   <span>Portfolio & resume building</span>
                 </div>
               </div>
@@ -142,38 +141,38 @@ export const UserTypeSelection = () => {
 
           {/* Exam Preparation Card */}
           <Card 
-            className={`p-8 cursor-pointer hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-2 ${
-              selectedType === 'exam' ? 'border-indigo-500 bg-indigo-50 shadow-xl' : 'hover:border-indigo-300 bg-white/80 backdrop-blur-sm'
+            className={`p-8 cursor-pointer hover:shadow-md transition-all duration-300 border ${
+              selectedType === 'exam' ? 'border-primary bg-accent/20 shadow-sm ring-1 ring-primary' : 'hover:border-primary/40 bg-card'
             }`}
             onClick={() => setSelectedType('exam')}
           >
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <Target className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Target className="w-10 h-10 text-primary-foreground" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Exam Preparation</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">
+              <h3 className="font-serif text-2xl font-bold text-foreground mb-4">Exam Preparation</h3>
+              <p className="text-muted-foreground mb-6 leading-relaxed">
                 Focused preparation for competitive exams like JEE, NEET, UPSC, GATE, and other entrance tests.
               </p>
               
               <div className="flex flex-wrap gap-2 justify-center mb-6">
-                <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">Study Plans</Badge>
-                <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">Mock Tests</Badge>
-                <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">Progress Analytics</Badge>
-                <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">Revision Tracker</Badge>
+                <Badge variant="secondary" className="text-xs bg-secondary text-primary">Study Plans</Badge>
+                <Badge variant="secondary" className="text-xs bg-secondary text-primary">Mock Tests</Badge>
+                <Badge variant="secondary" className="text-xs bg-secondary text-primary">Progress Analytics</Badge>
+                <Badge variant="secondary" className="text-xs bg-secondary text-primary">Revision Tracker</Badge>
               </div>
 
               <div className="space-y-3 text-left">
-                <div className="flex items-center text-sm text-gray-600">
-                  <BookOpen className="w-4 h-4 mr-3 text-indigo-600" />
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <BookOpen className="w-4 h-4 mr-3 text-primary" />
                   <span>Structured study roadmaps</span>
                 </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Calendar className="w-4 h-4 mr-3 text-indigo-600" />
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4 mr-3 text-primary" />
                   <span>Time-bound preparation schedules</span>
                 </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Target className="w-4 h-4 mr-3 text-indigo-600" />
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Target className="w-4 h-4 mr-3 text-primary" />
                   <span>Goal-oriented learning paths</span>
                 </div>
               </div>
@@ -269,7 +268,7 @@ export const UserTypeSelection = () => {
             <Button 
               onClick={handleNext}
               disabled={isLoading}
-              className="w-full mt-8 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200"
+              className="w-full mt-8 h-12 bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold rounded-xl shadow-sm hover:shadow-md transition-all"
             >
               {isLoading ? 'Setting up your dashboard...' : 'Complete Setup'}
               <Target className="w-5 h-5 ml-2" />

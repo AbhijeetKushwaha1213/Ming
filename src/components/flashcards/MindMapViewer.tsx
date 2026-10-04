@@ -107,12 +107,12 @@ export const MindMapViewer = ({ mindmap, title, difficulty, onClose }: MindMapVi
             {mindmap.branches.map((branch, index) => {
               const isExpanded = expandedBranches.has(index);
               const branchColors = [
-                'from-blue-50 to-blue-100 border-blue-300',
-                'from-green-50 to-green-100 border-green-300',
-                'from-yellow-50 to-yellow-100 border-yellow-300',
-                'from-red-50 to-red-100 border-red-300',
-                'from-purple-50 to-purple-100 border-purple-300',
-                'from-indigo-50 to-indigo-100 border-indigo-300',
+                'from-emerald-50 to-emerald-100/70 border-emerald-300 dark:from-emerald-950/20 dark:to-emerald-900/30 dark:border-emerald-800',
+                'from-teal-50 to-teal-100/70 border-teal-300 dark:from-teal-950/20 dark:to-teal-900/30 dark:border-teal-800',
+                'from-amber-50 to-amber-100/70 border-amber-300 dark:from-amber-950/20 dark:to-amber-900/30 dark:border-amber-800',
+                'from-sky-50 to-sky-100/70 border-sky-300 dark:from-sky-950/20 dark:to-sky-900/30 dark:border-sky-800',
+                'from-stone-50 to-stone-100/70 border-stone-300 dark:from-stone-900/40 dark:to-stone-800/40 dark:border-stone-700',
+                'from-emerald-50 to-teal-50 border-emerald-300 dark:from-emerald-950/30 dark:to-teal-950/20 dark:border-emerald-700',
               ];
               const colorClass = branchColors[index % branchColors.length];
 

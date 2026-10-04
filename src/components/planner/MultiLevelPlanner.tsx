@@ -198,7 +198,7 @@ export const MultiLevelPlanner = () => {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold flex items-center">
-                <Target className="w-5 h-5 mr-2 text-purple-600" />
+                <Target className="w-5 h-5 mr-2 text-primary" />
                 This Week's Focus
               </h3>
               <Button size="sm">
@@ -209,9 +209,9 @@ export const MultiLevelPlanner = () => {
             
             <div className="space-y-4">
               {getGoalsByType('weekly').length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Target className="w-12 h-12 mx-auto mb-3 text-purple-300" />
-                  <h3 className="text-lg font-semibold mb-2">No Weekly Goals Set</h3>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Target className="w-12 h-12 mx-auto mb-3 text-primary/40" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Weekly Goals Set</h3>
                   <p className="mb-4">Set weekly goals to stay focused and motivated!</p>
                   <Button>
                     <Plus className="w-4 h-4 mr-2" />
@@ -220,15 +220,15 @@ export const MultiLevelPlanner = () => {
                 </div>
               ) : (
                 getGoalsByType('weekly').map((goal) => (
-                  <div key={goal.id} className="p-4 bg-purple-50 rounded-lg">
+                  <div key={goal.id} className="p-4 bg-secondary/80 border border-border/80 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-gray-900">{goal.title}</h4>
+                      <h4 className="font-semibold text-foreground">{goal.title}</h4>
                       <Badge variant="outline">
                         {goal.current_value}/{goal.target_value}
                       </Badge>
                     </div>
                     <Progress value={getCompletionPercentage(goal)} className="h-2 mb-2" />
-                    <p className="text-sm text-gray-600">{goal.description}</p>
+                    <p className="text-sm text-muted-foreground">{goal.description}</p>
                   </div>
                 ))
               )}

@@ -602,7 +602,7 @@ export function BlockEditor({
                   className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background border border-border/40 hover:border-border transition-all"
                   title="Add bullet list"
                 >
-                  <List className="w-3.5 h-3.5 text-purple-500" />
+                  <List className="w-3.5 h-3.5 text-primary" />
                   List
                 </button>
                 <button

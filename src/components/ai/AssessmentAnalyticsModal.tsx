@@ -178,7 +178,7 @@ export const AssessmentAnalyticsModal: React.FC<AssessmentAnalyticsModalProps> =
           {isMultipleAttempts && (
             <div className="mt-4 pt-3 border-t border-border flex items-center justify-between flex-wrap gap-2 text-xs">
               <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5 text-indigo-500" />
+                <Target className="w-3.5 h-3.5 text-primary" />
                 Attempt History ({attemptsList.length} attempts):
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -261,10 +261,10 @@ export const AssessmentAnalyticsModal: React.FC<AssessmentAnalyticsModalProps> =
 
           {/* Multi-Attempt Progression Comparison (if applicable) */}
           {isMultipleAttempts && (
-            <Card className="p-4 border-indigo-200/60 bg-gradient-to-r from-indigo-50/50 via-purple-50/30 to-background dark:from-indigo-950/20 dark:via-purple-950/10 dark:to-card space-y-3">
+            <Card className="p-4 border-border bg-secondary/60 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-indigo-600" />
+                  <TrendingUp className="w-4 h-4 text-primary" />
                   <h4 className="text-sm font-bold text-foreground">
                     Attempt Progression & Improvement
                   </h4>
@@ -403,9 +403,9 @@ export const AssessmentAnalyticsModal: React.FC<AssessmentAnalyticsModalProps> =
           )}
 
           {/* Recommended Next Steps */}
-          <Card className="p-4 border-indigo-200 bg-indigo-50/20 dark:bg-indigo-950/20 space-y-3">
-            <h4 className="text-sm font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-indigo-600" />
+          <Card className="p-4 border-border bg-secondary/50 space-y-3">
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-primary" />
               Recommended Next Steps
             </h4>
             <div className="space-y-2 text-xs">
@@ -414,10 +414,10 @@ export const AssessmentAnalyticsModal: React.FC<AssessmentAnalyticsModalProps> =
                   {weakConcepts.slice(0, 3).map((wc, idx) => (
                     <div
                       key={idx}
-                      className="p-2.5 rounded-lg bg-background border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between"
+                      className="p-2.5 rounded-lg bg-background border border-border flex items-center justify-between"
                     >
                       <span className="text-foreground font-medium">
-                        → Review <strong className="text-indigo-600">{wc}</strong> concepts & notes
+                        → Review <strong className="text-primary font-semibold">{wc}</strong> concepts & notes
                       </span>
                       <Button
                         size="sm"
@@ -426,13 +426,13 @@ export const AssessmentAnalyticsModal: React.FC<AssessmentAnalyticsModalProps> =
                           onClose();
                           navigateToTab('resources');
                         }}
-                        className="h-6 text-[11px] text-indigo-600 hover:text-indigo-700 px-2"
+                        className="h-6 text-[11px] text-primary hover:text-primary/80 hover:bg-primary/10 px-2"
                       >
                         Open Notes ↗
                       </Button>
                     </div>
                   ))}
-                  <div className="p-2.5 rounded-lg bg-background border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-between">
+                  <div className="p-2.5 rounded-lg bg-background border border-border flex items-center justify-between">
                     <span className="text-foreground font-medium">
                       → Retake this assessment after reviewing weak concepts
                     </span>
@@ -442,7 +442,7 @@ export const AssessmentAnalyticsModal: React.FC<AssessmentAnalyticsModalProps> =
                         onClose();
                         onRetake(currentAttempt);
                       }}
-                      className="h-6 text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 gap-1"
+                      className="h-6 text-[11px] bg-primary hover:bg-primary/90 text-primary-foreground px-2.5 gap-1"
                     >
                       <RotateCcw className="w-3 h-3" />
                       Retake Now

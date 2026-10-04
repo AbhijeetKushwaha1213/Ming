@@ -1060,7 +1060,7 @@ export default function ProjectFocusView({
                                 Active Focus Session
                               </span>
                             ) : timer === 0 ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/30">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-secondary text-primary border border-primary/30">
                                 Session Completed 🎉
                               </span>
                             ) : timer < initialTimer ? (

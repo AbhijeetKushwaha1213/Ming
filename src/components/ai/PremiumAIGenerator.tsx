@@ -62,7 +62,7 @@ const materialCards: MaterialCard[] = [
     icon: BookOpen,
     title: 'Flashcards',
     description: 'Interactive question-answer cards for quick revision',
-    gradient: 'from-purple-500 to-pink-500',
+    gradient: 'from-emerald-800 to-teal-900',
     examples: ['Q: What is photosynthesis?', 'A: Process of converting light...']
   },
   {
@@ -70,7 +70,7 @@ const materialCards: MaterialCard[] = [
     icon: Brain,
     title: 'Mind Maps',
     description: 'Visual connections between concepts and ideas',
-    gradient: 'from-blue-500 to-cyan-500',
+    gradient: 'from-teal-800 to-emerald-900',
     examples: ['Central: Topic', 'Branches: Subtopics']
   },
   {
@@ -78,7 +78,7 @@ const materialCards: MaterialCard[] = [
     icon: FileQuestion,
     title: 'Quiz',
     description: 'Multiple choice questions with explanations',
-    gradient: 'from-green-500 to-emerald-500',
+    gradient: 'from-emerald-900 to-stone-900',
     examples: ['MCQs', 'Instant feedback']
   },
   {
@@ -86,7 +86,7 @@ const materialCards: MaterialCard[] = [
     icon: FileText,
     title: 'Smart Notes',
     description: 'Structured, well-organized study notes',
-    gradient: 'from-orange-500 to-amber-500',
+    gradient: 'from-stone-800 to-emerald-900',
     examples: ['Key points', 'Summaries']
   },
   {
@@ -94,7 +94,7 @@ const materialCards: MaterialCard[] = [
     icon: GitBranch,
     title: 'Flowchart',
     description: 'Step-by-step visual process diagrams',
-    gradient: 'from-indigo-500 to-purple-500',
+    gradient: 'from-teal-900 to-slate-900',
     examples: ['Process flow', 'Connections']
   },
   {
@@ -102,7 +102,7 @@ const materialCards: MaterialCard[] = [
     icon: Target,
     title: 'Summary',
     description: 'Concise overview of key concepts',
-    gradient: 'from-rose-500 to-pink-500',
+    gradient: 'from-emerald-800 to-teal-950',
     examples: ['Main ideas', 'Quick read']
   },
   {
@@ -110,7 +110,7 @@ const materialCards: MaterialCard[] = [
     icon: Star,
     title: 'Revision Sheet',
     description: 'Complete revision guide with key formulas and concepts',
-    gradient: 'from-violet-500 to-purple-500',
+    gradient: 'from-slate-800 to-emerald-950',
     examples: ['Formulas', 'Quick facts']
   }
 ];
@@ -302,35 +302,35 @@ export const PremiumAIGenerator = () => {
 
   // RENDER METHODS
   const renderHeroSection = () => (
-    <div className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 rounded-3xl p-8 mb-8">
-      <div className="absolute inset-0 bg-grid-white/10"></div>
+    <div className="relative overflow-hidden bg-gradient-to-r from-[#002313] via-[#165034] to-[#1b6b44] rounded-2xl p-8 mb-8 border border-border/30 shadow-sm">
+      <div className="absolute inset-0 bg-grid-white/5 pointer-events-none"></div>
       <div className="relative">
         <div className="flex items-center justify-center mb-4">
-          <Sparkles className="w-12 h-12 text-white animate-pulse" />
+          <Sparkles className="w-10 h-10 text-emerald-300 animate-pulse" />
         </div>
-        <h1 className="text-4xl font-bold text-white text-center mb-3">
+        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-white text-center mb-3">
           AI Study Material Generator
         </h1>
-        <p className="text-xl text-white/90 text-center mb-6">
-          Transform your notes into interactive learning resources in seconds
+        <p className="text-base sm:text-lg text-white/80 text-center mb-6 max-w-xl mx-auto">
+          Transform your notes into structured academic learning resources in seconds
         </p>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
             <div className="text-2xl font-bold text-white">{stats.generated}</div>
-            <div className="text-sm text-white/80">Generated</div>
+            <div className="text-xs text-white/80">Generated</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
             <div className="text-2xl font-bold text-white">{stats.sessions}</div>
-            <div className="text-sm text-white/80">Sessions</div>
+            <div className="text-xs text-white/80">Sessions</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
             <div className="text-2xl font-bold text-white">{stats.efficiency}%</div>
-            <div className="text-sm text-white/80">Efficiency</div>
+            <div className="text-xs text-white/80">Efficiency</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
-            <div className="text-sm font-bold text-white">{stats.model}</div>
-            <div className="text-sm text-white/80">AI Model</div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
+            <div className="text-xs font-bold text-white truncate">{stats.model}</div>
+            <div className="text-xs text-white/80">AI Engine</div>
           </div>
         </div>
       </div>
@@ -340,8 +340,8 @@ export const PremiumAIGenerator = () => {
   const renderChooseStep = () => (
     <div className="space-y-6">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Choose What to Generate</h2>
-        <p className="text-muted-foreground">Select the type of study material you need</p>
+        <h2 className="text-2xl font-serif font-bold text-foreground mb-2">Choose What to Generate</h2>
+        <p className="text-muted-foreground text-sm">Select the type of study material you need</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -350,8 +350,8 @@ export const PremiumAIGenerator = () => {
           return (
             <Card
               key={card.type}
-              className={`p-6 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl group ${
-                selectedType === card.type ? 'ring-4 ring-purple-500 shadow-lg' : ''
+              className={`p-6 cursor-pointer transition-all duration-300 hover:scale-102 hover:shadow-md group ${
+                selectedType === card.type ? 'ring-2 ring-primary border-primary shadow-sm bg-accent/20' : 'border-border hover:border-primary/40'
               }`}
               onClick={() => handleTypeSelect(card.type)}
             >
@@ -419,7 +419,7 @@ export const PremiumAIGenerator = () => {
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          <PlusCircle className="w-4 h-4 text-purple-500" />
+          <PlusCircle className="w-4 h-4 text-primary" />
           New Material
         </button>
       </div>
@@ -634,8 +634,8 @@ export const PremiumAIGenerator = () => {
             <Card className="p-8 border-2 border-dashed border-border hover:border-primary/50 transition-colors">
               {!uploadedFile ? (
                 <div className="text-center">
-                  <div className="w-20 h-20 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Upload className="w-10 h-10 text-purple-600" />
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Upload className="w-8 h-8 text-primary" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground mb-2">
                     Drop your files here, or browse
@@ -652,7 +652,7 @@ export const PremiumAIGenerator = () => {
                   />
                   <Button
                     onClick={() => document.getElementById('file-upload')?.click()}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     <Upload className="w-4 h-4 mr-2" />
                     Choose File
@@ -732,7 +732,7 @@ export const PremiumAIGenerator = () => {
         <Button
           onClick={() => setStep('settings')}
           disabled={!isInputStepValid}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
         >
           Continue
           <ChevronRight className="w-4 h-4 ml-2" />
@@ -759,15 +759,15 @@ export const PremiumAIGenerator = () => {
     return (
       <div className="space-y-6">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Generation Settings</h2>
-          <p className="text-muted-foreground">Customize your AI-generated content</p>
+          <h2 className="text-2xl font-serif font-bold text-foreground mb-2">Generation Settings</h2>
+          <p className="text-muted-foreground text-sm">Customize your AI-generated content</p>
         </div>
 
         <Card className="p-6 space-y-6">
           {/* Selected Source Summary Banner */}
-          <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl flex items-center justify-between gap-3">
+          <div className="p-3.5 bg-secondary/70 border border-border rounded-xl flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 {sourceMode === 'existing' ? <FolderOpen className="w-4 h-4" /> : <FileUp className="w-4 h-4" />}
               </div>
               <div className="min-w-0">
@@ -787,7 +787,7 @@ export const PremiumAIGenerator = () => {
               variant="ghost"
               size="sm"
               onClick={() => setStep('input')}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline h-7 px-2 shrink-0"
+              className="text-xs text-primary hover:underline h-7 px-2 shrink-0 font-medium"
             >
               Change
             </Button>
@@ -801,7 +801,7 @@ export const PremiumAIGenerator = () => {
                 key={level}
                 variant={difficulty === level ? "default" : "outline"}
                 onClick={() => setDifficulty(level as any)}
-                className={difficulty === level ? "bg-purple-600 hover:bg-purple-700" : ""}
+                className={difficulty === level ? "bg-primary text-primary-foreground font-medium" : ""}
               >
                 {level === 'adaptive' && <Zap className="w-4 h-4 mr-1" />}
                 {level.charAt(0).toUpperCase() + level.slice(1)}
@@ -809,7 +809,7 @@ export const PremiumAIGenerator = () => {
             ))}
           </div>
           {difficulty === 'adaptive' && (
-            <p className="text-sm text-purple-600 mt-2">AI will adjust difficulty based on your profile</p>
+            <p className="text-sm text-primary mt-2">AI will adjust difficulty based on your profile</p>
           )}
         </div>
 
@@ -822,7 +822,7 @@ export const PremiumAIGenerator = () => {
                 key={size}
                 variant={outputSize === size ? "default" : "outline"}
                 onClick={() => setOutputSize(size)}
-                className={outputSize === size ? "bg-purple-600 hover:bg-purple-700" : ""}
+                className={outputSize === size ? "bg-primary text-primary-foreground font-medium" : ""}
               >
                 {size === 0 ? 'Custom' : size}
               </Button>
@@ -892,7 +892,7 @@ export const PremiumAIGenerator = () => {
         </Button>
         <Button
           onClick={() => setStep('preview')}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
         >
           Preview
           <ChevronRight className="w-4 h-4 ml-2" />
@@ -911,8 +911,8 @@ export const PremiumAIGenerator = () => {
     return (
       <div className="space-y-6">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground mb-2">AI Preview</h2>
-          <p className="text-muted-foreground">Here's what AI will generate for you</p>
+          <h2 className="text-2xl font-serif font-bold text-foreground mb-2">AI Preview</h2>
+          <p className="text-muted-foreground text-sm">Here's what AI will generate for you</p>
         </div>
 
         <Card className={`p-6 bg-gradient-to-r ${selectedCard.gradient} text-white`}>
@@ -965,13 +965,13 @@ export const PremiumAIGenerator = () => {
             <Card className="p-4 col-span-full animate-fade-in">
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
-                  <div className="w-24 h-24 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center mb-4 mx-auto">
-                    <span className="text-white font-bold">Central Topic</span>
+                  <div className="w-24 h-24 bg-primary text-primary-foreground rounded-full flex items-center justify-center mb-4 mx-auto shadow-sm">
+                    <span className="font-bold text-sm">Central Topic</span>
                   </div>
                   <div className="flex gap-4 justify-center">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center">
-                        <span className="text-xs text-blue-800">Branch {i}</span>
+                      <div key={i} className="w-16 h-16 bg-secondary text-secondary-foreground border border-border rounded-full flex items-center justify-center">
+                        <span className="text-xs font-medium">Branch {i}</span>
                       </div>
                     ))}
                   </div>
@@ -987,7 +987,7 @@ export const PremiumAIGenerator = () => {
           </Button>
           <Button
             onClick={handleGenerate}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
             size="lg"
           >
             <Sparkles className="w-5 h-5 mr-2" />
@@ -1005,9 +1005,9 @@ export const PremiumAIGenerator = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="relative w-32 h-32 mb-8">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full animate-pulse"></div>
-          <div className="absolute inset-2 bg-white rounded-full flex items-center justify-center">
-            <StageIcon className="w-12 h-12 text-purple-600 animate-bounce" />
+          <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
+          <div className="absolute inset-2 bg-card rounded-full flex items-center justify-center border border-border shadow-sm">
+            <StageIcon className="w-12 h-12 text-primary animate-bounce" />
           </div>
         </div>
 

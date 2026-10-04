@@ -230,7 +230,7 @@ export const ProfilePage = () => {
       {/* ============================================================== */}
       {/* 1. HERO LANDSCAPE BANNER */}
       {/* ============================================================== */}
-      <div className="relative overflow-hidden rounded-2xl border border-indigo-100/80 dark:border-indigo-950/60 shadow-sm min-h-[175px] sm:min-h-[195px] flex items-center p-6 bg-gradient-to-r from-[#ede9fe] via-[#e0e7ff] to-[#c7d2fe] dark:from-[#1e1b4b] dark:via-[#1e1e38] dark:to-[#0f172a]">
+      <div className="relative overflow-hidden rounded-2xl border border-border shadow-sm min-h-[175px] sm:min-h-[195px] flex items-center p-6 bg-gradient-to-r from-[#e8f3ed] via-[#dceee4] to-[#cde5d8] dark:from-[#062314] dark:via-[#092e1b] dark:to-[#0c3520]">
         {/* Mountain Landscape Background Illustration (Exact Vector Match) */}
         <svg
           className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
@@ -239,21 +239,21 @@ export const ProfilePage = () => {
         >
           <defs>
             <linearGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ede9fe" stopOpacity="0.95" />
-              <stop offset="45%" stopColor="#e0e7ff" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#c7d2fe" stopOpacity="0.95" />
+              <stop offset="0%" stopColor="#e8f3ed" stopOpacity="0.95" />
+              <stop offset="45%" stopColor="#dceee4" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#cde5d8" stopOpacity="0.95" />
             </linearGradient>
             <linearGradient id="mtnBack" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#c7d2fe" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="#a5b4fc" stopOpacity="0.85" />
+              <stop offset="0%" stopColor="#b4dac7" stopOpacity="0.65" />
+              <stop offset="100%" stopColor="#87c2a4" stopOpacity="0.85" />
             </linearGradient>
             <linearGradient id="mtnMid" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#818cf8" stopOpacity="0.75" />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.9" />
+              <stop offset="0%" stopColor="#3d8f68" stopOpacity="0.75" />
+              <stop offset="100%" stopColor="#226746" stopOpacity="0.9" />
             </linearGradient>
             <linearGradient id="mtnFront" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#3730a3" stopOpacity="0.95" />
+              <stop offset="0%" stopColor="#1b5a3c" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#0d3b24" stopOpacity="0.95" />
             </linearGradient>
           </defs>
 
@@ -294,7 +294,7 @@ export const ProfilePage = () => {
           />
 
           {/* Pine Trees Silhouettes on Lower Right */}
-          <g fill="#312e81" opacity="0.85">
+          <g fill="#0d3b24" opacity="0.85">
             <polygon points="850,240 855,210 860,240" />
             <polygon points="858,240 863,205 868,240" />
             <polygon points="865,240 870,215 875,240" />
@@ -326,7 +326,7 @@ export const ProfilePage = () => {
           <div className="flex items-center space-x-5">
             {/* Avatar Circle */}
             <div className="relative shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-[#6366f1] via-[#7c3aed] to-[#8b5cf6] text-white flex items-center justify-center font-bold text-3xl sm:text-4xl shadow-xl border-4 border-white dark:border-background overflow-hidden">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-[#002313] via-[#165034] to-[#1b6b44] text-white flex items-center justify-center font-bold text-3xl sm:text-4xl shadow-xl border-4 border-white dark:border-background overflow-hidden">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
@@ -347,18 +347,18 @@ export const ProfilePage = () => {
 
             {/* User Info & Badges */}
             <div className="space-y-1.5 min-w-0">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
                 {name || user?.name || 'abhi'}
               </h2>
 
-              <div className="flex items-center text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium truncate">
+              <div className="flex items-center text-xs sm:text-sm text-muted-foreground font-medium truncate">
                 <Mail className="w-3.5 h-3.5 mr-1.5 opacity-70 shrink-0" />
                 <span className="truncate">{user?.email || 'abhitest1290@gmail.com'}</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                {/* Purple Filled Study Mode Badge */}
-                <Badge className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white border-0 text-xs px-2.5 py-0.5 rounded-lg font-semibold shadow-xs">
+                {/* Primary Filled Study Mode Badge */}
+                <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 text-xs px-2.5 py-0.5 rounded-lg font-semibold shadow-xs">
                   {userType === 'college' ? 'College Student' : 'Exam Preparation'}
                 </Badge>
 
@@ -436,8 +436,8 @@ export const ProfilePage = () => {
 
         {/* Card 3: Current Level */}
         <Card className="p-4 rounded-2xl border border-border/80 bg-card shadow-xs flex items-center space-x-3.5 hover:shadow-md transition-shadow">
-          <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center shrink-0">
-            <Trophy className="w-6 h-6 text-purple-600" />
+          <div className="w-12 h-12 rounded-full bg-secondary text-primary flex items-center justify-center shrink-0">
+            <Trophy className="w-6 h-6 text-primary" />
           </div>
           <div>
             <div className="text-2xl font-bold tracking-tight text-foreground">
@@ -545,7 +545,7 @@ export const ProfilePage = () => {
 
             <div className="space-y-0.5 px-2">
               <div className="text-sm font-bold text-foreground flex items-center justify-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-purple-500" />
+                <Calendar className="w-3.5 h-3.5 text-primary" />
                 <span>{user?.study_streak || 0} days</span>
               </div>
               <div className="text-[11px] text-muted-foreground">Active Days</div>
@@ -566,7 +566,7 @@ export const ProfilePage = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-lg bg-secondary text-primary flex items-center justify-center shrink-0 mt-0.5">
                 <Settings className="w-5 h-5" />
               </div>
               <div>
@@ -591,7 +591,7 @@ export const ProfilePage = () => {
             {/* 1. Study Mode */}
             <div className="flex items-center justify-between py-2 border-b border-border/40">
               <div className="flex items-center space-x-3">
-                <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-secondary text-primary flex items-center justify-center shrink-0">
                   <GraduationCap className="w-4 h-4" />
                 </div>
                 <span className="text-xs sm:text-sm font-medium text-foreground">Study Mode</span>

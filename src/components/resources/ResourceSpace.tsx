@@ -431,8 +431,8 @@ export const ResourceSpace = () => {
     <div className="space-y-6 pb-20">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Resource Space</h1>
-          <p className="text-gray-600">Supabase stores the PDFs. Prisma stores the metadata.</p>
+          <h1 className="font-serif text-3xl font-bold text-foreground">Resource Space</h1>
+          <p className="text-muted-foreground">Manage your documents, research PDFs, lecture slides, and knowledge base.</p>
         </div>
 
         <Dialog
@@ -592,8 +592,8 @@ export const ResourceSpace = () => {
                     <span className="flex-shrink mx-3 text-xs text-gray-400 uppercase">Or upload media file</span>
                     <div className="flex-grow border-t border-gray-200"></div>
                   </div>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 p-4 hover:border-purple-400">
-                    <Video className="h-5 w-5 text-purple-500" />
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border p-4 hover:border-primary/50 transition-colors">
+                    <Video className="h-5 w-5 text-primary" />
                     <span className="text-sm text-gray-600">
                       {selectedFile ? selectedFile.name : 'Upload MP4, WebM, MP3, WAV lecture file'}
                     </span>
@@ -697,7 +697,7 @@ export const ResourceSpace = () => {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Database className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-bold text-foreground">Vector Knowledge Base Search</h2>
+                  <h2 className="font-serif text-lg font-bold text-foreground">Vector Knowledge Base Search</h2>
                   <Badge variant="outline" className="text-xs">ChromaDB</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -794,7 +794,7 @@ export const ResourceSpace = () => {
                               </Badge>
                             )}
                             {isVideo && (
-                              <Badge variant="outline" className="gap-1 border-purple-500/30 text-purple-600 bg-purple-50/50">
+                              <Badge variant="outline" className="gap-1 border-primary/30 text-primary bg-secondary/60">
                                 <Clock className="w-3 h-3" />
                                 {loc.timestamp_start !== null ? `${Math.floor(Number(loc.timestamp_start) / 60)}m${Math.floor(Number(loc.timestamp_start) % 60)}s` : 'Video'}
                               </Badge>
@@ -910,10 +910,10 @@ export const ResourceSpace = () => {
 
           {filteredResources.length === 0 ? (
             <Card className="p-8 text-center">
-              <FileText className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-900">No resources yet</h3>
-              <p className="mb-4 text-gray-600">
-                Save notes, links, and PDFs here. PDF files go to Supabase Storage and the metadata goes to Turso.
+              <FileText className="mx-auto mb-4 h-16 w-16 text-muted-foreground/30" />
+              <h3 className="mb-2 text-lg font-semibold text-foreground">No resources yet</h3>
+              <p className="mb-4 text-muted-foreground">
+                Save notes, links, and PDFs here to build your verified academic library.
               </p>
               <Button onClick={() => setShowAddDialog(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -926,7 +926,7 @@ export const ResourceSpace = () => {
                 <Card key={resource.id} className="flex h-full flex-col gap-4 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
-                      <div className="rounded-lg bg-gray-100 p-2 text-gray-700">
+                      <div className="rounded-lg bg-secondary p-2 text-primary">
                         {getResourceIcon(resource.type)}
                       </div>
                       <div>

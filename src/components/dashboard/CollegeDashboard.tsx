@@ -596,14 +596,14 @@ export const CollegeDashboard = () => {
                         {isExpanded && (
                           <div className="border-t border-border/60 bg-muted/10 p-5 space-y-5 animate-in fade-in slide-in-from-top-1 duration-200">
                             {/* BKT Cognitive Mastery Breakdown Panel */}
-                            <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-card dark:from-indigo-950/20 dark:via-purple-950/10 dark:to-card border border-indigo-100/80 dark:border-indigo-900/40 space-y-3">
+                            <div className="p-4 rounded-xl bg-secondary/60 border border-border space-y-3">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                  <Brain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-300">
+                                  <Brain className="w-4 h-4 text-primary" />
+                                  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
                                     BKT Cognitive Mastery Breakdown
                                   </span>
-                                  <Badge variant="outline" className="text-[10px] bg-white dark:bg-card border-indigo-200">
+                                  <Badge variant="outline" className="text-[10px] bg-background border-border">
                                     Bayesian Model
                                   </Badge>
                                 </div>
@@ -615,9 +615,9 @@ export const CollegeDashboard = () => {
                                       e.stopPropagation();
                                       setBktModalSkill({ skillName: item.skill, categoryName: details.categoryName });
                                     }}
-                                    className="h-7 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-100/60 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900/30 gap-1 font-semibold"
+                                    className="h-7 text-xs border-border text-foreground hover:bg-accent/60 gap-1 font-medium"
                                   >
-                                    <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                    <Sparkles className="w-3 h-3 text-primary" />
                                     Quick BKT Test
                                   </Button>
                                   <Button
@@ -916,9 +916,9 @@ export const CollegeDashboard = () => {
               >
                 <div className="flex items-center space-x-4 min-w-0 flex-1">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                    project.type === 'coding' ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400' :
-                    project.type === 'academic' ? 'bg-green-100 text-green-600 dark:bg-green-950/60 dark:text-green-400' :
-                    'bg-purple-100 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400'
+                    project.type === 'coding' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400' :
+                    project.type === 'academic' ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-emerald-400' :
+                    'bg-secondary text-secondary-foreground'
                   }`}>
                     {project.type === 'coding' ? <Code className="w-5 h-5" /> :
                      project.type === 'academic' ? <BookOpen className="w-5 h-5" /> :
@@ -1066,9 +1066,9 @@ export const CollegeDashboard = () => {
                 >
                   <div className="flex items-center space-x-3 min-w-0 flex-1">
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                      project.type === 'coding' ? 'bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400' :
-                      project.type === 'academic' ? 'bg-green-100 text-green-600 dark:bg-green-950/60 dark:text-green-400' :
-                      'bg-purple-100 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400'
+                      project.type === 'coding' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400' :
+                      project.type === 'academic' ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-emerald-400' :
+                      'bg-secondary text-secondary-foreground'
                     }`}>
                       {project.type === 'coding' ? <Code className="w-4 h-4" /> :
                        project.type === 'academic' ? <BookOpen className="w-4 h-4" /> :

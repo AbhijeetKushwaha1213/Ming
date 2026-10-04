@@ -261,8 +261,8 @@ export const AIFlashcardGenerator = () => {
     <div className="space-y-6 pb-20">
       <Card className="p-6">
         <div className="flex items-center space-x-2 mb-4">
-          <Wand2 className="w-5 h-5 text-purple-600" />
-          <h2 className="text-lg font-semibold text-gray-900">AI Flashcard Generator</h2>
+          <Wand2 className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-serif font-bold text-foreground">AI Flashcard Generator</h2>
         </div>
 
         <div className="space-y-4">
@@ -334,7 +334,7 @@ export const AIFlashcardGenerator = () => {
           <Button 
             onClick={generateFlashcards}
             disabled={isGenerating || (!content.trim() && !topic.trim() && !uploadedContent.trim())}
-            className="w-full bg-purple-600 hover:bg-purple-700"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
           >
             {isGenerating ? (
               <>
@@ -355,11 +355,11 @@ export const AIFlashcardGenerator = () => {
       {generatedCards.length > 0 && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Generated Flashcards</h3>
+            <h3 className="text-lg font-serif font-bold text-foreground">Generated Flashcards</h3>
             <Button 
               onClick={createSelectedCards}
               disabled={isCreating || !generatedCards.some(card => card.selected)}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
             >
               {isCreating ? (
                 <>
@@ -379,23 +379,23 @@ export const AIFlashcardGenerator = () => {
             {generatedCards.map((card) => (
               <Card 
                 key={card.id} 
-                className={`p-4 cursor-pointer transition-all ${
-                  card.selected ? 'ring-2 ring-purple-500 bg-purple-50' : 'hover:shadow-md'
+                className={`p-4 cursor-pointer transition-all border ${
+                  card.selected ? 'ring-2 ring-primary bg-accent/20 border-primary' : 'border-border hover:shadow-md'
                 }`}
                 onClick={() => toggleCardSelection(card.id)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-2">
-                      <h4 className="font-medium text-gray-900">{card.title}</h4>
+                      <h4 className="font-medium text-foreground">{card.title}</h4>
                       <Badge variant="outline" className="text-xs">
                         {card.difficulty}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-sm text-muted-foreground mb-2">
                       <strong>Q:</strong> {card.question}
                     </p>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-sm text-muted-foreground mb-2">
                       <strong>A:</strong> {card.answer}
                     </p>
                     {card.tags && card.tags.length > 0 && (
@@ -410,11 +410,11 @@ export const AIFlashcardGenerator = () => {
                   </div>
                   <div className="ml-4">
                     {card.selected ? (
-                      <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs">✓</span>
+                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                        <span className="text-primary-foreground text-xs">✓</span>
                       </div>
                     ) : (
-                      <div className="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
+                      <div className="w-5 h-5 border-2 border-border rounded-full"></div>
                     )}
                   </div>
                 </div>

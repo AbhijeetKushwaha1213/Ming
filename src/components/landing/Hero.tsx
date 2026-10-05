@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -7,19 +7,16 @@ import {
   Repeat,
   CheckCircle2,
   FileText,
-  Brain,
   Zap,
   BookOpen,
   GraduationCap,
   TrendingUp,
   Award,
-  Layers,
   ChevronRight
 } from 'lucide-react';
 
 export const Hero = () => {
   const navigate = useNavigate();
-  const [activeNode, setActiveNode] = useState<'processes' | 'scheduling' | 'deadlocks'>('scheduling');
 
   return (
     <section
@@ -108,10 +105,10 @@ export const Hero = () => {
           <div className="lg:col-span-5 relative flex items-center justify-center">
             
             {/* Main Composition Container */}
-            <div className="relative w-full max-w-[460px] h-[460px] sm:h-[500px] flex items-center justify-center">
+            <div className="relative w-full max-w-[460px] h-[360px] sm:h-[420px] flex items-center justify-center">
               
-              {/* Circular Fresh-Green Accent Backdrop (Reference visual anchor) */}
-              <div className="absolute w-[340px] h-[340px] sm:w-[400px] sm:h-[400px] rounded-full bg-[#20B486] shadow-[0_20px_60px_rgba(32,180,134,0.25)] flex items-center justify-center overflow-hidden">
+              {/* Circular Fresh-Green Accent Backdrop */}
+              <div className="w-[320px] h-[320px] sm:w-[380px] sm:h-[380px] rounded-full bg-[#20B486] shadow-[0_20px_60px_rgba(32,180,134,0.22)] flex items-center justify-center overflow-hidden border-4 border-white/80">
                 <img
                   src="/assets/hero-student.png"
                   alt="Student learning with StudyMate AI"
@@ -121,103 +118,6 @@ export const Hero = () => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
-              </div>
-
-              {/* Floating Element 1: Top Right Progress Gauge (like 5K+ in reference) */}
-              <div className="absolute top-2 sm:top-6 -right-2 sm:-right-4 rounded-[20px] bg-white border border-[#DDE7E1] shadow-soft p-3.5 sm:p-4 z-20 animate-float flex items-center gap-3">
-                <div className="relative w-11 h-11 flex items-center justify-center">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="14" fill="none" stroke="#DDF7EC" strokeWidth="3" />
-                    <circle
-                      cx="18"
-                      cy="18"
-                      r="14"
-                      fill="none"
-                      stroke="#20B486"
-                      strokeWidth="3.2"
-                      strokeDasharray="88 100"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span className="absolute font-extrabold text-[11px] text-[#063B2A]">92%</span>
-                </div>
-                <div>
-                  <div className="font-extrabold text-sm text-[#10231C]">Course Mastery</div>
-                  <div className="text-[11px] text-[#66736D]">Operating Systems</div>
-                </div>
-              </div>
-
-              {/* Floating Element 2: Left Floating Badge (like 2K+ in reference) */}
-              <div className="absolute top-28 -left-4 sm:-left-8 rounded-[20px] bg-white border border-[#DDE7E1] shadow-soft p-3 sm:p-3.5 z-20 animate-float-delayed flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#DDF7EC] flex items-center justify-center text-[#20B486]">
-                  <Layers className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-extrabold text-sm text-[#10231C]">48 Flashcards</div>
-                  <div className="text-[11px] text-[#66736D]">SM-2 Active Recall</div>
-                </div>
-              </div>
-
-              {/* Floating Element 3: Bottom Right Badge (like Tutors 250+ in reference) */}
-              <div className="absolute bottom-6 -right-2 sm:-right-6 rounded-[20px] bg-white border border-[#DDE7E1] shadow-soft p-3 sm:p-3.5 z-20 animate-float-slow flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#063B2A] flex items-center justify-center text-white">
-                  <Brain className="w-5 h-5 text-[#20B486]" />
-                </div>
-                <div>
-                  <div className="font-extrabold text-xs text-[#10231C]">Course AI Tutor</div>
-                  <div className="text-[10px] font-semibold text-[#20B486]">Syllabus Grounded</div>
-                </div>
-              </div>
-
-              {/* Floating Center Dock: StudyMate Dashboard Miniature */}
-              <div className="absolute -bottom-8 left-4 sm:left-6 rounded-[20px] bg-white border border-[#DDE7E1] shadow-soft-lg p-4 w-[280px] sm:w-[310px] z-30 space-y-2.5">
-                <div className="flex items-center justify-between pb-2 border-b border-[#DDE7E1]">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#063B2A]">
-                    <Sparkles className="w-3.5 h-3.5 text-[#20B486]" />
-                    <span>StudyMate Dashboard</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-[#20B486] bg-[#DDF7EC] px-2 py-0.5 rounded-full">
-                    Live Path
-                  </span>
-                </div>
-
-                {/* Micro DAG Nodes */}
-                <div className="space-y-1.5 text-xs font-semibold">
-                  <div
-                    onClick={() => setActiveNode('processes')}
-                    className={`p-2 rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
-                      activeNode === 'processes' ? 'bg-[#DDF7EC] text-[#063B2A]' : 'bg-[#F7FAF7] text-[#66736D]'
-                    }`}
-                  >
-                    <span>Process Management</span>
-                    <span className="text-[10px] font-bold text-[#20B486]">100% ✓</span>
-                  </div>
-
-                  <div
-                    onClick={() => setActiveNode('scheduling')}
-                    className={`p-2 rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
-                      activeNode === 'scheduling' ? 'bg-[#DDF7EC] text-[#063B2A]' : 'bg-[#F7FAF7] text-[#66736D]'
-                    }`}
-                  >
-                    <span>CPU Scheduling</span>
-                    <span className="text-[10px] font-bold text-[#20B486]">84% Active</span>
-                  </div>
-
-                  <div
-                    onClick={() => setActiveNode('deadlocks')}
-                    className={`p-2 rounded-xl flex items-center justify-between transition-colors cursor-pointer ${
-                      activeNode === 'deadlocks' ? 'bg-[#DDF7EC] text-[#063B2A]' : 'bg-[#F7FAF7] text-[#66736D]'
-                    }`}
-                  >
-                    <span>Deadlocks Avoidance</span>
-                    <span className="text-[10px] font-bold text-[#66736D]">Target Exam</span>
-                  </div>
-                </div>
-
-                <div className="pt-1 flex items-center justify-between text-[11px] text-[#66736D]">
-                  <span>Next: 5 Practice Questions</span>
-                  <span className="font-bold text-[#063B2A]">78% Mastery</span>
-                </div>
               </div>
 
             </div>

@@ -226,22 +226,6 @@ export const Hero = () => {
 
         </div>
 
-        {/* Institution / Scholar Collaboration Bar (Inspired by the reference image's partner row) */}
-        <div className="mt-16 sm:mt-20 pt-10 border-t border-[#DDE7E1] flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-center md:text-left">
-            <div className="font-extrabold text-xl text-[#063B2A]">120,000+</div>
-            <div className="text-xs text-[#66736D] font-medium">Students & Scholars Worldwide</div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 text-sm sm:text-base font-bold text-[#66736D]/60 tracking-wider">
-            <span className="hover:text-[#063B2A] transition-colors">OXFORD</span>
-            <span className="hover:text-[#063B2A] transition-colors">STANFORD</span>
-            <span className="hover:text-[#063B2A] transition-colors">MIT</span>
-            <span className="hover:text-[#063B2A] transition-colors">BERKELEY</span>
-            <span className="hover:text-[#063B2A] transition-colors">CAMBRIDGE</span>
-          </div>
-        </div>
-
       </div>
     </section>
   );

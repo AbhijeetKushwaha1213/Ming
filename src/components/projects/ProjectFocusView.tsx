@@ -1046,18 +1046,18 @@ export default function ProjectFocusView({
                   {/* Subtle ambient decorative blur */}
                   <div className="absolute -right-16 -top-16 w-56 h-56 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
 
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-                    {/* Left: Timer Display & Status */}
-                    <div className="space-y-3 min-w-0">
+                  <div className="space-y-4 relative z-10">
+                    {/* Header: Timer Title & Status */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-3">
                         <div className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
-                          <Timer className={`w-6 h-6 ${isRunning ? 'animate-pulse' : ''}`} />
+                          <Timer className={`w-5 h-5 sm:w-6 sm:h-6 ${isRunning ? 'animate-pulse' : ''}`} />
                         </div>
-                        <div className="min-w-0">
+                        <div>
                           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                             Focus Session Timer
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <div className="flex items-center gap-2 mt-0.5">
                             {isRunning ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/30">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
@@ -1079,41 +1079,41 @@ export default function ProjectFocusView({
                           </div>
                         </div>
                       </div>
-
-                      {/* Large Digital Typography with responsive font size to avoid overflow */}
-                      <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold text-foreground tracking-tight select-none break-normal">
-                        {formatTime(timer)}
-                      </div>
-
-                      {/* Quick Duration Presets - All Solid Green */}
-                      <div className="flex items-center gap-1.5 sm:gap-2 pt-1 flex-wrap">
-                        <span className="text-xs text-muted-foreground font-medium mr-1">Presets:</span>
-                        {[
-                          { label: '25m', secs: 1500, title: 'Pomodoro (25 mins)' },
-                          { label: '45m', secs: 2700, title: 'Deep Work (45 mins)' },
-                          { label: '60m', secs: 3600, title: 'Standard (1 hour)' },
-                          { label: '90m', secs: 5400, title: 'Extended (1.5 hours)' },
-                        ].map((preset) => (
-                          <Button
-                            key={preset.label}
-                            type="button"
-                            size="sm"
-                            onClick={() => setTimerPreset(preset.secs)}
-                            className={`h-7 px-3 text-xs rounded-md font-semibold border-0 transition-all ${
-                              initialTimer === preset.secs
-                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-2 ring-emerald-500/30 shadow-sm'
-                                : 'bg-green-600 hover:bg-green-700 text-white shadow-sm'
-                            }`}
-                            title={preset.title}
-                          >
-                            {preset.label}
-                          </Button>
-                        ))}
-                      </div>
                     </div>
 
-                    {/* Right: Controls & Actions - Cleanly positioned across from clock on lg+ */}
-                    <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap shrink-0 pt-2 lg:pt-0">
+                    {/* Digital Clock Typography */}
+                    <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold text-foreground tracking-tight select-none">
+                      {formatTime(timer)}
+                    </div>
+
+                    {/* Quick Duration Presets - All Solid Green */}
+                    <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                      <span className="text-xs text-muted-foreground font-medium mr-1">Presets:</span>
+                      {[
+                        { label: '25m', secs: 1500, title: 'Pomodoro (25 mins)' },
+                        { label: '45m', secs: 2700, title: 'Deep Work (45 mins)' },
+                        { label: '60m', secs: 3600, title: 'Standard (1 hour)' },
+                        { label: '90m', secs: 5400, title: 'Extended (1.5 hours)' },
+                      ].map((preset) => (
+                        <Button
+                          key={preset.label}
+                          type="button"
+                          size="sm"
+                          onClick={() => setTimerPreset(preset.secs)}
+                          className={`h-7 px-3 text-xs rounded-md font-semibold border-0 transition-all ${
+                            initialTimer === preset.secs
+                              ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-2 ring-emerald-500/30 shadow-sm'
+                              : 'bg-green-600 hover:bg-green-700 text-white shadow-sm'
+                          }`}
+                          title={preset.title}
+                        >
+                          {preset.label}
+                        </Button>
+                      ))}
+                    </div>
+
+                    {/* Controls & Actions Row */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap pt-1">
                       <Button 
                         onClick={handleStart} 
                         disabled={isRunning}

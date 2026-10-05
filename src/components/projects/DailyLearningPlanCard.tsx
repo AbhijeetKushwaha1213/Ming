@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -96,12 +96,7 @@ export const DailyLearningPlanCard: React.FC<DailyLearningPlanCardProps> = ({
     return Math.round((completedCount / totalCount) * 100);
   }, [completedCount, totalCount]);
 
-  // Notify parent of progress change
-  useEffect(() => {
-    if (onPlanProgressChange && plan) {
-      onPlanProgressChange(progressPercent);
-    }
-  }, [progressPercent, plan, onPlanProgressChange]);
+  const lastNotifiedProgressRef = useRef<number | null>(null);
 
   // Format today's display date (e.g. "Monday, Oct 5, 2026")
   const formattedToday = useMemo(() => {
@@ -170,6 +165,17 @@ export const DailyLearningPlanCard: React.FC<DailyLearningPlanCardProps> = ({
           title: "Plan Completed! 🎉",
           description: `All learning tasks for today finished! Great job advancing your ${skillName} mastery.`,
         });
+      }
+
+      // Notify parent only when task status actively changes
+      if (onPlanProgressChange && Array.isArray(updated.tasks)) {
+        const completed = updated.tasks.filter(t => t.completed).length;
+        const total = updated.tasks.length;
+        const newPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+        if (lastNotifiedProgressRef.current !== newPct) {
+          lastNotifiedProgressRef.current = newPct;
+          onPlanProgressChange(newPct);
+        }
       }
     }
   };
@@ -453,7 +459,7 @@ export const DailyLearningPlanCard: React.FC<DailyLearningPlanCardProps> = ({
             </div>
 
             {/* DAG Prerequisite Warning Banner (if applicable) */}
-            {plan.dagContext && plan.dagContext.weakPrerequisites.length > 0 && (
+            {plan.dagContext && Array.isArray(plan.dagContext.weakPrerequisites) && plan.dagContext.weakPrerequisites.length > 0 && (
               <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs">
                 <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-0.5 min-w-0">
@@ -471,7 +477,7 @@ export const DailyLearningPlanCard: React.FC<DailyLearningPlanCardProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Learning Flow ({plan.tasks.length} Steps)
+                  Learning Flow ({Array.isArray(plan.tasks) ? plan.tasks.length : 0} Steps)
                 </h3>
                 <span className="text-[11px] text-muted-foreground font-mono">
                   {completedCount} of {totalCount} completed
@@ -479,7 +485,7 @@ export const DailyLearningPlanCard: React.FC<DailyLearningPlanCardProps> = ({
               </div>
 
               <div className="relative pl-6 sm:pl-8 space-y-5 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
-                {plan.tasks.map((task, idx) => {
+                {Array.isArray(plan.tasks) && plan.tasks.map((task, idx) => {
                   const isDone = task.completed;
                   return (
                     <div key={task.id} className="relative group">

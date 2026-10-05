@@ -6,7 +6,7 @@ import {
   Brain, Send, Plus, Trash2, CheckCircle2, Circle, AlertCircle, TrendingUp, 
   FileEdit, Copy, Check, ChevronDown, ChevronUp, Maximize2, Minimize2, ListTodo 
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -365,11 +365,13 @@ export default function ProjectFocusView({
     sendMessage(tutorPrompt);
   };
 
-  const handlePlanProgressChange = (newProgressPercent: number) => {
+  const handlePlanProgressChange = useCallback((newProgressPercent: number) => {
     if (isSkill && actualId) {
+      const currentSkill = skills.find(s => s.id === actualId);
+      if (currentSkill && currentSkill.progress === newProgressPercent) return;
       updateSkill({ id: actualId, updates: { progress: newProgressPercent } });
     }
-  };
+  }, [isSkill, actualId, skills, updateSkill]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);

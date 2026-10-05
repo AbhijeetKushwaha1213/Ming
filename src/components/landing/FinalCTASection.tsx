@@ -33,7 +33,7 @@ export const FinalCTASection = () => {
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
           <button
             onClick={() => navigate('/auth')}
-            className="inline-flex items-center justify-center gap-2.5 h-13 px-8 rounded-xl bg-[#20B486] text-white text-base font-bold hover:bg-[#1aa378] transition-all shadow-[0_6px_20px_rgba(32,180,134,0.35)] active:scale-98"
+            className="inline-flex items-center justify-center gap-2.5 min-w-[210px] sm:min-w-[230px] h-14 px-9 rounded-full bg-[#20B486] text-white text-base font-bold hover:bg-[#1aa378] transition-all shadow-[0_6px_20px_rgba(32,180,134,0.35)] active:scale-98"
           >
             <span>Start Learning</span>
             <ArrowRight className="w-4 h-4" />
@@ -41,7 +41,7 @@ export const FinalCTASection = () => {
 
           <a
             href="#showcase"
-            className="inline-flex items-center justify-center gap-2 h-13 px-7 rounded-xl bg-white/10 hover:bg-white/15 text-white border border-white/20 text-base font-bold transition-all backdrop-blur-sm"
+            className="inline-flex items-center justify-center gap-2 min-w-[210px] sm:min-w-[230px] h-14 px-9 rounded-full bg-white/10 hover:bg-white/15 text-white border border-white/20 text-base font-bold transition-all backdrop-blur-sm active:scale-98"
           >
             <span>Explore the platform</span>
           </a>

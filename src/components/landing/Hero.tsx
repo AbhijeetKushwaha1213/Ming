@@ -58,18 +58,18 @@ export const Hero = () => {
             </p>
 
             {/* CTAs matching Reference Button System */}
-            <div className="flex flex-wrap items-center gap-4 pt-1 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-5 pt-2 w-full sm:w-auto">
               <button
                 onClick={() => navigate('/auth')}
-                className="inline-flex items-center justify-center gap-2.5 h-13 px-8 rounded-xl bg-[#20B486] text-white text-base font-bold hover:bg-[#1aa378] transition-all shadow-[0_6px_20px_rgba(32,180,134,0.30)] hover:shadow-[0_8px_25px_rgba(32,180,134,0.40)] active:scale-98"
+                className="inline-flex items-center justify-center gap-2.5 min-w-[210px] sm:min-w-[230px] h-14 px-9 rounded-full bg-[#063B2A] text-white text-base sm:text-[17px] font-bold hover:bg-[#0A4D37] transition-all shadow-[0_8px_24px_rgba(6,59,42,0.25)] hover:shadow-[0_12px_28px_rgba(6,59,42,0.35)] active:scale-98"
               >
                 <span>Start Learning</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 text-[#20B486]" />
               </button>
 
               <a
                 href="#showcase"
-                className="inline-flex items-center justify-center gap-2 h-13 px-7 rounded-xl bg-[#DDF7EC] text-[#063B2A] text-base font-bold hover:bg-[#cff2e3] transition-all"
+                className="inline-flex items-center justify-center gap-2 min-w-[210px] sm:min-w-[230px] h-14 px-9 rounded-full bg-[#10231C] text-white hover:bg-[#063B2A] border border-[#20B486]/35 text-base sm:text-[17px] font-bold transition-all shadow-[0_6px_20px_rgba(16,35,28,0.18)] hover:shadow-[0_10px_24px_rgba(6,59,42,0.25)] active:scale-98"
               >
                 <span>Explore StudyMate</span>
               </a>

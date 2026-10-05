@@ -1464,79 +1464,16 @@ export const PremiumAIGenerator = () => {
     );
   };
 
-  const renderRightSidebar = () => (
-    <Card className="p-6 sticky top-6 space-y-6">
-      <div>
-        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Clock className="w-4 h-4" />
-          Recent Generations
-        </h3>
-        <div className="space-y-2 text-sm">
-          {['Flashcards - Biology', 'Quiz - Physics', 'Mind Map - History'].map((item, i) => (
-            <div key={i} className="p-2 bg-muted rounded-lg hover:bg-muted/70 cursor-pointer transition-colors">
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Lightbulb className="w-4 h-4" />
-          Suggested Prompts
-        </h3>
-        <div className="space-y-2 text-sm">
-          {[
-            'Generate flashcards for exam prep',
-            'Create a mind map of key concepts',
-            'Quiz me on this topic'
-          ].map((prompt, i) => (
-            <Button
-              key={i}
-              variant="outline"
-              size="sm"
-              className="w-full text-left justify-start h-auto py-2 px-3"
-              onClick={() => setTopic(prompt)}
-            >
-              {prompt}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4" />
-          Learning Tips
-        </h3>
-        <div className="space-y-3 text-sm text-muted-foreground">
-          <p>✨ Use adaptive difficulty for personalized learning</p>
-          <p>📚 Include examples for better understanding</p>
-          <p>🎯 Enable exam tips for test preparation</p>
-        </div>
-      </div>
-    </Card>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/20 p-6">
-      <div className="max-w-7xl mx-auto">
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            {step === 'choose' && renderChooseStep()}
-            {step === 'input' && renderInputStep()}
-            {step === 'settings' && renderSettingsStep()}
-            {step === 'preview' && renderPreviewStep()}
-            {step === 'generating' && renderGeneratingStep()}
-            {step === 'result' && renderResultStep()}
-          </div>
-          
-          {step !== 'generating' && (
-            <div className="hidden lg:block">
-              {renderRightSidebar()}
-            </div>
-          )}
+      <div className="max-w-6xl mx-auto">
+        <div className="w-full">
+          {step === 'choose' && renderChooseStep()}
+          {step === 'input' && renderInputStep()}
+          {step === 'settings' && renderSettingsStep()}
+          {step === 'preview' && renderPreviewStep()}
+          {step === 'generating' && renderGeneratingStep()}
+          {step === 'result' && renderResultStep()}
         </div>
       </div>
 

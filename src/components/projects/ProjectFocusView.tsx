@@ -17,6 +17,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSkills, parseSkillDetails } from "@/hooks/useSkills";
 import { useProjects } from "@/hooks/useProjects";
 import { geminiClient } from "@/utils/geminiClient";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { DailyLearningPlanCard } from "./DailyLearningPlanCard";
 
 interface ProjectFocusViewProps {
   projectId?: string;
@@ -62,6 +64,7 @@ export default function ProjectFocusView({
   deadline = "2 days",
   onBack 
 }: ProjectFocusViewProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [timer, setTimer] = useState(3600); // 1 hour default
   const [initialTimer, setInitialTimer] = useState(3600);
@@ -264,10 +267,11 @@ export default function ProjectFocusView({
     ? Math.max(0, Math.min(100, Math.round(((initialTimer - timer) / initialTimer) * 100))) 
     : 0;
 
-  const sendMessage = async () => {
-    if (!inputMessage.trim() || isTyping) return;
+  const sendMessage = async (overrideMessage?: string) => {
+    const textToSend = (overrideMessage !== undefined ? overrideMessage : inputMessage).trim();
+    if (!textToSend || isTyping) return;
 
-    const userMsgText = inputMessage.trim();
+    const userMsgText = textToSend;
     const userMessage: Message = {
       id: Date.now().toString(),
       text: userMsgText,
@@ -277,7 +281,9 @@ export default function ProjectFocusView({
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
-    setInputMessage('');
+    if (overrideMessage === undefined) {
+      setInputMessage('');
+    }
     setIsTyping(true);
 
     try {
@@ -336,6 +342,32 @@ export default function ProjectFocusView({
       });
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  const handlePlanAskAiTutor = (context: {
+    skill: string;
+    topic: string;
+    taskTitle: string;
+    resourceTitle?: string;
+    masteryPercentage?: number;
+    planSummary?: string;
+  }) => {
+    // Automatically expand the AI Assistant sidebar if squeezed
+    setIsAiSqueezed(false);
+
+    const tutorPrompt = `I am currently studying today's learning plan for "${context.skill}".\n\n` +
+      `Current Step: ${context.taskTitle}` +
+      (context.resourceTitle ? `\nRecommended Resource: ${context.resourceTitle}` : '') +
+      `\nCurrent Mastery: ${context.masteryPercentage || 50}%\n` +
+      `Could you explain the core concepts of this step, highlight common misconceptions, and give me a clear example?`;
+
+    sendMessage(tutorPrompt);
+  };
+
+  const handlePlanProgressChange = (newProgressPercent: number) => {
+    if (isSkill && actualId) {
+      updateSkill({ id: actualId, updates: { progress: newProgressPercent } });
     }
   };
 
@@ -1127,137 +1159,16 @@ export default function ProjectFocusView({
               </CardContent>
             </Card>
 
-            {/* Tabs Section */}
-            <Card className="bg-card border-border shadow-sm">
-              <CardContent className="p-6">
-                <Tabs defaultValue="editor" className="w-full">
-                  <TabsList className="bg-muted border border-border">
-                    <TabsTrigger value="editor" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Code Editor</TabsTrigger>
-                    <TabsTrigger value="resources" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Resources</TabsTrigger>
-                    <TabsTrigger value="practice" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Practice</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="resources" className="mt-4">
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-foreground">Project Resources</h3>
-                      
-                      {/* Add Resource Form */}
-                      <div className="flex gap-2">
-                        <Input 
-                          placeholder="Add resource URL or document name" 
-                          value={newResource.title}
-                          onChange={(e) => setNewResource({...newResource, title: e.target.value})}
-                          className="bg-background border-border text-foreground placeholder:text-muted-foreground"
-                        />
-                        <Button onClick={addResource} className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm border-0">
-                          Add
-                        </Button>
-                      </div>
-                      
-                      {/* Resources List */}
-                      <div className="space-y-2">
-                        {resources.map(resource => (
-                          <div key={resource.id} className="flex items-center justify-between p-3 bg-muted/40 rounded border border-border">
-                            <div className="flex items-center gap-3">
-                              <div className="px-2 py-1 bg-green-600 text-white text-xs rounded">
-                                {resource.type}
-                              </div>
-                              <a 
-                                href={resource.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="text-foreground hover:text-green-600 flex items-center gap-1 transition-colors"
-                              >
-                                {resource.title}
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            </div>
-                            <Button 
-                              onClick={() => removeResource(resource.id)} 
-                              variant="ghost" 
-                              size="sm"
-                              className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="editor" className="mt-4">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-medium text-foreground">Code Scratchpad</h3>
-                        <Button 
-                          onClick={openInVSCode}
-                          className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
-                        >
-                          <ExternalLink className="w-4 h-4 mr-2 text-white" />
-                          Open in VS Code
-                        </Button>
-                      </div>
-                      <Textarea 
-                        value={codeContent}
-                        onChange={(e) => setCodeContent(e.target.value)}
-                        placeholder="Write or paste your code here... This is a local scratchpad and does not save."
-                        className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground font-mono h-96 resize-none"
-                      />
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="practice" className="mt-4">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-medium text-foreground">Practice Problems</h3>
-                        <Button 
-                          onClick={() => openExternalLink("https://leetcode.com")}
-                          className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
-                        >
-                          <ExternalLink className="w-4 h-4 mr-2 text-white" />
-                          Open LeetCode
-                        </Button>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        {leetcodeProblems.map(problem => (
-                          <div 
-                            key={problem.id} 
-                            className="p-4 bg-muted/40 rounded border border-border cursor-pointer hover:bg-muted/70 transition-colors"
-                            onClick={() => openLeetCodeProblem(problem)}
-                          >
-                            <div className="flex items-center justify-between gap-3 min-w-0">
-                              <div className="min-w-0">
-                                <h4 className="font-medium text-foreground mb-1 truncate">{problem.title}</h4>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {problem.tags.join(", ")} - {problem.difficulty}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openLeetCodeProblem(problem);
-                                  }}
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm border-0"
-                                >
-                                  Practice Now
-                                </Button>
-                                <div className="w-6 h-6 bg-orange-500 rounded text-white text-xs flex items-center justify-center font-bold">
-                                  LC
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+            {/* Today's Learning Plan Card replacing Code Scratchpad / Editor */}
+            <DailyLearningPlanCard
+              userId={user?.id || user?.user_id || 'default_user'}
+              skillOrProjectId={projectId || actualId || 'current-project'}
+              skillName={projectName}
+              projectType={projectType}
+              assignedTasks={tasks}
+              onAskAiTutor={handlePlanAskAiTutor}
+              onPlanProgressChange={handlePlanProgressChange}
+            />
           </div>
 
           {/* Right Sidebar - Clean natural flow without height clipping */}

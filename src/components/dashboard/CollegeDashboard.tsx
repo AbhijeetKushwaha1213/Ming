@@ -49,8 +49,11 @@ import {
   Activity,
   ShieldCheck,
   TrendingUp,
+  Target,
 } from 'lucide-react';
 import ProjectFocusView from '../projects/ProjectFocusView';
+import { getLatestDailyPlanForUser } from '@/utils/dailyPlanStorage';
+import { DailyLearningPlan } from '@/types/dailyPlan';
 import { AddProjectDialog } from '../projects/AddProjectDialog';
 import { AddSkillDialog } from '../skills/AddSkillDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -86,6 +89,23 @@ export const CollegeDashboard = () => {
   const { skills, updateSkill, deleteSkill } = useSkills();
   const { userStats } = useUserStats();
   const { getSkillMastery, stats: bktStats, refresh: refreshBKT } = useLearnerMastery();
+  const [activeDailyPlan, setActiveDailyPlan] = useState<DailyLearningPlan | null>(null);
+
+  useEffect(() => {
+    const userId = user?.user_id || user?.id || 'default_user';
+    setActiveDailyPlan(getLatestDailyPlanForUser(userId));
+
+    const handlePlanUpdate = () => {
+      setActiveDailyPlan(getLatestDailyPlanForUser(userId));
+    };
+    window.addEventListener('studymate-daily-plan-updated', handlePlanUpdate);
+    window.addEventListener('studymate-daily-plan-deleted', handlePlanUpdate);
+    return () => {
+      window.removeEventListener('studymate-daily-plan-updated', handlePlanUpdate);
+      window.removeEventListener('studymate-daily-plan-deleted', handlePlanUpdate);
+    };
+  }, [user]);
+
   const [bktModalSkill, setBktModalSkill] = useState<{
     skillName: string;
     categoryName?: string;
@@ -271,6 +291,31 @@ export const CollegeDashboard = () => {
     setSelectedProject(null);
   };
 
+  const handleOpenPlanFromDashboard = (dailyPlan: DailyLearningPlan) => {
+    const isSkillId = dailyPlan.skillOrProjectId.startsWith('skill-');
+    const actualId = isSkillId ? dailyPlan.skillOrProjectId.replace('skill-', '') : dailyPlan.skillOrProjectId;
+    const matchingSkill = skills.find(s => s.id === actualId || s.skill.toLowerCase() === dailyPlan.skillName.toLowerCase());
+
+    if (matchingSkill) {
+      handleContinueSkill(matchingSkill);
+    } else {
+      const matchingProj = projects.find(p => p.id === actualId || p.name.toLowerCase() === dailyPlan.skillName.toLowerCase());
+      if (matchingProj) {
+        setSelectedProject(matchingProj);
+        setCurrentView('project-focus');
+      } else {
+        setSelectedProject({
+          id: dailyPlan.skillOrProjectId,
+          name: dailyPlan.skillName,
+          type: dailyPlan.projectType || 'skill',
+          deadline: 'ongoing',
+          description: dailyPlan.objective
+        });
+        setCurrentView('project-focus');
+      }
+    }
+  };
+
   if (currentView === 'project-focus' && selectedProject) {
     return (
       <ProjectFocusView
@@ -291,6 +336,63 @@ export const CollegeDashboard = () => {
         userSemester={user?.semester}
         userBranch={user?.branch}
       />
+
+      {/* Compact Today's Learning Plan Card (Requirement 18) */}
+      {activeDailyPlan && (
+        <Card className="p-4 sm:p-5 border border-green-600/30 bg-gradient-to-r from-green-500/5 via-card to-card shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-green-600 hover:bg-green-600 text-white text-[11px] font-semibold flex items-center gap-1">
+                  <Target className="w-3 h-3" /> Today's Learning Plan
+                </Badge>
+                <span className="text-xs font-semibold text-foreground truncate">
+                  {activeDailyPlan.skillName}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                <span>
+                  {activeDailyPlan.tasks.filter(t => t.completed).length} / {activeDailyPlan.tasks.length} tasks completed
+                </span>
+                <span>•</span>
+                <span className="text-green-600 dark:text-green-400 font-semibold">
+                  {activeDailyPlan.tasks.length > 0 
+                    ? Math.round((activeDailyPlan.tasks.filter(t => t.completed).length / activeDailyPlan.tasks.length) * 100)
+                    : 0}% complete
+                </span>
+                {activeDailyPlan.tasks.find(t => !t.completed) && (
+                  <>
+                    <span>•</span>
+                    <span className="truncate">
+                      Next: <strong className="text-foreground">{activeDailyPlan.tasks.find(t => !t.completed)?.title}</strong>
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="w-full sm:w-80 h-2 bg-muted rounded-full overflow-hidden mt-1">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-green-600 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${activeDailyPlan.tasks.length > 0 
+                      ? Math.round((activeDailyPlan.tasks.filter(t => t.completed).length / activeDailyPlan.tasks.length) * 100)
+                      : 0}%`
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                onClick={() => handleOpenPlanFromDashboard(activeDailyPlan)}
+                className="bg-green-600 hover:bg-green-700 text-white font-medium text-xs h-9 px-4 shadow-sm border-0 gap-1.5"
+              >
+                <span>Continue Plan</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
 
       {/* Top-Right Toggle: Learning & Skills vs. Projects */}

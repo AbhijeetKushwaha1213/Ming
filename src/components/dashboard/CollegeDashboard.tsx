@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -338,7 +338,7 @@ export const CollegeDashboard = () => {
       />
 
       {/* Compact Today's Learning Plan Card (Requirement 18) */}
-      {activeDailyPlan && (
+      {activeDailyPlan && Array.isArray(activeDailyPlan.tasks) && activeDailyPlan.tasks.length > 0 && (
         <Card className="p-4 sm:p-5 border border-green-600/30 bg-gradient-to-r from-green-500/5 via-card to-card shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1.5 min-w-0">

@@ -19,6 +19,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { submitAssessment, DiagnosticReport } from '@/api/assessmentAPI';
+import { logStudySession } from '@/api/studyActivityAPI';
 import { useToast } from '@/hooks/use-toast';
 
 export interface QuizQuestion {
@@ -291,6 +292,18 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
         questions: questionList as any,
         answers: selectedAnswers,
       });
+
+      // Automatically log real-time study activity session
+      const approxDurationMinutes = Math.max(3, Math.round(questionList.length * 1.5));
+      await logStudySession({
+        userId,
+        sessionType: 'quiz',
+        durationMinutes: approxDurationMinutes,
+        topicsCovered: [topic, subtopic].filter(Boolean) as string[],
+        flashcardsReviewed: questionList.length,
+        correctAnswers: calculatedScore,
+      });
+
       // Notify all BKT listeners (Learning Progress, LearnerMasteryCard, etc.)
       window.dispatchEvent(new CustomEvent('studymate-bkt-refresh', { detail: { topic, subtopic } }));
       toast({

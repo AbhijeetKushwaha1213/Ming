@@ -35,8 +35,17 @@ import {
   ChevronDown,
   Upload,
   Check,
-  RotateCcw
+  RotateCcw,
+  Plus
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useRealtimeStudyActivity, ActivityTimeRange } from '@/hooks/useRealtimeStudyActivity';
 
 interface ExtendedPreferences {
   preferredSubjects?: string;
@@ -203,18 +212,55 @@ export const ProfilePage = () => {
     .trim()[0]
     ?.toUpperCase() || 'A';
 
-  // Sample 7-day study activity hours
-  const activityData = [
-    { day: 'Mon', hours: 1.0, max: 8 },
-    { day: 'Tue', hours: 5.0, max: 8 },
-    { day: 'Wed', hours: 7.0, max: 8 },
-    { day: 'Thu', hours: 1.0, max: 8 },
-    { day: 'Fri', hours: 1.0, max: 8 },
-    { day: 'Sat', hours: 0.5, max: 8 },
-    { day: 'Sun', hours: 1.2, max: 8 },
-  ];
+  // Real-time Study Activity tracking
+  const [timeRange, setTimeRange] = useState<ActivityTimeRange>('7days');
+  const { summary: activitySummary, logSession, isLogging } = useRealtimeStudyActivity(timeRange);
 
-  const totalWeeklyHours = activityData.reduce((acc, d) => acc + d.hours, 0);
+  // Manual study logging modal state
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [logMinutes, setLogMinutes] = useState('30');
+  const [logTopic, setLogTopic] = useState('');
+  const [logSessionType, setLogSessionType] = useState('self_study');
+
+  const handleManualLogSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const mins = parseInt(logMinutes, 10);
+    if (!mins || mins <= 0) {
+      toast({
+        title: 'Invalid duration',
+        description: 'Please enter a valid study duration in minutes.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    await logSession({
+      durationMinutes: mins,
+      sessionType: logSessionType,
+      topic: logTopic.trim() || undefined,
+    });
+    setIsLogModalOpen(false);
+    setLogTopic('');
+  };
+
+  const getRangeSubtitle = (range: ActivityTimeRange) => {
+    switch (range) {
+      case '7days': return 'Your study hours over the last 7 days';
+      case 'week': return 'Your study hours for this calendar week';
+      case '14days': return 'Your study hours over the last 14 days';
+      case '30days': return 'Your study hours over the last 30 days';
+      default: return 'Your real-time study hours';
+    }
+  };
+
+  const effectiveTotalStudyHours = Math.max(
+    user?.total_study_hours || 0,
+    Math.round(activitySummary.totalHours * 10) / 10
+  );
+
+  const effectiveStreak = Math.max(
+    user?.study_streak || 0,
+    activitySummary.currentStreak
+  );
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-24 animate-in fade-in duration-300">
@@ -413,7 +459,7 @@ export const ProfilePage = () => {
           </div>
           <div>
             <div className="text-2xl font-bold tracking-tight text-foreground">
-              {user?.study_streak || 0}
+              {effectiveStreak}
             </div>
             <div className="text-xs font-bold text-foreground">Day Streak</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Keep going! Start your journey today.</div>
@@ -427,7 +473,7 @@ export const ProfilePage = () => {
           </div>
           <div>
             <div className="text-2xl font-bold tracking-tight text-foreground">
-              {Math.round(user?.total_study_hours || 0)}h
+              {effectiveTotalStudyHours}h
             </div>
             <div className="text-xs font-bold text-foreground">Total Study Hours</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">Track your learning progress.</div>
@@ -470,52 +516,89 @@ export const ProfilePage = () => {
         {/* LEFT COLUMN: Study Activity Card */}
         <Card className="p-6 rounded-2xl border border-border/80 bg-card shadow-xs space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-start space-x-3">
               <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
                 <BarChart2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-foreground">Study Activity</h3>
-                <p className="text-xs text-muted-foreground">Your study hours over the last 7 days</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-foreground">Study Activity</h3>
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold tracking-wide uppercase">Live</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{getRangeSubtitle(timeRange)}</p>
               </div>
             </div>
 
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1 border-border/80 font-medium">
-              <span>Last 7 days</span>
-              <ChevronDown className="w-3.5 h-3.5 opacity-60" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLogModalOpen(true)}
+                className="h-8 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10 font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Log Study</span>
+              </Button>
+              <Select value={timeRange} onValueChange={(val) => setTimeRange(val as ActivityTimeRange)}>
+                <SelectTrigger className="h-8 text-xs font-medium border-border/80 w-[125px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="7days">Last 7 days</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="14days">Last 14 days</SelectItem>
+                  <SelectItem value="30days">Last 30 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Bar Chart Visualization */}
           <div className="space-y-2 pt-2">
             <div className="relative h-44 flex items-end justify-between pl-8 pr-2">
               {/* Horizontal Grid lines and Y-axis labels */}
-              {[8, 6, 4, 2, 0].map((val) => (
+              {activitySummary.yAxisLabels.map((val) => (
                 <div
                   key={val}
                   className="absolute left-0 right-0 flex items-center pointer-events-none"
-                  style={{ bottom: `${(val / 8) * 100}%` }}
+                  style={{ bottom: `${(val / activitySummary.maxScale) * 100}%` }}
                 >
-                  <span className="text-[11px] text-muted-foreground w-6 text-right pr-2">
+                  <span className="text-[11px] text-muted-foreground w-6 text-right pr-2 font-mono">
                     {val}h
                   </span>
                   <div className="w-full border-b border-border/40" />
                 </div>
               ))}
 
-              {/* 7 Daily Bars */}
-              {activityData.map((item) => {
-                const heightPct = Math.min(100, Math.max(6, (item.hours / item.max) * 100));
+              {/* Dynamic Daily Bars */}
+              {activitySummary.days.map((item) => {
+                const hasHours = item.hours > 0;
+                const heightPct = hasHours
+                  ? Math.min(100, Math.max(8, (item.hours / activitySummary.maxScale) * 100))
+                  : 0;
+
                 return (
-                  <div key={item.day} className="flex-1 flex flex-col items-center justify-end h-full z-10 px-1.5 sm:px-2">
+                  <div key={item.dateString} className="flex-1 flex flex-col items-center justify-end h-full z-10 px-1 sm:px-1.5">
                     <div
-                      className="w-full max-w-[34px] rounded-t-md bg-[#c7d2fe] hover:bg-[#818cf8] dark:bg-indigo-500/40 dark:hover:bg-indigo-500 transition-all cursor-pointer group relative"
-                      style={{ height: `${heightPct}%` }}
+                      className={`w-full max-w-[34px] rounded-t-md transition-all cursor-pointer group relative ${
+                        hasHours
+                          ? item.isToday
+                            ? 'bg-primary hover:bg-primary/90 shadow-xs ring-1 ring-primary/40'
+                            : 'bg-[#c7d2fe] hover:bg-[#818cf8] dark:bg-indigo-500/40 dark:hover:bg-indigo-500'
+                          : 'h-1.5 bg-muted/60 dark:bg-muted/40 hover:bg-muted'
+                      }`}
+                      style={hasHours ? { height: `${heightPct}%` } : undefined}
                     >
                       {/* Tooltip on Hover */}
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-[10px] py-0.5 px-1.5 rounded shadow-md border opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                        {item.hours}h
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-[10px] py-1 px-2 rounded-md shadow-md border opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
+                        <span className="font-semibold">{item.formattedDate}</span>
+                        {item.isToday && <span className="ml-1 text-primary font-bold">(Today)</span>}:{' '}
+                        {hasHours ? `${item.hours}h (${item.minutes}m)` : '0m studied'}
                       </div>
                     </div>
                   </div>
@@ -525,28 +608,32 @@ export const ProfilePage = () => {
 
             {/* X-axis Day Labels */}
             <div className="flex justify-between pl-8 pr-2 text-xs text-muted-foreground font-medium pt-1">
-              {activityData.map((item) => (
-                <div key={item.day} className="flex-1 text-center">
+              {activitySummary.days.map((item) => (
+                <div
+                  key={item.dateString}
+                  className={`flex-1 text-center truncate ${item.isToday ? 'text-primary font-bold' : ''}`}
+                  title={`${item.formattedDate}${item.isToday ? ' (Today)' : ''}`}
+                >
                   {item.day}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Bottom Summary Strip (matching screenshot) */}
+          {/* Bottom Summary Strip */}
           <div className="grid grid-cols-3 p-3 bg-muted/40 dark:bg-muted/20 border border-border/50 rounded-xl text-center divide-x divide-border/60">
             <div className="space-y-0.5 px-2">
               <div className="text-sm font-bold text-foreground flex items-center justify-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                <span>{Math.round(user?.total_study_hours || 0)}h</span>
+                <span>{activitySummary.totalHours}h</span>
               </div>
-              <div className="text-[11px] text-muted-foreground">Total This Week</div>
+              <div className="text-[11px] text-muted-foreground">Total In Period</div>
             </div>
 
             <div className="space-y-0.5 px-2">
               <div className="text-sm font-bold text-foreground flex items-center justify-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-primary" />
-                <span>{user?.study_streak || 0} days</span>
+                <span>{activitySummary.activeDays} {activitySummary.activeDays === 1 ? 'day' : 'days'}</span>
               </div>
               <div className="text-[11px] text-muted-foreground">Active Days</div>
             </div>
@@ -554,7 +641,7 @@ export const ProfilePage = () => {
             <div className="space-y-0.5 px-2">
               <div className="text-sm font-bold text-foreground flex items-center justify-center gap-1">
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                <span>0h</span>
+                <span>{activitySummary.dailyAverageHours}h</span>
               </div>
               <div className="text-[11px] text-muted-foreground">Daily Average</div>
             </div>
@@ -807,6 +894,104 @@ export const ProfilePage = () => {
               </Button>
               <Button type="submit" variant="premium" disabled={isSaving}>
                 {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============================================================== */}
+      {/* 5. LOG STUDY SESSION MODAL */}
+      {/* ============================================================== */}
+      <Dialog open={isLogModalOpen} onOpenChange={setIsLogModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              <span>Log Study Session</span>
+            </DialogTitle>
+            <DialogDescription>
+              Record real study time to update your Study Activity chart, total hours, and streak in real time.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleManualLogSession} className="space-y-4 pt-2">
+            {/* Quick preset buttons */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Quick Duration</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: '15m', val: '15' },
+                  { label: '30m', val: '30' },
+                  { label: '45m', val: '45' },
+                  { label: '1h', val: '60' },
+                  { label: '1.5h', val: '90' },
+                  { label: '2h', val: '120' },
+                ].map((preset) => (
+                  <Button
+                    key={preset.val}
+                    type="button"
+                    variant={logMinutes === preset.val ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-8 text-xs font-medium"
+                    onClick={() => setLogMinutes(preset.val)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Minutes Input */}
+            <div className="space-y-1.5">
+              <Label htmlFor="study-duration" className="text-xs font-semibold">Duration (Minutes)</Label>
+              <Input
+                id="study-duration"
+                type="number"
+                min="1"
+                max="720"
+                value={logMinutes}
+                onChange={(e) => setLogMinutes(e.target.value)}
+                placeholder="e.g. 45"
+                required
+              />
+            </div>
+
+            {/* Topic Input */}
+            <div className="space-y-1.5">
+              <Label htmlFor="study-topic" className="text-xs font-semibold">Topic / Subject (Optional)</Label>
+              <Input
+                id="study-topic"
+                value={logTopic}
+                onChange={(e) => setLogTopic(e.target.value)}
+                placeholder="e.g. Dynamic Programming, Operating Systems"
+              />
+            </div>
+
+            {/* Session Type */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Session Type</Label>
+              <Select value={logSessionType} onValueChange={setLogSessionType}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="self_study">Self Study</SelectItem>
+                  <SelectItem value="flashcard_review">Flashcard Review</SelectItem>
+                  <SelectItem value="quiz">Quiz / Assessment</SelectItem>
+                  <SelectItem value="problem_solving">Problem Solving</SelectItem>
+                  <SelectItem value="video_lecture">Video / Lecture</SelectItem>
+                  <SelectItem value="reading">Reading & Notes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-border/50">
+              <Button type="button" variant="outline" onClick={() => setIsLogModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="premium" disabled={isLogging}>
+                {isLogging ? 'Logging...' : 'Record Session'}
               </Button>
             </DialogFooter>
           </form>

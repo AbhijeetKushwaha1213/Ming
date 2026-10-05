@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -15,8 +15,46 @@ import {
   ChevronRight
 } from 'lucide-react';
 
+const TAGLINES = [
+  'smarter learning path.',
+  'personalized study plan.',
+  'prerequisite knowledge map.',
+  'mastery-focused roadmap.',
+  'daily action timetable.'
+];
+
 export const Hero = () => {
   const navigate = useNavigate();
+  const [taglineIndex, setTaglineIndex] = useState(0);
+  const [subIndex, setSubIndex] = useState(TAGLINES[0].length);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const currentPhrase = TAGLINES[taglineIndex];
+
+    // When typing is complete, pause before deleting
+    if (!isDeleting && subIndex === currentPhrase.length) {
+      const timeout = setTimeout(() => {
+        setIsDeleting(true);
+      }, 2200);
+      return () => clearTimeout(timeout);
+    }
+
+    // When deleting is complete, move to next phrase
+    if (isDeleting && subIndex === 0) {
+      setIsDeleting(false);
+      setTaglineIndex((prev) => (prev + 1) % TAGLINES.length);
+      return;
+    }
+
+    // Dynamic typing and backspacing speeds
+    const speed = isDeleting ? 30 : 65;
+    const timeout = setTimeout(() => {
+      setSubIndex((prev) => prev + (isDeleting ? -1 : 1));
+    }, speed);
+
+    return () => clearTimeout(timeout);
+  }, [subIndex, isDeleting, taglineIndex]);
 
   return (
     <section
@@ -44,11 +82,12 @@ export const Hero = () => {
               <span>AI-Powered Personal Learning</span>
             </div>
 
-            {/* Main Headline (Plus Jakarta Sans, 64-72px desktop, font-weight 800) */}
+            {/* Main Headline with Fixed First Line and Dynamic Rotating Second Line */}
             <h1 className="text-4xl sm:text-5xl lg:text-[64px] font-extrabold text-[#10231C] tracking-[-2px] lg:tracking-[-3px] leading-[1.08]">
-              Turn your syllabus into a{' '}
-              <span className="text-[#20B486] relative inline-block">
-                smarter learning path.
+              <span className="block">Turn your syllabus into a</span>
+              <span className="text-[#20B486] inline-flex items-center min-h-[1.12em]">
+                <span>{TAGLINES[taglineIndex].substring(0, subIndex)}</span>
+                <span className="inline-block w-[3.5px] h-[0.8em] bg-[#20B486] ml-1.5 animate-pulse rounded-full" />
               </span>
             </h1>
 

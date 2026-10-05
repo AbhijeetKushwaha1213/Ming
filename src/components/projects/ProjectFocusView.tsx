@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowLeft, Play, Pause, RotateCcw, Code, ExternalLink, Github, Timer, 
   Brain, Send, Plus, Trash2, CheckCircle2, Circle, AlertCircle, TrendingUp, 
-  FileEdit, Copy, Check, ChevronDown, ChevronUp, Maximize2, Minimize2, ArrowUpDown, ListTodo, SlidersHorizontal 
+  FileEdit, Copy, Check, ChevronDown, ChevronUp, Maximize2, Minimize2, ListTodo 
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -68,11 +68,7 @@ export default function ProjectFocusView({
   const [isRunning, setIsRunning] = useState(false);
   const projectDir = projectName.toLowerCase().replace(/\s+/g, '-');
 
-  // Sidebar squeeze, maximize, and position order states
-  const [sidebarOrder, setSidebarOrder] = useState<'ai-top' | 'tasks-top'>(() => {
-    return (localStorage.getItem('studymate_focus_sidebar_order') as 'ai-top' | 'tasks-top') || 'ai-top';
-  });
-
+  // Sidebar squeeze and maximize states
   const [isAiSqueezed, setIsAiSqueezed] = useState<boolean>(() => {
     return localStorage.getItem('studymate_focus_ai_squeezed') === 'true';
   });
@@ -82,17 +78,6 @@ export default function ProjectFocusView({
     return localStorage.getItem('studymate_focus_tasks_squeezed') === 'true';
   });
   const [isTasksMaximized, setIsTasksMaximized] = useState<boolean>(false);
-
-  const toggleSidebarOrder = () => {
-    const nextOrder = sidebarOrder === 'ai-top' ? 'tasks-top' : 'ai-top';
-    setSidebarOrder(nextOrder);
-    localStorage.setItem('studymate_focus_sidebar_order', nextOrder);
-    toast({
-      title: "Sidebar Order Updated",
-      description: nextOrder === 'ai-top' ? "AI Assistant at Top · Today's Tasks at Bottom" : "Today's Tasks at Top · AI Assistant at Bottom",
-      duration: 2000
-    });
-  };
 
   const toggleAiSqueezed = () => {
     setIsAiSqueezed(prev => {
@@ -669,16 +654,8 @@ export default function ProjectFocusView({
             </div>
           </div>
 
-          {/* Action buttons: Swap position, Maximize/Restore, Squeeze/Expand - All Solid Green */}
+          {/* Action buttons: Maximize/Restore, Squeeze/Expand - All Solid Green */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              size="sm"
-              onClick={toggleSidebarOrder}
-              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center shrink-0"
-              title={sidebarOrder === 'ai-top' ? "Move AI Assistant to Bottom" : "Move AI Assistant to Top"}
-            >
-              <ArrowUpDown className="w-3.5 h-3.5 text-white" />
-            </Button>
 
             {!isAiSqueezed && (
               <Button
@@ -793,16 +770,8 @@ export default function ProjectFocusView({
             </div>
           </div>
 
-          {/* Action buttons: Swap position, Maximize/Restore, Squeeze/Expand - All Solid Green */}
+          {/* Action buttons: Maximize/Restore, Squeeze/Expand - All Solid Green */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              size="sm"
-              onClick={toggleSidebarOrder}
-              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center shrink-0"
-              title={sidebarOrder === 'tasks-top' ? "Move Today's Tasks to Bottom" : "Move Today's Tasks to Top"}
-            >
-              <ArrowUpDown className="w-3.5 h-3.5 text-white" />
-            </Button>
 
             {!isTasksSqueezed && (
               <Button
@@ -1293,38 +1262,11 @@ export default function ProjectFocusView({
 
           {/* Right Sidebar - Sticky & Scroll-contained */}
           <div className="lg:col-span-5 xl:col-span-4 2xl:col-span-4 space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:pr-1 min-w-0">
-            {/* Sidebar Controls Bar: Quick Position Swap & Squeeze Info */}
-            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-card border border-border text-xs shadow-xs gap-2">
-              <div className="flex items-center gap-1.5 text-foreground min-w-0">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0" />
-                <span className="font-medium text-foreground shrink-0">Layout:</span>
-                <span className="text-[11px] text-muted-foreground truncate">
-                  {sidebarOrder === 'ai-top' ? 'AI on Top · Tasks at Bottom' : 'Tasks on Top · AI at Bottom'}
-                </span>
-              </div>
-              <Button
-                size="sm"
-                onClick={toggleSidebarOrder}
-                className="h-6 px-2.5 text-[11px] bg-green-600 hover:bg-green-700 text-white gap-1 rounded font-medium shadow-sm border-0 shrink-0"
-                title="Swap order between AI Assistant and Today's Tasks"
-              >
-                <ArrowUpDown className="w-3.5 h-3.5 text-white" />
-                <span>Swap ⇅</span>
-              </Button>
-            </div>
+            {/* AI Assistant (Chat) Above */}
+            {renderAiAssistantCard()}
 
-            {/* Dynamic Card Order: AI Assistant Top vs Today's Tasks Bottom */}
-            {sidebarOrder === 'ai-top' ? (
-              <>
-                {renderAiAssistantCard()}
-                {renderTasksCard()}
-              </>
-            ) : (
-              <>
-                {renderTasksCard()}
-                {renderAiAssistantCard()}
-              </>
-            )}
+            {/* Today's Tasks Below */}
+            {renderTasksCard()}
 
             {/* Focus Tips */}
             <Card className="bg-card/70 border-border shadow-xs">

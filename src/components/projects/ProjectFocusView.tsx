@@ -986,22 +986,22 @@ export default function ProjectFocusView({
             {/* Project Header */}
             <Card className="bg-card border-border shadow-sm">
               <CardContent className="p-6">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4">
-                  <div className="min-w-0 flex-1">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 leading-snug break-normal">
+                <div className="space-y-3.5 mb-6">
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
                       {projectName}
                     </h1>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground mt-0.5">
                       {projectType} · Due in {deadline}
                     </p>
                   </div>
                   
-                  {/* Platform Quick Links */}
-                  <div className="flex items-center gap-2 flex-wrap">
+                  {/* Platform Quick Links Toolbar */}
+                  <div className="flex items-center gap-2 flex-wrap pt-0.5">
                     <Button 
                       size="sm" 
                       onClick={openInVSCode}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0 shrink-0"
                     >
                       <Code className="w-3.5 h-3.5 mr-1.5 text-white" />
                       VS Code
@@ -1009,7 +1009,7 @@ export default function ProjectFocusView({
                     <Button 
                       size="sm" 
                       onClick={() => openExternalLink("https://github.com")}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0 shrink-0"
                     >
                       <Github className="w-3.5 h-3.5 mr-1.5 text-white" />
                       GitHub
@@ -1017,7 +1017,7 @@ export default function ProjectFocusView({
                     <Button 
                       size="sm" 
                       onClick={() => openExternalLink("https://leetcode.com")}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0 shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       LeetCode
@@ -1025,7 +1025,7 @@ export default function ProjectFocusView({
                     <Button 
                       size="sm" 
                       onClick={() => openExternalLink("https://hackerrank.com")}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0 shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       HackerRank
@@ -1033,7 +1033,7 @@ export default function ProjectFocusView({
                     <Button 
                       size="sm" 
                       onClick={() => openExternalLink("https://linkedin.com")}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0 shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       LinkedIn
@@ -1042,11 +1042,11 @@ export default function ProjectFocusView({
                 </div>
 
                 {/* Expanded Countdown / Focus Timer Block */}
-                <div className="mt-6 bg-gradient-to-br from-card via-card to-emerald-500/10 dark:from-gray-900 dark:via-gray-900/95 dark:to-emerald-950/20 rounded-xl p-5 sm:p-6 lg:p-7 border border-border shadow-md relative overflow-hidden">
+                <div className="mt-4 bg-gradient-to-br from-card via-card to-emerald-500/10 dark:from-gray-900 dark:via-gray-900/95 dark:to-emerald-950/20 rounded-xl p-5 sm:p-6 lg:p-7 border border-border shadow-md relative overflow-hidden">
                   {/* Subtle ambient decorative blur */}
                   <div className="absolute -right-16 -top-16 w-56 h-56 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
 
-                  <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6 relative z-10">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
                     {/* Left: Timer Display & Status */}
                     <div className="space-y-3 min-w-0">
                       <div className="flex items-center gap-3">
@@ -1081,7 +1081,7 @@ export default function ProjectFocusView({
                       </div>
 
                       {/* Large Digital Typography with responsive font size to avoid overflow */}
-                      <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold text-foreground tracking-wider drop-shadow-sm select-none break-normal">
+                      <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold text-foreground tracking-tight select-none break-normal">
                         {formatTime(timer)}
                       </div>
 
@@ -1112,8 +1112,8 @@ export default function ProjectFocusView({
                       </div>
                     </div>
 
-                    {/* Right: Controls & Actions - Fully responsive & wrap-safe */}
-                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0 pt-2 2xl:pt-0">
+                    {/* Right: Controls & Actions - Cleanly positioned across from clock on lg+ */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap shrink-0 pt-2 lg:pt-0">
                       <Button 
                         onClick={handleStart} 
                         disabled={isRunning}
@@ -1132,7 +1132,7 @@ export default function ProjectFocusView({
                       </Button>
                       <Button 
                         onClick={handleReset}
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 sm:px-5 py-2.5 h-11 text-xs sm:text-sm shadow-md gap-2 rounded-xl border-0 shrink-0 transition-all"
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3.5 sm:px-4 py-2.5 h-11 text-xs sm:text-sm shadow-md gap-1.5 rounded-xl border-0 shrink-0 transition-all"
                         title="Reset Timer"
                       >
                         <RotateCcw className="w-4 h-4 text-white" />

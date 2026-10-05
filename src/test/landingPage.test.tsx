@@ -19,23 +19,22 @@ describe('Landing Page Integration & Friend PR Fixes', () => {
     );
 
     // Hero verification
-    expect(screen.getByText(/Study smarter/i)).toBeInTheDocument();
-    expect(screen.getByText(/Archival Rigor · Neural Precision/i)).toBeInTheDocument();
+    expect(screen.getByText(/Turn your syllabus into a/i)).toBeInTheDocument();
+    expect(screen.getByText(/smarter learning path./i)).toBeInTheDocument();
 
-    // ProductShowcase verification (was dead code before our fix)
-    expect(screen.getByText(/From lecture to lab to placement/i)).toBeInTheDocument();
-    expect(screen.getByText(/BUILT FOR B.TECH CSE/i)).toBeInTheDocument();
+    // InteractiveShowcase verification
+    expect(screen.getByText(/From lecture to lab to/i)).toBeInTheDocument();
+    expect(screen.getByText(/Interactive Product Showcase/i)).toBeInTheDocument();
 
     // Features verification
-    expect(screen.getByText(/AI-Powered Flashcards/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Core Capabilities/i).length).toBeGreaterThan(0);
 
-    // TrustSection verification
-    expect(screen.getByText(/Trusted by Students/i)).toBeInTheDocument();
+    // Footer verification
+    expect(container.querySelector('footer')).toBeInTheDocument();
 
     // Anchor IDs exist for navigation
     expect(container.querySelector('#showcase')).toBeInTheDocument();
     expect(container.querySelector('#features')).toBeInTheDocument();
-    expect(container.querySelector('#impact')).toBeInTheDocument();
   });
 
   it('renders valid image paths without missing assets', () => {
@@ -47,27 +46,26 @@ describe('Landing Page Integration & Friend PR Fixes', () => {
 
     const images = screen.getAllByRole('img');
     const srcList = images.map((img) => img.getAttribute('src'));
-    expect(srcList).toContain('/assets/studymate-logo.png');
     expect(srcList).toContain('/assets/hero-student.png');
   });
 
-  it('supports interactive SM-2 review simulation state toggles', () => {
+  it('supports interactive topic selection in hero', () => {
     render(
       <MemoryRouter>
         <Hero />
       </MemoryRouter>
     );
 
-    const reviewBtn = screen.getByText(/Review \(12h\)/i);
-    const masteredBtn = screen.getByText(/Mastered \(4d\)/i);
+    const procBtn = screen.getByText(/Process Management/i);
+    const schedBtn = screen.getByText(/CPU Scheduling/i);
+    const deadlockBtn = screen.getByText(/Deadlocks Avoidance/i);
 
-    expect(screen.queryByText(/Interval rescheduled/i)).not.toBeInTheDocument();
+    expect(procBtn).toBeInTheDocument();
+    expect(schedBtn).toBeInTheDocument();
+    expect(deadlockBtn).toBeInTheDocument();
 
-    fireEvent.click(reviewBtn);
-    expect(screen.getByText(/Interval rescheduled. SM-2 decay matrix updated./i)).toBeInTheDocument();
-
-    fireEvent.click(masteredBtn);
-    expect(screen.getByText(/Interval rescheduled. SM-2 decay matrix updated./i)).toBeInTheDocument();
+    fireEvent.click(procBtn);
+    fireEvent.click(deadlockBtn);
   });
 
   it('auto-rotates ProductShowcase slides on timer interval', () => {

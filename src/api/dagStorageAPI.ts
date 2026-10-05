@@ -1,4 +1,5 @@
 import { PersistedDAGRecord, DAGGraphData, DAGNodeStatus } from '@/types/dag';
+import { VERIFIED_CURRICULUM_DAGS } from '@/utils/dagEngine';
 
 const STORAGE_PREFIX = 'studymate_persisted_dags_';
 
@@ -6,23 +7,73 @@ function getLocalStorageKey(userId: string) {
   return `${STORAGE_PREFIX}${userId || 'default_user'}`;
 }
 
+export function createStarterDAG(userId: string): PersistedDAGRecord {
+  const osTemplate = VERIFIED_CURRICULUM_DAGS['operating systems'];
+  const nodes = (osTemplate?.nodes || []).map((n) => ({
+    ...n,
+    name: n.name || n.title,
+    status: n.level === 0 ? ('proficient' as DAGNodeStatus) : ('available' as DAGNodeStatus),
+    mastery: n.level === 0 ? 0.75 : 0.0,
+  }));
+  const id = `dag_starter_${userId || 'default'}`;
+  return {
+    id,
+    userId: userId || 'default_user',
+    title: 'CPU Registers & Kernel Mode Fundamentals',
+    courseId: null,
+    topic: 'Operating Systems',
+    subtopic: 'Process Management',
+    sourceMaterialIds: ['res-1'],
+    graphDepth: 'Standard',
+    learningGoal: 'Concept Mastery',
+    graphData: {
+      id,
+      title: 'CPU Registers & Kernel Mode Fundamentals',
+      topic: 'Operating Systems',
+      subtopic: 'Process Management',
+      depth: 'Standard',
+      learningGoal: 'Concept Mastery',
+      nodes,
+      createdAt: new Date().toISOString(),
+    },
+    progressStatus: 'active',
+    progressPercent: 20,
+    currentConceptId: nodes[0]?.id || null,
+    nextConceptId: nodes[1]?.id || null,
+    totalConcepts: nodes.length,
+    masteredConcepts: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastOpenedAt: new Date().toISOString(),
+  };
+}
+
 function getLocalDAGs(userId: string): PersistedDAGRecord[] {
   try {
     const raw = localStorage.getItem(getLocalStorageKey(userId));
-    if (!raw) return [];
+    if (!raw) {
+      const starter = createStarterDAG(userId);
+      saveLocalDAGs(userId, [starter], false);
+      return [starter];
+    }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      const starter = createStarterDAG(userId);
+      saveLocalDAGs(userId, [starter], false);
+      return [starter];
+    }
+    return parsed;
   } catch (err) {
     console.warn('Failed to read local DAGs:', err);
     return [];
   }
 }
 
-function saveLocalDAGs(userId: string, dags: PersistedDAGRecord[]) {
+function saveLocalDAGs(userId: string, dags: PersistedDAGRecord[], notify = true) {
   try {
     localStorage.setItem(getLocalStorageKey(userId), JSON.stringify(dags));
-    // Also notify across tabs or components
-    if (typeof window !== 'undefined') {
+    // Only notify across tabs or components when explicit
+    if (notify && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('studymate-dag-sync', { detail: { userId, count: dags.length } }));
     }
   } catch (err) {
@@ -68,7 +119,7 @@ export async function fetchUserDAGs(userId: string): Promise<PersistedDAGRecord[
           }
         }
 
-        saveLocalDAGs(userId, combined);
+        saveLocalDAGs(userId, combined, false);
         return combined;
       }
     }

@@ -294,7 +294,7 @@ describe('DAG Pipeline & Learning Path Architecture', () => {
   });
 
   describe('DAG Pipeline UI & Actions', () => {
-    it('renders DAG Pipeline with configuration header and interactive concepts', async () => {
+    it('renders DAG Pipeline with saved DAGs by default and opens configuration dropdown', async () => {
       render(
         <QueryClientProvider client={queryClient}>
           <DAGPipeline />
@@ -304,19 +304,36 @@ describe('DAG Pipeline & Learning Path Architecture', () => {
       expect(screen.getByText(/AI Learning Path/i)).toBeDefined();
       expect(screen.getByText(/Generate a prerequisite-aware concept graph/i)).toBeDefined();
 
-      // Verify concept cards and button rendered after initial generation resolves
+      // Verify saved DAG list is shown by default
       await waitFor(() => {
-        expect(screen.getByText(/Generate Learning DAG/i)).toBeDefined();
+        expect(screen.getByText(/My Saved Learning Paths/i)).toBeDefined();
+        expect(screen.getAllByRole('button', { name: /Create New DAG|New Learning DAG/i }).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/CPU Registers & Kernel Mode/i).length).toBeGreaterThan(0);
+      });
+
+      // Open "New Learning DAG" dropdown
+      const createButtons = screen.getAllByRole('button', { name: /Create New DAG|New Learning DAG/i });
+      fireEvent.click(createButtons[0]);
+
+      // Verify dropdown content
+      await waitFor(() => {
+        expect(screen.getByText(/Configure New Learning DAG/i)).toBeDefined();
+        expect(screen.getByRole('button', { name: /Generate Learning DAG/i })).toBeDefined();
       });
     });
 
-    it('renders node details panel with source references, prerequisites, and actions', async () => {
+    it('renders node details panel with source references, prerequisites, and actions when opening a DAG', async () => {
       render(
         <QueryClientProvider client={queryClient}>
           <DAGPipeline />
         </QueryClientProvider>
       );
+
+      // Click Open DAG to view the graph
+      await waitFor(() => {
+        expect(screen.getAllByText(/Open DAG/i).length).toBeGreaterThan(0);
+      });
+      fireEvent.click(screen.getAllByText(/Open DAG/i)[0]);
 
       await waitFor(() => {
         expect(screen.getByText(/Ask AI Tutor About Concept/i)).toBeDefined();
@@ -325,6 +342,11 @@ describe('DAG Pipeline & Learning Path Architecture', () => {
         expect(screen.getByText(/Audio Brief/i)).toBeDefined();
         expect(screen.getByText(/Mark Mastered/i)).toBeDefined();
       });
+
+      // Verify Regenerate, Improve, Delete buttons exist
+      expect(screen.getAllByRole('button', { name: /Regenerate/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: /Improve/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: /Delete/i }).length).toBeGreaterThan(0);
     });
   });
 
@@ -415,7 +437,6 @@ describe('DAG Pipeline & Learning Path Architecture', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/My Saved Learning Paths/i)).toBeDefined();
-        expect(screen.getByText(/No Saved Learning DAGs Yet/i)).toBeDefined();
       });
 
       // Switch back to Explore

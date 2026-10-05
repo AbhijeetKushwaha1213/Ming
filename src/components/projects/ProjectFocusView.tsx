@@ -1260,27 +1260,13 @@ export default function ProjectFocusView({
             </Card>
           </div>
 
-          {/* Right Sidebar - Sticky & Scroll-contained */}
-          <div className="lg:col-span-5 xl:col-span-4 2xl:col-span-4 space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:pr-1 min-w-0">
+          {/* Right Sidebar - Clean natural flow without height clipping */}
+          <div className="lg:col-span-5 xl:col-span-4 2xl:col-span-4 space-y-4 min-w-0">
             {/* AI Assistant (Chat) Above */}
             {renderAiAssistantCard()}
 
             {/* Today's Tasks Below */}
             {renderTasksCard()}
-
-            {/* Focus Tips */}
-            <Card className="bg-card/70 border-border shadow-xs">
-              <CardContent className="p-3.5">
-                <h3 className="font-medium text-foreground text-xs mb-2 flex items-center gap-1.5">
-                  <span>💡</span> Focus Tips
-                </h3>
-                <ul className="text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
-                  <li>• Break large tasks into smaller sub-tasks.</li>
-                  <li>• Use the timer for focused Pomodoro sessions.</li>
-                  <li>• Squeeze or expand panels anytime to customize your view.</li>
-                </ul>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>

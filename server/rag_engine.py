@@ -672,9 +672,65 @@ def ingest_source(
 # 4. QUERY & RETRIEVAL APIS
 # ==========================================
 
+def extract_query_timestamp_seconds(text: str) -> Optional[float]:
+    """Extract requested timestamp in seconds from queries like 'at 1:15', 'around 3m30s', 'at 6 mins'."""
+    if not text:
+        return None
+    # Match mm:ss or m:ss (e.g. 1:15, 01:15, 6:30)
+    m = re.search(r'\b(\d{1,2}):(\d{2})\b', text)
+    if m:
+        return float(int(m.group(1)) * 60 + int(m.group(2)))
+    # Match '1 min 15 sec' or '1m15s' or '3 minutes'
+    m = re.search(r'\b(\d+)\s*(?:m|min|mins|minute|minutes)(?:\s*(?:and\s*)?(\d+)\s*(?:s|sec|secs|second|seconds))?\b', text, re.IGNORECASE)
+    if m:
+        mins = int(m.group(1))
+        secs = int(m.group(2)) if m.group(2) else 0
+        return float(mins * 60 + secs)
+    return None
+
+OVERVIEW_INDICATORS = [
+    "key concept", "key concepts", "overview", "summary", "summarize", "recap",
+    "main point", "main points", "key point", "key points", "keep point", "keep points",
+    "takeaway", "takeaways", "main takeaway", "important point", "important points",
+    "main idea", "main ideas", "core concept", "core concepts", "highlight", "highlights",
+    "what is this video", "what is this lecture", "about this video", "about this lecture",
+    "explained in this video", "explained in this lecture", "covered in this",
+    "from the video", "in the video", "from this video", "from this lecture",
+    "in this lecture", "tell me about this", "what does this teach", "what is taught",
+    "notes from", "what is discussed", "what was discussed", "explain this video",
+    "explain this lecture", "what happened in", "teach me about this video",
+    "give me points", "lecture points", "video points", "main topics", "what was taught",
+    "what is covered", "tell me about", "give me notes", "what did the speaker say",
+    "what did the instructor say", "point from the video", "points from the video",
+    "what are the points", "important takeaway", "core takeaways"
+]
+
 def normalize_query(query: str) -> str:
     """Normalize query text for retrieval optimization."""
-    q = query.strip().lower()
+    q = query.strip()
+
+    # Common student typing errors, colloquialisms, and shorthand
+    typo_replacements = [
+        (r'\bkeep\s+points?\b', 'key point'),
+        (r'\bvedios?\b', 'video'),
+        (r'\bvids?\b', 'video'),
+        (r'\bwat\b', 'what'),
+        (r'\bwht\b', 'what'),
+        (r'\bimp\b', 'important'),
+        (r'\bimpt\b', 'important'),
+        (r'\bexpalin\b', 'explain'),
+        (r'\bexplian\b', 'explain'),
+        (r'\bdiffrence\b', 'difference'),
+        (r'\bconcpet\b', 'concept'),
+        (r'\bconcpt\b', 'concept'),
+        (r'\bsummery\b', 'summary'),
+        (r'\btake\s+aways?\b', 'takeaway'),
+        (r'\blecutre\b', 'lecture'),
+    ]
+    for pattern, replacement in typo_replacements:
+        q = re.sub(pattern, replacement, q, flags=re.IGNORECASE)
+
+    q = q.lower()
     q = re.sub(r'[\'\"`’“”]', '', q)
     q = re.sub(r'[,;:!?]+', ' ', q)
     q = re.sub(r'\s+', ' ', q).strip()
@@ -717,13 +773,13 @@ TOPIC_KEYWORDS = {
 }
 
 def detect_topic_from_text(text: str) -> Optional[str]:
-    """Detect domain subject topic from text using keyword density."""
+    """Detect domain subject topic from text using keyword density with word boundaries."""
     if not text:
         return None
     text_lower = text.lower()
     scores = {}
     for topic_name, kws in TOPIC_KEYWORDS.items():
-        score = sum(1 for kw in kws if kw in text_lower)
+        score = sum(1 for kw in kws if re.search(r'\b' + re.escape(kw) + r'\b', text_lower))
         if score > 0:
             scores[topic_name] = score
     if not scores:
@@ -780,7 +836,7 @@ def decompose_query(query: str, default_topic: Optional[str] = None) -> List[Dic
     q_lower = q.lower()
     detected_topics = []
     for topic_name, kws in TOPIC_KEYWORDS.items():
-        if any(kw in q_lower for kw in kws):
+        if any(re.search(r'\b' + re.escape(kw) + r'\b', q_lower) for kw in kws):
             detected_topics.append(topic_name)
     if len(detected_topics) >= 2:
         return [{"sub_query": f"{q} {dt}", "topic": dt, "concept": dt, "is_comparative": True} for dt in detected_topics]
@@ -810,6 +866,7 @@ def search_relevant_chunks(
     """
     collection = get_collection()
     norm_query = normalize_query(query)
+    query_ts = extract_query_timestamp_seconds(query)
     
     stop_words = {
         'a', 'an', 'the', 'is', 'are', 'was', 'were', 'in', 'on', 'at', 'of', 'for', 'to',
@@ -862,8 +919,23 @@ def search_relevant_chunks(
         elif sq_topic:
             where_conditions.append({"topic": {"$eq": str(sq_topic)}})
 
+        # Multi-query augmentation: query Chroma with raw, subject-anchored, and overview variants
+        is_overview_match = any(k in (sq_norm or norm_query).lower() for k in OVERVIEW_INDICATORS)
+        target_subject = sq_topic or topic
+        has_topic_match = False
+        if target_subject:
+            domain_kws = TOPIC_KEYWORDS.get(target_subject, []) or TOPIC_KEYWORDS.get("Operating Systems", [])
+            has_topic_match = any(kw in (sq_norm or "").lower() for kw in domain_kws)
+
+        q_variants = [sq_norm or sq_text]
+        if (is_overview_match or has_topic_match or query_ts is not None) and target_subject:
+            if target_subject.lower() not in (sq_norm or "").lower():
+                q_variants.append(f"{target_subject} {sq_norm or sq_text}")
+            if is_overview_match:
+                q_variants.append(f"{target_subject} {sq_norm or sq_text} key concepts main topics overview summary".strip())
+
         query_params = {
-            "query_texts": [sq_norm or sq_text],
+            "query_texts": q_variants,
             "n_results": candidate_k
         }
         if len(where_conditions) == 1:
@@ -892,7 +964,7 @@ def search_relevant_chunks(
                             multi_ors.append({"document_id": {"$eq": str(sid)}})
                         fallback_where.append({"$or": multi_ors})
                 query_fallback = {
-                    "query_texts": [sq_norm or sq_text],
+                    "query_texts": q_variants,
                     "n_results": candidate_k
                 }
                 if len(fallback_where) == 1:
@@ -908,115 +980,170 @@ def search_relevant_chunks(
                 results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
             else:
                 try:
-                    results = collection.query(query_texts=[sq_norm or sq_text], n_results=candidate_k)
+                    results = collection.query(query_texts=q_variants, n_results=candidate_k)
                 except Exception:
                     results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
 
         if results and results.get("ids") and len(results["ids"]) > 0:
-            ids = results["ids"][0]
-            docs = results["documents"][0] if results.get("documents") else []
-            metas = results["metadatas"][0] if results.get("metadatas") else []
-            distances = results["distances"][0] if results.get("distances") else []
-            total_raw_candidates += len(ids)
+            for q_res_idx in range(len(results["ids"])):
+                ids = results["ids"][q_res_idx]
+                docs = results["documents"][q_res_idx] if results.get("documents") else []
+                metas = results["metadatas"][q_res_idx] if results.get("metadatas") else []
+                distances = results["distances"][q_res_idx] if results.get("distances") else []
+                total_raw_candidates += len(ids)
 
-            for idx, chunk_id in enumerate(ids):
-                meta = metas[idx] if idx < len(metas) else {}
-                dist = distances[idx] if idx < len(distances) else 0.5
-                text_content = docs[idx] if idx < len(docs) else ""
+                for idx, chunk_id in enumerate(ids):
+                    meta = metas[idx] if idx < len(metas) else {}
+                    dist = distances[idx] if idx < len(distances) else 0.5
+                    text_content = docs[idx] if idx < len(docs) else ""
 
-                vector_score = max(0.0, min(1.0, 1.0 - dist))
-                combined_searchable = f"{text_content} {meta.get('topic', '')} {meta.get('subtopic', '')}"
-                lexical_score = compute_lexical_overlap(sq_tokens or q_tokens, combined_searchable)
+                    vector_score = max(0.0, min(1.0, 1.0 - dist))
+                    combined_searchable = f"{text_content} {meta.get('topic', '')} {meta.get('subtopic', '')}"
+                    lexical_score = compute_lexical_overlap(sq_tokens or q_tokens, combined_searchable)
 
-                # Topic / Subtopic match boost
-                topic_boost = 0.0
-                chunk_topic = (meta.get("topic") or "").lower()
-                chunk_subtopic = (meta.get("subtopic") or "").lower()
-                target_topic = (sq_topic or topic or "").lower()
-                target_tokens = [w for w in re.findall(r'\b[a-zA-Z0-9_-]{3,}\b', target_topic) if w not in stop_words]
+                    # Topic / Subtopic match boost: evaluate if student query relates to chunk topic, domain, or subtopic
+                    topic_boost = 0.0
+                    chunk_topic = (meta.get("topic") or "").lower()
+                    chunk_subtopic = (meta.get("subtopic") or "").lower()
+                    is_overview_query = any(k in (sq_norm or norm_query).lower() for k in OVERVIEW_INDICATORS)
 
-                if target_topic and (target_topic in chunk_topic or chunk_topic in target_topic):
-                    topic_boost = 1.0
-                elif any(ttok in chunk_topic or ttok.rstrip('ing') in chunk_topic for ttok in target_tokens):
-                    topic_boost = 0.9
-                elif subtopic and (subtopic.lower() in chunk_subtopic or chunk_subtopic in subtopic.lower()):
-                    topic_boost = 0.8
-                elif any(tok in chunk_topic or tok in chunk_subtopic for tok in (sq_tokens or q_tokens)):
-                    topic_boost = 0.6
+                    if is_overview_query:
+                        topic_boost = 0.8
+                    else:
+                        chunk_topic_words = [w for w in re.findall(r'\b[a-zA-Z0-9_-]{3,}\b', chunk_topic) if w not in stop_words]
+                        chunk_subtopic_words = [w for w in re.findall(r'\b[a-zA-Z0-9_-]{3,}\b', chunk_subtopic) if w not in stop_words]
+                        domain_kws = TOPIC_KEYWORDS.get(meta.get("topic", ""), []) or TOPIC_KEYWORDS.get(topic or "", [])
 
-                is_diag = bool(meta.get("is_diagram", False))
-                diag_cap = meta.get("diagram_caption", "")
+                        if any(w in (sq_norm or "") for w in chunk_topic_words):
+                            topic_boost = 1.0
+                        elif any(kw in (sq_norm or "") for kw in domain_kws):
+                            topic_boost = 0.9
+                        elif any(w in (sq_norm or "") for w in chunk_subtopic_words):
+                            topic_boost = 0.8
+                        elif any(tok in chunk_topic or tok in chunk_subtopic for tok in (sq_tokens or q_tokens)):
+                            topic_boost = 0.6
 
-                # Multimodal diagram boost: if query asks for visual diagrams/figures/flowcharts
-                is_diag_query = any(k in (sq_norm or "").lower() for k in ["diagram", "figure", "fig", "chart", "graph", "flowchart", "architecture", "schematic", "visual", "illustration"])
-                diag_boost = 0.15 if (is_diag_query and is_diag) else 0.0
+                    is_diag = bool(meta.get("is_diagram", False))
+                    diag_cap = meta.get("diagram_caption", "")
 
-                # Source-specific targeted query boost (e.g. dedicated video tutor viewing a single source)
-                source_boost = 0.20 if (source_id and str(meta.get("source_id")) == str(source_id)) else 0.0
+                    # Multimodal diagram boost: if query asks for visual diagrams/figures/flowcharts
+                    is_diag_query = any(k in (sq_norm or "").lower() for k in ["diagram", "figure", "fig", "chart", "graph", "flowchart", "architecture", "schematic", "visual", "illustration"])
+                    diag_boost = 0.15 if (is_diag_query and is_diag) else 0.0
 
-                # Source overview / summary query boost for conceptual questions
-                is_overview_query = any(k in (sq_norm or norm_query).lower() for k in ["key concept", "key concepts", "overview", "summary", "summarize", "main point", "main points", "what is this video", "what is this lecture", "about this video", "about this lecture", "explained in this video", "explained in this lecture", "covered in this"])
-                overview_boost = 0.15 if (is_overview_query and source_id and str(meta.get("source_id")) == str(source_id)) else 0.0
+                    # Timestamp match boost: if user asks about a specific moment or interval in video
+                    time_boost = 0.0
+                    t_start = meta.get("timestamp_start")
+                    t_end = meta.get("timestamp_end")
+                    if query_ts is not None and t_start is not None and t_start != -1.0:
+                        ts_val = float(t_start)
+                        te_val = float(t_end) if t_end is not None and t_end != -1.0 else ts_val + 90.0
+                        if ts_val <= query_ts <= te_val:
+                            time_boost = 0.35
+                        elif abs(query_ts - ts_val) <= 60 or abs(query_ts - te_val) <= 60:
+                            time_boost = 0.20
 
-                composite_score = round(
-                    min(1.0, 0.45 * vector_score + 0.30 * lexical_score + 0.15 * topic_boost + diag_boost + source_boost + overview_boost),
-                    4
-                )
+                    # Source overview / summary query boost for conceptual questions
+                    is_overview_query = any(k in (sq_norm or norm_query).lower() for k in OVERVIEW_INDICATORS)
 
-                location = {
-                    "source_type": meta.get("source_type", "UNKNOWN"),
-                    "page_number": meta.get("page_number") if meta.get("page_number", -1) != -1 else None,
-                    "slide_number": meta.get("slide_number") if meta.get("slide_number", -1) != -1 else None,
-                    "timestamp_start": meta.get("timestamp_start") if meta.get("timestamp_start", -1.0) != -1.0 else None,
-                    "timestamp_end": meta.get("timestamp_end") if meta.get("timestamp_end", -1.0) != -1.0 else None,
-                }
+                    # Determine if query has any relevance to this chunk / topic / lecture
+                    has_relevance = (
+                        vector_score > 0.06
+                        or lexical_score > 0.0
+                        or topic_boost > 0.0
+                        or is_overview_query
+                        or time_boost > 0.0
+                        or (is_diag_query and is_diag)
+                    )
 
-                if chunk_id in candidates_by_id:
-                    # Cross-source synergy: boost chunk score if it satisfies multiple sub-queries with sufficient relevance
-                    prev = candidates_by_id[chunk_id]
-                    if composite_score >= similarity_threshold:
-                        prev["matched_sub_queries"].add(sq_idx)
-                        prev["score"] = min(1.0, round(max(prev["score"], composite_score) + 0.05, 4))
-                else:
-                    matched_sqs = {sq_idx} if composite_score >= similarity_threshold else set()
-                    candidates_by_id[chunk_id] = {
-                        "chunk_id": chunk_id,
-                        "score": composite_score,
-                        "vector_score": round(vector_score, 4),
-                        "lexical_score": round(lexical_score, 4),
-                        "topic_boost": round(topic_boost, 4),
-                        "is_diagram": is_diag,
-                        "diagram_caption": diag_cap,
-                        "text": text_content,
-                        "snippet": text_content[:240],
-                        "topic": meta.get("topic"),
-                        "subtopic": meta.get("subtopic"),
-                        "source_id": meta.get("source_id"),
-                        "document_id": meta.get("document_id"),
-                        "user_id": meta.get("user_id"),
-                        "source_type": location["source_type"],
-                        "page_number": location["page_number"],
-                        "slide_number": location["slide_number"],
-                        "timestamp_start": location["timestamp_start"],
-                        "timestamp_end": location["timestamp_end"],
-                        "location": location,
-                        "matched_sub_queries": matched_sqs
+                    # Source-specific targeted query boost (only if the query has positive domain/semantic relevance)
+                    is_matching_source = bool(source_id and (str(meta.get("source_id")) == str(source_id) or str(meta.get("document_id")) == str(source_id)))
+                    source_boost = 0.20 if (is_matching_source and has_relevance) else 0.0
+
+                    overview_boost = (
+                        0.20 if (is_overview_query and is_matching_source)
+                        else 0.12 if is_overview_query
+                        else 0.0
+                    )
+
+                    composite_score = round(
+                        min(1.0, 0.40 * vector_score + 0.25 * lexical_score + 0.15 * topic_boost + diag_boost + source_boost + time_boost + overview_boost),
+                        4
+                    )
+
+                    location = {
+                        "source_type": meta.get("source_type", "UNKNOWN"),
+                        "page_number": meta.get("page_number") if meta.get("page_number", -1) != -1 else None,
+                        "slide_number": meta.get("slide_number") if meta.get("slide_number", -1) != -1 else None,
+                        "timestamp_start": meta.get("timestamp_start") if meta.get("timestamp_start", -1.0) != -1.0 else None,
+                        "timestamp_end": meta.get("timestamp_end") if meta.get("timestamp_end", -1.0) != -1.0 else None,
                     }
 
-    # 3. Evidence Coverage Scoring
+                    if chunk_id in candidates_by_id:
+                        # Cross-source synergy: boost chunk score if it satisfies multiple sub-queries with sufficient relevance
+                        prev = candidates_by_id[chunk_id]
+                        if composite_score >= similarity_threshold:
+                            prev["matched_sub_queries"].add(sq_idx)
+                            prev["score"] = min(1.0, round(max(prev["score"], composite_score) + 0.05, 4))
+                    else:
+                        matched_sqs = {sq_idx} if composite_score >= similarity_threshold else set()
+                        candidates_by_id[chunk_id] = {
+                            "chunk_id": chunk_id,
+                            "score": composite_score,
+                            "vector_score": round(vector_score, 4),
+                            "lexical_score": round(lexical_score, 4),
+                            "topic_boost": round(topic_boost, 4),
+                            "is_diagram": is_diag,
+                            "diagram_caption": diag_cap,
+                            "text": text_content,
+                            "snippet": text_content[:240],
+                            "topic": meta.get("topic"),
+                            "subtopic": meta.get("subtopic"),
+                            "source_id": meta.get("source_id"),
+                            "document_id": meta.get("document_id"),
+                            "user_id": meta.get("user_id"),
+                            "source_type": location["source_type"],
+                            "page_number": location["page_number"],
+                            "slide_number": location["slide_number"],
+                            "timestamp_start": location["timestamp_start"],
+                            "timestamp_end": location["timestamp_end"],
+                            "location": location,
+                            "matched_sub_queries": matched_sqs
+                        }
+
+    # 3. Evidence Coverage Scoring with Adaptive Source Thresholding
+    is_focused_source = bool(source_id and str(source_id).strip().lower() not in ["all", "*", "none"])
+    if similarity_threshold >= 0.50:
+        effective_threshold = 0.20 if is_focused_source else 0.28
+    else:
+        effective_threshold = similarity_threshold
+
     valid_candidates = []
     covered_sub_query_indices = set()
 
     for chunk_id, candidate in candidates_by_id.items():
-        if candidate["score"] >= similarity_threshold:
+        if candidate["score"] >= effective_threshold:
             valid_candidates.append(candidate)
             covered_sub_query_indices.update(candidate["matched_sub_queries"])
         else:
             discarded_chunks.append({
                 "chunk_id": chunk_id,
                 "score": candidate["score"],
-                "reason": f"Below similarity threshold ({candidate['score']} < {similarity_threshold})"
+                "reason": f"Below similarity threshold ({candidate['score']} < {effective_threshold})"
             })
+
+    # Dedicated source fallback: if user is querying a specific video/document and strict threshold yielded no results,
+    # include the best candidate chunks from this source if they show positive domain alignment (score >= 0.16)
+    if is_focused_source and not valid_candidates and candidates_by_id:
+        source_candidates = [
+            c for c in candidates_by_id.values()
+            if (str(c.get("source_id")) == str(source_id) or str(c.get("document_id")) == str(source_id))
+            and c.get("score", 0.0) >= 0.16
+        ]
+        if source_candidates:
+            source_candidates.sort(key=lambda x: x["score"], reverse=True)
+            for sc in source_candidates[:top_k]:
+                valid_candidates.append(sc)
+                covered_sub_query_indices.update(sc.get("matched_sub_queries", set()) or {0})
 
     total_sub_queries = len(sub_queries)
     coverage_score = round(len(covered_sub_query_indices) / max(1, total_sub_queries), 3) if valid_candidates else 0.0
@@ -1162,7 +1289,7 @@ def grounded_chat(
     user_id: Optional[str] = None,
     conversation_history: Optional[List[Dict[str, str]]] = None,
     topic: Optional[str] = None,
-    min_confidence: float = 0.55,
+    min_confidence: Optional[float] = None,
     top_k: int = 5,
     learner_state: Optional[Dict[str, Any]] = None,
     language: Optional[str] = "english",
@@ -1177,6 +1304,12 @@ def grounded_chat(
     5. Rigorous citation verification ensuring every factual statement maps directly to retrieved evidence.
     6. Native multilingual support: English, Hinglish (Indian college colloquial), and Hindi.
     """
+    is_focused_source = bool(source_id and str(source_id).strip().lower() not in ["all", "*", "none"])
+    if min_confidence is None or min_confidence >= 0.50:
+        conf_threshold = 0.20 if is_focused_source else 0.28
+    else:
+        conf_threshold = min_confidence
+
     # 1. Search relevant chunks for user
     search_data = search_relevant_chunks(
         query=query,
@@ -1184,7 +1317,7 @@ def grounded_chat(
         source_id=source_id,
         topic=topic,
         top_k=top_k,
-        similarity_threshold=min_confidence
+        similarity_threshold=conf_threshold
     )
     results = search_data.get("results", [])
     coverage_score = search_data.get("evidence_coverage_score", 1.0 if results else 0.0)
@@ -1192,7 +1325,14 @@ def grounded_chat(
     sub_queries = search_data.get("sub_queries", [query])
 
     # Filter by minimum confidence
-    relevant_chunks = [r for r in results if r.get("score", 0.0) >= min_confidence]
+    relevant_chunks = [r for r in results if r.get("score", 0.0) >= conf_threshold]
+
+    # Source-focused fallback: if student is in a specific video tutor session
+    if is_focused_source and not relevant_chunks and results:
+        relevant_chunks = [r for r in results if r.get("score", 0.0) >= 0.16]
+        if relevant_chunks:
+            coverage_score = 1.0
+            is_partial = False
 
     # 2. Check for insufficient evidence
     if not relevant_chunks or coverage_score == 0.0:
@@ -2513,6 +2653,8 @@ def main():
     chat_p.add_argument("--history", default=None)
     chat_p.add_argument("--learner-state", default=None)
     chat_p.add_argument("--language", default="english")
+    chat_p.add_argument("--similarity-threshold", type=float, default=None)
+    chat_p.add_argument("--min-confidence", type=float, default=None)
 
     # Assessment generate command
     assess_p = subparsers.add_parser("assessment-generate")
@@ -2576,11 +2718,13 @@ def main():
                 learner_st = json.loads(args.learner_state)
             except Exception:
                 learner_st = None
+        conf = getattr(args, "min_confidence", None) or getattr(args, "similarity_threshold", None)
         res = grounded_chat(
             query=args.query,
             user_id=args.user_id,
             conversation_history=history,
             topic=args.topic,
+            min_confidence=conf,
             learner_state=learner_st,
             language=getattr(args, "language", "english") or "english",
             source_id=args.source_id

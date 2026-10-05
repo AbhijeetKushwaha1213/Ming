@@ -76,9 +76,21 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				brand: {
+					primary: '#063B2A',
+					accent: '#20B486',
+					'accent-hover': '#1aa378',
+					mint: '#DDF7EC',
+					bg: '#F7FAF7',
+					text: '#10231C',
+					muted: '#66736D',
+					border: '#DDE7E1',
 				}
 			},
 			borderRadius: {
+				'2xl': '20px',
+				'3xl': '24px',
 				xl: 'calc(var(--radius) + 4px)',
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',

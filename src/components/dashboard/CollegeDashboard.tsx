@@ -61,7 +61,6 @@ import { useUserStats } from '@/hooks/useUserStats';
 import { useLearnerMastery } from '@/hooks/useLearnerMastery';
 import { FloatingStudyAgentBar } from './FloatingStudyAgentBar';
 import { DashboardCoverWidget } from './DashboardCoverWidget';
-import { CoursePrerequisiteGraph } from '../planner/CoursePrerequisiteGraph';
 import { SkillBKTQuickAssessmentModal } from './SkillBKTQuickAssessmentModal';
 import { navigateToTab } from '@/utils/navigation';
 
@@ -311,9 +310,6 @@ export const CollegeDashboard = () => {
           <ArrowRight className="w-3.5 h-3.5" />
         </Button>
       </div>
-
-      {/* Track D: Visual Course Flow Map & Prerequisite DAG */}
-      <CoursePrerequisiteGraph onSelectTopic={(topic) => navigateToTab('chat')} />
 
       {/* 1. Learning Progress Block (Integrated with Bayesian Knowledge Tracing BKT) */}
       <Card className="p-6">

@@ -501,6 +501,7 @@ export async function askVideoQuestion(
     '--topic', video.title,
     '--history', JSON.stringify(history),
     '--language', language,
+    '--min-confidence', '0.20',
   ];
 
   const response = await runPythonCli(args);

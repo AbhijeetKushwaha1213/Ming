@@ -16,11 +16,11 @@ import {
 } from 'lucide-react';
 
 const TAGLINES = [
-  'smarter learning path.',
-  'personalized study plan.',
-  'prerequisite knowledge map.',
-  'mastery-focused roadmap.',
-  'daily action timetable.'
+  'smarter study path.',
+  'custom learning plan.',
+  'clear knowledge map.',
+  'mastery study roadmap.',
+  'daily action plan.'
 ];
 
 export const Hero = () => {
@@ -82,12 +82,12 @@ export const Hero = () => {
               <span>AI-Powered Personal Learning</span>
             </div>
 
-            {/* Main Headline with Fixed First Line and Dynamic Rotating Second Line */}
-            <h1 className="text-4xl sm:text-5xl lg:text-[64px] font-extrabold text-[#10231C] tracking-[-2px] lg:tracking-[-3px] leading-[1.08]">
-              <span className="block">Turn your syllabus into a</span>
-              <span className="text-[#20B486] inline-flex items-center min-h-[1.12em]">
+            {/* Main Headline with Fixed First Line and Zero-Shift Dynamic Rotating Second Line */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] xl:text-[60px] font-extrabold text-[#10231C] tracking-[-1.5px] lg:tracking-[-2.5px] leading-[1.12] min-h-[2.35em] sm:min-h-[2.3em] flex flex-col justify-start">
+              <span className="block truncate sm:overflow-visible">Turn your syllabus into a</span>
+              <span className="text-[#20B486] inline-flex items-center whitespace-nowrap min-h-[1.15em] shrink-0">
                 <span>{TAGLINES[taglineIndex].substring(0, subIndex)}</span>
-                <span className="inline-block w-[3.5px] h-[0.8em] bg-[#20B486] ml-1.5 animate-pulse rounded-full" />
+                <span className="inline-block w-[3.5px] h-[0.8em] bg-[#20B486] ml-1.5 animate-pulse rounded-full shrink-0" />
               </span>
             </h1>
 

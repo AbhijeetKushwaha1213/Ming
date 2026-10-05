@@ -67,6 +67,17 @@ import { navigateToTab } from '@/utils/navigation';
 export const CollegeDashboard = () => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'project-focus'>('dashboard');
   const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [dashboardViewMode, setDashboardViewMode] = useState<'learning' | 'projects'>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('studymate_dashboard_view') : null;
+    return (saved === 'projects' || saved === 'learning') ? saved : 'learning';
+  });
+
+  const handleViewModeChange = (mode: 'learning' | 'projects') => {
+    setDashboardViewMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('studymate_dashboard_view', mode);
+    }
+  };
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -282,36 +293,64 @@ export const CollegeDashboard = () => {
       />
 
 
-      {/* Daily Study Plan Quick Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gradient-to-r from-primary/10 via-accent/30 to-background border border-primary/20 rounded-2xl shadow-xs gap-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              AI Study Agent & Daily Plan
-              <Badge variant="secondary" className="text-[10px] py-0 px-1.5 bg-primary/10 text-primary border-0">
-                Personalized
-              </Badge>
-            </h4>
-            <p className="text-xs text-muted-foreground">
-              Daily study tasks and diagnostic priorities available in your side panel
-            </p>
-          </div>
+      {/* Top-Right Toggle: Learning & Skills vs. Projects */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 -mt-2">
+        <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+          {dashboardViewMode === 'learning' ? (
+            <>
+              <BookOpen className="w-4 h-4 text-primary" />
+              <span>Learning & Skill Mastery</span>
+            </>
+          ) : (
+            <>
+              <Briefcase className="w-4 h-4 text-primary" />
+              <span>Project Tracker</span>
+            </>
+          )}
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => window.dispatchEvent(new CustomEvent('open-daily-plan'))}
-          className="h-8 text-xs gap-1.5 border-primary/30 hover:bg-primary/10 text-primary shrink-0 self-start sm:self-center"
-        >
-          <span>Open Daily Plan on Side</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Button>
+
+        {/* Toggle Control at Top Right */}
+        <div className="inline-flex items-center self-end p-1 bg-muted/60 dark:bg-muted/40 border border-border rounded-xl shadow-xs backdrop-blur-xs">
+          <button
+            type="button"
+            onClick={() => handleViewModeChange('learning')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              dashboardViewMode === 'learning'
+                ? 'bg-background text-foreground shadow-xs font-bold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-primary" />
+            <span>Learning</span>
+            {skills.length > 0 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-0 font-medium">
+                {skills.length}
+              </Badge>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleViewModeChange('projects')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+              dashboardViewMode === 'projects'
+                ? 'bg-background text-foreground shadow-xs font-bold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+            }`}
+          >
+            <Briefcase className="w-3.5 h-3.5 text-primary" />
+            <span>Projects</span>
+            {activeProjects.length > 0 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-0 font-medium">
+                {activeProjects.length}
+              </Badge>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* 1. Learning Progress Block (Integrated with Bayesian Knowledge Tracing BKT) */}
+      {dashboardViewMode === 'learning' && (
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="space-y-1">
@@ -841,8 +880,10 @@ export const CollegeDashboard = () => {
           })()
         )}
       </Card>
+      )}
 
       {/* 2. Active Projects Block (with Past Projects History and 3-Dot Row Menu) */}
+      {dashboardViewMode === 'projects' && (
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
@@ -1027,7 +1068,7 @@ export const CollegeDashboard = () => {
           </div>
         )}
       </Card>
-
+      )}
 
       {/* Floating Ask the AI Study Agent Dock */}
       <FloatingStudyAgentBar />

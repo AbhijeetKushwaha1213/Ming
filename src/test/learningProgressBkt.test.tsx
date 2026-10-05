@@ -324,4 +324,33 @@ describe('Learning Progress Bayesian Knowledge Tracing (BKT) Integration', () =>
       expect(result.current.getSkillMastery('Operating Systems').status).toBe('mastered');
     });
   });
+
+  // 6. UI: CollegeDashboard Learning vs Projects toggle switches views and removes quick banner
+  it('toggles between Learning and Projects views below wallpaper', async () => {
+    localStorage.clear();
+    render(<CollegeDashboard />);
+
+    // Daily Study Plan banner is removed
+    expect(screen.queryByText(/AI Study Agent & Daily Plan/i)).not.toBeInTheDocument();
+
+    // Default view is Learning
+    expect(screen.getByText('Learning Progress')).toBeInTheDocument();
+    expect(screen.queryByText('Active Projects')).not.toBeInTheDocument();
+
+    // Click Projects toggle
+    const projectsBtn = screen.getByRole('button', { name: /Projects/i });
+    fireEvent.click(projectsBtn);
+
+    // Learning Progress hidden, Active Projects shown
+    expect(screen.queryByText('Learning Progress')).not.toBeInTheDocument();
+    expect(screen.getByText('Active Projects')).toBeInTheDocument();
+
+    // Click Learning toggle
+    const learningBtn = screen.getByRole('button', { name: /Learning/i });
+    fireEvent.click(learningBtn);
+
+    // Learning Progress restored
+    expect(screen.getByText('Learning Progress')).toBeInTheDocument();
+    expect(screen.queryByText('Active Projects')).not.toBeInTheDocument();
+  });
 });

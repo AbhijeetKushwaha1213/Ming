@@ -17,6 +17,7 @@ export interface StudyMaterial {
   difficulty: 'easy' | 'medium' | 'hard';
   tags: string[];
   source?: string;
+  subject?: string;
   created_at: string;
   updated_at: string;
   user_id: string;

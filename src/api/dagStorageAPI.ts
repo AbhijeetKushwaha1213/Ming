@@ -85,6 +85,7 @@ export interface SaveDAGInput {
   id?: string;
   title?: string;
   courseId?: string | null;
+  subject?: string;
   topic: string;
   subtopic?: string | null;
   sourceMaterialIds?: string[];
@@ -180,6 +181,7 @@ export async function saveUserDAG(userId: string, input: SaveDAGInput): Promise<
     userId,
     title,
     courseId: input.courseId || null,
+    subject: input.subject || input.graphData?.subject || undefined,
     topic: input.topic,
     subtopic: input.subtopic || null,
     sourceMaterialIds: input.sourceMaterialIds || (input.graphData?.sourceId ? [input.graphData.sourceId] : []),

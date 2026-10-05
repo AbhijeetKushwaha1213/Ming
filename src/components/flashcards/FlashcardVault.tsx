@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Brain, FileQuestion, GitBranch, GitFork, FileText, Search, Filter, Play, Trash2, Calendar, FolderPlus, ExternalLink, Loader2 } from 'lucide-react';
+import { BookOpen, Brain, FileQuestion, GitBranch, GitFork, FileText, Search, Filter, Play, Trash2, Calendar, FolderPlus, ExternalLink, Loader2, ArrowUpDown } from 'lucide-react';
 import { useFlashcards } from '@/hooks/useFlashcards';
 import { FlashcardViewer } from './FlashcardViewer';
 import { QuizViewer } from './QuizViewer';
@@ -18,6 +18,33 @@ import { useQueryClient } from '@tanstack/react-query';
 import { copyVaultItemToResources } from '@/utils/vaultToResources';
 import { navigateToTab } from '@/utils/navigation';
 import { pageKeys } from '@/hooks/usePages';
+
+export const getItemSubject = (item: any): string => {
+  if (item?.subject && typeof item.subject === 'string' && item.subject.trim()) {
+    return item.subject.trim();
+  }
+  if (item?.content?.subject && typeof item.content.subject === 'string' && item.content.subject.trim()) {
+    return item.content.subject.trim();
+  }
+  const text = ` ${item?.topic || ''} ${item?.title || ''} ${item?.tags?.join(' ') || ''} `.toLowerCase();
+  if (/\b(operating systems?|os|cpu|deadlocks?|processes?|memory management|kernel)\b/i.test(text)) return 'Operating Systems';
+  if (/\b(computer networks?|networking|network|tcp|ip|osi|7 layer|routers?|switches|protocol)\b/i.test(text) && !/\b(javascript|python|coding)\b/i.test(text)) return 'Computer Networks';
+  if (/\b(javascript|js|react|typescript|ts|python|java|c\+\+|coding|syntax|web dev|frontend|backend)\b/i.test(text)) return 'Programming';
+  if (/\b(machine learning|ml|artificial intelligence|ai|deep learning|neural networks?|data science)\b/i.test(text)) return 'Machine Learning & AI';
+  if (/\b(graphic design|ui\/ux|design|figma|typography|color palette)\b/i.test(text)) return 'Graphic Design';
+  if (/\b(dsa|data structures?|algorithms?|binary search|trees?|graphs?)\b/i.test(text)) return 'Data Structures & Algorithms';
+  if (/\b(databases?|dbms|sql|mysql|postgres|normalization|relational)\b/i.test(text)) return 'Database Management';
+  if (/\b(physics|thermodynamics|mechanics|quantum|optics)\b/i.test(text)) return 'Physics';
+  if (/\b(biology|photosynthesis|cells?|dna|genetics)\b/i.test(text)) return 'Biology';
+  if (/\b(math|mathematics|algebra|calculus|probability|statistics)\b/i.test(text)) return 'Mathematics';
+  if (/\b(history|world war|civilization|revolution)\b/i.test(text)) return 'History';
+  if (/\b(business|economics|finance|marketing)\b/i.test(text)) return 'Business & Economics';
+  
+  if (item?.topic && typeof item.topic === 'string' && item.topic.trim()) {
+    return item.topic.trim().charAt(0).toUpperCase() + item.topic.trim().slice(1);
+  }
+  return 'General';
+};
 
 export const FlashcardVault = () => {
   const { toast } = useToast();
@@ -33,6 +60,8 @@ export const FlashcardVault = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterSubject, setFilterSubject] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('newest'); // 'newest' | 'oldest' | 'subject' | 'title'
   const [viewingContent, setViewingContent] = useState<any>(null);
   const [viewerType, setViewerType] = useState<string>('');
   const [copyingId, setCopyingId] = useState<string | null>(null);
@@ -94,11 +123,14 @@ export const FlashcardVault = () => {
       const isItemDAG = item.content?.type === 'dag' || item.type === 'dag' || item.tags?.includes('dag');
       if (isItemDAG) return false;
 
+      const itemSubject = getItemSubject(item);
+
       const searchFields = [
         item.title?.toLowerCase() || '',
         item.topic?.toLowerCase() || '',
         item.question?.toLowerCase() || '',
         item.description?.toLowerCase() || '',
+        itemSubject.toLowerCase(),
         (typeof item.content === 'string' ? item.content.toLowerCase() : ''),
         item.content?.summary?.toLowerCase() || '',
         item.content?.notes?.summary?.toLowerCase() || '',
@@ -113,7 +145,10 @@ export const FlashcardVault = () => {
       
       const matchesType = filterType === 'all' || (type && type === filterType) || item.type === filterType;
       
-      return matchesSearch && matchesDifficulty && matchesType;
+      const matchesSubject = filterSubject === 'all' || 
+        itemSubject.toLowerCase() === filterSubject.toLowerCase();
+
+      return matchesSearch && matchesDifficulty && matchesType && matchesSubject;
     });
   };
 
@@ -139,6 +174,7 @@ export const FlashcardVault = () => {
     const isDAG = item.content?.type === 'dag' || item.type === 'dag' || item.tags?.includes('dag') || !!item.content?.graphData;
     const IconComponent = isDAG ? GitFork : (materialIcons[type as keyof typeof materialIcons] || FileText);
     const displayType = isDAG ? 'DAG / Learning Path' : (type === 'flashcards' ? 'flashcard' : type);
+    const itemSubject = getItemSubject(item);
     const previewText = 
       (isDAG && item.content?.summary) ||
       (isDAG && item.content?.graphData?.nodes?.length ? `${item.content.graphData.nodes.length} Concepts • ${item.content.learningGoal || 'Concept Mastery'}` : '') ||
@@ -151,12 +187,19 @@ export const FlashcardVault = () => {
     
     return (
       <Card key={item.id} className="p-4 card-interactive hover:shadow-md transition-all">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-start justify-between mb-3 gap-2">
+          <div className="flex items-center space-x-2 min-w-0 pr-1">
             <IconComponent className="w-5 h-5 text-primary shrink-0" />
-            <h3 className="font-semibold text-foreground line-clamp-1">{item.title || 'Untitled'}</h3>
+            <h3 className="font-semibold text-foreground line-clamp-1" title={item.title || 'Untitled'}>
+              {item.title || 'Untitled'}
+            </h3>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 flex-wrap justify-end gap-1 shrink-0">
+            {itemSubject && itemSubject !== 'General' && (
+              <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20 font-medium">
+                📘 {itemSubject}
+              </Badge>
+            )}
             <Badge className={`text-xs border ${getDifficultyColor(item.difficulty)}`}>
               {item.difficulty || 'medium'}
             </Badge>
@@ -349,6 +392,23 @@ export const FlashcardVault = () => {
     ...filteredMaterials
   ];
 
+  // Extract all distinct subjects from all items plus standard academic subjects
+  const allItems = [...flashcards, ...studyMaterials];
+  const dynamicSubjects = Array.from(new Set(allItems.map(getItemSubject).filter(Boolean)));
+  const standardSubjects = [
+    'Operating Systems',
+    'Computer Networks',
+    'Programming',
+    'Machine Learning & AI',
+    'Graphic Design',
+    'Mathematics',
+    'Physics',
+    'Biology',
+    'Chemistry',
+    'Business'
+  ];
+  const availableSubjects = Array.from(new Set([...dynamicSubjects, ...standardSubjects])).sort();
+
   const seenKeys = new Set<string>();
   const seenIds = new Set<string>();
 
@@ -377,24 +437,60 @@ export const FlashcardVault = () => {
     return true;
   });
 
+  // Apply Sorting (Newest, Oldest, Subject A-Z, Title A-Z)
+  const sortedContent = [...allFilteredContent].sort((a, b) => {
+    if (sortBy === 'subject') {
+      const subA = getItemSubject(a).toLowerCase();
+      const subB = getItemSubject(b).toLowerCase();
+      if (subA !== subB) return subA.localeCompare(subB);
+      return (a.title || a.question || '').localeCompare(b.title || b.question || '');
+    }
+    if (sortBy === 'title') {
+      return (a.title || a.question || '').localeCompare(b.title || b.question || '');
+    }
+    if (sortBy === 'oldest') {
+      return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+    }
+    // Default: newest
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="font-serif text-2xl font-bold text-foreground">Study Vault</h1>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-          <div className="relative">
+      {/* Header with Search, Subject filter, Level filter, Type filter & Sorting */}
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+        <h1 className="font-serif text-2xl font-bold text-foreground shrink-0">Study Vault</h1>
+        
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full xl:w-auto flex-wrap">
+          {/* Search bar */}
+          <div className="relative flex-1 sm:flex-initial">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
             <Input
               placeholder="Search by title, topic, or content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full sm:w-64"
+              className="pl-10 w-full sm:w-56"
             />
           </div>
+
+          {/* Subject Filter Dropdown */}
+          <Select value={filterSubject} onValueChange={setFilterSubject}>
+            <SelectTrigger className="w-full sm:w-36">
+              <BookOpen className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+              <SelectValue placeholder="All Subjects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Subjects</SelectItem>
+              {availableSubjects.map((sub) => (
+                <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Difficulty Level Filter */}
           <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
-            <SelectTrigger className="w-full sm:w-32">
-              <Filter className="w-4 h-4 mr-2" />
+            <SelectTrigger className="w-full sm:w-28">
+              <Filter className="w-3.5 h-3.5 mr-1.5" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -404,8 +500,10 @@ export const FlashcardVault = () => {
               <SelectItem value="hard">Hard</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Content Type Filter */}
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-full sm:w-32">
+            <SelectTrigger className="w-full sm:w-28">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -417,17 +515,30 @@ export const FlashcardVault = () => {
               <SelectItem value="diagrams">Diagrams</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Sorting Dropdown (Sorting by Subject, Title, Date) */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full sm:w-36">
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="subject">Subject (A-Z)</SelectItem>
+              <SelectItem value="title">Title (A-Z)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-
       {/* Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {allFilteredContent.map(item => renderContentCard(item, item.type))}
+        {sortedContent.map(item => renderContentCard(item, item.type))}
       </div>
 
       {/* Empty State */}
-      {allFilteredContent.length === 0 && !isLoading && (
+      {sortedContent.length === 0 && !isLoading && (
         <div className="text-center py-12">
           <BookOpen className="w-16 h-16 text-muted-foreground/40 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">
@@ -437,8 +548,8 @@ export const FlashcardVault = () => {
           </h3>
           <p className="text-muted-foreground mb-4">
             {flashcards.length === 0 && studyMaterials.length === 0 
-              ? "Switch to the Generate tab to create your first flashcards, quizzes, or notes!" 
-              : "Try adjusting your search terms or filters"}
+              ? "Switch to the AI Materials tab to create your first flashcards, quizzes, or notes!" 
+              : "Try adjusting your search terms, subject filter, or level filters"}
           </p>
         </div>
       )}

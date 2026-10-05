@@ -89,6 +89,9 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
     return localStorage.getItem('studymate-assessment-prefill-topic') || '';
   });
   const [subtopic, setSubtopic] = useState('');
+  const [subject, setSubject] = useState<string>(() => {
+    return localStorage.getItem('studymate_generator_subject') || (user?.branch || user?.examType || 'Computer Science');
+  });
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [count, setCount] = useState<number>(5);
   const [questionType, setQuestionType] = useState<'MCQ' | 'SHORT_ANSWER' | 'NUMERICAL' | 'MIXED'>('MCQ');
@@ -643,6 +646,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
         userId: user?.user_id || user?.id || 'default_user',
         topic: currentTopic,
         subtopic: subtopic.trim() || undefined,
+        subject: subject.trim() || undefined,
         difficulty,
         count,
         questionType,
@@ -933,6 +937,56 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
                 <span>• Choose a specific material or keep 'All Uploaded Course Sources'.</span>
               </p>
             )}
+          </div>
+
+          {/* Subject / Discipline */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-emerald-600" />
+                Subject / Discipline
+              </label>
+              <span className="text-xs text-muted-foreground">Select or type subject</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {[
+                'Operating Systems',
+                'Computer Networks',
+                'Programming',
+                'Machine Learning & AI',
+                'Data Structures & Algorithms',
+                'Database Management',
+                'Mathematics',
+                'Physics',
+                'Chemistry',
+                'Graphic Design'
+              ].map((subj) => (
+                <Badge
+                  key={subj}
+                  variant={subject === subj ? 'default' : 'outline'}
+                  className={`cursor-pointer text-xs py-1 px-2.5 transition-all ${
+                    subject === subj
+                      ? 'bg-emerald-600 text-white hover:bg-emerald-700 font-semibold shadow-xs'
+                      : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                  onClick={() => {
+                    setSubject(subj);
+                    localStorage.setItem('studymate_generator_subject', subj);
+                    if (!topic) setTopic(subj);
+                  }}
+                >
+                  {subj}
+                </Badge>
+              ))}
+            </div>
+            <Input
+              value={subject}
+              onChange={(e) => {
+                setSubject(e.target.value);
+                localStorage.setItem('studymate_generator_subject', e.target.value);
+              }}
+              placeholder="e.g. Operating Systems, Computer Science, Physics..."
+            />
           </div>
 
           {/* Topic */}

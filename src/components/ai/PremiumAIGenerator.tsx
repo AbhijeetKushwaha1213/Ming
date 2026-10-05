@@ -56,6 +56,24 @@ interface MaterialCard {
   examples: string[];
 }
 
+export const PRESET_SUBJECTS = [
+  'Computer Science',
+  'Operating Systems',
+  'Computer Networks',
+  'Programming',
+  'Machine Learning & AI',
+  'Data Structures & Algorithms',
+  'Database Management',
+  'Graphic Design',
+  'Mathematics',
+  'Physics',
+  'Chemistry',
+  'Biology',
+  'Business & Economics',
+  'History',
+  'Other / Custom'
+];
+
 const materialCards: MaterialCard[] = [
   {
     type: 'flashcards',
@@ -131,6 +149,10 @@ export const PremiumAIGenerator = () => {
   const [inputMode, setInputMode] = useState<InputMode>('upload');
   const [content, setContent] = useState('');
   const [topic, setTopic] = useState('');
+  const [subject, setSubject] = useState<string>(() => {
+    return localStorage.getItem('studymate_generator_subject') || (user?.branch || user?.examType || 'Computer Science');
+  });
+  const [customSubject, setCustomSubject] = useState<string>('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | 'adaptive'>('medium');
   const [outputSize, setOutputSize] = useState(5);
   const [customSize, setCustomSize] = useState(10);
@@ -143,6 +165,18 @@ export const PremiumAIGenerator = () => {
     includePreviousYear: false,
     personalized: true
   });
+
+  const getEffectiveSubject = (): string => {
+    if (subject === 'Other / Custom') {
+      return customSubject.trim() || 'General';
+    }
+    return subject || user?.branch || user?.examType || 'General';
+  };
+
+  const handleSubjectChange = (newSubj: string) => {
+    setSubject(newSubj);
+    localStorage.setItem('studymate_generator_subject', newSubj);
+  };
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [generatedResult, setGeneratedResult] = useState<any>(null);
   const [generationStage, setGenerationStage] = useState(0);
@@ -264,14 +298,14 @@ export const PremiumAIGenerator = () => {
         setGeneratedTopic(effectiveTopic);
       }
 
-      const subject = user?.userType === 'college' ? user?.branch : user?.examType;
+      const effectiveSubject = getEffectiveSubject();
       
       const result = await generateContent(
         selectedType,
         inputContent,
         difficulty === 'adaptive' ? 'medium' : difficulty,
         outputSize === 0 ? customSize : outputSize,
-        subject,
+        effectiveSubject,
         groundedOptions
       );
       
@@ -684,6 +718,49 @@ export const PremiumAIGenerator = () => {
         </Tabs>
       )}
 
+      {/* Subject Selection */}
+      <Card className="p-4 sm:p-5 border border-border/80 bg-card/70 backdrop-blur-xs space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-primary" />
+            Subject / Discipline
+          </Label>
+          <span className="text-xs text-muted-foreground">Select a subject to organize and sort in your Study Vault</span>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {PRESET_SUBJECTS.map((s) => {
+            const isSelected = subject === s;
+            return (
+              <Badge
+                key={s}
+                variant={isSelected ? 'default' : 'outline'}
+                onClick={() => handleSubjectChange(s)}
+                className={`cursor-pointer text-xs py-1 px-2.5 transition-all select-none ${
+                  isSelected
+                    ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
+                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {s}
+              </Badge>
+            );
+          })}
+        </div>
+
+        {subject === 'Other / Custom' && (
+          <div className="pt-1">
+            <Input
+              value={customSubject}
+              onChange={(e) => setCustomSubject(e.target.value)}
+              placeholder="e.g. Environmental Science, Cognitive Neuroscience, Architecture..."
+              className="text-xs h-9"
+              autoFocus
+            />
+          </div>
+        )}
+      </Card>
+
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={() => setStep('choose')}>
           Back
@@ -751,6 +828,47 @@ export const PremiumAIGenerator = () => {
               Change
             </Button>
           </div>
+
+          {/* Subject Selection in Settings */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-primary" />
+                Subject / Field of Study
+              </Label>
+              <Badge variant="secondary" className="text-xs font-normal">
+                {getEffectiveSubject()}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_SUBJECTS.map((s) => {
+                const isSelected = subject === s;
+                return (
+                  <Badge
+                    key={s}
+                    variant={isSelected ? 'default' : 'outline'}
+                    onClick={() => handleSubjectChange(s)}
+                    className={`cursor-pointer text-xs py-1 px-2.5 transition-all select-none ${
+                      isSelected
+                        ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
+                        : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {s}
+                  </Badge>
+                );
+              })}
+            </div>
+            {subject === 'Other / Custom' && (
+              <Input
+                value={customSubject}
+                onChange={(e) => setCustomSubject(e.target.value)}
+                placeholder="Enter custom subject name..."
+                className="text-xs h-9 mt-1"
+              />
+            )}
+          </div>
+
         {/* Difficulty */}
         <div>
           <Label className="text-base font-semibold mb-3 block">Difficulty Level</Label>
@@ -1219,6 +1337,7 @@ export const PremiumAIGenerator = () => {
       const title = generatedTopic || topic || `${selectedType ? selectedType.charAt(0).toUpperCase() + selectedType.slice(1) : 'Study'} Notes`;
       const markdown = getFormattedMarkdown();
       const currentDifficulty: 'easy' | 'medium' | 'hard' = difficulty === 'adaptive' ? 'medium' : difficulty;
+      const effectiveSubject = getEffectiveSubject();
 
       // 1. If flashcards, save individual flashcards so they appear under Flashcards in Study Vault
       if (selectedType === 'flashcards') {
@@ -1230,8 +1349,9 @@ export const PremiumAIGenerator = () => {
               title: card.question || title,
               question: card.question || 'Concept',
               answer: card.answer || card.content || '',
-              tags: [topic || 'flashcards', 'AI-Generated'],
+              tags: [topic || 'flashcards', effectiveSubject, 'AI-Generated'],
               difficulty: currentDifficulty,
+              subject: effectiveSubject,
             });
           });
         }
@@ -1282,7 +1402,8 @@ export const PremiumAIGenerator = () => {
         content: materialContent,
         topic: topic || 'General',
         difficulty: currentDifficulty,
-        tags: [selectedType || 'notes', 'AI-Generated'],
+        tags: [selectedType || 'notes', effectiveSubject, 'AI-Generated'],
+        subject: effectiveSubject,
         source: 'AI Generator'
       });
 
@@ -1352,10 +1473,13 @@ export const PremiumAIGenerator = () => {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                     <h3 className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors truncate">
                       {item.title}
                     </h3>
+                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 shrink-0 bg-primary/10 text-primary border-primary/20">
+                      📘 {getEffectiveSubject()}
+                    </Badge>
                     {item.badge && (
                       <Badge variant="secondary" className="text-[10px] px-2 py-0.5 shrink-0">
                         {item.badge}

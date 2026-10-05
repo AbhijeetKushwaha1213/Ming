@@ -16,6 +16,7 @@ export interface Flashcard {
   review_count: number;
   last_reviewed: string | null;
   next_review: string;
+  subject?: string;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +31,7 @@ export interface StudyMaterial {
   difficulty: 'easy' | 'medium' | 'hard';
   tags: string[];
   source: string;
+  subject?: string;
   created_at: string;
   updated_at: string;
 }

@@ -33,6 +33,7 @@ export interface DAGGraphData {
   title: string;
   topic: string;
   subtopic?: string;
+  subject?: string;
   learningGoal: 'Exam Preparation' | 'Concept Mastery' | 'Revision' | 'Complete Course Learning';
   depth: 'Basic' | 'Standard' | 'Detailed';
   sourceId?: string;
@@ -66,6 +67,7 @@ export interface PersistedDAGRecord {
   userId: string;
   title: string;
   courseId?: string | null;
+  subject?: string;
   topic: string;
   subtopic?: string | null;
   sourceMaterialIds: string[];

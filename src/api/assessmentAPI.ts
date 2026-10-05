@@ -114,6 +114,7 @@ export async function generateAssessment(params: {
   userId: string;
   topic: string;
   subtopic?: string;
+  subject?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
   count?: number;
   questionType?: 'MCQ' | 'SHORT_ANSWER' | 'NUMERICAL' | 'MIXED';

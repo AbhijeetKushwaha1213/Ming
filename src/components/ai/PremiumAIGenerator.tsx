@@ -174,12 +174,6 @@ export const PremiumAIGenerator = () => {
     };
   }, []);
 
-  const stats = {
-    generated: 120,
-    sessions: 35,
-    efficiency: 92,
-    model: 'Gemini AI'
-  };
 
   const generationStages = [
     { icon: BookOpen, text: 'Reading Notes...' },
@@ -301,41 +295,6 @@ export const PremiumAIGenerator = () => {
   };
 
   // RENDER METHODS
-  const renderHeroSection = () => (
-    <div className="relative overflow-hidden bg-gradient-to-r from-[#002313] via-[#165034] to-[#1b6b44] rounded-2xl p-8 mb-8 border border-border/30 shadow-sm">
-      <div className="absolute inset-0 bg-grid-white/5 pointer-events-none"></div>
-      <div className="relative">
-        <div className="flex items-center justify-center mb-4">
-          <Sparkles className="w-10 h-10 text-emerald-300 animate-pulse" />
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-white text-center mb-3">
-          AI Study Material Generator
-        </h1>
-        <p className="text-base sm:text-lg text-white/80 text-center mb-6 max-w-xl mx-auto">
-          Transform your notes into structured academic learning resources in seconds
-        </p>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
-            <div className="text-2xl font-bold text-white">{stats.generated}</div>
-            <div className="text-xs text-white/80">Generated</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
-            <div className="text-2xl font-bold text-white">{stats.sessions}</div>
-            <div className="text-xs text-white/80">Sessions</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
-            <div className="text-2xl font-bold text-white">{stats.efficiency}%</div>
-            <div className="text-xs text-white/80">Efficiency</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center border border-white/10">
-            <div className="text-xs font-bold text-white truncate">{stats.model}</div>
-            <div className="text-xs text-white/80">AI Engine</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderChooseStep = () => (
     <div className="space-y-6">
@@ -1562,7 +1521,6 @@ export const PremiumAIGenerator = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/20 p-6">
       <div className="max-w-7xl mx-auto">
-        {renderHeroSection()}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">

@@ -585,102 +585,6 @@ export const DAGPipeline: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl border border-border bg-gradient-to-r from-card via-card to-primary/5 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
-              <GitFork className="w-5 h-5 text-indigo-500" />
-            </div>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              AI Learning Path & DAG Generator
-              <Badge
-                variant="outline"
-                className="text-xs py-0 px-2 border-indigo-500/30 text-indigo-600 bg-indigo-500/10 font-semibold"
-              >
-                Adaptive DAG
-              </Badge>
-            </h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Generate a prerequisite-aware concept graph from your course materials and discover the optimal learning sequence.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {activeTabArea === 'generate' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackToSaved}
-              className="text-xs h-9 gap-1.5 border-border hover:bg-muted font-medium"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Saved DAGs</span>
-            </Button>
-          )}
-
-          <Button
-            aria-label="New Learning DAG"
-            onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
-            disabled={isGenerating}
-            size="sm"
-            className="text-xs h-9 px-4 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs font-semibold"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isCreateDropdownOpen ? 'Close Setup' : 'Create New DAG'}</span>
-            {isCreateDropdownOpen ? <ChevronUp className="w-3.5 h-3.5 ml-0.5" /> : <ChevronDown className="w-3.5 h-3.5 ml-0.5" />}
-          </Button>
-
-          {activeTabArea === 'generate' && graphData && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSaveDAG}
-              disabled={isSaved}
-              className={`text-xs h-9 gap-1.5 ${
-                isSaved
-                  ? 'border-emerald-500/40 text-emerald-600 bg-emerald-500/10'
-                  : 'border-border text-foreground hover:bg-muted'
-              }`}
-            >
-              {isSaved ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <BookmarkPlus className="w-3.5 h-3.5" />}
-              <span>{isSaved ? 'Learning DAG saved' : 'Save Learning Path'}</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Top View Selector: Saved Learning DAGs vs Generate / Explore DAG */}
-      <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-        <Button
-          variant={activeTabArea === 'saved' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setActiveTabArea('saved')}
-          className={`h-9 px-4 gap-2 text-xs font-semibold rounded-xl transition-all ${
-            activeTabArea === 'saved'
-              ? 'bg-primary text-primary-foreground shadow-xs'
-              : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-          }`}
-        >
-          <GitFork className="w-3.5 h-3.5" />
-          <span>Saved Learning DAGs ({savedDAGs.length})</span>
-        </Button>
-
-        <Button
-          variant={activeTabArea === 'generate' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setActiveTabArea('generate')}
-          className={`h-9 px-4 gap-2 text-xs font-semibold rounded-xl transition-all ${
-            activeTabArea === 'generate'
-              ? 'bg-primary text-primary-foreground shadow-xs'
-              : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Generate / Explore DAG</span>
-        </Button>
-      </div>
 
       {/* High-Tech Animated Generating Screen (renders during generation) */}
       {isGenerating && (
@@ -788,8 +692,9 @@ export const DAGPipeline: React.FC = () => {
             </div>
             <Button
               size="sm"
+              aria-label="New Learning DAG"
               onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
-              className="text-xs h-9 px-3.5 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs"
+              className="text-xs h-9 px-4 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xs"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{isCreateDropdownOpen ? 'Close Setup' : 'Create New DAG'}</span>

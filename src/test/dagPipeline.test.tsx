@@ -301,9 +301,6 @@ describe('DAG Pipeline & Learning Path Architecture', () => {
         </QueryClientProvider>
       );
 
-      expect(screen.getByText(/AI Learning Path/i)).toBeDefined();
-      expect(screen.getByText(/Generate a prerequisite-aware concept graph/i)).toBeDefined();
-
       // Verify saved DAG list is shown by default
       await waitFor(() => {
         expect(screen.getByText(/My Saved Learning Paths/i)).toBeDefined();
@@ -418,31 +415,34 @@ describe('DAG Pipeline & Learning Path Architecture', () => {
     });
   });
 
-  describe('Saved Learning DAGs Management & Top Area Switcher', () => {
-    it('allows toggling between Generate/Explore DAG and Saved Learning DAGs', async () => {
+  describe('Saved Learning DAGs Management & View Navigation', () => {
+    it('allows opening a saved DAG into viewer and navigating back to Saved Learning DAGs', async () => {
       render(
         <QueryClientProvider client={queryClient}>
           <DAGPipeline />
         </QueryClientProvider>
       );
 
-      // Verify top area switcher buttons exist
-      const exploreBtn = screen.getByRole('button', { name: /Generate \/ Explore DAG/i });
-      const savedBtn = screen.getByRole('button', { name: /Saved Learning DAGs/i });
-      expect(exploreBtn).toBeDefined();
-      expect(savedBtn).toBeDefined();
-
-      // Click Saved Learning DAGs
-      fireEvent.click(savedBtn);
-
+      // Verify saved list rendered
       await waitFor(() => {
         expect(screen.getByText(/My Saved Learning Paths/i)).toBeDefined();
+        expect(screen.getAllByText(/Open DAG/i).length).toBeGreaterThan(0);
       });
 
-      // Switch back to Explore
-      fireEvent.click(exploreBtn);
+      // Open a DAG into the viewer
+      fireEvent.click(screen.getAllByText(/Open DAG/i)[0]);
+
+      // Verify viewer opened with back button
       await waitFor(() => {
-        expect(screen.getByText(/AI Learning Path & DAG Generator/i)).toBeDefined();
+        expect(screen.getByRole('button', { name: /Back to Saved DAGs/i })).toBeDefined();
+      });
+
+      // Click Back to Saved DAGs
+      fireEvent.click(screen.getByRole('button', { name: /Back to Saved DAGs/i }));
+
+      // Verify returned to saved list
+      await waitFor(() => {
+        expect(screen.getByText(/My Saved Learning Paths/i)).toBeDefined();
       });
     });
   });

@@ -649,32 +649,32 @@ export default function ProjectFocusView({
         {/* Header with Title, Status & Squeeze/Expand/Reorder controls */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div 
-            className="flex items-center gap-2 cursor-pointer select-none group"
+            className="flex items-center gap-2 cursor-pointer select-none group min-w-0"
             onClick={() => isAiSqueezed && toggleAiSqueezed()}
             title={isAiSqueezed ? "Click to expand AI Assistant" : undefined}
           >
-            <div className="p-1.5 rounded-md bg-green-500/10 border border-green-500/30 group-hover:border-green-400/50 transition-colors">
+            <div className="p-1.5 rounded-md bg-green-500/10 border border-green-500/30 group-hover:border-green-400/50 transition-colors shrink-0">
               <Brain className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-medium text-foreground text-sm">AI Assistant</h3>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/30 font-medium">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="font-medium text-foreground text-sm truncate">AI Assistant</h3>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/30 font-medium shrink-0">
                   FocusBot
                 </span>
               </div>
               {isAiSqueezed && (
-                <p className="text-[11px] text-muted-foreground">Collapsed · Click to expand chat</p>
+                <p className="text-[11px] text-muted-foreground truncate">Collapsed · Click to expand chat</p>
               )}
             </div>
           </div>
 
           {/* Action buttons: Swap position, Maximize/Restore, Squeeze/Expand - All Solid Green */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Button
               size="sm"
               onClick={toggleSidebarOrder}
-              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center shrink-0"
               title={sidebarOrder === 'ai-top' ? "Move AI Assistant to Bottom" : "Move AI Assistant to Top"}
             >
               <ArrowUpDown className="w-3.5 h-3.5 text-white" />
@@ -684,7 +684,7 @@ export default function ProjectFocusView({
               <Button
                 size="sm"
                 onClick={toggleAiMaximized}
-                className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+                className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center shrink-0"
                 title={isAiMaximized ? "Restore default height" : "Maximize height"}
               >
                 {isAiMaximized ? <Minimize2 className="w-3.5 h-3.5 text-white" /> : <Maximize2 className="w-3.5 h-3.5 text-white" />}
@@ -694,7 +694,7 @@ export default function ProjectFocusView({
             <Button
               size="sm"
               onClick={toggleAiSqueezed}
-              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center shrink-0"
               title={isAiSqueezed ? "Expand AI Assistant" : "Squeeze / Collapse AI Assistant"}
             >
               {isAiSqueezed ? <ChevronDown className="w-4 h-4 text-white" /> : <ChevronUp className="w-4 h-4 text-white" />}
@@ -705,7 +705,7 @@ export default function ProjectFocusView({
         {/* Card Body - visible only when NOT squeezed */}
         {!isAiSqueezed && (
           <div className="animate-in fade-in duration-200">
-            <ScrollArea className={`${isAiMaximized ? 'h-[460px]' : 'h-48'} mb-4 transition-all duration-200 pr-1`}>
+            <ScrollArea className={`${isAiMaximized ? 'h-[440px]' : 'h-36 sm:h-44'} mb-3 transition-all duration-200 pr-1`}>
               <div className="space-y-3">
                 {messages.map((message) => (
                   <div
@@ -773,32 +773,32 @@ export default function ProjectFocusView({
         {/* Header with Title, Progress count & Squeeze/Expand/Reorder controls */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div 
-            className="flex items-center gap-2 cursor-pointer select-none group"
+            className="flex items-center gap-2 cursor-pointer select-none group min-w-0"
             onClick={() => isTasksSqueezed && toggleTasksSqueezed()}
             title={isTasksSqueezed ? "Click to expand Today's Tasks" : undefined}
           >
-            <div className="p-1.5 rounded-md bg-green-500/10 border border-green-500/30 group-hover:border-green-400/50 transition-colors">
+            <div className="p-1.5 rounded-md bg-green-500/10 border border-green-500/30 group-hover:border-green-400/50 transition-colors shrink-0">
               <ListTodo className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-medium text-foreground text-sm">Today's Tasks</h3>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-300 font-mono font-medium">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="font-medium text-foreground text-sm truncate">Today's Tasks</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-300 font-mono font-medium shrink-0">
                   {completedTasks.length}/{tasks.length}
                 </span>
               </div>
               {isTasksSqueezed && (
-                <p className="text-[11px] text-muted-foreground">Collapsed · Click to expand tasks</p>
+                <p className="text-[11px] text-muted-foreground truncate">Collapsed · Click to expand tasks</p>
               )}
             </div>
           </div>
 
           {/* Action buttons: Swap position, Maximize/Restore, Squeeze/Expand - All Solid Green */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Button
               size="sm"
               onClick={toggleSidebarOrder}
-              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center shrink-0"
               title={sidebarOrder === 'tasks-top' ? "Move Today's Tasks to Bottom" : "Move Today's Tasks to Top"}
             >
               <ArrowUpDown className="w-3.5 h-3.5 text-white" />
@@ -808,7 +808,7 @@ export default function ProjectFocusView({
               <Button
                 size="sm"
                 onClick={toggleTasksMaximized}
-                className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+                className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center shrink-0"
                 title={isTasksMaximized ? "Restore default height" : "Maximize height"}
               >
                 {isTasksMaximized ? <Minimize2 className="w-3.5 h-3.5 text-white" /> : <Maximize2 className="w-3.5 h-3.5 text-white" />}
@@ -818,7 +818,7 @@ export default function ProjectFocusView({
             <Button
               size="sm"
               onClick={toggleTasksSqueezed}
-              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center"
+              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white rounded shadow-sm border-0 flex items-center justify-center shrink-0"
               title={isTasksSqueezed ? "Expand Tasks" : "Squeeze / Collapse Tasks"}
             >
               {isTasksSqueezed ? <ChevronDown className="w-4 h-4 text-white" /> : <ChevronUp className="w-4 h-4 text-white" />}
@@ -848,7 +848,7 @@ export default function ProjectFocusView({
             </div>
 
             {/* Tasks List */}
-            <div className={`space-y-2 ${isTasksMaximized ? 'max-h-[520px]' : 'max-h-80'} overflow-y-auto pr-1 transition-all duration-200`}>
+            <div className={`space-y-2 ${isTasksMaximized ? 'max-h-[440px]' : 'max-h-52 sm:max-h-60'} overflow-y-auto pr-1 transition-all duration-200`}>
               {/* Pending Tasks */}
               {todaysTasks.length > 0 && (
                 <div className="space-y-2">
@@ -938,7 +938,7 @@ export default function ProjectFocusView({
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <div className="w-full bg-card border-b border-border px-4 lg:px-6 py-3 relative z-10">
-        <div className="flex items-center justify-between gap-4">
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
           {/* Back Arrow - Solid Green */}
           <Button 
             size="icon"
@@ -954,7 +954,7 @@ export default function ProjectFocusView({
             <Button 
               size="sm" 
               onClick={handleViewProgress}
-              className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+              className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0 shrink-0"
             >
               <TrendingUp className="w-3.5 h-3.5 mr-1.5 text-white" />
               View Progress
@@ -962,7 +962,7 @@ export default function ProjectFocusView({
             <Button 
               size="sm" 
               onClick={handleSubmitUpdate}
-              className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+              className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0 shrink-0"
             >
               <FileEdit className="w-3.5 h-3.5 mr-1.5 text-white" />
               Submit Update
@@ -970,7 +970,7 @@ export default function ProjectFocusView({
             <Button 
               size="sm" 
               onClick={handleMarkComplete}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm h-8 px-3.5 text-xs border-0"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm h-8 px-3.5 text-xs border-0 shrink-0"
             >
               <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-white" />
               Mark as Complete
@@ -979,25 +979,25 @@ export default function ProjectFocusView({
         </div>
       </div>
 
-      <div className="p-4 lg:p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="p-4 lg:p-6 max-w-[1600px] mx-auto w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Main Content Area */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-9 space-y-6 min-w-0">
             {/* Project Header */}
             <Card className="bg-card border-border shadow-sm">
               <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <div>
-                    <h1 className="text-2xl font-bold text-foreground mb-1.5">{projectName}</h1>
+                  <div className="min-w-0">
+                    <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1.5 break-words">{projectName}</h1>
                     <p className="text-sm text-muted-foreground">{projectType} · Due in {deadline}</p>
                   </div>
                   
                   {/* Platform Quick Links */}
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap shrink-0">
                     <Button 
                       size="sm" 
                       onClick={openInVSCode}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
                     >
                       <Code className="w-3.5 h-3.5 mr-1.5 text-white" />
                       VS Code
@@ -1005,7 +1005,7 @@ export default function ProjectFocusView({
                     <Button 
                       size="sm" 
                       onClick={() => openExternalLink("https://github.com")}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
                     >
                       <Github className="w-3.5 h-3.5 mr-1.5 text-white" />
                       GitHub
@@ -1013,7 +1013,7 @@ export default function ProjectFocusView({
                     <Button 
                       size="sm" 
                       onClick={() => openExternalLink("https://leetcode.com")}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       LeetCode
@@ -1021,7 +1021,7 @@ export default function ProjectFocusView({
                     <Button 
                       size="sm" 
                       onClick={() => openExternalLink("https://hackerrank.com")}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       HackerRank
@@ -1029,7 +1029,7 @@ export default function ProjectFocusView({
                     <Button 
                       size="sm" 
                       onClick={() => openExternalLink("https://linkedin.com")}
-                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-3 text-xs border-0"
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm h-8 px-2.5 sm:px-3 text-xs border-0 shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-white" />
                       LinkedIn
@@ -1038,22 +1038,22 @@ export default function ProjectFocusView({
                 </div>
 
                 {/* Expanded Countdown / Focus Timer Block */}
-                <div className="mt-6 bg-gradient-to-br from-card via-card to-emerald-500/10 dark:from-gray-900 dark:via-gray-900/95 dark:to-emerald-950/20 rounded-xl p-6 sm:p-7 border border-border shadow-md relative overflow-hidden">
+                <div className="mt-6 bg-gradient-to-br from-card via-card to-emerald-500/10 dark:from-gray-900 dark:via-gray-900/95 dark:to-emerald-950/20 rounded-xl p-5 sm:p-6 lg:p-7 border border-border shadow-md relative overflow-hidden">
                   {/* Subtle ambient decorative blur */}
                   <div className="absolute -right-16 -top-16 w-56 h-56 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
 
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                  <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6 relative z-10">
                     {/* Left: Timer Display & Status */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 min-w-0">
                       <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400">
+                        <div className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
                           <Timer className={`w-6 h-6 ${isRunning ? 'animate-pulse' : ''}`} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                             Focus Session Timer
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             {isRunning ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/30">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
@@ -1076,13 +1076,13 @@ export default function ProjectFocusView({
                         </div>
                       </div>
 
-                      {/* Large Digital Typography */}
-                      <div className="text-5xl sm:text-6xl font-mono font-bold text-foreground tracking-widest drop-shadow-sm">
+                      {/* Large Digital Typography with responsive font size to avoid overflow */}
+                      <div className="text-4xl sm:text-5xl lg:text-6xl font-mono font-bold text-foreground tracking-wider drop-shadow-sm select-none break-normal">
                         {formatTime(timer)}
                       </div>
 
                       {/* Quick Duration Presets - All Solid Green */}
-                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <div className="flex items-center gap-1.5 sm:gap-2 pt-1 flex-wrap">
                         <span className="text-xs text-muted-foreground font-medium mr-1">Presets:</span>
                         {[
                           { label: '25m', secs: 1500, title: 'Pomodoro (25 mins)' },
@@ -1108,12 +1108,12 @@ export default function ProjectFocusView({
                       </div>
                     </div>
 
-                    {/* Right: Controls & Actions - All Solid Green */}
-                    <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-stretch sm:items-center gap-3">
+                    {/* Right: Controls & Actions - Fully responsive & wrap-safe */}
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0 pt-2 2xl:pt-0">
                       <Button 
                         onClick={handleStart} 
                         disabled={isRunning}
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2.5 h-12 text-sm shadow-md gap-2 rounded-xl border-0 disabled:bg-green-600 disabled:opacity-60 disabled:text-white"
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 sm:px-5 py-2.5 h-11 text-xs sm:text-sm shadow-md gap-2 rounded-xl border-0 disabled:bg-green-600 disabled:opacity-60 disabled:text-white shrink-0 transition-all"
                       >
                         <Play className="w-4 h-4 fill-white text-white" />
                         Start Focus
@@ -1121,14 +1121,14 @@ export default function ProjectFocusView({
                       <Button 
                         onClick={handlePause} 
                         disabled={!isRunning}
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 h-12 text-sm shadow-md gap-2 rounded-xl border-0 disabled:bg-green-600 disabled:opacity-60 disabled:text-white"
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 sm:px-5 py-2.5 h-11 text-xs sm:text-sm shadow-md gap-2 rounded-xl border-0 disabled:bg-green-600 disabled:opacity-60 disabled:text-white shrink-0 transition-all"
                       >
                         <Pause className="w-4 h-4 fill-white text-white" />
                         Pause
                       </Button>
                       <Button 
                         onClick={handleReset}
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 h-12 text-sm shadow-md gap-2 rounded-xl border-0"
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 sm:px-5 py-2.5 h-11 text-xs sm:text-sm shadow-md gap-2 rounded-xl border-0 shrink-0 transition-all"
                         title="Reset Timer"
                       >
                         <RotateCcw className="w-4 h-4 text-white" />
@@ -1138,7 +1138,7 @@ export default function ProjectFocusView({
                   </div>
 
                   {/* Progress Bar along the bottom of the countdown block */}
-                  <div className="mt-6 pt-4 border-t border-border">
+                  <div className="mt-5 pt-4 border-t border-border">
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
                       <span>Session Progress</span>
                       <span className="font-mono">{timerPercent}% elapsed</span>
@@ -1254,14 +1254,14 @@ export default function ProjectFocusView({
                             className="p-4 bg-muted/40 rounded border border-border cursor-pointer hover:bg-muted/70 transition-colors"
                             onClick={() => openLeetCodeProblem(problem)}
                           >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-medium text-foreground mb-1">{problem.title}</h4>
-                                <p className="text-sm text-muted-foreground">
+                            <div className="flex items-center justify-between gap-3 min-w-0">
+                              <div className="min-w-0">
+                                <h4 className="font-medium text-foreground mb-1 truncate">{problem.title}</h4>
+                                <p className="text-xs text-muted-foreground truncate">
                                   {problem.tags.join(", ")} - {problem.difficulty}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 shrink-0">
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1287,21 +1287,21 @@ export default function ProjectFocusView({
             </Card>
           </div>
 
-          {/* Right Sidebar - Sticky */}
-          <div className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
+          {/* Right Sidebar - Sticky & Scroll-contained */}
+          <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:pr-1 min-w-0">
             {/* Sidebar Controls Bar: Quick Position Swap & Squeeze Info */}
-            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-card border border-border text-xs shadow-xs">
-              <div className="flex items-center gap-1.5 text-foreground">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                <span className="font-medium text-foreground">Layout:</span>
-                <span className="text-[11px] text-muted-foreground">
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-card border border-border text-xs shadow-xs gap-2">
+              <div className="flex items-center gap-1.5 text-foreground min-w-0">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                <span className="font-medium text-foreground shrink-0">Layout:</span>
+                <span className="text-[11px] text-muted-foreground truncate">
                   {sidebarOrder === 'ai-top' ? 'AI on Top · Tasks at Bottom' : 'Tasks on Top · AI at Bottom'}
                 </span>
               </div>
               <Button
                 size="sm"
                 onClick={toggleSidebarOrder}
-                className="h-6 px-2.5 text-[11px] bg-green-600 hover:bg-green-700 text-white gap-1 rounded font-medium shadow-sm border-0"
+                className="h-6 px-2.5 text-[11px] bg-green-600 hover:bg-green-700 text-white gap-1 rounded font-medium shadow-sm border-0 shrink-0"
                 title="Swap order between AI Assistant and Today's Tasks"
               >
                 <ArrowUpDown className="w-3.5 h-3.5 text-white" />

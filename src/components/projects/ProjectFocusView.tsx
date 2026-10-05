@@ -658,13 +658,13 @@ export default function ProjectFocusView({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <h3 className="font-medium text-foreground text-sm truncate">AI Assistant</h3>
+                <h3 className="font-semibold text-foreground text-sm whitespace-nowrap">AI Assistant</h3>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-700 dark:text-green-300 border border-green-500/30 font-medium shrink-0">
                   FocusBot
                 </span>
               </div>
               {isAiSqueezed && (
-                <p className="text-[11px] text-muted-foreground truncate">Collapsed · Click to expand chat</p>
+                <p className="text-[11px] text-muted-foreground truncate">Collapsed · Click to expand</p>
               )}
             </div>
           </div>
@@ -782,13 +782,13 @@ export default function ProjectFocusView({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <h3 className="font-medium text-foreground text-sm truncate">Today's Tasks</h3>
+                <h3 className="font-semibold text-foreground text-sm whitespace-nowrap">Today's Tasks</h3>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-300 font-mono font-medium shrink-0">
                   {completedTasks.length}/{tasks.length}
                 </span>
               </div>
               {isTasksSqueezed && (
-                <p className="text-[11px] text-muted-foreground truncate">Collapsed · Click to expand tasks</p>
+                <p className="text-[11px] text-muted-foreground truncate">Collapsed · Click to expand</p>
               )}
             </div>
           </div>
@@ -982,18 +982,22 @@ export default function ProjectFocusView({
       <div className="p-4 lg:p-6 max-w-[1600px] mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Main Content Area */}
-          <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-9 space-y-6 min-w-0">
+          <div className="lg:col-span-7 xl:col-span-8 2xl:col-span-8 space-y-6 min-w-0">
             {/* Project Header */}
             <Card className="bg-card border-border shadow-sm">
               <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <div className="min-w-0">
-                    <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-1.5 break-words">{projectName}</h1>
-                    <p className="text-sm text-muted-foreground">{projectType} · Due in {deadline}</p>
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4">
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 leading-snug break-normal">
+                      {projectName}
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                      {projectType} · Due in {deadline}
+                    </p>
                   </div>
                   
                   {/* Platform Quick Links */}
-                  <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button 
                       size="sm" 
                       onClick={openInVSCode}
@@ -1288,7 +1292,7 @@ export default function ProjectFocusView({
           </div>
 
           {/* Right Sidebar - Sticky & Scroll-contained */}
-          <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:pr-1 min-w-0">
+          <div className="lg:col-span-5 xl:col-span-4 2xl:col-span-4 space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto lg:pr-1 min-w-0">
             {/* Sidebar Controls Bar: Quick Position Swap & Squeeze Info */}
             <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-card border border-border text-xs shadow-xs gap-2">
               <div className="flex items-center gap-1.5 text-foreground min-w-0">

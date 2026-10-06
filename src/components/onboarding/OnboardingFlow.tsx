@@ -49,7 +49,6 @@ const STEPS = [
   'Profile Photo',
   'Learning Mode & Context',
   'Academic Details',
-  'Study Preferences',
   'Review & Schedule',
   'Complete Profile'
 ];
@@ -81,16 +80,6 @@ export const OnboardingFlow = () => {
     'BTech (Computer Science)', 'BTech (Mechanical)', 'BTech (Electrical)', 
     'BTech (Civil)', 'BSc (Biology)', 'BSc (Physics)', 'BSc (Chemistry)',
     'BA (Economics)', 'BA (English)', 'BBA', 'BCom', 'Other'
-  ];
-
-  const studyPreferences = [
-    'Solo Study Sessions', 'Group Learning', 'Guided/Structured Plans', 
-    'Revision-Heavy Approach', 'Practice-Based Learning', 'Visual Learning'
-  ];
-
-  const motivations = [
-    'Achievements & Gamification', 'Progress Tracking', 'AI Assistant Support', 
-    'Smart Planning Tools', 'Peer Competition', 'Regular Reminders'
   ];
 
   const reviewModes = [
@@ -195,9 +184,8 @@ export const OnboardingFlow = () => {
         } else {
           return data.semester && data.course;
         }
-      case 4: return data.studyPreference.length > 0 && data.motivation.length > 0;
-      case 5: return data.dailyHours && data.reviewModes.length > 0;
-      case 6: return data.email;
+      case 4: return data.dailyHours && data.reviewModes.length > 0;
+      case 5: return data.email;
       default: return true;
     }
   };
@@ -418,58 +406,6 @@ export const OnboardingFlow = () => {
         return (
           <div className="space-y-8">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-foreground mb-3">How do you prefer to study?</h2>
-              <p className="text-lg text-muted-foreground">Let's customize your learning experience</p>
-            </div>
-
-            <div className="space-y-8">
-              <div>
-                <Label className="text-lg font-medium mb-4 block">Study Preferences (select all that apply) *</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {studyPreferences.map((pref) => (
-                    <Badge
-                      key={pref}
-                      variant={data.studyPreference.includes(pref) ? "default" : "outline"}
-                      className={`cursor-pointer p-4 text-center justify-center transition-all duration-200 hover:scale-105 ${
-                        data.studyPreference.includes(pref) 
-                          ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm' 
-                          : 'hover:bg-accent hover:border-primary/40'
-                      }`}
-                      onClick={() => handleArrayToggle('studyPreference', pref)}
-                    >
-                      {pref}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-lg font-medium mb-4 block">What motivates you to study? *</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {motivations.map((motivation) => (
-                    <Badge
-                      key={motivation}
-                      variant={data.motivation.includes(motivation) ? "default" : "outline"}
-                      className={`cursor-pointer p-4 text-center justify-center transition-all duration-200 hover:scale-105 ${
-                        data.motivation.includes(motivation) 
-                          ? 'bg-green-600 hover:bg-green-700 text-white shadow-md' 
-                          : 'hover:bg-green-50 hover:border-green-300'
-                      }`}
-                      onClick={() => handleArrayToggle('motivation', motivation)}
-                    >
-                      {motivation}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-8">
-            <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-foreground mb-3">Plan your study schedule</h2>
               <p className="text-lg text-muted-foreground">Help us create the perfect study routine for you</p>
             </div>
@@ -514,7 +450,7 @@ export const OnboardingFlow = () => {
           </div>
         );
 
-      case 6:
+      case 5:
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">

@@ -65,6 +65,14 @@ export const FlashcardVault = () => {
   const [viewingContent, setViewingContent] = useState<any>(null);
   const [viewerType, setViewerType] = useState<string>('');
   const [copyingId, setCopyingId] = useState<string | null>(null);
+  const [vaultLoadingTimedOut, setVaultLoadingTimedOut] = useState(false);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setVaultLoadingTimedOut(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCopyToResources = async (item: any, type: string) => {
     try {
@@ -371,7 +379,7 @@ export const FlashcardVault = () => {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && !vaultLoadingTimedOut) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">

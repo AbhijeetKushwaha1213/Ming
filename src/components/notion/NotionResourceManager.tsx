@@ -23,6 +23,14 @@ export function NotionResourceManager() {
   const { data: pages, isLoading, error: pagesError } = usePages();
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [isCreatingPage, setIsCreatingPage] = useState(false);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoadingTimedOut(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Listen for cross-component navigation and selection
   useEffect(() => {
@@ -116,7 +124,6 @@ export function NotionResourceManager() {
   };
 
   const handleCreatePage = async () => {
-
     setIsCreatingPage(true);
     try {
       const newPage = await createPage({
@@ -124,7 +131,31 @@ export function NotionResourceManager() {
         parent_id: null,
       });
 
+      // 1. Set individual page cache so PageView loads immediately
+      queryClient.setQueryData(pageKeys.detail(newPage.id), newPage);
+
+      // 2. Set root list cache so sidebar updates immediately
+      queryClient.setQueryData<Page[]>(pageKeys.list(null), (old) => {
+        if (!old) return [newPage];
+        return [newPage, ...old.filter(p => p.id !== newPage.id)];
+      });
+      queryClient.setQueryData<Page[]>(pageKeys.lists(), (old) => {
+        if (!old) return [newPage];
+        return [newPage, ...old.filter(p => p.id !== newPage.id)];
+      });
+
+      // 3. Immediately select the new page
       setSelectedPageId(newPage.id);
+
+      // 4. Invalidate queries in background
+      await queryClient.invalidateQueries({ queryKey: pageKeys.all });
+
+      // 5. Notify sidebar and other views
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('studymate-page-created', { detail: { pageId: newPage.id } }));
+        window.dispatchEvent(new CustomEvent('studymate-resources-updated'));
+        window.dispatchEvent(new CustomEvent('studymate-select-resource-page', { detail: { pageId: newPage.id } }));
+      }
       
       toast({
         title: 'Page Created',
@@ -168,7 +199,7 @@ export function NotionResourceManager() {
             <PageSidebar
               onPageClick={handlePageClick}
               selectedPageId={selectedPageId || undefined}
-              isLoading={isLoading}
+              isLoading={isLoading && !loadingTimedOut}
             />
           </div>
         </aside>

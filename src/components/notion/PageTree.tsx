@@ -18,7 +18,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface PageTreeProps {
   onPageClick?: (page: Page) => void;
@@ -30,6 +30,14 @@ export function PageTree({ onPageClick, selectedPageId }: PageTreeProps) {
   const { data: rootPages, isLoading, error } = usePages(null);
   const movePageMutation = useMovePage();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [treeLoadingTimedOut, setTreeLoadingTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTreeLoadingTimedOut(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -75,7 +83,7 @@ export function PageTree({ onPageClick, selectedPageId }: PageTreeProps) {
 
   const activePage = rootPages?.find((p) => p.id === activeId);
 
-  if (isLoading) {
+  if (isLoading && !treeLoadingTimedOut) {
     return (
       <div className="space-y-2 p-2" role="status" aria-live="polite" aria-label="Loading pages">
         {[...Array(5)].map((_, i) => (

@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { FavoritesList } from './FavoritesList';
 import { PageTree } from './PageTree';
 import { SidebarSkeleton } from './PageSkeleton';
@@ -14,7 +15,16 @@ interface PageSidebarProps {
  * Combined sidebar component that displays favorites and page tree
  */
 export function PageSidebar({ onPageClick, selectedPageId, isLoading = false }: PageSidebarProps) {
-  if (isLoading) {
+  const [sidebarLoadingTimedOut, setSidebarLoadingTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSidebarLoadingTimedOut(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading && !sidebarLoadingTimedOut) {
     return <SidebarSkeleton />;
   }
 

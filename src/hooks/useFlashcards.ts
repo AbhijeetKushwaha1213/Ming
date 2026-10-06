@@ -150,6 +150,7 @@ export const useFlashcards = () => {
     error
   } = useQuery({
     queryKey: ['flashcards', effectiveUserId],
+    initialData: () => localStore.getFlashcards(),
     queryFn: async () => {
       const localCards = localStore.getFlashcards();
 
@@ -158,11 +159,17 @@ export const useFlashcards = () => {
       }
 
       try {
-        const { data, error } = await supabase
+        const fetchPromise = supabase
           .from('flashcards')
           .select('*')
           .eq('user_id', user.user_id)
           .order('created_at', { ascending: false });
+
+        const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error('Flashcards remote fetch timeout') }), 2500)
+        );
+
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
         if (error) {
           console.warn('Supabase fetch flashcards notice (using local fallback):', error);
@@ -209,6 +216,7 @@ export const useFlashcards = () => {
     error: materialsError
   } = useQuery({
     queryKey: ['study_materials', effectiveUserId],
+    initialData: () => getMergedLocalStudyMaterials(effectiveUserId),
     queryFn: async () => {
       const localMaterials = getMergedLocalStudyMaterials(effectiveUserId);
 
@@ -217,11 +225,17 @@ export const useFlashcards = () => {
       }
 
       try {
-        const { data, error } = await supabase
+        const fetchPromise = supabase
           .from('study_materials')
           .select('*')
           .eq('user_id', user.user_id)
           .order('created_at', { ascending: false });
+
+        const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error('Study materials remote fetch timeout') }), 2500)
+        );
+
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
         if (error) {
           console.warn('Supabase fetch study materials notice (using local fallback):', error);

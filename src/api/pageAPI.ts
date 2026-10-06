@@ -8,6 +8,45 @@ import type { Page, CreatePageInput, UpdatePageInput } from '@/types/notion';
  */
 
 /**
+ * Fast helper to get current authenticated user with local session priority and timeout
+ */
+async function getEffectiveUser(): Promise<{ id: string; email?: string } | null> {
+  if (isLocalMode()) return null;
+  try {
+    // 1. Check offline session or local storage user
+    const offlineSession = localStorage.getItem('studymate-offline-session');
+    if (offlineSession) {
+      try {
+        const parsed = JSON.parse(offlineSession);
+        if (parsed?.id || parsed?.user_id) {
+          return { id: parsed.user_id || parsed.id, email: parsed.email };
+        }
+      } catch {}
+    }
+
+    // 2. Fast check from Supabase session (cached in memory/localStorage)
+    const sessionPromise = supabase.auth.getSession();
+    const sessionTimeout = new Promise<{ data: { session: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { session: null } }), 800)
+    );
+    const { data: sessionData } = await Promise.race([sessionPromise, sessionTimeout]);
+    if (sessionData?.session?.user) {
+      return sessionData.session.user;
+    }
+
+    // 3. Fallback to auth.getUser with 1200ms timeout
+    const userPromise = supabase.auth.getUser();
+    const userTimeout = new Promise<{ data: { user: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { user: null } }), 1200)
+    );
+    const { data: userData } = await Promise.race([userPromise, userTimeout]);
+    return userData?.user || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Create a new page
  */
 export async function createPage(data: CreatePageInput): Promise<Page> {
@@ -16,56 +55,14 @@ export async function createPage(data: CreatePageInput): Promise<Page> {
     throw new Error('Page title is required');
   }
 
-  if (isLocalMode()) {
-    const page: Page = {
-      id: `local-page-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      user_id: 'local-dev-user-id',
-      title: data.title.trim(),
-      parent_id: data.parent_id ?? null,
-      icon: data.icon ?? null,
-      cover_image: data.cover_image ?? null,
-      content: data.content ?? [],
-      position: data.position ?? 0,
-      is_favorite: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-    };
-    await cacheService.cachePage(page);
-    return page;
-  }
+  const user = await getEffectiveUser();
+  const userId = user?.id || 'local-dev-user-id';
 
-  // Get current user
-  let user: any = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data?.user;
-  } catch (err) {
-    user = null;
-  }
-
-  if (!user || isLocalMode()) {
-    const page: Page = {
-      id: `local-page-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      user_id: user?.id || 'local-dev-user-id',
-      title: data.title.trim(),
-      parent_id: data.parent_id ?? null,
-      icon: data.icon ?? null,
-      cover_image: data.cover_image ?? null,
-      content: data.content ?? [],
-      position: data.position ?? 0,
-      is_favorite: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-    };
-    await cacheService.cachePage(page);
-    return page;
-  }
-
-  // Prepare page data
-  const pageData = {
-    user_id: user.id,
+  // Construct page immediately with local-first ID
+  const localPageId = `page-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const localPage: Page = {
+    id: localPageId,
+    user_id: userId,
     title: data.title.trim(),
     parent_id: data.parent_id ?? null,
     icon: data.icon ?? null,
@@ -73,51 +70,63 @@ export async function createPage(data: CreatePageInput): Promise<Page> {
     content: data.content ?? [],
     position: data.position ?? 0,
     is_favorite: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
   };
 
+  // Always cache immediately in IndexedDB so the page exists locally
+  await cacheService.cachePage(localPage);
+
+  if (isLocalMode() || !user) {
+    return localPage;
+  }
+
+  // Attempt Supabase insert with 2500ms timeout
   try {
-    // Insert page
-    const { data: page, error } = await supabase
+    const pageData = {
+      user_id: user.id,
+      title: data.title.trim(),
+      parent_id: data.parent_id ?? null,
+      icon: data.icon ?? null,
+      cover_image: data.cover_image ?? null,
+      content: data.content ?? [],
+      position: data.position ?? 0,
+      is_favorite: false,
+    };
+
+    const insertPromise = supabase
       .from('pages')
       .insert(pageData)
       .select()
       .single();
 
-    if (error || !page) {
-      console.warn('Failed to insert page to Supabase, falling back to local cache:', error);
-      const localPage: Page = {
-        id: `local-page-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        user_id: user.id,
-        ...pageData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: null,
-      };
-      await cacheService.cachePage(localPage);
-      return localPage;
-    }
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error('createPage remote insert timeout') }), 2500)
+    );
 
-    await cacheService.cachePage(page as Page);
-    return page as Page;
+    const { data: remotePage, error } = await Promise.race([insertPromise, timeoutPromise]);
+
+    if (!error && remotePage) {
+      if (remotePage.id !== localPage.id) {
+        await cacheService.removeCachedPage(localPage.id);
+      }
+      await cacheService.cachePage(remotePage as Page);
+      return remotePage as Page;
+    }
   } catch (err) {
-    const localPage: Page = {
-      id: `local-page-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      user_id: user.id,
-      ...pageData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-    };
-    await cacheService.cachePage(localPage);
-    return localPage;
+    console.warn('Supabase page insert notice, using local cached page:', err);
   }
+
+  return localPage;
 }
 
 /**
  * Get a page by ID
  */
 export async function getPage(id: string): Promise<Page> {
-  if (isLocalMode() || id.startsWith('local-page-')) {
+  const isLocalId = id.startsWith('local-page-') || id.startsWith('page-');
+  if (isLocalMode() || isLocalId) {
     const page = await cacheService.getCachedPage(id);
     if (!page || page.deleted_at) {
       throw new Error('Page not found');
@@ -125,16 +134,24 @@ export async function getPage(id: string): Promise<Page> {
     return page;
   }
 
+  // Check cached page first as baseline
+  const cached = await cacheService.getCachedPage(id);
+
   try {
-    const { data: page, error } = await supabase
+    const queryPromise = supabase
       .from('pages')
       .select('*')
       .eq('id', id)
       .is('deleted_at', null)
       .single();
 
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error('getPage remote timeout') }), 2500)
+    );
+
+    const { data: page, error } = await Promise.race([queryPromise, timeoutPromise]);
+
     if (error || !page) {
-      const cached = await cacheService.getCachedPage(id);
       if (cached && !cached.deleted_at) {
         return cached;
       }
@@ -145,7 +162,6 @@ export async function getPage(id: string): Promise<Page> {
     await cacheService.cachePage(page as Page);
     return page as Page;
   } catch (err: any) {
-    const cached = await cacheService.getCachedPage(id);
     if (cached && !cached.deleted_at) {
       return cached;
     }
@@ -195,13 +211,7 @@ export async function updatePage(id: string, data: UpdatePageInput): Promise<Pag
   }
 
   // Check if authenticated
-  let user: any = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data?.user;
-  } catch {
-    user = null;
-  }
+  const user = await getEffectiveUser();
 
   const updateData: Partial<Page> & { updated_at: string } = {
     updated_at: new Date().toISOString(),
@@ -214,32 +224,34 @@ export async function updatePage(id: string, data: UpdatePageInput): Promise<Pag
   if (data.position !== undefined) updateData.position = data.position;
   if (data.is_favorite !== undefined) updateData.is_favorite = data.is_favorite;
 
+  // Always save locally first as reliable cache
+  const base = cachedPage || {
+    id,
+    user_id: user?.id || 'local-dev-user-id',
+    title: updateData.title || 'Untitled',
+    parent_id: null,
+    icon: null,
+    cover_image: null,
+    content: [],
+    position: 0,
+    is_favorite: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
+  };
+  const locallyUpdated: Page = {
+    ...base,
+    ...updateData,
+  };
+  await cacheService.cachePage(locallyUpdated);
+
   if (!user) {
-    const base = cachedPage || {
-      id,
-      user_id: 'local-dev-user-id',
-      title: updateData.title || 'Untitled',
-      parent_id: null,
-      icon: null,
-      cover_image: null,
-      content: [],
-      position: 0,
-      is_favorite: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-    };
-    const updated: Page = {
-      ...base,
-      ...updateData,
-    };
-    await cacheService.cachePage(updated);
-    return updated;
+    return locallyUpdated;
   }
 
   try {
-    // Update page in Supabase
-    const { data: page, error } = await supabase
+    // Update page in Supabase with timeout
+    const updatePromise = supabase
       .from('pages')
       .update(updateData)
       .eq('id', id)
@@ -247,31 +259,21 @@ export async function updatePage(id: string, data: UpdatePageInput): Promise<Pag
       .select()
       .single();
 
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error('updatePage remote timeout') }), 2500)
+    );
+
+    const { data: page, error } = await Promise.race([updatePromise, timeoutPromise]);
+
     if (error || !page) {
-      console.warn('Supabase page update failed, caching locally:', error);
-      if (cachedPage) {
-        const updated: Page = {
-          ...cachedPage,
-          ...updateData,
-        };
-        await cacheService.cachePage(updated);
-        return updated;
-      }
-      throw new Error(`Failed to update page: ${error?.message || 'Page not found'}`);
+      console.warn('Supabase page update notice (saved in local cache):', error);
+      return locallyUpdated;
     }
 
     await cacheService.cachePage(page as Page);
     return page as Page;
   } catch (err: any) {
-    if (cachedPage) {
-      const updated: Page = {
-        ...cachedPage,
-        ...updateData,
-      };
-      await cacheService.cachePage(updated);
-      return updated;
-    }
-    throw err;
+    return locallyUpdated;
   }
 }
 
@@ -279,7 +281,7 @@ export async function updatePage(id: string, data: UpdatePageInput): Promise<Pag
  * Delete a page (supports hard delete and soft delete with local cache cleanup)
  */
 export async function deletePage(id: string): Promise<void> {
-  const isLocalId = id.startsWith('local-page-');
+  const isLocalId = id.startsWith('local-page-') || id.startsWith('page-');
 
   // If local mode or local ID, update local IndexedDB cache directly
   if (isLocalMode() || isLocalId) {
@@ -301,22 +303,27 @@ export async function deletePage(id: string): Promise<void> {
   let lastError: any = null;
 
   try {
-    // 1. First attempt DELETE query in Supabase (matches "Users can delete own pages" FOR DELETE policy)
-    const { error: deleteError } = await supabase
+    const timeoutPromise = new Promise<{ error: Error }>((resolve) =>
+      setTimeout(() => resolve({ error: new Error('deletePage timeout') }), 2500)
+    );
+
+    // 1. First attempt DELETE query in Supabase
+    const deletePromise = supabase
       .from('pages')
       .delete()
       .eq('id', id);
 
+    const { error: deleteError } = await Promise.race([deletePromise, timeoutPromise]);
+
     if (deleteError) {
-      console.warn('Supabase delete failed, attempting soft-delete update:', deleteError.message);
+      console.warn('Supabase delete notice, attempting soft-delete update:', deleteError.message);
       // 2. Fallback to soft-delete update
-      const { error: updateError } = await supabase
+      const updatePromise = supabase
         .from('pages')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
-
+      const { error: updateError } = await Promise.race([updatePromise, timeoutPromise]);
       if (updateError) {
-        console.warn('Supabase soft-delete update failed:', updateError.message);
         lastError = updateError;
       }
     }
@@ -439,15 +446,8 @@ export async function getPageChildren(parentId: string | null): Promise<Page[]> 
     return cachedChildren.filter(p => !p.deleted_at).sort((a, b) => a.position - b.position);
   }
 
-  // Get current user
-  let user: any = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data?.user;
-  } catch {
-    user = null;
-  }
-
+  // Get current user with fast session priority
+  const user = await getEffectiveUser();
   if (!user) {
     return cachedChildren.filter(p => !p.deleted_at).sort((a, b) => a.position - b.position);
   }
@@ -466,10 +466,14 @@ export async function getPageChildren(parentId: string | null): Promise<Page[]> 
       query = query.eq('parent_id', parentId);
     }
 
-    const { data: pages, error } = await query;
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error('getPageChildren timeout') }), 2500)
+    );
+
+    const { data: pages, error } = await Promise.race([query, timeoutPromise]);
 
     if (error || !pages) {
-      console.warn('Supabase getPageChildren failed, falling back to cache:', error);
+      console.warn('Supabase getPageChildren notice, falling back to cache:', error);
       return cachedChildren.filter(p => !p.deleted_at).sort((a, b) => a.position - b.position);
     }
 
@@ -540,25 +544,24 @@ export async function getAllPages(): Promise<Page[]> {
     return activeCached.sort((a, b) => a.position - b.position);
   }
 
-  let user: any = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data?.user;
-  } catch {
-    user = null;
-  }
-
+  const user = await getEffectiveUser();
   if (!user) {
     return activeCached.sort((a, b) => a.position - b.position);
   }
 
   try {
-    const { data: pages, error } = await supabase
+    const query = supabase
       .from('pages')
       .select('*')
       .eq('user_id', user.id)
       .is('deleted_at', null)
       .order('position', { ascending: true });
+
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error('getAllPages timeout') }), 2500)
+    );
+
+    const { data: pages, error } = await Promise.race([query, timeoutPromise]);
 
     if (error || !pages) {
       return activeCached.sort((a, b) => a.position - b.position);
@@ -593,7 +596,7 @@ export async function getAllPages(): Promise<Page[]> {
  * Returns array from root to immediate parent
  */
 export async function getPageAncestors(pageId: string): Promise<Page[]> {
-  if (isLocalMode()) {
+  if (isLocalMode() || pageId.startsWith('local-page-') || pageId.startsWith('page-')) {
     const ancestors: Page[] = [];
     let currentId: string | null = pageId;
     while (currentId) {
@@ -610,25 +613,41 @@ export async function getPageAncestors(pageId: string): Promise<Page[]> {
   const ancestors: Page[] = [];
   let currentId: string | null = pageId;
 
-  // Traverse up the hierarchy
+  // Traverse up the hierarchy with timeout
   while (currentId) {
-    const { data: page, error } = await supabase
-      .from('pages')
-      .select('*')
-      .eq('id', currentId)
-      .is('deleted_at', null)
-      .single();
+    try {
+      const query = supabase
+        .from('pages')
+        .select('*')
+        .eq('id', currentId)
+        .is('deleted_at', null)
+        .single();
 
-    if (error || !page) {
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: new Error('ancestor timeout') }), 1500)
+      );
+
+      const { data: page, error } = await Promise.race([query, timeoutPromise]);
+
+      if (error || !page) {
+        // Fall back to local cache
+        const cached = await cacheService.getCachedPage(currentId);
+        if (cached && !cached.deleted_at && cached.id !== pageId) {
+          ancestors.unshift(cached);
+          currentId = cached.parent_id;
+          continue;
+        }
+        break;
+      }
+
+      if (page.id !== pageId) {
+        ancestors.unshift(page as Page);
+      }
+
+      currentId = (page as Page).parent_id;
+    } catch {
       break;
     }
-
-    // Don't include the page itself in ancestors
-    if (page.id !== pageId) {
-      ancestors.unshift(page as Page);
-    }
-
-    currentId = page.parent_id;
   }
 
   return ancestors;
@@ -638,7 +657,8 @@ export async function getPageAncestors(pageId: string): Promise<Page[]> {
  * Toggle favorite status of a page
  */
 export async function toggleFavorite(id: string): Promise<Page> {
-  if (isLocalMode()) {
+  const isLocalId = id.startsWith('local-page-') || id.startsWith('page-');
+  if (isLocalMode() || isLocalId) {
     const page = await cacheService.getCachedPage(id);
     if (!page || page.deleted_at) {
       throw new Error('Page not found');
@@ -654,60 +674,83 @@ export async function toggleFavorite(id: string): Promise<Page> {
 
   // Get current page to check its favorite status
   const currentPage = await getPage(id);
-  
-  // Toggle the favorite status
   const newFavoriteStatus = !currentPage.is_favorite;
-  
-  // Update the page
-  const { data: page, error } = await supabase
-    .from('pages')
-    .update({
-      is_favorite: newFavoriteStatus,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .is('deleted_at', null)
-    .select()
-    .single();
 
-  if (error) {
-    throw new Error(`Failed to toggle favorite: ${error.message}`);
+  const locallyUpdated: Page = {
+    ...currentPage,
+    is_favorite: newFavoriteStatus,
+    updated_at: new Date().toISOString(),
+  };
+  await cacheService.cachePage(locallyUpdated);
+
+  try {
+    const updatePromise = supabase
+      .from('pages')
+      .update({
+        is_favorite: newFavoriteStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select()
+      .single();
+
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error('toggleFavorite timeout') }), 2500)
+    );
+
+    const { data: page, error } = await Promise.race([updatePromise, timeoutPromise]);
+
+    if (error || !page) {
+      return locallyUpdated;
+    }
+
+    return page as Page;
+  } catch {
+    return locallyUpdated;
   }
-
-  if (!page) {
-    throw new Error('Page not found');
-  }
-
-  return page as Page;
 }
 
 /**
  * Get all favorited pages for the current user
  */
 export async function getFavorites(): Promise<Page[]> {
+  let cachedFavs: Page[] = [];
+  try {
+    const allCached = await db.pages.toArray();
+    cachedFavs = allCached.filter(p => p.is_favorite && !p.deleted_at).sort((a, b) => a.position - b.position);
+  } catch {}
+
   if (isLocalMode()) {
-    const pages = await cacheService.getCachedPages('local-dev-user-id');
-    return pages.filter(p => p.is_favorite && !p.deleted_at).sort((a, b) => a.position - b.position);
+    return cachedFavs;
   }
 
-  // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    throw new Error('User not authenticated');
+  const user = await getEffectiveUser();
+  if (!user) {
+    return cachedFavs;
   }
 
-  // Query favorited pages
-  const { data: pages, error } = await supabase
-    .from('pages')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('is_favorite', true)
-    .is('deleted_at', null)
-    .order('position', { ascending: true });
+  try {
+    const query = supabase
+      .from('pages')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_favorite', true)
+      .is('deleted_at', null)
+      .order('position', { ascending: true });
 
-  if (error) {
-    throw new Error(`Failed to get favorites: ${error.message}`);
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error('getFavorites timeout') }), 2500)
+    );
+
+    const { data: pages, error } = await Promise.race([query, timeoutPromise]);
+
+    if (error || !pages) {
+      return cachedFavs;
+    }
+
+    return (pages || []) as Page[];
+  } catch {
+    return cachedFavs;
   }
-
-  return (pages || []) as Page[];
 }

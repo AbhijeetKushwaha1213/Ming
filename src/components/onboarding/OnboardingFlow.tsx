@@ -71,12 +71,6 @@ export const OnboardingFlow = () => {
     email: user?.email || ''
   });
 
-  const subjects = [
-    'Physics', 'Chemistry', 'Biology', 'Mathematics', 'Computer Science', 
-    'English', 'Current Affairs', 'History', 'Geography', 'Economics',
-    'Mechanical Engineering', 'Electrical Engineering', 'Civil Engineering'
-  ];
-
   const examTypes = [
     'NEET (Medical)', 'JEE (Engineering)', 'UPSC (Civil Services)', 
     'GATE (Graduate Aptitude)', 'CUET (Common University)', 'Bank/SSC', 
@@ -114,15 +108,6 @@ export const OnboardingFlow = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
-  };
-
-  const handleSubjectToggle = (subject: string) => {
-    setData(prev => ({
-      ...prev,
-      subjects: prev.subjects.includes(subject)
-        ? prev.subjects.filter(s => s !== subject)
-        : [...prev.subjects, subject]
-    }));
   };
 
   const handleArrayToggle = (field: keyof OnboardingData, value: string) => {
@@ -203,7 +188,7 @@ export const OnboardingFlow = () => {
     switch (currentStep) {
       case 0: return data.name && data.age;
       case 1: return true; // Avatar is optional
-      case 2: return data.learningMode && data.subjects.length > 0;
+      case 2: return !!data.learningMode;
       case 3: 
         if (data.learningMode === 'exam') {
           return data.examType && data.targetYear;
@@ -345,27 +330,6 @@ export const OnboardingFlow = () => {
                   <p className="text-muted-foreground leading-relaxed">Focused preparation for competitive exams like JEE, NEET, UPSC, GATE, and more</p>
                 </div>
               </Card>
-            </div>
-
-            <div>
-              <Label className="text-lg font-medium mb-4 block">Which subjects are you most focused on? *</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {subjects.map((subject) => (
-                  <Badge
-                    key={subject}
-                    variant={data.subjects.includes(subject) ? "default" : "outline"}
-                    className={`cursor-pointer p-3 text-center justify-center transition-all duration-200 hover:scale-105 ${
-                      data.subjects.includes(subject) 
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' 
-                        : 'hover:bg-blue-50 hover:border-blue-300'
-                    }`}
-                    onClick={() => handleSubjectToggle(subject)}
-                  >
-                    {subject}
-                  </Badge>
-                ))}
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">Select at least one subject</p>
             </div>
           </div>
         );
@@ -597,10 +561,12 @@ export const OnboardingFlow = () => {
                   <BookOpen className="w-4 h-4" />
                   <span><strong>Mode:</strong> {data.learningMode === 'college' ? 'College Student' : 'Exam Preparation'}</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Target className="w-4 h-4" />
-                  <span><strong>Subjects:</strong> {data.subjects.slice(0, 3).join(', ')}{data.subjects.length > 3 ? '...' : ''}</span>
-                </div>
+                {data.subjects && data.subjects.length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <Target className="w-4 h-4" />
+                    <span><strong>Subjects:</strong> {data.subjects.slice(0, 3).join(', ')}{data.subjects.length > 3 ? '...' : ''}</span>
+                  </div>
+                )}
                 <div className="flex items-center space-x-2">
                   <Clock className="w-4 h-4" />
                   <span><strong>Daily Study:</strong> {data.dailyHours} hours</span>

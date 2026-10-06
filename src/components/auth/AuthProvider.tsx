@@ -762,23 +762,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateUserType = async (type: 'exam' | 'college', details: any) => {
+    // 1. Immediately create and commit full user profile to local state and cache
+    const activeUserId = user?.id || user?.user_id;
+    const cleanEmail = details.email || user?.email || '';
+    const cleanName = details.name || user?.name || 'Student';
+
+    const updatedUser: UserProfile = {
+      ...(user || {}),
+      id: activeUserId || `user-${Date.now()}`,
+      user_id: activeUserId || `user-${Date.now()}`,
+      name: cleanName,
+      email: cleanEmail,
+      userType: type,
+      examType: details.examType ?? user?.examType,
+      targetYear: details.targetYear ?? (user as any)?.targetYear,
+      college: details.college ?? user?.college ?? (type === 'college' ? 'University' : undefined),
+      university: details.university ?? user?.university,
+      degree: details.degree ?? user?.degree,
+      academicYear: details.academicYear ?? user?.academicYear,
+      branch: details.course ?? details.branch ?? user?.branch ?? (type === 'college' ? 'General' : undefined),
+      semester: details.semester !== undefined ? details.semester : (user?.semester ?? 1),
+      examDate: details.examDate ?? user?.examDate,
+      subjects: details.subjects ?? user?.subjects ?? [],
+      study_streak: user?.study_streak || 0,
+      total_study_hours: user?.total_study_hours || 0,
+      current_level: user?.current_level || 1,
+      experience_points: user?.experience_points || 0,
+      avatar: details.avatarUrl ?? details.avatar ?? user?.avatar,
+    };
+
+    // Immediately update local state so route guards and dashboard resolve instantaneously
+    updateUserState(updatedUser);
+
     if (localStorage.getItem('studymate-offline-session') !== null) {
-      // Local mode profile update
-      const updatedUser: UserProfile = {
-        ...user!,
-        name: details.name || user!.name,
-        userType: type,
-        examType: details.examType || user!.examType,
-        college: details.college || user!.college,
-        university: details.university || user!.university,
-        degree: details.degree || user!.degree,
-        academicYear: details.academicYear || user!.academicYear,
-        branch: details.course || user!.branch,
-        semester: details.semester || user!.semester,
-        examDate: details.examDate || user!.examDate,
-        subjects: details.subjects || (user as any)?.subjects,
-      };
-      setUser(updatedUser);
       localStorage.setItem('studymate-offline-session', JSON.stringify(updatedUser));
       toast({
         title: "Profile Setup Complete! ✅",
@@ -787,112 +803,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      throw new Error('No authenticated user found');
-    }
-
+    // 2. Best-effort time-bounded cloud sync so onboarding NEVER hangs
     try {
-      console.log('AuthProvider: Updating user type:', type, 'with details:', details);
+      await Promise.race([
+        (async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user) return;
 
-      const updateData: any = {
-        user_type: type,
-        name: details.name,
-        email: session.user.email,
-        updated_at: new Date().toISOString()
-      };
+          const updateData: any = {
+            user_type: type,
+            name: cleanName,
+            email: session.user.email || cleanEmail,
+            updated_at: new Date().toISOString(),
+          };
 
-      // Set avatar if provided
-      if (details.avatarUrl) updateData.avatar = details.avatarUrl;
-      
-      // Set age range if provided
-      if (details.age) updateData.age_range = details.age;
+          if (details.avatarUrl || details.avatar) {
+            updateData.avatar = details.avatarUrl || details.avatar;
+          }
+          if (details.age) updateData.age_range = details.age;
 
-      if (type === 'exam') {
-        if (details.examType) updateData.exam_type = details.examType;
-        if (details.examDate) updateData.exam_date = details.examDate;
-        if (details.targetYear) updateData.target_year = details.targetYear;
-      } else if (type === 'college') {
-        if (details.college) updateData.college = details.college;
-        if (details.course) {
-          updateData.branch = details.course;
-          updateData.course = details.course;
-        }
-        if (details.semester) updateData.semester = details.semester;
-      }
+          if (type === 'exam') {
+            if (details.examType) updateData.exam_type = details.examType;
+            if (details.examDate) updateData.exam_date = details.examDate;
+            if (details.targetYear) updateData.target_year = details.targetYear;
+          } else {
+            if (details.college) updateData.college = details.college;
+            const courseOrBranch = details.course || details.branch;
+            if (courseOrBranch) {
+              updateData.branch = courseOrBranch;
+              updateData.course = courseOrBranch;
+            }
+            if (details.semester) updateData.semester = details.semester;
+          }
 
-      // Store additional onboarding data as JSONB
-      if (details.subjects && Array.isArray(details.subjects)) {
-        updateData.subjects = JSON.stringify(details.subjects);
-      }
-      if (details.studyPreference && Array.isArray(details.studyPreference)) {
-        updateData.study_preference = JSON.stringify(details.studyPreference);
-      }
-      if (details.motivation && Array.isArray(details.motivation)) {
-        updateData.motivation = JSON.stringify(details.motivation);
-      }
-      if (details.dailyHours) updateData.daily_hours = details.dailyHours;
-      if (details.reviewModes && Array.isArray(details.reviewModes)) {
-        updateData.review_modes = JSON.stringify(details.reviewModes);
-      }
-      if (details.studyReminder) updateData.study_reminder = details.studyReminder;
+          if (details.subjects && Array.isArray(details.subjects)) {
+            updateData.subjects = details.subjects;
+          }
+          if (details.studyPreference && Array.isArray(details.studyPreference)) {
+            updateData.study_preference = details.studyPreference;
+          }
+          if (details.motivation && Array.isArray(details.motivation)) {
+            updateData.motivation = details.motivation;
+          }
+          if (details.dailyHours) updateData.daily_hours = details.dailyHours;
+          if (details.reviewModes && Array.isArray(details.reviewModes)) {
+            updateData.review_modes = details.reviewModes;
+          }
+          if (details.studyReminder) updateData.study_reminder = details.studyReminder;
 
-      console.log('AuthProvider: Saving update data:', updateData);
+          // Perform atomic upsert directly by user_id
+          const { error: upsertErr } = await supabase
+            .from('user_profiles')
+            .upsert({ user_id: session.user.id, ...updateData }, { onConflict: 'user_id' });
 
-      // First, check if profile exists
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('user_id')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        // PGRST116 is "not found" error, which is okay
-        console.error('AuthProvider: Error checking existing profile:', fetchError);
-      }
-
-      let error;
-      
-      if (existingProfile) {
-        // Profile exists, update it
-        console.log('AuthProvider: Profile exists, updating...');
-        const result = await supabase
-          .from('user_profiles')
-          .update(updateData)
-          .eq('user_id', session.user.id);
-        error = result.error;
-      } else {
-        // Profile doesn't exist, insert it
-        console.log('AuthProvider: Profile does not exist, inserting...');
-        const result = await supabase
-          .from('user_profiles')
-          .insert({ user_id: session.user.id, ...updateData });
-        error = result.error;
-      }
-
-      if (error) {
-        console.error('AuthProvider: Database operation error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        toast({
-          title: "Profile Setup Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-        throw error;
-      }
-
-      console.log('AuthProvider: Profile updated successfully, fetching fresh data...');
-      
-      // Refetch the user profile to get updated data
-      await fetchUserProfile(session.user);
-
-      toast({
-        title: "Profile Setup Complete! ✅",
-        description: "Your study preferences have been saved.",
-      });
-    } catch (error) {
-      console.error('Update user type error:', error);
-      throw error;
+          if (upsertErr) {
+            console.warn('AuthProvider: Cloud profile upsert warning (local profile active):', upsertErr);
+          } else {
+            console.log('AuthProvider: Cloud profile successfully synced.');
+          }
+        })(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Cloud sync timeout')), 3500)
+        ),
+      ]);
+    } catch (syncErr) {
+      console.warn('AuthProvider: Cloud profile sync completed with local fallback:', syncErr);
     }
   };
 

@@ -156,45 +156,49 @@ export const OnboardingFlow = () => {
       };
 
       if (userType === 'exam') {
-        details.examType = data.examType;
+        details.examType = data.examType || 'Competitive Exam';
         details.targetYear = data.targetYear;
       } else {
-        details.college = data.college;
+        details.college = data.college || 'College / University';
         details.university = data.university;
         details.degree = data.degree;
         details.academicYear = data.academicYear;
-        details.course = data.course;
-        details.semester = parseInt(data.semester || '1');
+        details.course = data.course || 'Undergraduate';
+        details.semester = parseInt(data.semester || '1', 10);
       }
 
       console.log('OnboardingFlow: Completing onboarding with details:', details);
       
-      // Save subjects locally and in user profile
+      // 1. Immediately save subjects locally so vault and dashboard have them immediately
       localStorage.setItem('studymate_selected_subjects', JSON.stringify(data.subjects));
 
+      // 2. Persist profile state & sync to cloud
       await updateUserType(userType as 'exam' | 'college', details);
 
-      // Best-effort batch insertion into subjects table for authenticated users
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        if (authData?.user && data.subjects.length > 0) {
-          const subjectsToInsert = data.subjects.map((name) => ({
-            name,
-            user_id: authData.user.id,
-            total_topics: 10,
-            completed_topics: 0,
-          }));
-          await supabase.from('subjects').insert(subjectsToInsert);
+      // 3. Best-effort background batch insertion into subjects table (non-blocking)
+      void (async () => {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user && data.subjects.length > 0) {
+            const subjectsToInsert = data.subjects.map((name) => ({
+              name,
+              user_id: authData.user.id,
+              total_topics: 10,
+              completed_topics: 0,
+            }));
+            await supabase.from('subjects').insert(subjectsToInsert);
+          }
+        } catch (err) {
+          console.warn('Could not batch-insert into subjects table (profile subjects will be used):', err);
         }
-      } catch (err) {
-        console.warn('Could not batch-insert into subjects table (profile subjects will be used):', err);
-      }
+      })();
       
       toast({
         title: "Welcome to StudyMate AI! 🎉",
         description: "Your personalized learning journey begins now!",
       });
 
+      // 4. Guaranteed direct redirect to dashboard
       navigate('/dashboard', { replace: true });
     } catch (error) {
       console.error('Onboarding completion error:', error);

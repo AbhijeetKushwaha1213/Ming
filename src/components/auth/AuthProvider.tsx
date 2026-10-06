@@ -14,9 +14,13 @@ interface UserProfile {
   userType: 'exam' | 'college';
   examType?: string;
   college?: string;
+  university?: string;
+  degree?: string;
+  academicYear?: string;
   branch?: string;
   semester?: number;
   examDate?: string;
+  subjects?: string[];
   study_streak: number;
   total_study_hours: number;
   current_level: number;
@@ -85,6 +89,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Ensure user_type is properly typed
         const userType = data.user_type === 'college' ? 'college' : 'exam';
         
+        let parsedSubjects: string[] | undefined = undefined;
+        if (data.subjects) {
+          try {
+            parsedSubjects = typeof data.subjects === 'string' ? JSON.parse(data.subjects) : data.subjects;
+          } catch (e) {
+            console.error('Error parsing user subjects:', e);
+          }
+        }
+
         const userData = {
           id: data.id,
           user_id: data.user_id,
@@ -93,9 +106,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           userType: userType as 'exam' | 'college',
           examType: data.exam_type || undefined,
           college: data.college || undefined,
+          university: data.university || undefined,
+          degree: data.degree || undefined,
+          academicYear: data.academic_year || undefined,
           branch: data.branch || undefined,
           semester: data.semester || undefined,
           examDate: data.exam_date || undefined,
+          subjects: parsedSubjects,
           study_streak: data.study_streak || 0,
           total_study_hours: data.total_study_hours || 0,
           current_level: data.current_level || 1,
@@ -528,9 +545,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userType: type,
         examType: details.examType || user!.examType,
         college: details.college || user!.college,
+        university: details.university || user!.university,
+        degree: details.degree || user!.degree,
+        academicYear: details.academicYear || user!.academicYear,
         branch: details.course || user!.branch,
         semester: details.semester || user!.semester,
         examDate: details.examDate || user!.examDate,
+        subjects: details.subjects || (user as any)?.subjects,
       };
       setUser(updatedUser);
       localStorage.setItem('studymate-offline-session', JSON.stringify(updatedUser));

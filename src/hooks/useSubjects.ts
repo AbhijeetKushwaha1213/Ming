@@ -35,13 +35,41 @@ export const useSubjects = () => {
   } = useQuery({
     queryKey: ['subjects'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('created_at', { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from('subjects')
+          .select('*')
+          .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      return data as Subject[];
+        if (!error && data && data.length > 0) {
+          return data as Subject[];
+        }
+      } catch (err) {
+        console.warn('useSubjects: Remote query failed, using local onboarding fallback', err);
+      }
+
+      // Local fallback from onboarding selections
+      const stored = localStorage.getItem('studymate_selected_subjects');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((name: string, i: number) => ({
+              id: `subj-onboarding-${i}`,
+              user_id: 'local',
+              name,
+              total_topics: 10,
+              completed_topics: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })) as Subject[];
+          }
+        } catch (e) {
+          console.error('Failed to parse studymate_selected_subjects:', e);
+        }
+      }
+
+      return [] as Subject[];
     },
   });
 

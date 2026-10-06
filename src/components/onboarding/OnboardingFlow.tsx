@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
+import { ChooseSubjectsStep } from './ChooseSubjectsStep';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OnboardingData {
   name: string;
@@ -33,8 +35,11 @@ interface OnboardingData {
   subjects: string[];
   examType?: string;
   targetYear?: string;
-  semester?: string;
+  degree?: string;
   course?: string;
+  semester?: string;
+  academicYear?: string;
+  university?: string;
   college?: string;
   studyPreference: string[];
   motivation: string[];
@@ -49,7 +54,7 @@ const STEPS = [
   'Profile Photo',
   'Learning Mode & Context',
   'Academic Details',
-  'Review & Schedule',
+  'Choose Your Subjects',
   'Complete Profile'
 ];
 
@@ -74,6 +79,10 @@ export const OnboardingFlow = () => {
     'NEET (Medical)', 'JEE (Engineering)', 'UPSC (Civil Services)', 
     'GATE (Graduate Aptitude)', 'CUET (Common University)', 'Bank/SSC', 
     'CAT (MBA)', 'CLAT (Law)', 'Other'
+  ];
+
+  const degrees = [
+    'B.Tech / B.E.', 'B.Sc.', 'B.A.', 'B.Com / BBA', 'BCA / MCA', 'M.Tech / M.Sc.', 'Other'
   ];
 
   const courses = [
@@ -136,10 +145,10 @@ export const OnboardingFlow = () => {
         age: data.age,
         avatarUrl: data.avatarUrl,
         subjects: data.subjects,
-        studyPreference: data.studyPreference,
-        motivation: data.motivation,
-        dailyHours: data.dailyHours,
-        reviewModes: data.reviewModes,
+        studyPreference: data.studyPreference || [],
+        motivation: data.motivation || [],
+        dailyHours: data.dailyHours || '3-4',
+        reviewModes: data.reviewModes || [],
         email: data.email,
         studyReminder: data.studyReminder
       };
@@ -149,13 +158,35 @@ export const OnboardingFlow = () => {
         details.targetYear = data.targetYear;
       } else {
         details.college = data.college;
+        details.university = data.university;
+        details.degree = data.degree;
+        details.academicYear = data.academicYear;
         details.course = data.course;
         details.semester = parseInt(data.semester || '1');
       }
 
       console.log('OnboardingFlow: Completing onboarding with details:', details);
       
+      // Save subjects locally and in user profile
+      localStorage.setItem('studymate_selected_subjects', JSON.stringify(data.subjects));
+
       await updateUserType(userType as 'exam' | 'college', details);
+
+      // Best-effort batch insertion into subjects table for authenticated users
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user && data.subjects.length > 0) {
+          const subjectsToInsert = data.subjects.map((name) => ({
+            name,
+            user_id: authData.user.id,
+            total_topics: 10,
+            completed_topics: 0,
+          }));
+          await supabase.from('subjects').insert(subjectsToInsert);
+        }
+      } catch (err) {
+        console.warn('Could not batch-insert into subjects table (profile subjects will be used):', err);
+      }
       
       toast({
         title: "Welcome to StudyMate AI! 🎉",
@@ -184,8 +215,8 @@ export const OnboardingFlow = () => {
         } else {
           return data.semester && data.course;
         }
-      case 4: return data.dailyHours && data.reviewModes.length > 0;
-      case 5: return data.email;
+      case 4: return data.subjects && data.subjects.length > 0;
+      case 5: return Boolean(data.email);
       default: return true;
     }
   };
@@ -363,18 +394,22 @@ export const OnboardingFlow = () => {
             ) : (
               <div className="space-y-6">
                 <div>
-                  <Label className="text-base font-medium">Which semester are you currently in? *</Label>
-                  <Select value={data.semester} onValueChange={(value) => setData({...data, semester: value})}>
+                  <Label className="text-base font-medium">What degree are you pursuing?</Label>
+                  <Select
+                    value={data.degree || 'B.Tech / B.E.'}
+                    onValueChange={(value) => setData({ ...data, degree: value })}
+                  >
                     <SelectTrigger className="mt-2 h-12">
-                      <SelectValue placeholder="Select semester" />
+                      <SelectValue placeholder="Select degree" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1,2,3,4,5,6,7,8].map((sem) => (
-                        <SelectItem key={sem} value={sem.toString()}>Semester {sem}</SelectItem>
+                      {degrees.map((deg) => (
+                        <SelectItem key={deg} value={deg}>{deg}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div>
                   <Label className="text-base font-medium">What is your course/branch? *</Label>
                   <Select value={data.course} onValueChange={(value) => setData({...data, course: value})}>
@@ -388,14 +423,66 @@ export const OnboardingFlow = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label className="text-base font-medium">Which college are you from? (Optional)</Label>
-                  <Input
-                    value={data.college || ''}
-                    onChange={(e) => setData({...data, college: e.target.value})}
-                    placeholder="e.g., IIT Delhi, MIT, Stanford University"
-                    className="mt-2 h-12"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-base font-medium">Current Semester *</Label>
+                    <Select
+                      value={data.semester}
+                      onValueChange={(value) => {
+                        const semNum = parseInt(value, 10);
+                        const yr = Math.ceil(semNum / 2);
+                        const yrSuffix = yr === 1 ? 'st' : yr === 2 ? 'nd' : yr === 3 ? 'rd' : 'th';
+                        const yrLabel = `${yr}${yrSuffix} Year`;
+                        setData({ ...data, semester: value, academicYear: yrLabel });
+                      }}
+                    >
+                      <SelectTrigger className="mt-2 h-12">
+                        <SelectValue placeholder="Select semester" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => {
+                          const yr = Math.ceil(sem / 2);
+                          const yrSuffix = yr === 1 ? 'st' : yr === 2 ? 'nd' : yr === 3 ? 'rd' : 'th';
+                          return (
+                            <SelectItem key={sem} value={sem.toString()}>
+                              Semester {sem} ({yr}{yrSuffix} Year)
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-base font-medium">Academic Year</Label>
+                    <Input
+                      value={data.academicYear || (data.semester ? `${Math.ceil(parseInt(data.semester, 10) / 2)} Year` : '1st Year')}
+                      readOnly
+                      className="mt-2 h-12 bg-muted/40 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-base font-medium">University / Board (Optional)</Label>
+                    <Input
+                      value={data.university || ''}
+                      onChange={(e) => setData({ ...data, university: e.target.value })}
+                      placeholder="e.g., Delhi University, VTU, Anna Univ"
+                      className="mt-2 h-12"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-base font-medium">College / Institute (Optional)</Label>
+                    <Input
+                      value={data.college || ''}
+                      onChange={(e) => setData({ ...data, college: e.target.value })}
+                      placeholder="e.g., IIT Delhi, MIT, BITS Pilani"
+                      className="mt-2 h-12"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -404,50 +491,21 @@ export const OnboardingFlow = () => {
 
       case 4:
         return (
-          <div className="space-y-8">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-foreground mb-3">Plan your study schedule</h2>
-              <p className="text-lg text-muted-foreground">Help us create the perfect study routine for you</p>
-            </div>
-
-            <div className="space-y-8">
-              <div>
-                <Label className="text-base font-medium">How many hours do you plan to study daily? *</Label>
-                <Select value={data.dailyHours} onValueChange={(value) => setData({...data, dailyHours: value})}>
-                  <SelectTrigger className="mt-2 h-12">
-                    <SelectValue placeholder="Select daily study hours" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="<1">Less than 1 hour</SelectItem>
-                    <SelectItem value="1-2">1-2 hours</SelectItem>
-                    <SelectItem value="3-4">3-4 hours</SelectItem>
-                    <SelectItem value="5-6">5-6 hours</SelectItem>
-                    <SelectItem value="7+">7+ hours</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-lg font-medium mb-4 block">Preferred review methods (select all that apply) *</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {reviewModes.map((mode) => (
-                    <Badge
-                      key={mode}
-                      variant={data.reviewModes.includes(mode) ? "default" : "outline"}
-                      className={`cursor-pointer p-4 text-center justify-center transition-all duration-200 hover:scale-105 ${
-                        data.reviewModes.includes(mode) 
-                          ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-md' 
-                          : 'hover:bg-orange-50 hover:border-orange-300'
-                      }`}
-                      onClick={() => handleArrayToggle('reviewModes', mode)}
-                    >
-                      {mode}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <ChooseSubjectsStep
+            learningMode={data.learningMode}
+            university={data.university}
+            college={data.college}
+            degree={data.degree}
+            course={data.course}
+            semester={data.semester}
+            academicYear={data.academicYear}
+            examType={data.examType}
+            targetYear={data.targetYear}
+            selectedSubjects={data.subjects}
+            onChange={(newSubjects) => {
+              setData((prev) => ({ ...prev, subjects: newSubjects }));
+            }}
+          />
         );
 
       case 5:
@@ -488,25 +546,35 @@ export const OnboardingFlow = () => {
 
             <div className="bg-secondary/60 p-6 rounded-xl border border-border">
               <h3 className="font-serif font-bold text-foreground mb-4 text-lg">Your Profile Summary:</h3>
-              <div className="text-sm text-foreground space-y-2">
+              <div className="text-sm text-foreground space-y-3">
                 <div className="flex items-center space-x-2">
-                  <User className="w-4 h-4" />
+                  <User className="w-4 h-4 text-muted-foreground" />
                   <span><strong>Name:</strong> {data.name}</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <BookOpen className="w-4 h-4" />
+                  <BookOpen className="w-4 h-4 text-muted-foreground" />
                   <span><strong>Mode:</strong> {data.learningMode === 'college' ? 'College Student' : 'Exam Preparation'}</span>
                 </div>
                 {data.subjects && data.subjects.length > 0 && (
-                  <div className="flex items-center space-x-2">
-                    <Target className="w-4 h-4" />
-                    <span><strong>Subjects:</strong> {data.subjects.slice(0, 3).join(', ')}{data.subjects.length > 3 ? '...' : ''}</span>
+                  <div className="flex items-start space-x-2 pt-1 border-t border-border/50">
+                    <Target className="w-4 h-4 mt-0.5 text-[#20B486] shrink-0" />
+                    <div>
+                      <span className="block font-semibold mb-1">
+                        Selected Subjects ({data.subjects.length}):
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {data.subjects.map((sub) => (
+                          <span
+                            key={sub}
+                            className="inline-block px-2.5 py-1 text-xs bg-emerald-100/80 dark:bg-emerald-950/60 text-[#063B2A] dark:text-emerald-300 rounded-lg font-medium border border-emerald-300/40 dark:border-emerald-800/40"
+                          >
+                            {sub}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-4 h-4" />
-                  <span><strong>Daily Study:</strong> {data.dailyHours} hours</span>
-                </div>
               </div>
             </div>
           </div>

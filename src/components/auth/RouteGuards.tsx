@@ -98,13 +98,24 @@ export const PublicAuthRoute: React.FC<{ initialTab?: 'signin' | 'signup' }> = (
 export const RootRedirectRoute: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
-    return <AuthLoadingScreen message="Loading StudyMate..." />;
-  }
-
   if (isAuthenticated && user) {
     const destination = getPostAuthDestination(user);
     return <Navigate to={destination} replace />;
+  }
+
+  // Instant check: If no auth token exists in local storage, route to landing in 0ms without waiting or showing a loading screen
+  const hasToken =
+    typeof window !== 'undefined' &&
+    Object.keys(localStorage).some(
+      (key) => (key.startsWith('sb-') && key.endsWith('-auth-token')) || key === 'studymate-offline-session'
+    );
+
+  if (!hasToken) {
+    return <Navigate to={AUTH_ROUTES.LANDING} replace />;
+  }
+
+  if (isLoading) {
+    return <AuthLoadingScreen message="Loading StudyMate..." />;
   }
 
   return <Navigate to={AUTH_ROUTES.LANDING} replace />;

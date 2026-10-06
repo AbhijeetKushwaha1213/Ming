@@ -54,9 +54,46 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    try {
+      const cached = localStorage.getItem('studymate_cached_profile');
+      if (cached) return JSON.parse(cached);
+      const offlineSession = localStorage.getItem('studymate-offline-session');
+      if (offlineSession) return JSON.parse(offlineSession);
+    } catch (e) {
+      console.warn('AuthProvider: Error reading initial cached profile:', e);
+    }
+    return null;
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    try {
+      if (localStorage.getItem('studymate-offline-session')) return false;
+      if (localStorage.getItem('studymate_cached_profile')) return false;
+      const hasToken = Object.keys(localStorage).some(
+        (key) => key.startsWith('sb-') && key.endsWith('-auth-token')
+      );
+      if (!hasToken) return false;
+    } catch (e) {
+      console.warn('AuthProvider: Error checking initial auth token in localStorage:', e);
+    }
+    return true;
+  });
+
   const { toast } = useToast();
+
+  const updateUserState = (newUser: UserProfile | null) => {
+    setUser(newUser);
+    try {
+      if (newUser) {
+        localStorage.setItem('studymate_cached_profile', JSON.stringify(newUser));
+      } else {
+        localStorage.removeItem('studymate_cached_profile');
+      }
+    } catch (e) {
+      console.warn('AuthProvider: Error syncing cached profile to localStorage:', e);
+    }
+  };
 
   const ensureUserProfileExists = async (
     supabaseUser: SupabaseUser,
@@ -114,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           experience_points: profile.experience_points || 0,
           avatar: profile.avatar || undefined,
         };
-        setUser(loadedUser);
+        updateUserState(loadedUser);
         return loadedUser;
       }
 
@@ -158,7 +195,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         current_level: 1,
         experience_points: 0,
       };
-      setUser(createdUser);
+      updateUserState(createdUser);
       return createdUser;
     } catch (err) {
       console.error('AuthProvider: Error in ensureUserProfileExists:', err);
@@ -168,84 +205,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<UserProfile> => {
     try {
-      console.log('AuthProvider: Fetching profile for user:', supabaseUser.id);
+      const ensured = await ensureUserProfileExists(supabaseUser);
+      if (ensured) return ensured;
+
       const email = supabaseUser.email?.toLowerCase().trim() || '';
-
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .or(`user_id.eq.${supabaseUser.id},email.eq.${email}`)
-        .limit(1)
-        .single();
-
-      if (error || !data) {
-        console.log('AuthProvider: Profile not found directly, ensuring profile exists...');
-        const ensured = await ensureUserProfileExists(supabaseUser);
-        if (ensured) return ensured;
-
-        const minimalUser: UserProfile = {
-          id: supabaseUser.id,
-          user_id: supabaseUser.id,
-          name: supabaseUser.user_metadata?.name || email.split('@')[0] || 'User',
-          email: email,
-          userType: 'exam',
-          study_streak: 0,
-          total_study_hours: 0,
-          current_level: 1,
-          experience_points: 0,
-        };
-        setUser(minimalUser);
-        return minimalUser;
-      }
-
-      const userType = data.user_type === 'college' ? 'college' : 'exam';
-      let parsedSubjects: string[] | undefined = undefined;
-      if (data.subjects) {
-        try {
-          parsedSubjects = typeof data.subjects === 'string' ? JSON.parse(data.subjects) : data.subjects;
-        } catch (e) {
-          console.error('Error parsing user subjects:', e);
-        }
-      }
-
-      const userData: UserProfile = {
-        id: data.id,
-        user_id: data.user_id,
-        name: data.name,
-        email: data.email,
-        userType: userType as 'exam' | 'college',
-        examType: data.exam_type || undefined,
-        college: data.college || undefined,
-        university: data.university || undefined,
-        degree: data.degree || undefined,
-        academicYear: data.academic_year || undefined,
-        branch: data.branch || undefined,
-        semester: data.semester || undefined,
-        examDate: data.exam_date || undefined,
-        subjects: parsedSubjects,
-        study_streak: data.study_streak || 0,
-        total_study_hours: data.total_study_hours || 0,
-        current_level: data.current_level || 1,
-        experience_points: data.experience_points || 0,
-        avatar: data.avatar || undefined,
-      };
-
-      setUser(userData);
-      return userData;
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
       const minimalUser: UserProfile = {
         id: supabaseUser.id,
         user_id: supabaseUser.id,
-        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-        email: supabaseUser.email || '',
+        name: supabaseUser.user_metadata?.name || email.split('@')[0] || 'User',
+        email: email,
         userType: 'exam',
         study_streak: 0,
         total_study_hours: 0,
         current_level: 1,
         experience_points: 0,
       };
-      setUser(minimalUser);
+      updateUserState(minimalUser);
+      return minimalUser;
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      const email = supabaseUser.email?.toLowerCase().trim() || '';
+      const minimalUser: UserProfile = {
+        id: supabaseUser.id,
+        user_id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.name || email.split('@')[0] || 'User',
+        email: email,
+        userType: 'exam',
+        study_streak: 0,
+        total_study_hours: 0,
+        current_level: 1,
+        experience_points: 0,
+      };
+      updateUserState(minimalUser);
       return minimalUser;
     }
   };
@@ -260,29 +251,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
-    // Get initial session
-    const getInitialSession = async () => {
-      const offlineSession = localStorage.getItem('studymate-offline-session');
-      if (offlineSession) {
-        console.log('AuthProvider: Loading local offline session');
-        try {
-          if (isMounted) setUser(JSON.parse(offlineSession));
-        } catch (e) {
-          console.error('Error parsing offline session', e);
+    // Fast check: if offline session exists
+    const offlineSession = localStorage.getItem('studymate-offline-session');
+    if (offlineSession) {
+      try {
+        if (isMounted) {
+          updateUserState(JSON.parse(offlineSession));
+          setIsLoading(false);
         }
-        if (isMounted) setIsLoading(false);
-        return;
+      } catch (e) {
+        console.error('Error parsing offline session', e);
       }
+      return;
+    }
 
+    // Fast check: if no Supabase tokens exist in localStorage, resolve immediately
+    const hasToken = Object.keys(localStorage).some(
+      (key) => key.startsWith('sb-') && key.endsWith('-auth-token')
+    );
+    if (!hasToken) {
+      if (isMounted) {
+        updateUserState(null);
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Safety timeout: max 1200ms to resolve session before unblocking UI
+    const safetyTimer = window.setTimeout(() => {
+      if (isMounted && isLoading) {
+        console.warn('AuthProvider: Session resolution safety timeout reached (1200ms), unblocking UI');
+        setIsLoading(false);
+      }
+    }, 1200);
+
+    const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session?.user && isMounted) {
           await ensureUserProfileExists(session.user);
-          await fetchUserProfile(session.user);
+        } else if (isMounted) {
+          updateUserState(null);
         }
       } catch (err) {
         console.error('AuthProvider: Initial session load error:', err);
+        if (isMounted) updateUserState(null);
       } finally {
+        window.clearTimeout(safetyTimer);
         if (isMounted) setIsLoading(false);
       }
     };
@@ -299,26 +314,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Auth state changed:', event, session?.user?.email);
       }
 
-      if (session?.user) {
-        if (isMounted) setIsLoading(true);
-        try {
-          await ensureUserProfileExists(session.user);
-          await fetchUserProfile(session.user);
-        } catch (err) {
-          console.error('AuthProvider: onAuthStateChange profile load error:', err);
-        } finally {
-          if (isMounted) setIsLoading(false);
-        }
-      } else {
+      if (event === 'SIGNED_OUT') {
         if (isMounted) {
-          setUser(null);
+          updateUserState(null);
           setIsLoading(false);
+        }
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.user) {
+          try {
+            await ensureUserProfileExists(session.user);
+          } catch (err) {
+            console.error('AuthProvider: onAuthStateChange profile load error:', err);
+          } finally {
+            if (isMounted) setIsLoading(false);
+          }
         }
       }
     });
 
     return () => {
       isMounted = false;
+      window.clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
@@ -589,7 +608,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      setUser(null);
+      updateUserState(null);
       toast({
         title: "Signed Out",
         description: "You have been successfully signed out.",

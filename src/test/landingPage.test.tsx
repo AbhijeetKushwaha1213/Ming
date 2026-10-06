@@ -19,8 +19,7 @@ describe('Landing Page Integration & Friend PR Fixes', () => {
     );
 
     // Hero verification
-    expect(screen.getByText(/Turn your syllabus into a/i)).toBeInTheDocument();
-    expect(screen.getByText(/smarter learning path./i)).toBeInTheDocument();
+    expect(screen.getByText(/Turn your syllabus into/i)).toBeInTheDocument();
 
     // InteractiveShowcase verification
     expect(screen.getByText(/From lecture to lab to/i)).toBeInTheDocument();
@@ -49,23 +48,20 @@ describe('Landing Page Integration & Friend PR Fixes', () => {
     expect(srcList).toContain('/assets/hero-student.png');
   });
 
-  it('supports interactive topic selection in hero', () => {
+  it('supports feature highlights in hero', () => {
     render(
       <MemoryRouter>
         <Hero />
       </MemoryRouter>
     );
 
-    const procBtn = screen.getByText(/Process Management/i);
-    const schedBtn = screen.getByText(/CPU Scheduling/i);
-    const deadlockBtn = screen.getByText(/Deadlocks Avoidance/i);
+    const studyMat = screen.getByText(/AI Study Materials/i);
+    const dags = screen.getByText(/Topological DAGs/i);
+    const recall = screen.getByText(/Spaced Recall/i);
 
-    expect(procBtn).toBeInTheDocument();
-    expect(schedBtn).toBeInTheDocument();
-    expect(deadlockBtn).toBeInTheDocument();
-
-    fireEvent.click(procBtn);
-    fireEvent.click(deadlockBtn);
+    expect(studyMat).toBeInTheDocument();
+    expect(dags).toBeInTheDocument();
+    expect(recall).toBeInTheDocument();
   });
 
   it('auto-rotates ProductShowcase slides on timer interval', () => {

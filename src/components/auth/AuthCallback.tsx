@@ -33,12 +33,26 @@ export const AuthCallback = () => {
   useEffect(() => {
     let isActive = true;
     let fallbackTimer: number | undefined;
+
+    const currentUrl = new URL(window.location.href);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const isRecovery =
+      currentUrl.searchParams.get('type') === 'recovery' ||
+      hashParams.get('type') === 'recovery' ||
+      currentUrl.searchParams.get('mode') === 'reset-password';
+
+    if (isRecovery) {
+      console.log('Recovery flow detected in AuthCallback, redirecting to /auth?mode=reset-password');
+      navigate(`/auth?mode=reset-password${window.location.hash ? window.location.hash : ''}`, { replace: true });
+      return;
+    }
+
     const errorMessage = getAuthErrorMessage();
 
     if (errorMessage) {
       console.error('OAuth error in URL:', errorMessage);
       toast({
-        title: 'Google Sign In Failed',
+        title: 'Sign In Failed',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -177,6 +191,12 @@ export const AuthCallback = () => {
 
       console.log('Auth state changed:', event);
       
+      if (event === 'PASSWORD_RECOVERY') {
+        sessionStorage.removeItem('google_oauth_initiated');
+        navigate('/auth?mode=reset-password', { replace: true });
+        return;
+      }
+
       if (event === 'SIGNED_IN' && session) {
         sessionStorage.removeItem('google_oauth_initiated');
         navigate('/', { replace: true });

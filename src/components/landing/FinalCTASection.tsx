@@ -32,7 +32,7 @@ export const FinalCTASection = () => {
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
           <button
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate('/signup')}
             className="inline-flex items-center justify-center gap-2.5 min-w-[210px] sm:min-w-[230px] h-14 px-9 rounded-full bg-[#20B486] text-white text-base font-bold hover:bg-[#1aa378] transition-all shadow-[0_6px_20px_rgba(32,180,134,0.35)] active:scale-98"
           >
             <span>Start Learning</span>

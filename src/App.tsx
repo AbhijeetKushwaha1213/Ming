@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +6,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./components/auth/AuthProvider";
 import { AuthCallback } from "./components/auth/AuthCallback";
 import { MainApp } from "./components/MainApp";
+import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
+import {
+  ProtectedRoute,
+  OnboardingRoute,
+  PublicAuthRoute,
+  RootRedirectRoute,
+} from "./components/auth/RouteGuards";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SecurityHeaders } from "./components/security/SecurityHeaders";
 import Landing from "./pages/Landing";
@@ -27,21 +33,12 @@ const queryClient = new QueryClient({
         return failureCount < 3;
       },
       staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
+      gcTime: 10 * 60 * 1000, // 10 minutes
     },
   },
 });
 
-// Only log in development to prevent information disclosure
-if (process.env.NODE_ENV === 'development') {
-  console.log('App: Initializing application');
-}
-
-const App = () => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('App: Rendering main app component');
-  }
-  
+export const App = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -50,26 +47,49 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/landing" element={<Landing />} />
-              <Route path="/auth" element={
-                <AuthProvider>
-                  <MainApp />
-                </AuthProvider>
-              } />
-              <Route path="/auth/callback" element={
-                <AuthProvider>
-                  <AuthCallback />
-                </AuthProvider>
-              } />
-              <Route path="/" element={
-                <AuthProvider>
-                  <MainApp />
-                </AuthProvider>
-              } />
-              <Route path="/dev/evaluation" element={<EvaluationDashboard />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AuthProvider>
+              <Routes>
+                {/* Root Route: Deterministic routing based on session */}
+                <Route path="/" element={<RootRedirectRoute />} />
+
+                {/* Public Marketing Landing Page */}
+                <Route path="/landing" element={<Landing />} />
+
+                {/* Public Authentication Views */}
+                <Route path="/login" element={<PublicAuthRoute initialTab="signin" />} />
+                <Route path="/signup" element={<PublicAuthRoute initialTab="signup" />} />
+                <Route path="/auth" element={<PublicAuthRoute initialTab="signin" />} />
+
+                {/* OAuth Callback Controller */}
+                <Route path="/auth/callback" element={<AuthCallback />} />
+
+                {/* Authenticated Onboarding Route */}
+                <Route
+                  path="/onboarding"
+                  element={
+                    <OnboardingRoute>
+                      <OnboardingFlow />
+                    </OnboardingRoute>
+                  }
+                />
+
+                {/* Protected Main Dashboard */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <MainApp />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Development & Diagnostics */}
+                <Route path="/dev/evaluation" element={<EvaluationDashboard />} />
+
+                {/* 404 Fallback */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>

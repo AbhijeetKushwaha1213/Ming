@@ -99,7 +99,7 @@ export const Hero = () => {
             {/* CTAs matching Reference Button System */}
             <div className="flex flex-wrap items-center gap-4 sm:gap-5 pt-2 w-full sm:w-auto">
               <button
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/signup')}
                 className="inline-flex items-center justify-center gap-2.5 min-w-[210px] sm:min-w-[230px] h-14 px-9 rounded-full bg-[#063B2A] text-white text-base sm:text-[17px] font-bold hover:bg-[#0A4D37] transition-all shadow-[0_8px_24px_rgba(6,59,42,0.25)] hover:shadow-[0_12px_28px_rgba(6,59,42,0.35)] active:scale-98"
               >
                 <span>Start Learning</span>

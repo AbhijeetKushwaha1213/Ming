@@ -325,7 +325,7 @@ export const KnowledgeDAGSection = () => {
             {/* Actions Requested by Prompt: Generate material, Practice quiz, Ask AI Tutor */}
             <div className="pt-3 border-t border-[#DDE7E1] space-y-2">
               <button
-                onClick={() => window.location.href = '/auth'}
+                onClick={() => window.location.href = '/signup'}
                 className="w-full py-2.5 px-4 rounded-xl bg-[#20B486] text-white text-xs font-bold hover:bg-[#1aa378] transition-colors flex items-center justify-center gap-2 shadow-xs"
               >
                 <HelpCircle className="w-4 h-4" />
@@ -334,14 +334,14 @@ export const KnowledgeDAGSection = () => {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => window.location.href = '/auth'}
+                  onClick={() => window.location.href = '/signup'}
                   className="py-2 px-3 rounded-xl bg-white border border-[#DDE7E1] text-[#063B2A] text-xs font-bold hover:bg-[#DDF7EC] transition-colors flex items-center justify-center gap-1.5"
                 >
                   <Layers className="w-3.5 h-3.5 text-[#20B486]" />
                   <span>Flashcards</span>
                 </button>
                 <button
-                  onClick={() => window.location.href = '/auth'}
+                  onClick={() => window.location.href = '/signup'}
                   className="py-2 px-3 rounded-xl bg-white border border-[#DDE7E1] text-[#063B2A] text-xs font-bold hover:bg-[#DDF7EC] transition-colors flex items-center justify-center gap-1.5"
                 >
                   <Brain className="w-3.5 h-3.5 text-[#20B486]" />

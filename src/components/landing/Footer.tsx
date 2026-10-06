@@ -115,7 +115,7 @@ export const Footer = () => {
                 </a>
               </li>
               <li>
-                <button onClick={() => navigate('/auth')} className="hover:text-[#063B2A] transition-colors text-left">
+                <button onClick={() => navigate('/login')} className="hover:text-[#063B2A] transition-colors text-left">
                   Documentation
                 </button>
               </li>
@@ -129,22 +129,22 @@ export const Footer = () => {
             </div>
             <ul className="space-y-2 text-xs">
               <li>
-                <a href="/auth" className="hover:text-[#063B2A] transition-colors">
+                <a href="/login" className="hover:text-[#063B2A] transition-colors">
                   About
                 </a>
               </li>
               <li>
-                <a href="/auth" className="hover:text-[#063B2A] transition-colors">
+                <a href="/login" className="hover:text-[#063B2A] transition-colors">
                   Contact
                 </a>
               </li>
               <li>
-                <a href="/auth" className="hover:text-[#063B2A] transition-colors">
+                <a href="/login" className="hover:text-[#063B2A] transition-colors">
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a href="/auth" className="hover:text-[#063B2A] transition-colors">
+                <a href="/login" className="hover:text-[#063B2A] transition-colors">
                   Terms of Service
                 </a>
               </li>

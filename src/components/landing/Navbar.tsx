@@ -69,13 +69,13 @@ export const Navbar = () => {
         {/* Actions */}
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate('/login')}
             className="hidden sm:inline-flex text-[#10231C] hover:text-[#063B2A] px-3 py-2 text-sm font-semibold transition-colors"
           >
             Log in
           </button>
           <button
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate('/signup')}
             className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-[#20B486] text-white text-sm font-bold hover:bg-[#1aa378] transition-all shadow-[0_4px_14px_rgba(32,180,134,0.25)] hover:shadow-[0_6px_20px_rgba(32,180,134,0.35)] active:scale-98"
           >
             <span>Start Free</span>
@@ -111,11 +111,20 @@ export const Navbar = () => {
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  navigate('/auth');
+                  navigate('/login');
                 }}
                 className="w-full text-center py-2.5 text-sm font-bold text-[#063B2A] bg-[#F7FAF7] rounded-xl hover:bg-[#DDF7EC] transition-colors"
               >
                 Log in
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate('/signup');
+                }}
+                className="w-full text-center py-2.5 text-sm font-bold text-white bg-[#20B486] rounded-xl hover:bg-[#1aa378] transition-colors"
+              >
+                Start Free
               </button>
             </div>
           </nav>

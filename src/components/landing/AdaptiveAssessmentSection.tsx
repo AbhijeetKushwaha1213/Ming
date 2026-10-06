@@ -193,7 +193,7 @@ export const AdaptiveAssessmentSection = () => {
 
               <div className="pt-2 flex justify-end">
                 <button
-                  onClick={() => window.location.href = '/auth'}
+                  onClick={() => window.location.href = '/signup'}
                   className="px-3.5 py-1.5 rounded-lg bg-[#20B486] text-white text-xs font-bold hover:bg-[#1aa378] transition-colors"
                 >
                   Start Remediation →

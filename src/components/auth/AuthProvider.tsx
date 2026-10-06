@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 const getAuthRedirectUrl = (path = '/auth/callback') =>
   new URL(path, window.location.origin).toString();
 
-interface UserProfile {
+export interface UserProfile {
   id: string;
   user_id: string;
   name: string;
@@ -28,13 +28,20 @@ interface UserProfile {
   avatar?: string;
 }
 
+export interface SignUpResult {
+  requiresVerification: boolean;
+  email: string;
+  user: UserProfile | null;
+}
+
 interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<UserProfile>;
   signInWithGoogle: () => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<SignUpResult>;
+  resendVerificationEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<void>;
   verifyOtpForPasswordReset: (email: string, token: string) => Promise<void>;
@@ -51,82 +58,182 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
+  const ensureUserProfileExists = async (
+    supabaseUser: SupabaseUser,
+    defaultName?: string
+  ): Promise<UserProfile | null> => {
+    try {
+      const email = supabaseUser.email?.toLowerCase().trim() || '';
+
+      // Check if profile exists by user_id OR email (for identity linking)
+      const { data: existingProfiles, error: fetchErr } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .or(`user_id.eq.${supabaseUser.id},email.eq.${email}`)
+        .limit(1);
+
+      if (existingProfiles && existingProfiles.length > 0) {
+        const profile = existingProfiles[0];
+        // Account linking: User authenticated via Google or email/password with the same email
+        if (profile.user_id !== supabaseUser.id) {
+          console.log('AuthProvider: Linking existing profile for email:', email, 'to user_id:', supabaseUser.id);
+          await supabase
+            .from('user_profiles')
+            .update({ user_id: supabaseUser.id, updated_at: new Date().toISOString() })
+            .eq('id', profile.id);
+        }
+
+        const userType = profile.user_type === 'college' ? 'college' : 'exam';
+        let parsedSubjects: string[] | undefined = undefined;
+        if (profile.subjects) {
+          try {
+            parsedSubjects = typeof profile.subjects === 'string' ? JSON.parse(profile.subjects) : profile.subjects;
+          } catch (e) {
+            console.error('Error parsing subjects in ensureUserProfileExists:', e);
+          }
+        }
+
+        const loadedUser: UserProfile = {
+          id: profile.id,
+          user_id: supabaseUser.id,
+          name: profile.name,
+          email: profile.email,
+          userType: userType as 'exam' | 'college',
+          examType: profile.exam_type || undefined,
+          college: profile.college || undefined,
+          university: profile.university || undefined,
+          degree: profile.degree || undefined,
+          academicYear: profile.academic_year || undefined,
+          branch: profile.branch || undefined,
+          semester: profile.semester || undefined,
+          examDate: profile.exam_date || undefined,
+          subjects: parsedSubjects,
+          study_streak: profile.study_streak || 0,
+          total_study_hours: profile.total_study_hours || 0,
+          current_level: profile.current_level || 1,
+          experience_points: profile.experience_points || 0,
+          avatar: profile.avatar || undefined,
+        };
+        setUser(loadedUser);
+        return loadedUser;
+      }
+
+      // Profile does not exist, insert initial profile
+      const userName =
+        defaultName ||
+        supabaseUser.user_metadata?.full_name ||
+        supabaseUser.user_metadata?.name ||
+        email.split('@')[0] ||
+        'User';
+
+      const newProfileRow = {
+        user_id: supabaseUser.id,
+        email: email,
+        name: userName,
+        user_type: 'exam',
+        study_streak: 0,
+        total_study_hours: 0,
+        current_level: 1,
+        experience_points: 0,
+      };
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('user_profiles')
+        .insert(newProfileRow)
+        .select('*')
+        .single();
+
+      if (insertError) {
+        console.warn('AuthProvider: insert user_profiles warning:', insertError);
+      }
+
+      const createdUser: UserProfile = {
+        id: inserted?.id || supabaseUser.id,
+        user_id: supabaseUser.id,
+        name: userName,
+        email: email,
+        userType: 'exam',
+        study_streak: 0,
+        total_study_hours: 0,
+        current_level: 1,
+        experience_points: 0,
+      };
+      setUser(createdUser);
+      return createdUser;
+    } catch (err) {
+      console.error('AuthProvider: Error in ensureUserProfileExists:', err);
+      return null;
+    }
+  };
+
+  const fetchUserProfile = async (supabaseUser: SupabaseUser): Promise<UserProfile> => {
     try {
       console.log('AuthProvider: Fetching profile for user:', supabaseUser.id);
-      
+      const email = supabaseUser.email?.toLowerCase().trim() || '';
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', supabaseUser.id)
+        .or(`user_id.eq.${supabaseUser.id},email.eq.${email}`)
+        .limit(1)
         .single();
 
-      if (error) {
-        console.error('AuthProvider: Error fetching user profile:', error);
-        
-        // If profile doesn't exist, create a minimal user object to keep them authenticated
-        // This prevents network errors from logging users out
+      if (error || !data) {
+        console.log('AuthProvider: Profile not found directly, ensuring profile exists...');
+        const ensured = await ensureUserProfileExists(supabaseUser);
+        if (ensured) return ensured;
+
         const minimalUser: UserProfile = {
           id: supabaseUser.id,
           user_id: supabaseUser.id,
-          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
-          email: supabaseUser.email || '',
-          userType: 'exam', // Default, will be updated during onboarding
+          name: supabaseUser.user_metadata?.name || email.split('@')[0] || 'User',
+          email: email,
+          userType: 'exam',
           study_streak: 0,
           total_study_hours: 0,
           current_level: 1,
           experience_points: 0,
         };
-        
-        console.log('AuthProvider: Using minimal user data due to fetch error');
         setUser(minimalUser);
-        return;
+        return minimalUser;
       }
 
-      if (data) {
-        console.log('AuthProvider: Profile data received:', data);
-        
-        // Ensure user_type is properly typed
-        const userType = data.user_type === 'college' ? 'college' : 'exam';
-        
-        let parsedSubjects: string[] | undefined = undefined;
-        if (data.subjects) {
-          try {
-            parsedSubjects = typeof data.subjects === 'string' ? JSON.parse(data.subjects) : data.subjects;
-          } catch (e) {
-            console.error('Error parsing user subjects:', e);
-          }
+      const userType = data.user_type === 'college' ? 'college' : 'exam';
+      let parsedSubjects: string[] | undefined = undefined;
+      if (data.subjects) {
+        try {
+          parsedSubjects = typeof data.subjects === 'string' ? JSON.parse(data.subjects) : data.subjects;
+        } catch (e) {
+          console.error('Error parsing user subjects:', e);
         }
-
-        const userData = {
-          id: data.id,
-          user_id: data.user_id,
-          name: data.name,
-          email: data.email,
-          userType: userType as 'exam' | 'college',
-          examType: data.exam_type || undefined,
-          college: data.college || undefined,
-          university: data.university || undefined,
-          degree: data.degree || undefined,
-          academicYear: data.academic_year || undefined,
-          branch: data.branch || undefined,
-          semester: data.semester || undefined,
-          examDate: data.exam_date || undefined,
-          subjects: parsedSubjects,
-          study_streak: data.study_streak || 0,
-          total_study_hours: data.total_study_hours || 0,
-          current_level: data.current_level || 1,
-          experience_points: data.experience_points || 0,
-          avatar: data.avatar || undefined
-        };
-        
-        console.log('AuthProvider: Setting user state with data:', userData);
-        setUser(userData);
       }
+
+      const userData: UserProfile = {
+        id: data.id,
+        user_id: data.user_id,
+        name: data.name,
+        email: data.email,
+        userType: userType as 'exam' | 'college',
+        examType: data.exam_type || undefined,
+        college: data.college || undefined,
+        university: data.university || undefined,
+        degree: data.degree || undefined,
+        academicYear: data.academic_year || undefined,
+        branch: data.branch || undefined,
+        semester: data.semester || undefined,
+        examDate: data.exam_date || undefined,
+        subjects: parsedSubjects,
+        study_streak: data.study_streak || 0,
+        total_study_hours: data.total_study_hours || 0,
+        current_level: data.current_level || 1,
+        experience_points: data.experience_points || 0,
+        avatar: data.avatar || undefined,
+      };
+
+      setUser(userData);
+      return userData;
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
-      
-      // Keep user authenticated with minimal data instead of logging out
       const minimalUser: UserProfile = {
         id: supabaseUser.id,
         user_id: supabaseUser.id,
@@ -139,6 +246,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         experience_points: 0,
       };
       setUser(minimalUser);
+      return minimalUser;
     }
   };
 
@@ -150,87 +258,103 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let isMounted = true;
+
     // Get initial session
     const getInitialSession = async () => {
       const offlineSession = localStorage.getItem('studymate-offline-session');
       if (offlineSession) {
         console.log('AuthProvider: Loading local offline session');
         try {
-          setUser(JSON.parse(offlineSession));
+          if (isMounted) setUser(JSON.parse(offlineSession));
         } catch (e) {
           console.error('Error parsing offline session', e);
         }
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await fetchUserProfile(session.user);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session?.user && isMounted) {
+          await ensureUserProfileExists(session.user);
+          await fetchUserProfile(session.user);
+        }
+      } catch (err) {
+        console.error('AuthProvider: Initial session load error:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     getInitialSession();
 
-    // Listen for auth changes - SECURITY FIX: Prevent deadlocks
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // If we are in local offline mode, ignore Supabase auth state change events
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (localStorage.getItem('studymate-offline-session') !== null) {
         return;
       }
 
-      // Only log in development to prevent sensitive data exposure
       if (process.env.NODE_ENV === 'development') {
         console.log('Auth state changed:', event, session?.user?.email);
       }
-      
-      // Synchronous state updates only
+
       if (session?.user) {
-        // Defer profile fetching to prevent deadlocks
-        setTimeout(() => {
-          fetchUserProfile(session.user);
-        }, 0);
+        if (isMounted) setIsLoading(true);
+        try {
+          await ensureUserProfileExists(session.user);
+          await fetchUserProfile(session.user);
+        } catch (err) {
+          console.error('AuthProvider: onAuthStateChange profile load error:', err);
+        } finally {
+          if (isMounted) setIsLoading(false);
+        }
       } else {
-        setUser(null);
+        if (isMounted) {
+          setUser(null);
+          setIsLoading(false);
+        }
       }
-      setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<UserProfile> => {
     try {
       setIsLoading(true);
-      
-      // Rate limiting for login attempts
-      const clientId = `login_${email}_${Date.now()}`;
-      
+      const cleanEmail = email.toLowerCase().trim();
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase().trim(),
+        email: cleanEmail,
         password,
       });
 
       if (error) {
-        // Log the actual error for debugging
-        console.error('Supabase auth error:', error);
-        console.error('Error code:', error.status);
-        console.error('Error message:', error.message);
-        
-        // Provide more specific error messages
-        let safeMessage = 'Invalid email or password';
-        
+        console.error('Supabase auth sign in error:', error);
+        let safeMessage = 'Incorrect email or password.';
+
         if (error.message.includes('Email not confirmed')) {
           safeMessage = 'Please verify your email address before signing in. Check your inbox for the verification link.';
-        } else if (error.message.includes('Invalid login credentials')) {
-          safeMessage = 'Invalid email or password. Please check your credentials and try again.';
-        } else if (error.message.includes('Email link is invalid or has expired')) {
-          safeMessage = 'Your verification link has expired. Please request a new one.';
+        } else if (
+          error.message.includes('Invalid login credentials') ||
+          error.message.includes('invalid_grant') ||
+          error.message.includes('invalid_credentials')
+        ) {
+          safeMessage = 'Incorrect email or password.';
+        } else if (error.message.includes('User not found')) {
+          safeMessage = "We couldn't find an account with this email.";
         } else if (error.status === 400) {
-          safeMessage = 'Invalid request. Please check your email and password format.';
+          safeMessage = 'Incorrect email or password. Please check your credentials and try again.';
+        } else if (error.status === 429) {
+          safeMessage = 'Too many attempts. Please wait a few moments and try again.';
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          safeMessage = 'Something went wrong while signing you in. Please check your connection.';
         }
-          
+
         toast({
           title: "Sign In Failed",
           description: safeMessage,
@@ -239,9 +363,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(safeMessage);
       }
 
-      // Check if user session was created
-      if (!data.session) {
-        const message = 'Sign in succeeded but no session was created. Please try again.';
+      if (!data.session?.user) {
+        const message = 'Unable to establish session. Please try again.';
         toast({
           title: "Sign In Issue",
           description: message,
@@ -250,14 +373,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(message);
       }
 
+      // Synchronously load profile before returning
+      await ensureUserProfileExists(data.session.user);
+      const profile = await fetchUserProfile(data.session.user);
+
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
-    } catch (error) {
-      // Always log in development, conditionally in production
-      console.error('Sign in error:', error);
-      throw error;
+
+      return profile;
     } finally {
       setIsLoading(false);
     }
@@ -312,12 +437,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, name: string): Promise<SignUpResult> => {
     try {
       setIsLoading(true);
       
-      // Basic input validation
-      if (!email || !password || !name) {
+      const cleanEmail = email.toLowerCase().trim();
+      const cleanName = name.trim();
+
+      if (!cleanEmail || !password || !cleanName) {
         throw new Error('All fields are required');
       }
       
@@ -325,23 +452,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Password must be at least 8 characters long');
       }
       
-      const { error } = await supabase.auth.signUp({
-        email: email.toLowerCase().trim(),
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
         password,
         options: {
           data: {
-            name: name.trim(),
+            name: cleanName,
           },
           emailRedirectTo: getAuthRedirectUrl(),
         }
       });
 
       if (error) {
-        // Sanitize error messages
-        const safeMessage = error.message.includes('already registered')
-          ? 'An account with this email already exists'
-          : 'Account creation failed. Please try again.';
-          
+        console.error('Supabase auth sign up error:', error);
+        let safeMessage = 'Account creation failed. Please try again.';
+        if (
+          error.message.includes('already registered') ||
+          error.message.includes('User already registered')
+        ) {
+          safeMessage = 'An account already exists with this email. Try signing in instead.';
+        } else if (error.status === 429) {
+          safeMessage = 'Too many attempts. Please wait a few moments and try again.';
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          safeMessage = 'Network error. Please check your connection and try again.';
+        }
+
         toast({
           title: "Sign Up Failed",
           description: safeMessage,
@@ -350,16 +485,87 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(safeMessage);
       }
 
-      toast({
-        title: "Account Created!",
-        description: "Please check your email to verify your account.",
-      });
+      // Check for user existence without identities (Supabase's default behavior when email exists and email confirmations are enabled)
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        const safeMessage = 'An account already exists with this email. Try signing in instead.';
+        toast({
+          title: "Account Already Exists",
+          description: safeMessage,
+          variant: "destructive",
+        });
+        throw new Error(safeMessage);
+      }
+
+      // If Supabase has email confirmation disabled, data.session will be present!
+      if (data.session?.user) {
+        console.log('AuthProvider: Sign up returned active session. Creating profile and logging in...');
+        await ensureUserProfileExists(data.session.user, cleanName);
+        const profile = await fetchUserProfile(data.session.user);
+        toast({
+          title: "Account Created Successfully! 🎉",
+          description: "Welcome to StudyMate! Let's set up your study profile.",
+        });
+        return {
+          requiresVerification: false,
+          email: cleanEmail,
+          user: profile,
+        };
+      }
+
+      // If email confirmation is enabled, data.user is present but data.session is null
+      console.log('AuthProvider: Email verification required for:', cleanEmail);
+      return {
+        requiresVerification: true,
+        email: cleanEmail,
+        user: null,
+      };
     } catch (error) {
-      // Don't log sensitive information in production
       if (process.env.NODE_ENV === 'development') {
         console.error('Sign up error:', error);
       }
       throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendVerificationEmail = async (email: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const cleanEmail = email.toLowerCase().trim();
+      if (!cleanEmail) {
+        throw new Error('Please enter a valid email address.');
+      }
+
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: cleanEmail,
+        options: {
+          emailRedirectTo: getAuthRedirectUrl(),
+        },
+      });
+
+      if (error) {
+        console.error('Resend verification email error:', error);
+        let safeMessage = error.message;
+        if (error.message.includes('rate limit') || error.status === 429) {
+          safeMessage = 'Too many requests. Please wait a minute before requesting another verification email.';
+        }
+        toast({
+          title: "Resend Failed",
+          description: safeMessage,
+          variant: "destructive",
+        });
+        throw new Error(safeMessage);
+      }
+
+      toast({
+        title: "Verification Email Sent ✉️",
+        description: `We sent a verification link to ${cleanEmail}. Please check your inbox.`,
+      });
+    } catch (err) {
+      console.error('Error in resendVerificationEmail:', err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -679,6 +885,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       signIn,
       signInWithGoogle,
       signUp,
+      resendVerificationEmail,
       signOut,
       resetPasswordForEmail,
       verifyOtpForPasswordReset,

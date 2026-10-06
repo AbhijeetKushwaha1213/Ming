@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,21 +25,36 @@ import {
 import { useAuth } from './AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getPostAuthDestination } from './authNavigation';
 
-type AuthView = 'auth' | 'forgot-request' | 'forgot-verify' | 'reset-new-password';
+type AuthView = 'auth' | 'forgot-request' | 'forgot-verify' | 'reset-new-password' | 'verify-email';
 
-export const SignInPage = () => {
+interface SignInPageProps {
+  initialTab?: 'signin' | 'signup';
+}
+
+export const SignInPage: React.FC<SignInPageProps> = ({ initialTab = 'signin' }) => {
+  const [searchParams] = useSearchParams();
+  const tabFromQuery = searchParams.get('tab') === 'signup' ? 'signup' : initialTab;
+
   const [authView, setAuthView] = useState<AuthView>('auth');
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(tabFromQuery);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
   // Password visibility toggles
   const [showPassword, setShowPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Email verification state
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [verifyResendCooldown, setVerifyResendCooldown] = useState(0);
 
   // Password reset flow state
   const [forgotEmail, setForgotEmail] = useState('');
@@ -54,11 +70,13 @@ export const SignInPage = () => {
     signIn,
     signInWithGoogle,
     signUp,
+    resendVerificationEmail,
     resetPasswordForEmail,
     verifyOtpForPasswordReset,
     updatePassword,
   } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Detect recovery URL params or password recovery state from Supabase
   useEffect(() => {
@@ -97,13 +115,43 @@ export const SignInPage = () => {
     return () => clearInterval(interval);
   }, [resendCooldown]);
 
+  // Cooldown countdown for resending verification email
+  useEffect(() => {
+    if (verifyResendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setVerifyResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [verifyResendCooldown]);
+
   const validateEmail = (val: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(val);
   };
 
-  const validateForm = (isSignUp = false) => {
+  const validateSignIn = () => {
     const errors: { [key: string]: string } = {};
+
+    if (!email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!validateEmail(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    if (!password.trim()) {
+      errors.password = 'Password is required';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validateSignUp = () => {
+    const errors: { [key: string]: string } = {};
+
+    if (!name.trim()) {
+      errors.name = 'Full name is required';
+    }
 
     if (!email.trim()) {
       errors.email = 'Email is required';
@@ -117,8 +165,10 @@ export const SignInPage = () => {
       errors.password = 'Password must be at least 8 characters long';
     }
 
-    if (isSignUp && !name.trim()) {
-      errors.name = 'Full name is required';
+    if (!signupConfirmPassword.trim()) {
+      errors.signupConfirmPassword = 'Confirm password is required';
+    } else if (password !== signupConfirmPassword) {
+      errors.signupConfirmPassword = 'Passwords do not match';
     }
 
     setValidationErrors(errors);
@@ -127,11 +177,13 @@ export const SignInPage = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm(false)) return;
+    if (!validateSignIn()) return;
 
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      const profile = await signIn(email, password);
+      const destination = getPostAuthDestination(profile);
+      navigate(destination);
     } catch (error) {
       console.error('Sign in error:', error);
     } finally {
@@ -141,11 +193,19 @@ export const SignInPage = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm(true)) return;
+    if (!validateSignUp()) return;
 
     setIsLoading(true);
     try {
-      await signUp(email, password, name);
+      const result = await signUp(email, password, name);
+      if (result.requiresVerification) {
+        setVerificationEmail(result.email);
+        setVerifyResendCooldown(60);
+        setAuthView('verify-email');
+      } else if (result.user) {
+        const destination = getPostAuthDestination(result.user);
+        navigate(destination);
+      }
     } catch (error) {
       console.error('Sign up error:', error);
     } finally {
@@ -159,6 +219,18 @@ export const SignInPage = () => {
       await signInWithGoogle();
     } catch (error) {
       console.error('Google sign in error:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (verifyResendCooldown > 0 || isLoading) return;
+    setIsLoading(true);
+    try {
+      await resendVerificationEmail(verificationEmail);
+      setVerifyResendCooldown(60);
+    } catch (error) {
+      console.error('Resend verification error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -236,9 +308,7 @@ export const SignInPage = () => {
     setValidationErrors({});
     setIsLoading(true);
     try {
-      // Step A: Verify OTP with Supabase
       await verifyOtpForPasswordReset(forgotEmail, otpCode);
-      // Step B: Set new password
       await updatePassword(newPassword);
       setIsResetSuccess(true);
     } catch (error: any) {
@@ -291,9 +361,8 @@ export const SignInPage = () => {
     if (forgotEmail) {
       setEmail(forgotEmail);
     }
-    // Clean up recovery params from URL
     if (window.location.search || window.location.hash) {
-      window.history.replaceState({}, document.title, '/auth');
+      window.history.replaceState({}, document.title, '/login');
     }
   };
 
@@ -333,6 +402,77 @@ export const SignInPage = () => {
               >
                 Continue to Sign In
               </Button>
+            </div>
+          ) : authView === 'verify-email' ? (
+            /* ========================================================= */
+            /* VIEW: EMAIL VERIFICATION REQUIRED                         */
+            /* ========================================================= */
+            <div className="space-y-5 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthView('auth');
+                    setActiveTab('signup');
+                  }}
+                  className="inline-flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors group"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 mr-1 group-hover:-translate-x-0.5 transition-transform" />
+                  Change Email
+                </button>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
+                  Verification Pending
+                </span>
+              </div>
+
+              <div className="text-center py-2 space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 text-[#20B486] flex items-center justify-center mx-auto shadow-sm">
+                  <Mail className="w-7 h-7" />
+                </div>
+                <h2 className="text-xl font-bold tracking-tight text-foreground">Verify Your Email Address</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+                  Account created. Please verify your email address to continue. We have sent a confirmation link to:
+                </p>
+                <div className="px-3 py-2 bg-muted/70 rounded-lg text-sm font-semibold text-foreground break-all">
+                  {verificationEmail || email}
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <Button
+                  type="button"
+                  disabled={isLoading || verifyResendCooldown > 0}
+                  onClick={handleResendVerification}
+                  className="w-full bg-[#063B2A] hover:bg-[#0A4D37] text-white font-semibold py-2.5 rounded-xl shadow-md transition-all active:scale-98"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Sending Verification Email...
+                    </span>
+                  ) : verifyResendCooldown > 0 ? (
+                    `Resend verification email in ${verifyResendCooldown}s`
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Send className="w-4 h-4" />
+                      Resend Verification Email
+                    </span>
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleReturnToSignIn}
+                  className="w-full border-border/80 hover:bg-muted/50 rounded-xl font-medium"
+                >
+                  Return to Sign In
+                </Button>
+              </div>
+
+              <p className="text-[11px] text-center text-muted-foreground pt-1">
+                Didn't receive the email? Check your spam/junk folder or request a new verification email above.
+              </p>
             </div>
           ) : authView === 'forgot-request' ? (
             /* ========================================================= */
@@ -575,7 +715,7 @@ export const SignInPage = () => {
             </div>
           ) : authView === 'reset-new-password' ? (
             /* ========================================================= */
-            /* VIEW: DIRECT SET NEW PASSWORD (FROM EMAIL MAGIC LINK)    */
+            /* VIEW: DIRECT SET NEW PASSWORD (FROM EMAIL RECOVERY LINK) */
             /* ========================================================= */
             <div className="space-y-5 animate-fade-in">
               <div className="flex items-center justify-between">
@@ -713,7 +853,42 @@ export const SignInPage = () => {
               </TabsList>
 
               {/* SIGN IN TAB */}
-              <TabsContent value="signin" className="mt-0">
+              <TabsContent value="signin" className="mt-0 space-y-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-border/80 hover:bg-muted/50 rounded-xl font-medium transition-all"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                >
+                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  Continue with Google
+                </Button>
+
+                <div className="relative my-4">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                    OR
+                  </span>
+                </div>
+
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div>
                     <Label htmlFor="signin-email" className="text-xs font-semibold">
@@ -793,50 +968,50 @@ export const SignInPage = () => {
                       'Sign In'
                     )}
                   </Button>
-
-                  <div className="relative my-4">
-                    <Separator />
-                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                      OR
-                    </span>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full border-border/80 hover:bg-muted/50 rounded-xl font-medium transition-all"
-                    onClick={handleGoogleSignIn}
-                    disabled={isLoading}
-                  >
-                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    Continue with Google
-                  </Button>
                 </form>
               </TabsContent>
 
               {/* SIGN UP TAB */}
-              <TabsContent value="signup" className="mt-0">
+              <TabsContent value="signup" className="mt-0 space-y-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-border/80 hover:bg-muted/50 rounded-xl font-medium transition-all"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                >
+                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  Continue with Google
+                </Button>
+
+                <div className="relative my-4">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                    OR
+                  </span>
+                </div>
+
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div>
                     <Label htmlFor="signup-name" className="text-xs font-semibold">
-                      Full Name
+                      Name
                     </Label>
                     <Input
                       id="signup-name"
@@ -883,7 +1058,7 @@ export const SignInPage = () => {
                     <div className="relative mt-1">
                       <Input
                         id="signup-password"
-                        type={showPassword ? 'text' : 'password'}
+                        type={showSignupPassword ? 'text' : 'password'}
                         placeholder="At least 8 characters"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -892,17 +1067,48 @@ export const SignInPage = () => {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => setShowSignupPassword(!showSignupPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                         aria-label="Toggle password visibility"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                     {validationErrors.password && (
                       <div className="flex items-center mt-1 text-xs text-destructive">
                         <AlertCircle className="w-3.5 h-3.5 mr-1" />
                         {validationErrors.password}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="signup-confirm-password" className="text-xs font-semibold">
+                      Confirm Password
+                    </Label>
+                    <div className="relative mt-1">
+                      <Input
+                        id="signup-confirm-password"
+                        type={showSignupConfirmPassword ? 'text' : 'password'}
+                        placeholder="Re-enter your password"
+                        value={signupConfirmPassword}
+                        onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                        required
+                        className={`pr-10 ${validationErrors.signupConfirmPassword ? 'border-destructive' : 'focus-visible:ring-[#20B486]'}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Toggle confirm password visibility"
+                      >
+                        {showSignupConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {validationErrors.signupConfirmPassword && (
+                      <div className="flex items-center mt-1 text-xs text-destructive">
+                        <AlertCircle className="w-3.5 h-3.5 mr-1" />
+                        {validationErrors.signupConfirmPassword}
                       </div>
                     )}
                   </div>
@@ -920,41 +1126,6 @@ export const SignInPage = () => {
                     ) : (
                       'Create Account'
                     )}
-                  </Button>
-
-                  <div className="relative my-4">
-                    <Separator />
-                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                      OR
-                    </span>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full border-border/80 hover:bg-muted/50 rounded-xl font-medium transition-all"
-                    onClick={handleGoogleSignIn}
-                    disabled={isLoading}
-                  >
-                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    Sign up with Google
                   </Button>
                 </form>
               </TabsContent>

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { ChooseSubjectsStep } from './ChooseSubjectsStep';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -59,6 +60,7 @@ const STEPS = [
 ];
 
 export const OnboardingFlow = () => {
+  const navigate = useNavigate();
   const { updateUserType, user } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
@@ -192,6 +194,8 @@ export const OnboardingFlow = () => {
         title: "Welcome to StudyMate AI! 🎉",
         description: "Your personalized learning journey begins now!",
       });
+
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       console.error('Onboarding completion error:', error);
       toast({

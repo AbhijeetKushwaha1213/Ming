@@ -43,7 +43,7 @@ describe('ChooseSubjectsStep and Contextual Subject System', () => {
     expect(names.some((n) => n.includes('Genetics'))).toBe(true);
   });
 
-  it('renders Choose Your Subjects step with title, subtitle, and dynamic contextual badge', () => {
+  it('renders Choose Your Subjects step with clean header and slot controls', () => {
     const onChange = vi.fn();
     render(
       <ChooseSubjectsStep
@@ -60,14 +60,12 @@ describe('ChooseSubjectsStep and Contextual Subject System', () => {
 
     expect(screen.getByText('Choose Your Subjects')).toBeDefined();
     expect(
-      screen.getByText(
+      screen.queryByText(
         'Select the subjects you want to study. You can change this later from your settings.'
       )
-    ).toBeDefined();
+    ).toBeNull();
+    expect(screen.queryByText(/AI Catalog Tailored for:/i)).toBeNull();
     expect(screen.getByText('How many subjects are you studying?')).toBeDefined();
-
-    // Context badge should show course and college/university
-    expect(screen.getByText(/AI Catalog Tailored for:/i)).toBeDefined();
   });
 
   it('controls slot count with stepper and quick buttons', () => {
@@ -155,7 +153,7 @@ describe('ChooseSubjectsStep and Contextual Subject System', () => {
     expect(disabledOption).toBeDefined();
   });
 
-  it('allows adding a custom subject with optional subject code', async () => {
+  it('allows adding a custom subject cleanly without subject code', async () => {
     const onChange = vi.fn();
     render(
       <ChooseSubjectsStep
@@ -175,15 +173,12 @@ describe('ChooseSubjectsStep and Contextual Subject System', () => {
     const addCustomBtn = screen.getByRole('button', { name: /\+ Add custom subject/i });
     fireEvent.click(addCustomBtn);
 
-    // Form inputs should appear
+    // Form input should appear
     expect(screen.getByText('Enter subject name')).toBeDefined();
-    expect(screen.getByText('Subject code (optional)')).toBeDefined();
+    expect(screen.queryByText('Subject code (optional)')).toBeNull();
 
     const nameInput = screen.getByPlaceholderText('e.g. Operating Systems');
-    const codeInput = screen.getByPlaceholderText('e.g. CS401');
-
     fireEvent.change(nameInput, { target: { value: 'Distributed Ledgers' } });
-    fireEvent.change(codeInput, { target: { value: 'BC101' } });
 
     const submitBtn = screen.getByRole('button', { name: 'Add Subject' });
     fireEvent.click(submitBtn);
@@ -191,7 +186,7 @@ describe('ChooseSubjectsStep and Contextual Subject System', () => {
     // Should notify onChange with the custom subject
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith(
-        expect.arrayContaining(['Distributed Ledgers (BC101)'])
+        expect.arrayContaining(['Distributed Ledgers'])
       );
     });
   });

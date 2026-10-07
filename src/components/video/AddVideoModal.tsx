@@ -95,12 +95,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
     setIsSubmittingYt(true);
 
     try {
-      const videoPromise = addYouTubeVideo(title, url, ytTranscript.trim() || undefined);
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Video adding timed out. Please check your network connection.')), 6000)
-      );
-
-      const video = await Promise.race([videoPromise, timeoutPromise]);
+      const video = await addYouTubeVideo(title, url, ytTranscript.trim() || undefined);
       onVideoAdded(video);
       handleClose();
     } catch (err: any) {

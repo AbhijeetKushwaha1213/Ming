@@ -150,7 +150,11 @@ export function findStoredVideo(id: string): VideoRecord | null {
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
-    const { data } = await supabase.auth.getSession();
+    const sessionPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { session: null } }), 800)
+    );
+    const { data } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
     if (data?.session?.access_token) {
       return {
         Authorization: `Bearer ${data.session.access_token}`,
@@ -347,9 +351,12 @@ export async function addYouTubeVideo(
     updatedAt: nowIso,
   };
 
-  // Try to sync with server in background / with short 2s timeout
+  // Pre-save to persistent local library immediately
+  saveStoredVideo(fallbackVideo);
+
+  // Fast race with backend (800ms max). If server responds, use server data; otherwise use instant local video!
   try {
-    const data = await request<{ success: boolean; video: VideoRecord }>(
+    const serverPromise = request<{ success: boolean; video: VideoRecord }>(
       '/api/videos',
       {
         method: 'POST',
@@ -360,20 +367,20 @@ export async function addYouTubeVideo(
           transcript: defaultSegments,
         }),
       },
-      2000
+      800
     );
+
+    const timeoutRace = new Promise<null>((resolve) => setTimeout(() => resolve(null), 800));
+    const data = (await Promise.race([serverPromise, timeoutRace])) as any;
 
     if (data?.video?.id) {
       saveStoredVideo(data.video);
       return data.video;
     }
   } catch (err) {
-    // Backend server is not running or request timed out; fallback gracefully
-    console.info('Local/Vercel video creation fallback active for YouTube video');
+    // Backend server unavailable - instant local video is already active
   }
 
-  // Save to persistent local library and return immediately
-  saveStoredVideo(fallbackVideo);
   return fallbackVideo;
 }
 

@@ -166,9 +166,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           ytVideoId ? (
             <iframe
               ref={iframeRef}
-              src={`https://www.youtube.com/embed/${ytVideoId}?enablejsapi=1&origin=${encodeURIComponent(
-                typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
-              )}&rel=0&modestbranding=1`}
+              src={`https://www.youtube.com/embed/${ytVideoId}?enablejsapi=1&rel=0&modestbranding=1`}
               title={video.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen

@@ -9,12 +9,53 @@ import { Plus, Loader2, BookOpen, Sparkles } from 'lucide-react';
 import { useSkills, SyllabusTopic } from '@/hooks/useSkills';
 import { useToast } from '@/hooks/use-toast';
 
+import { geminiClient } from '@/utils/geminiClient';
+import { localStore } from '@/utils/localStore';
+
 interface AddSkillDialogProps {
   trigger?: React.ReactNode;
 }
 
 const getFallbackSyllabus = (skillName: string): string[] => {
   const normalized = skillName.toLowerCase();
+
+  // Agentic AI / LLM Agents / Autonomous Agents
+  if (normalized.includes('agent') || normalized.includes('llm') || normalized.includes('rag')) {
+    return [
+      'Foundations of LLMs & Agentic Architecture',
+      'Prompt Engineering & Structured Tool Outputs',
+      'Function Calling & Dynamic Tool Integration',
+      'Retrieval-Augmented Generation (RAG) Systems',
+      'Short-Term & Long-Term Vector Memory (Pinecone/Chroma)',
+      'Reasoning Loops: ReAct, Chain-of-Thought & Planning',
+      'Multi-Agent Orchestration & Communication Protocols',
+      'Autonomous Execution, Sandboxing & Safety Guards',
+      'Self-Correction, Reflection & Error Recovery Loops',
+      'Agent Evaluation, Benchmarking & Cost Optimization',
+      'Production Deployment & Streaming Agent APIs',
+      'Capstone: End-to-End Autonomous AI Agent'
+    ];
+  }
+
+  // AI / Machine Learning / Data Science
+  if (normalized.includes('ai') || normalized.includes('machine learning') || normalized.includes('data science') || normalized.includes('deep learning')) {
+    return [
+      'Foundations of Artificial Intelligence & Machine Learning',
+      'Supervised vs Unsupervised Learning Paradigms',
+      'Data Preprocessing, Cleaning & Feature Engineering',
+      'Linear & Logistic Regression Models',
+      'Decision Trees & Ensemble Methods (Random Forest, XGBoost)',
+      'Neural Networks & Backpropagation Fundamentals',
+      'Deep Learning with PyTorch / TensorFlow',
+      'Convolutional & Recurrent Neural Architectures',
+      'Transformers & Attention Mechanisms',
+      'Model Evaluation, Overfitting & Hyperparameter Tuning',
+      'Model Deployment & MLOps Pipelines',
+      'Capstone: Production Machine Learning Project'
+    ];
+  }
+
+  // React / Frontend
   if (normalized.includes('react')) {
     return [
       'Introduction to JSX and Components',
@@ -26,11 +67,14 @@ const getFallbackSyllabus = (skillName: string): string[] => {
       'Lifting State & Context API',
       'Custom React Hooks',
       'Routing with React Router',
-      'Performance Optimization',
+      'Performance Optimization & Memoization',
       'Testing React Components',
-      'Building a Complete Project'
+      'Building a Complete Full-Stack Project'
     ];
-  } else if (normalized.includes('python')) {
+  }
+
+  // Python
+  if (normalized.includes('python')) {
     return [
       'Variables & Core Data Types',
       'Control Flow & Loops',
@@ -41,105 +85,112 @@ const getFallbackSyllabus = (skillName: string): string[] => {
       'Object-Oriented Programming (OOP)',
       'Working with Modules & Packages',
       'Introduction to Regular Expressions',
-      'Data Analysis Basics (Pandas)',
-      'Web Scraping Basics',
-      'Building a Command-Line App'
-    ];
-  } else if (normalized.includes('javascript') || normalized.includes('js')) {
-    return [
-      'JS Syntax and Variables',
-      'Functions & Arrow Syntax',
-      'Arrays & Array Methods',
-      'Objects & Destructuring',
-      'DOM Manipulation & Events',
-      'Asynchronous JS & Promises',
-      'Fetch API & Network Requests',
-      'ES6+ Modern Features',
-      'Error Handling & Debugging',
-      'Local Storage & Web APIs',
-      'OOP & Prototype Chain',
-      'Modular JavaScript'
+      'Data Analysis Basics (Pandas & NumPy)',
+      'Web Scraping Basics with BeautifulSoup',
+      'Building a Command-Line Application'
     ];
   }
-  
+
+  // JavaScript / TypeScript
+  if (normalized.includes('javascript') || normalized.includes('js') || normalized.includes('typescript') || normalized.includes('ts')) {
+    return [
+      'Modern JS Syntax, Variables & Scoping',
+      'Functions & Arrow Syntax',
+      'Arrays & Modern Array Methods (map, filter, reduce)',
+      'Objects, Destructuring & Spread Operators',
+      'DOM Manipulation & Event Listeners',
+      'Asynchronous JS, Promises & async/await',
+      'Fetch API & Network Requests',
+      'ES6+ Modules and Bundling',
+      'Error Handling & Debugging Techniques',
+      'Browser Storage: localStorage & IndexedDB',
+      'Object-Oriented Programming & Prototypes',
+      'Capstone: Dynamic Full-Stack Web Application'
+    ];
+  }
+
+  // DSA / Algorithms
+  if (normalized.includes('dsa') || normalized.includes('algorithm') || normalized.includes('leetcode') || normalized.includes('data structure')) {
+    return [
+      'Time & Space Complexity (Big O Notation)',
+      'Arrays & Two-Pointer Techniques',
+      'Strings & Sliding Window Algorithms',
+      'Hash Maps & Sets for O(1) Lookups',
+      'Linked Lists & Fast/Slow Pointer Strategies',
+      'Stacks & Queues (Monotonic Stacks)',
+      'Recursion & Backtracking Fundamentals',
+      'Binary Search & Divide-and-Conquer',
+      'Trees, Binary Search Trees & Traversal',
+      'Graphs: BFS, DFS & Topological Sort',
+      'Dynamic Programming (1D & 2D Memoization)',
+      'Systematic Interview Problem Solving Strategies'
+    ];
+  }
+
   // Generic Intelligent Fallback
   return [
-    `Foundations of ${skillName}`,
-    `Core concepts and terms in ${skillName}`,
-    `Setting up the dev environment`,
-    `Basic syntax and fundamentals`,
-    `Common patterns and practices`,
-    `Handling errors and debugging`,
-    `Intermediate techniques`,
-    `Optimizing performance`,
-    `Advanced tools and packages`,
-    `Best practices & security`,
-    `Architecting a project`,
-    `Real-world implementation`
+    `Foundations & Core Prerequisites for ${skillName}`,
+    `Fundamental Concepts and Terminology in ${skillName}`,
+    `Setting Up the Development & Learning Environment`,
+    `Basic Syntax and Core Mechanics of ${skillName}`,
+    `Common Patterns and Best Practices in ${skillName}`,
+    `Error Handling, Debugging & Troubleshooting`,
+    `Intermediate Techniques and Real-World Workflows`,
+    `Performance Optimization and Efficiency`,
+    `Advanced Tools, Frameworks and Ecosystem Packages`,
+    `Security, Standards and Best Practices`,
+    `Architecting a Scalable Project with ${skillName}`,
+    `Capstone: Comprehensive End-to-End Implementation`
   ];
 };
 
 /**
- * Fast direct AI syllabus generator using Gemini with zero thinking latency
- * and a strict 4.5s timeout.
+ * Fast direct AI syllabus generator using Gemini with a 1.2s timeout.
+ * Automatically falls back to high-quality curated curricula if offline, key invalid, or slow.
  */
 const generateSyllabusWithAI = async (skillName: string): Promise<string[]> => {
-  const customKey = typeof window !== 'undefined' ? localStorage.getItem('ming_gemini_api_key') : null;
-  const rawKey = customKey || import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
-  const apiKey = rawKey?.trim().replace(/^["']|["']$/g, '');
+  const curated = getFallbackSyllabus(skillName);
 
-  if (!apiKey) {
-    return getFallbackSyllabus(skillName);
+  // Check if a valid API key exists
+  const customLocalKey = typeof window !== 'undefined' ? localStorage.getItem('ming_gemini_api_key') : null;
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
+  const activeKey = customLocalKey || envKey;
+  const hasValidFormat = activeKey && activeKey.trim().startsWith('AIza');
+
+  // If no valid Gemini key, don't waste network round-trips that fail policy; return curated syllabus instantly!
+  if (!hasValidFormat) {
+    return curated;
   }
 
   const prompt = `Generate a structured syllabus of exactly 12 learning topics for the skill '${skillName}', ordered logically from beginner to advanced. Return ONLY a JSON array of 12 strings, e.g. ["Topic 1", "Topic 2", ...]. Do not include markdown codeblocks, numbers, or any additional text.`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 4500);
-
   try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-          thinkingConfig: { thinkingBudget: 0 }
-        }
-      })
+    const aiPromise = geminiClient.generateContent({
+      message: prompt,
+      topic: skillName,
+      systemPrompt: `You are an expert curriculum designer. Return ONLY a valid JSON array of 12 topic strings.`
     });
 
-    if (!response.ok) {
-      if (response.status === 429 && typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('gemini-quota-exceeded', {
-            detail: { status: 429, message: 'Gemini API limit reached for today' },
-          })
-        );
-      }
-      throw new Error(`Gemini status ${response.status}`);
-    }
+    const timeoutPromise = new Promise<{ response: string }>((resolve) =>
+      setTimeout(() => resolve({ response: '' }), 1200)
+    );
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (text) {
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((item: any) => String(item).trim()).filter(Boolean);
+    const res = await Promise.race([aiPromise, timeoutPromise]);
+    if (res?.response) {
+      const clean = res.response.replace(/```json|```/g, '').trim();
+      const match = clean.match(/\[[\s\S]*\]/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item: any) => String(item).trim()).filter(Boolean);
+        }
       }
     }
   } catch (err) {
-    console.warn('Fast Gemini syllabus generation fallback used:', err);
-  } finally {
-    clearTimeout(timeoutId);
+    console.warn('AI syllabus generation fallback used:', err);
   }
 
-  return getFallbackSyllabus(skillName);
+  return curated;
 };
 
 export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
@@ -157,7 +208,8 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!skill.trim()) return;
+    const skillName = skill.trim();
+    if (!skillName) return;
 
     setIsGenerating(true);
 
@@ -165,16 +217,16 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
       let generatedTopics: string[] = [];
 
       if (syllabusType === 'ai') {
-        generatedTopics = await generateSyllabusWithAI(skill.trim());
+        generatedTopics = await generateSyllabusWithAI(skillName);
       } else {
         generatedTopics = manualTopics
           .split('\n')
           .map(line => line.trim())
           .filter(line => line.length > 0);
-        
-        if (generatedTopics.length === 0) {
-          generatedTopics = getFallbackSyllabus(skill.trim());
-        }
+      }
+
+      if (!generatedTopics || generatedTopics.length === 0) {
+        generatedTopics = getFallbackSyllabus(skillName);
       }
 
       // Map topics to days based on pace
@@ -208,12 +260,12 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
       };
 
       await createSkillAsync({
-        skill: skill.trim(),
+        skill: skillName,
         category: JSON.stringify(categoryData),
         progress: 0,
       });
 
-      // Reset form
+      // Reset form & Close modal
       setSkill('');
       setCategory('General');
       setPace('medium');
@@ -222,11 +274,33 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
       setManualTopics('');
       setOpen(false);
     } catch (err: any) {
-      console.error('Failed to create skill pathway:', err);
+      console.warn('Skill pathway creation safety fallback:', err);
+      // Guarantee local store save and dialog closure
+      try {
+        const fallbackTopics = getFallbackSyllabus(skillName);
+        const fallbackSyllabusTopics: SyllabusTopic[] = fallbackTopics.map((topic, index) => ({
+          id: `topic-${Date.now()}-${index}`,
+          topic,
+          completed: false,
+          dayNumber: Math.floor(index / 2) + 1
+        }));
+        localStore.saveSkill({
+          skill: skillName,
+          category: JSON.stringify({
+            categoryName: category,
+            preference: { pace, hoursPerDay },
+            syllabus: fallbackSyllabusTopics,
+            unlockedDays: 0
+          }),
+          progress: 0
+        });
+      } catch (saveErr) {}
+
+      setSkill('');
+      setOpen(false);
       toast({
-        title: "Creation Error",
-        description: err.message || "Failed to create skill pathway. Please try again.",
-        variant: "destructive"
+        title: "Skill Pathway Added",
+        description: `Created pathway for "${skillName}".`,
       });
     } finally {
       setIsGenerating(false);

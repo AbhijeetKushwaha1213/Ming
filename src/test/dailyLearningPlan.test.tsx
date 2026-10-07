@@ -137,7 +137,7 @@ describe('Daily Learning Plan System', () => {
 
       const conceptTask = plan.tasks.find(t => t.type === 'article' || t.type === 'concept' || t.type === 'video');
       expect(conceptTask?.resource?.isInternal).toBe(true);
-      expect(conceptTask?.resource?.platform).toBe('StudyMate Library');
+      expect(conceptTask?.resource?.platform).toBe('Ming Library');
       expect(conceptTask?.resource?.title).toContain('Lecture 3 — Introduction to Agentic AI.pdf');
     });
 

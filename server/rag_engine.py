@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-StudyMate Multimodal RAG & Knowledge Base Engine
+Ming Multimodal RAG & Knowledge Base Engine
 Phase 1: Ingestion, Extraction, Chunking, Embedding, and Chroma Vector Storage
 
 Supports:
@@ -1395,7 +1395,7 @@ def grounded_chat(
 
     # 5. Construct Prompt
     system_instruction = (
-        "You are StudyMate's Source-Grounded AI Tutor. You explain concepts to students using STRICTLY their uploaded course materials.\n\n"
+        "You are Ming's Source-Grounded AI Tutor. You explain concepts to students using STRICTLY their uploaded course materials.\n\n"
         "EVIDENCE CHUNKS FROM UPLOADED MATERIALS:\n"
         f"{evidence_block}\n\n"
         "CRITICAL RULES:\n"
@@ -2606,7 +2606,7 @@ def Date_timestamp() -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="StudyMate Multimodal Knowledge Base CLI")
+    parser = argparse.ArgumentParser(description="Ming Multimodal Knowledge Base CLI")
     subparsers = parser.add_subparsers(dest="command")
 
     # Ingest command

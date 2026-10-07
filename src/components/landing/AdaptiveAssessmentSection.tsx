@@ -116,7 +116,7 @@ export const AdaptiveAssessmentSection = () => {
                   <span className="text-[11px] font-mono text-[#66736D] dark:text-muted-foreground">{question.citation}</span>
                 </div>
                 <p className="text-[#66736D] dark:text-muted-foreground">
-                  Correct! Both processes check their turn & intent. StudyMate has adjusted your difficulty to Level 4 for the next question.
+                  Correct! Both processes check their turn & intent. Ming has adjusted your difficulty to Level 4 for the next question.
                 </p>
               </div>
             )}

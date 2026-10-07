@@ -95,7 +95,7 @@ export function convertVaultItemToBlocks(item: VaultItemLike, explicitType?: str
   if (item.topic) metaParts.push(`Topic: ${item.topic}`);
   if (item.difficulty) metaParts.push(`Difficulty: ${item.difficulty.toUpperCase()}`);
   if (item.tags && item.tags.length > 0) metaParts.push(`Tags: #${item.tags.join(' #')}`);
-  metaParts.push(`Source: StudyMate Vault (${type})`);
+  metaParts.push(`Source: Ming Vault (${type})`);
 
   let icon = '📝';
 

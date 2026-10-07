@@ -79,11 +79,11 @@ describe('Password Reset & Forgot Password Flow', () => {
     const submitBtn = screen.getByRole('button', { name: /Send Reset Link & OTP/i });
 
     // Try submitting with valid email
-    fireEvent.change(emailInput, { target: { value: 'learner@studymate.ai' } });
+    fireEvent.change(emailInput, { target: { value: 'learner@ming.ai' } });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(mockResetPasswordForEmail).toHaveBeenCalledWith('learner@studymate.ai');
+      expect(mockResetPasswordForEmail).toHaveBeenCalledWith('learner@ming.ai');
     });
 
     // Should transition to Step 2 (Enter Code & New Password)

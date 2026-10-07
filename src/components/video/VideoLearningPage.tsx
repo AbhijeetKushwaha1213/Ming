@@ -120,7 +120,7 @@ export const VideoLearningPage: React.FC = () => {
           setTranscriptSegments(segs);
         } catch {}
       }
-      toast.success(`"${updated.title}" successfully indexed into StudyMate RAG!`);
+      toast.success(`"${updated.title}" successfully indexed into Ming RAG!`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to generate transcript');
     } finally {
@@ -251,7 +251,7 @@ export const VideoLearningPage: React.FC = () => {
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-foreground">Welcome to Video Learning</h2>
             <p className="text-xs md:text-sm text-muted-foreground max-w-md">
-              Add a YouTube lecture or upload your video recordings. StudyMate will extract timestamped concepts and allow you to ask grounded questions.
+              Add a YouTube lecture or upload your video recordings. Ming will extract timestamped concepts and allow you to ask grounded questions.
             </p>
           </div>
           <Button

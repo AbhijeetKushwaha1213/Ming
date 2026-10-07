@@ -326,7 +326,7 @@ Please tailor your response specifically to this concept and its prerequisite hi
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h2 className="text-base font-semibold text-foreground">StudyMate Copilot</h2>
+                <h2 className="text-base font-semibold text-foreground">Ming Copilot</h2>
                 <span className="px-1.5 py-0.5 text-[10px] font-medium bg-primary/20 text-primary rounded-full">Agent</span>
               </div>
               <p className="text-xs text-muted-foreground">Resources & Vault Orchestrator</p>

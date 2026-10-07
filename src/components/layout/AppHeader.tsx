@@ -45,11 +45,11 @@ export const AppHeader = ({
         {/* Logo - visible on mobile only */}
         <div className="flex items-center space-x-2.5 lg:hidden">
           <img
-            src="/assets/studymate-logo.png"
-            alt="StudyMate AI Logo"
-            className="w-7 h-7 rounded-lg object-cover shadow-sm"
+            src="/assets/ming-logo.png"
+            alt="Ming AI Logo"
+            className="w-7 h-7 rounded-lg bg-white border border-border/50 object-contain p-0.5 shadow-xs"
           />
-          <h1 className="font-serif font-bold text-foreground text-base">StudyMate AI</h1>
+          <h1 className="font-serif font-bold text-foreground text-base">Ming AI</h1>
         </div>
 
         {/* Right side */}

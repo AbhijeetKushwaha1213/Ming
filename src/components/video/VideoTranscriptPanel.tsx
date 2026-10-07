@@ -104,7 +104,7 @@ export const VideoTranscriptPanel: React.FC<VideoTranscriptPanelProps> = ({
               {transcriptStatus === 'pending'
                 ? 'Generate timestamped conceptual segments to inspect lecture notes and query the AI tutor.'
                 : transcriptStatus === 'processing'
-                ? 'Extracting conceptual lecture segments and indexing into StudyMate RAG...'
+                ? 'Extracting conceptual lecture segments and indexing into Ming RAG...'
                 : 'No transcript available for this video.'}
             </p>
             {onGenerateTranscript && transcriptStatus !== 'ready' && (

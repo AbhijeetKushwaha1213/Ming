@@ -59,21 +59,21 @@ export const DesktopSidebar = ({ activeTab, onTabChange, onSignOut, isCollapsed 
       <div className="flex items-center h-16 px-5 border-b border-sidebar-border flex-shrink-0">
         {isCollapsed ? (
           <img
-            src="/assets/studymate-logo.png"
-            alt="StudyMate AI Logo"
-            className="w-8 h-8 rounded-lg object-cover shadow-sm mx-auto"
+            src="/assets/ming-logo.png"
+            alt="Ming AI Logo"
+            className="w-8 h-8 rounded-lg bg-white border border-sidebar-border/60 object-contain p-0.5 shadow-xs mx-auto"
           />
         ) : (
           <div className="flex items-center space-x-3">
             <img
-              src="/assets/studymate-logo.png"
-              alt="StudyMate AI Logo"
-              className="w-8 h-8 rounded-lg object-cover shadow-sm"
+              src="/assets/ming-logo.png"
+              alt="Ming AI Logo"
+              className="w-8 h-8 rounded-lg bg-white border border-sidebar-border/60 object-contain p-0.5 shadow-xs"
             />
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="font-serif font-bold text-foreground text-base tracking-tight leading-none">
-                  StudyMate AI
+                  Ming AI
                 </h1>
                 <span className="px-1.5 py-0.2 rounded-full bg-accent text-accent-foreground font-sans text-[9px] uppercase font-bold tracking-wider">
                   Pro

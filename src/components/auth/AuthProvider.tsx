@@ -541,7 +541,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const profile = await fetchUserProfile(data.session.user);
         toast({
           title: "Account Created Successfully! 🎉",
-          description: "Welcome to StudyMate! Let's set up your study profile.",
+          description: "Welcome to Ming! Let's set up your study profile.",
         });
         return {
           requiresVerification: false,

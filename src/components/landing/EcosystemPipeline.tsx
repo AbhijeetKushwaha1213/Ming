@@ -33,7 +33,7 @@ export const EcosystemPipeline = () => {
           </h2>
 
           <p className="text-sm sm:text-base text-[#2d4a3e] dark:text-muted-foreground">
-            The complete StudyMate ecosystem in one visual. Scattered study inputs convert into structured mastery.
+            The complete Ming ecosystem in one visual. Scattered study inputs convert into structured mastery.
           </p>
         </div>
 

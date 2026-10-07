@@ -83,7 +83,7 @@ export const AIMaterialGeneratorSection = () => {
           </h2>
 
           <p className="text-base sm:text-lg text-[#66736D] dark:text-muted-foreground max-w-2xl mx-auto leading-[1.65]">
-            Upload your syllabus or lecture slides once. StudyMate structures raw documents into interconnected, high-yield study resources.
+            Upload your syllabus or lecture slides once. Ming structures raw documents into interconnected, high-yield study resources.
           </p>
         </div>
 

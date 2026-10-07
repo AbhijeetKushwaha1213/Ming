@@ -131,7 +131,7 @@ export const RootRedirectRoute: React.FC = () => {
   }
 
   if (isLoading) {
-    return <AuthLoadingScreen message="Loading StudyMate..." />;
+    return <AuthLoadingScreen message="Loading Ming..." />;
   }
 
   return <Navigate to={AUTH_ROUTES.LANDING} replace />;

@@ -126,7 +126,7 @@ export const AuthCallback = () => {
         sessionStorage.removeItem('google_oauth_initiated');
 
         toast({
-          title: 'Welcome to StudyMate! 👋',
+          title: 'Welcome to Ming! 👋',
           description: 'Successfully signed in.',
         });
 

@@ -253,11 +253,11 @@ function ResourcesSlide({ active }: { active: boolean }) {
 
 /* ───────────── main showcase ───────────── */
 const slides = [
-    { label: "AI assistant", url: "getstudymate.com/ai-chat", Comp: ChatSlide },
-    { label: "AI generator", url: "getstudymate.com/generator", Comp: GeneratorSlide },
-    { label: "Video learning", url: "getstudymate.com/video", Comp: VideoSlide },
-    { label: "Achievements", url: "getstudymate.com/achievements", Comp: AchievementsSlide },
-    { label: "Resources", url: "getstudymate.com/resources", Comp: ResourcesSlide },
+    { label: "AI assistant", url: "ming.ai/ai-chat", Comp: ChatSlide },
+    { label: "AI generator", url: "ming.ai/generator", Comp: GeneratorSlide },
+    { label: "Video learning", url: "ming.ai/video", Comp: VideoSlide },
+    { label: "Achievements", url: "ming.ai/achievements", Comp: AchievementsSlide },
+    { label: "Resources", url: "ming.ai/resources", Comp: ResourcesSlide },
 ];
 
 export default function ProductShowcase() {

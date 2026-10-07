@@ -36,11 +36,11 @@ export const Navbar = () => {
           onClick={() => navigate('/')}
           className="flex items-center gap-3 cursor-pointer group select-none"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#063B2A] dark:bg-emerald-800 flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
+          <div className="w-10 h-10 rounded-xl bg-white border border-[#DDE7E1] dark:border-border flex items-center justify-center shadow-xs transition-transform group-hover:scale-105 overflow-hidden p-1">
             <img
-              src="/assets/studymate-logo.png"
-              alt="StudyMate AI"
-              className="w-7 h-7 object-contain"
+              src="/assets/ming-logo.png"
+              alt="Ming AI"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
               }}
@@ -48,7 +48,7 @@ export const Navbar = () => {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="font-extrabold text-xl tracking-tight text-[#063B2A] dark:text-foreground">
-              StudyMate<span className="text-[#20B486]">.</span>
+              Ming<span className="text-[#20B486]">.</span>
             </span>
           </div>
         </div>

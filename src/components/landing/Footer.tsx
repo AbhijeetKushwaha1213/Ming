@@ -10,24 +10,24 @@ export const Footer = () => {
       <div className="max-w-[1240px] mx-auto space-y-12">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           
-          {/* Column 1: StudyMate Brand */}
+          {/* Column 1: Ming Brand */}
           <div className="col-span-2 md:col-span-1 space-y-3">
             <div
               onClick={() => navigate('/')}
               className="flex items-center gap-2 cursor-pointer group"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#063B2A] dark:bg-emerald-800 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-white border border-[#DDE7E1] dark:border-border flex items-center justify-center overflow-hidden p-0.5 shadow-xs">
                 <img
-                  src="/assets/studymate-logo.png"
-                  alt="StudyMate AI"
-                  className="w-5 h-5 object-contain"
+                  src="/assets/ming-logo.png"
+                  alt="Ming AI"
+                  className="w-full h-full object-contain"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               </div>
               <span className="font-extrabold text-lg tracking-tight text-[#063B2A] dark:text-foreground">
-                StudyMate<span className="text-[#20B486]">.</span>
+                Ming<span className="text-[#20B486]">.</span>
               </span>
             </div>
             <p className="text-xs text-[#66736D] dark:text-muted-foreground leading-relaxed">
@@ -155,7 +155,7 @@ export const Footer = () => {
 
         {/* Bottom Strip */}
         <div className="pt-8 border-t border-[#DDE7E1] dark:border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#66736D] dark:text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} StudyMate AI. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Ming AI. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 text-[#063B2A] dark:text-foreground font-semibold">
               <ShieldCheck className="w-4 h-4 text-[#20B486]" />

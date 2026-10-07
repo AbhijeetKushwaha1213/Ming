@@ -69,7 +69,7 @@ export const Hero = () => {
 
             {/* Supporting Text (Short & Scannable) */}
             <p className="text-base sm:text-lg text-[#66736D] dark:text-muted-foreground max-w-xl font-normal leading-[1.65]">
-              StudyMate turns your course material into adaptive assessments, AI-generated study resources, prerequisite-aware learning paths, and personalized revision.
+              Ming understands what you know, what you need, and what to do next.
             </p>
 
             {/* CTAs matching Reference Button System */}
@@ -86,7 +86,7 @@ export const Hero = () => {
                 href="#showcase"
                 className="inline-flex items-center justify-center gap-2 min-w-[210px] sm:min-w-[230px] h-14 px-9 rounded-full bg-[#10231C] dark:bg-card text-white hover:bg-[#063B2A] dark:hover:bg-muted border border-[#20B486]/35 dark:border-border text-base sm:text-[17px] font-bold transition-all shadow-[0_6px_20px_rgba(16,35,28,0.18)] hover:shadow-[0_10px_24px_rgba(6,59,42,0.25)] active:scale-98"
               >
-                <span>Explore StudyMate</span>
+                <span>Explore Ming</span>
               </a>
             </div>
 
@@ -102,7 +102,7 @@ export const Hero = () => {
               <div className="w-[320px] h-[320px] sm:w-[380px] sm:h-[380px] rounded-full bg-[#20B486] dark:bg-emerald-700/80 shadow-[0_20px_60px_rgba(32,180,134,0.22)] flex items-center justify-center overflow-hidden border-4 border-white/80 dark:border-border">
                 <img
                   src="/assets/hero-student.png"
-                  alt="Student learning with StudyMate AI"
+                  alt="Student learning with Ming AI"
                   className="w-full h-full object-cover object-center mix-blend-multiply opacity-95 scale-105"
                   onError={(e) => {
                     // Fallback to minimal academic graphic if image fails

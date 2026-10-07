@@ -56,7 +56,7 @@ describe('Landing Page Integration & Friend PR Fixes', () => {
     );
 
     expect(screen.getByRole('button', { name: /Start Learning/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Explore StudyMate/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Explore Ming/i })).toBeInTheDocument();
   });
 
   it('auto-rotates ProductShowcase slides on timer interval', () => {

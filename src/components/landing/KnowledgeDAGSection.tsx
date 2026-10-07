@@ -159,7 +159,7 @@ export const KnowledgeDAGSection = () => {
           </h2>
 
           <p className="text-base sm:text-lg text-[#66736D] dark:text-muted-foreground max-w-2xl mx-auto leading-[1.65]">
-            StudyMate builds prerequisite-aware concept graphs so you know what to learn first, what comes next, and where you're struggling.
+            Ming builds prerequisite-aware concept graphs so you know what to learn first, what comes next, and where you're struggling.
           </p>
         </div>
 

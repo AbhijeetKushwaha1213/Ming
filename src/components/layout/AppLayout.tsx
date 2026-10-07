@@ -213,7 +213,7 @@ export const AppLayout = ({
                activeTab === 'achievements' ? 'Achievements' :
                activeTab === 'resources' ? 'Resources' :
                activeTab === 'settings' ? 'Settings' :
-               'StudyMate AI'}
+               'Ming AI'}
             </h1>
           </div>
 

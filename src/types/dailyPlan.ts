@@ -12,7 +12,7 @@ export type DailyPlanTaskType =
 export interface DailyPlanResource {
   title: string;
   type: 'Video' | 'Article' | 'Documentation' | 'Book' | 'PDF' | 'PPT' | 'Course' | 'Lecture' | 'GitHub' | 'Practice' | 'Quiz' | 'Notes';
-  platform: 'StudyMate Library' | 'YouTube' | 'LeetCode' | 'HackerRank' | 'Codeforces' | 'MDN' | 'Official Docs' | 'GeeksforGeeks' | 'MIT OpenCourseWare' | 'Other';
+  platform: 'Ming Library' | 'YouTube' | 'LeetCode' | 'HackerRank' | 'Codeforces' | 'MDN' | 'Official Docs' | 'GeeksforGeeks' | 'MIT OpenCourseWare' | 'Other';
   url: string;
   isInternal: boolean;
   internalTarget?: {
@@ -26,7 +26,7 @@ export interface DailyPlanResource {
 }
 
 export interface DailyPlanPractice {
-  platform: 'LeetCode' | 'HackerRank' | 'Codeforces' | 'StudyMate Quiz' | 'Other';
+  platform: 'LeetCode' | 'HackerRank' | 'Codeforces' | 'Ming Quiz' | 'Other';
   problemTitle: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   url: string;

@@ -22,7 +22,7 @@ export const HowItWorksFlow = () => {
       num: '01',
       title: 'Your Course Material',
       label: 'MATERIAL',
-      desc: 'Upload course syllabus, lecture slides, textbooks, or notes. StudyMate parses every concept, formula, and diagram.',
+      desc: 'Upload course syllabus, lecture slides, textbooks, or notes. Ming parses every concept, formula, and diagram.',
       icon: FileText,
       preview: {
         badge: 'Multimodal Parsing',
@@ -78,7 +78,7 @@ export const HowItWorksFlow = () => {
       num: '05',
       title: 'Personalized Learning Path',
       label: 'DAILY PLAN',
-      desc: 'StudyMate schedules time-blocked sessions around your classes, exams, and circadian peak focus hours.',
+      desc: 'Ming schedules time-blocked sessions around your classes, exams, and circadian peak focus hours.',
       icon: Calendar,
       preview: {
         badge: 'Circadian Study Scheduling',

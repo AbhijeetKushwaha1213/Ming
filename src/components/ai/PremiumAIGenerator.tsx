@@ -1110,7 +1110,7 @@ export const PremiumAIGenerator = () => {
     if (typeof generatedResult === 'string') return generatedResult;
     if (generatedResult.content && typeof generatedResult.content === 'string') return generatedResult.content;
 
-    let md = `# 📚 ${generatedTopic || topic || 'StudyMate AI Study Notes'}\n\n`;
+    let md = `# 📚 ${generatedTopic || topic || 'Ming AI Study Notes'}\n\n`;
 
     if (generatedResult.notes) {
       const n = generatedResult.notes;

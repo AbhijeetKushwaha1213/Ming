@@ -375,7 +375,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({ initialTab = 'signin' })
             <Brain className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-[#063B2A] via-[#20B486] to-[#0A4D37] dark:from-emerald-400 dark:via-teal-300 dark:to-emerald-200 bg-clip-text text-transparent mb-1.5">
-            StudyMate AI
+            Ming AI
           </h1>
           <p className="text-sm text-muted-foreground">Your intelligent study companion</p>
         </div>

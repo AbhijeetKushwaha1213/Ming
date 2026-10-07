@@ -20,7 +20,7 @@ import {
 } from '@/api/evaluationAPI';
 import { EvaluationDashboard } from '@/components/dev/EvaluationDashboard';
 
-describe('Phase 6: StudyMate Evaluation & Benchmarking Tests', () => {
+describe('Phase 6: Ming Evaluation & Benchmarking Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

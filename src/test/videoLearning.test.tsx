@@ -23,7 +23,7 @@ import { VideoAITutorPanel } from '@/components/video/VideoAITutorPanel';
 import { VideoTranscriptPanel } from '@/components/video/VideoTranscriptPanel';
 import type { VideoRecord, TranscriptSegment } from '@/types/video';
 
-describe('StudyMate Video Learning Feature Test Suite', () => {
+describe('Ming Video Learning Feature Test Suite', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

@@ -106,7 +106,7 @@ export const AITutorSection = () => {
               <div className="flex items-center justify-between text-xs">
                 <span className="font-extrabold text-[#063B2A] dark:text-emerald-300 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-[#20B486]" />
-                  StudyMate AI Tutor
+                  Ming AI Tutor
                 </span>
                 <span className="text-[11px] font-mono text-[#20B486] font-bold">
                   Zero Hallucinations

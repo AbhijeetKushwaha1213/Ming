@@ -1,4 +1,4 @@
-# 🎓 StudyMate AI: College Student Multimodal AI Study Companion
+# 🎓 Ming AI: College Student Multimodal AI Study Companion
 ## Comprehensive Analysis, Requirement Fulfillment Audit, & Engineering Blueprint
 
 > **Target Audience Focus:** Undergraduate & Postgraduate College Students (Engineering, Computer Science, Sciences, Commerce, etc.)  
@@ -62,7 +62,7 @@ The repository `StudyMate.ai-1` has a solid full-stack foundation:
   - [src/components/resources/ResourceSpace.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/resources/ResourceSpace.tsx) & [src/components/notion/NotionResourceManager.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/notion/NotionResourceManager.tsx): Document upload, folder categorizing, markdown notes.
 
 ### 2.2 Architectural Gap Summary Against Challenge Requirements
-| Challenge Area | StudyMate.ai Current State | Required State for Challenge |
+| Challenge Area | Ming (Initial Baseline) | Required State for Challenge |
 | :--- | :--- | :--- |
 | **Multimodal Ingestion** | Only `.txt` text parsing & PDF storage; no video/slide parsing. | Automatic transcription of lectures, slide extraction, textbook PDF chunking with page/slide/timestamp tagging. |
 | **Source Grounding** | Pure zero-shot Gemini prompting (`ai-assistant`). No RAG. | Vector embedding retrieval; answers cite exact `[[slide:12]]`, `[[page:84]]`, `[[t:14m30s]]` with interactive jumping. |
@@ -400,28 +400,28 @@ The repository `StudyMate.ai-1` has a solid full-stack foundation:
 ### Requirement 6: Optional Enhancements (High Impact for College Students)
 
 #### 6a. Visual course flow map of topics and prerequisites
-- **Built in StudyMate.ai:** [src/components/flashcards/MindMapViewer.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/flashcards/MindMapViewer.tsx).
+- **Built in Ming:** [src/components/flashcards/MindMapViewer.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/flashcards/MindMapViewer.tsx).
 - **College Extension:** Render an interactive React Flow / Mermaid DAG showing the entire semester syllabus. Unlocked nodes are colored by mastery: Green ($\ge 80\%$), Amber ($50-79\%$), Red ($<50\%$). Red nodes block dependent advanced topics.
 
 #### 6b. Revision material targeted at weak topics (flashcards, slides, audio briefs)
-- **Built in StudyMate.ai:** [src/components/ai/PremiumAIGenerator.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/ai/PremiumAIGenerator.tsx) & [src/components/flashcards/FlashcardVault.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/flashcards/FlashcardVault.tsx).
+- **Built in Ming:** [src/components/ai/PremiumAIGenerator.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/ai/PremiumAIGenerator.tsx) & [src/components/flashcards/FlashcardVault.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/flashcards/FlashcardVault.tsx).
 - **College Extension:** Add a 1-click button on the College Dashboard: *"Generate 10-Minute Exam Revision Pack for My 3 Weakest Topics"*. Generates high-yield flashcards + formula sheets based specifically on diagnosed knowledge gaps.
 
 #### 6c. Study schedule based on weak topics, forgetting curves, and exam deadline
-- **Built in StudyMate.ai:** [src/components/planner/StudyPlanPage.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/planner/StudyPlanPage.tsx) & [src/components/exam/ScheduleMockTestModal.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/exam/ScheduleMockTestModal.tsx).
+- **Built in Ming:** [src/components/planner/StudyPlanPage.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/planner/StudyPlanPage.tsx) & [src/components/exam/ScheduleMockTestModal.tsx](file:///Users/abhijeetkushwaha/Projects/StudyMate.ai-1/src/components/exam/ScheduleMockTestModal.tsx).
 - **College Extension:** Calculate review intervals using the **Ebbinghaus Forgetting Curve** + Days remaining until Midsem/Endsem:
   $$R = e^{-\frac{t}{S \cdot M}}$$
   Where $S$ is stability and $M$ is current topic mastery. High-urgency, low-mastery topics are scheduled daily; high-mastery topics are spaced every 4-7 days.
 
 #### 6d. Support mixed-language content or Indian-language interaction (Hinglish/Hindi)
-- **Built in StudyMate.ai:** English only.
+- **Built in Ming:** English only.
 - **College Extension:** College students can toggle **"Explain in Hinglish"** in `AIChat` or Flashcards.
   - *Example Prompt:* `"Explain Virtual Memory and Demand Paging in Hinglish as if explaining to a 3rd year engineering friend before the semester exam."`
   - *Response:* `"Bhai, Virtual Memory ka simple matlab ye hai ki agar tumhari RAM 8GB hai aur program 16GB ka hai, toh OS hard disk ka ek part RAM ki tarah use karta hai..."`
   - Supported languages: Hinglish, Hindi, Tamil, Telugu, Kannada, Bengali.
 
 #### 6e. Audio-based tutoring sessions
-- **Built in StudyMate.ai:** Text chat only.
+- **Built in Ming:** Text chat only.
 - **College Extension:** Integrate Web Speech API (speech-to-text) + ElevenLabs or browser native TTS so college students can listen to audio summaries during daily commutes to campus.
 
 ---
@@ -617,4 +617,4 @@ model ConceptMastery {
 - **8:00 - 9:30 | Technical Architecture & Benchmark Results:**
   Highlight RAGAS evaluation results and Hinglish bilingual tutoring.
 - **9:30 - 10:00 | Conclusion & Impact:**
-  Summary of how StudyMate AI transforms college learning into a trusted, personalized experience.
+  Summary of how Ming AI transforms college learning into a trusted, personalized experience.

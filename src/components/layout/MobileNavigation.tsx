@@ -74,11 +74,11 @@ export const MobileNavigation = ({
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <img
-                    src="/assets/studymate-logo.png"
-                    alt="StudyMate AI Logo"
-                    className="w-6 h-6 rounded-md object-cover shadow-sm"
+                    src="/assets/ming-logo.png"
+                    alt="Ming AI Logo"
+                    className="w-6 h-6 rounded-md bg-white border border-border/50 object-contain p-0.5 shadow-xs"
                   />
-                  <h2 className="text-lg font-serif font-bold text-foreground">StudyMate AI</h2>
+                  <h2 className="text-lg font-serif font-bold text-foreground">Ming AI</h2>
                 </div>
                 <Button 
                   variant="ghost" 

@@ -32,7 +32,7 @@ export const SpacedRepetitionSection = () => {
       label: 'First Recall Micro-Burst',
       retentionWithout: 42,
       retentionWith: 94,
-      detail: 'StudyMate prompts an active 6-card recall quiz right before exponential memory decay sets in.',
+      detail: 'Ming prompts an active 6-card recall quiz right before exponential memory decay sets in.',
       action: '4 min quick flashcard recall',
     },
     {
@@ -129,7 +129,7 @@ export const SpacedRepetitionSection = () => {
 
             <div className="flex items-center gap-3">
               <div className="px-3 py-1.5 rounded-lg bg-[#e8f3ed] dark:bg-emerald-950/40 text-[#165034] dark:text-emerald-300 text-xs font-bold font-mono">
-                StudyMate Retention: {current.retentionWith}%
+                Ming Retention: {current.retentionWith}%
               </div>
               <div className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-xs font-mono line-through">
                 Traditional: {current.retentionWithout}%
@@ -139,12 +139,12 @@ export const SpacedRepetitionSection = () => {
 
           {/* Graphical Comparison Bar Visual */}
           <div className="space-y-4">
-            {/* With StudyMate */}
+            {/* With Ming */}
             <div>
               <div className="flex justify-between text-xs mb-1">
                 <span className="font-bold text-[#165034] dark:text-emerald-400 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  With StudyMate (Spaced Micro-Reviews)
+                  With Ming (Spaced Micro-Reviews)
                 </span>
                 <span className="font-mono font-bold text-[#165034] dark:text-emerald-400">{current.retentionWith}% Memory Retention</span>
               </div>

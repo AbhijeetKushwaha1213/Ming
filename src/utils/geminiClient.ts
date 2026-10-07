@@ -197,7 +197,7 @@ Rules:
     };
 
     const effectiveSystemPrompt = req.systemPrompt || (contentType ? getSystemPrompt(contentType) : 
-      `You are StudyMate AI, an expert, versatile, and friendly educational AI study assistant and workspace orchestrator.
+      `You are Ming AI, an expert, versatile, and friendly educational AI study assistant and workspace orchestrator.
       
       You help students with:
       - Answering academic, educational, and general knowledge questions clearly and accurately

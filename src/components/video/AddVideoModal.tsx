@@ -254,7 +254,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
                     disabled={isSubmittingYt}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    StudyMate will index these timestamped segments into your personalized RAG knowledge base.
+                    Ming will index these timestamped segments into your personalized RAG knowledge base.
                   </p>
                 </div>
 

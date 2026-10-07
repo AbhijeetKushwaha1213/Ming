@@ -194,7 +194,7 @@ export const OnboardingFlow = () => {
       })();
       
       toast({
-        title: "Welcome to StudyMate AI! 🎉",
+        title: "Welcome to Ming AI! 🎉",
         description: "Your personalized learning journey begins now!",
       });
 
@@ -242,7 +242,7 @@ export const OnboardingFlow = () => {
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                 <User className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-foreground mb-3">Welcome to StudyMate AI!</h2>
+              <h2 className="text-3xl font-bold text-foreground mb-3">Welcome to Ming AI!</h2>
               <p className="text-lg text-muted-foreground">Let's get to know you better to personalize your experience</p>
             </div>
             

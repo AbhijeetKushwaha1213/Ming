@@ -189,7 +189,7 @@ export const DailyLearningPlanCard: React.FC<DailyLearningPlanCardProps> = ({
       navigateToTab(tab as any, subtab, { resourceId, topic: topic || task.title });
       toast({
         title: "Navigating to Library 📖",
-        description: `Opening ${task.resource.title} in your StudyMate workspace.`,
+        description: `Opening ${task.resource.title} in your Ming workspace.`,
       });
     } else if (task.resource.url && task.resource.url !== '#') {
       window.open(task.resource.url, '_blank', 'noopener,noreferrer');
@@ -420,7 +420,7 @@ export const DailyLearningPlanCard: React.FC<DailyLearningPlanCardProps> = ({
             <div className="space-y-1.5">
               <h3 className="text-base font-semibold text-foreground">No plan generated for today yet</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                StudyMate will analyze your learning history, course library, concept prerequisites, and available study time to formulate an executable step-by-step path for today.
+                Ming will analyze your learning history, course library, concept prerequisites, and available study time to formulate an executable step-by-step path for today.
               </p>
             </div>
             <Button
@@ -573,7 +573,7 @@ export const DailyLearningPlanCard: React.FC<DailyLearningPlanCardProps> = ({
                                 {task.resource.isInternal ? (
                                   <>
                                     <FolderOpen className="w-3 h-3 text-white" />
-                                    Open in StudyMate
+                                    Open in Ming
                                   </>
                                 ) : (
                                   <>

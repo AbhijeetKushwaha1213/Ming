@@ -72,7 +72,7 @@ export async function evaluationHandler(req: SimpleRequest, res: SimpleResponse)
   // 3. POST /api/evaluation/run
   if (method === 'POST' && pathname === '/api/evaluation/run') {
     try {
-      console.log('🚀 Running full StudyMate Evaluation Suite on isolated test data...');
+      console.log('🚀 Running full Ming Evaluation Suite on isolated test data...');
       const report = await runFullEvaluationSuite(searchAdapter, chatAdapter);
       res.status(200).json({ success: true, report });
       return;
@@ -108,7 +108,7 @@ export async function evaluationHandler(req: SimpleRequest, res: SimpleResponse)
 
       if (res.setHeader) {
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename="studymate_benchmark_report.csv"');
+        res.setHeader('Content-Disposition', 'attachment; filename="ming_benchmark_report.csv"');
       }
       res.status(200).end ? res.end(csvRows.join('\n')) : res.json({ csv: csvRows.join('\n') });
       return;

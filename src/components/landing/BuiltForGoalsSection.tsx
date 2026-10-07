@@ -128,7 +128,7 @@ export const BuiltForGoalsSection = () => {
           </div>
 
           <div className="pt-3 border-t border-[#dfe4dd] dark:border-border flex flex-wrap items-center justify-between text-xs text-[#52796f] dark:text-muted-foreground">
-            <span>StudyMate automatically configures its SM-2 intervals according to your exam deadline.</span>
+            <span>Ming automatically configures its SM-2 intervals according to your exam deadline.</span>
             <span className="text-[#165034] dark:text-emerald-400 font-semibold">Zero Friction Setup</span>
           </div>
       </div>

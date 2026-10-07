@@ -1,11 +1,11 @@
 # Google OAuth Setup Guide
 
-This guide will help you configure Google OAuth for your StudyMate AI application.
+This guide will help you configure Google OAuth for your Ming AI application.
 
 ## Prerequisites
 - A Google Cloud Platform account
 - Access to your Supabase project dashboard
-- The StudyMate AI application code
+- The Ming AI application code
 
 ---
 
@@ -17,7 +17,7 @@ Visit: https://console.cloud.google.com/
 ### 1.2 Create or Select a Project
 - Click on the project dropdown at the top
 - Click "New Project" or select an existing one
-- Name it something like "StudyMate AI"
+- Name it something like "Ming AI"
 
 ### 1.3 Enable Google+ API
 - Go to "APIs & Services" > "Library"
@@ -30,7 +30,7 @@ Visit: https://console.cloud.google.com/
 3. If prompted, configure the OAuth consent screen:
    - Choose "External" for user type
    - Fill in required fields:
-     - App name: "StudyMate AI"
+     - App name: "Ming AI"
      - User support email: Your email
      - Developer contact: Your email
    - Add scopes (optional): email, profile, openid
@@ -38,7 +38,7 @@ Visit: https://console.cloud.google.com/
 
 4. Create OAuth Client ID:
    - Application type: "Web application"
-   - Name: "StudyMate AI Web Client"
+   - Name: "Ming AI Web Client"
    
 5. **Add Authorized JavaScript origins:**
    ```
@@ -87,7 +87,7 @@ Visit: https://app.supabase.com/project/YOUR_PROJECT_ID
 2. Navigate to **Authentication** > **URL Configuration**.
 3. Set **Site URL**:
    - Set this to your live production domain:
-     `https://your-production-domain.com` (e.g., `https://studymate.vercel.app`)
+     `https://your-production-domain.com` (e.g., `https://ming.vercel.app`)
 4. Add to **Redirect URLs** (Add all of these so both local dev and production work):
    ```
    https://your-production-domain.com/**

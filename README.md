@@ -1,7 +1,7 @@
 <!-- ═══════════════════════ ANIMATED HERO BANNER ═══════════════════════ -->
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6366F1,50:8B5CF6,100:06B6D4&height=240&section=header&text=StudyMate%20AI&fontSize=64&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=Your%20Multimodal%20AI%20Study%20Companion&descSize=20&descAlignY=58" alt="StudyMate AI banner" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6366F1,50:8B5CF6,100:06B6D4&height=240&section=header&text=Ming%20AI&fontSize=64&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=Your%20Multimodal%20AI%20Study%20Companion&descSize=20&descAlignY=58" alt="Ming AI banner" width="100%"/>
 
 <a href="https://github.com/AbhijeetKushwaha1213/StudyMate-Multimodal-AI-Hackathon-2026">
   <img src="https://readme-typing-svg.demolab.com?font=Inter&weight=600&size=22&duration=3000&pause=900&color=8B5CF6&center=true&vCenter=true&width=700&lines=Turn+scattered+notes+into+structured+learning;Flashcards%2C+quizzes%2C+mind+maps+%E2%80%94+generated+in+seconds;Powered+by+Google+Gemini+%7C+Built+with+React+%2B+Supabase;Study+smarter.+Retain+longer.+Score+higher." alt="Typing animation" />
@@ -32,7 +32,7 @@
 <div align="center">
 
 <!-- 👉 REPLACE: record a 10–15s GIF of the full flow (upload → generate → study) and save to docs/media/demo.gif -->
-<img src="https://placehold.co/1100x620/0f172a/8b5cf6/gif?text=%E2%96%B6+Demo+GIF%0A(docs%2Fmedia%2Fdemo.gif)&font=montserrat" alt="StudyMate AI demo" width="90%"/>
+<img src="https://placehold.co/1100x620/0f172a/8b5cf6/gif?text=%E2%96%B6+Demo+GIF%0A(docs%2Fmedia%2Fdemo.gif)&font=montserrat" alt="Ming AI demo" width="90%"/>
 
 <sub>🔗 <a href="#">Live Site</a> &nbsp;•&nbsp; 🎥 <a href="#">Watch Video Walkthrough</a> &nbsp;•&nbsp; 📑 <a href="#">Pitch Deck</a></sub>
 
@@ -42,7 +42,7 @@
 
 ## 🚀 Overview
 
-**StudyMate AI** bridges the gap between scattered study materials (lecture slides, textbook PDFs, notes, and problem sets) and structured learning. Powered by **Google Gemini**, it helps learners understand concepts deeply, test their knowledge adaptively, and retain what they learn, all in one unified workspace.
+**Ming AI** bridges the gap between scattered study materials (lecture slides, textbook PDFs, notes, and problem sets) and structured learning. By leveraging multimodal AI capabilities powered by Google Gemini, Ming helps learners understand concepts deeply, test their knowledge adaptively, and retain what they learn, all in one unified workspace.
 
 > 🏆 Built by **[Abhijeet Kushwaha](https://github.com/AbhijeetKushwaha1213)** for the **Multimodal AI Hackathon 2026**.
 
@@ -165,11 +165,15 @@ flowchart LR
 
 | Layer | Technology |
 | :--- | :--- |
-| 🎨 **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Radix UI, Lucide Icons |
+| 🎨 **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Radix UI, Lucide Icons, Recharts, React Router |
 | 🔄 **State & Data** | TanStack React Query, Dexie (IndexedDB), LocalStorage |
-| ✍️ **Editor & UI** | Monaco Editor, TipTap, Framer Motion / Tailwind animations |
-| ☁️ **Backend & DB** | Supabase (PostgreSQL, Auth, Storage, Edge Functions), Node.js server, Prisma, LibSQL |
-| 🤖 **AI Engine** | Google Gemini API (`gemini-1.5-flash`), Supabase Edge Functions |
+| ✍️ **Editor & UI** | Monaco Editor, TipTap Rich Text Editor, Tailwind CSS animations |
+| ☁️ **Backend & DB** | Supabase (PostgreSQL, Auth, Storage, Edge Functions), Row Level Security (RLS), Node.js server, Prisma ORM, LibSQL |
+| 🔍 **Vector DB & RAG** | ChromaDB (persistent HNSW cosine similarity), Collection: `studymate_multimodal_kb`, Hybrid Search (vector + lexical + topic boosting) |
+| 🤖 **AI Engine** | Google Gemini API (`gemini-2.5-flash` with multi-model fallback), Supabase Edge Functions (Deno) |
+| 🧠 **Learning Intelligence** | Bayesian Knowledge Tracing (BKT), mastery estimation, adaptive assessment, prerequisite-aware DAG generation |
+| 🏛️ **AI Architecture** | Context-aware AI Study Agent, grounded generation with citation verification, structured JSON outputs, learning-state driven recommendations |
+| 📚 **RAG Pipeline** | Python (PyPDF, python-pptx), multi-format extraction (PDF page-by-page, PPTX slide-by-slide, Video/Audio timestamped), ChromaDB embedding & cosine retrieval |
 
 ---
 
@@ -299,7 +303,7 @@ Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
 
 <br/>
 
-⭐ **If StudyMate AI helped you, please give it a star!** ⭐
+⭐ **If Ming AI helped you, please give it a star!** ⭐
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:06B6D4,50:8B5CF6,100:6366F1&height=120&section=footer" width="100%" alt="footer"/>
 

@@ -1,5 +1,5 @@
 /**
- * Utility for cross-tab and cross-feature navigation within StudyMate.
+ * Utility for cross-tab and cross-feature navigation within Ming.
  * Allows buttons/links in any component (such as daily study plan activities)
  * to navigate directly to Assessment Studio, Flashcard Vault, AI Chat, or Resources.
  */

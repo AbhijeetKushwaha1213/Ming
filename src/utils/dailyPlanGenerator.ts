@@ -141,11 +141,11 @@ export function generateDailyPlan(params: GenerateDailyPlanParams): DailyLearnin
       resource: matchingVaultItem ? {
         title: matchingVaultItem.title,
         type: 'Notes',
-        platform: 'StudyMate Library',
+        platform: 'Ming Library',
         url: '#',
         isInternal: true,
         internalTarget: { tab: 'vault', topic: matchingVaultItem.topic || prereqName },
-        whyRecommended: 'Grounded in your StudyMate vault notes for this prerequisite.',
+        whyRecommended: 'Grounded in your Ming vault notes for this prerequisite.',
         durationText: `${tPrereq} min`
       } : {
         title: `${prereqName} Core Principles`,
@@ -165,7 +165,7 @@ export function generateDailyPlan(params: GenerateDailyPlanParams): DailyLearnin
     primaryResource = {
       title: matchingUploadedResource.title,
       type: (matchingUploadedResource.type?.toUpperCase() === 'PDF' ? 'PDF' : 'Lecture') as any,
-      platform: 'StudyMate Library',
+      platform: 'Ming Library',
       url: matchingUploadedResource.file_url || '#',
       isInternal: true,
       internalTarget: { tab: 'resources', resourceId: matchingUploadedResource.id },
@@ -248,7 +248,7 @@ export function generateDailyPlan(params: GenerateDailyPlanParams): DailyLearnin
     resource: hasVaultFlashcards ? {
       title: `Study Vault: ${matchingVaultItem?.title || focusTopic}`,
       type: 'Quiz',
-      platform: 'StudyMate Library',
+      platform: 'Ming Library',
       url: '#',
       isInternal: true,
       internalTarget: { tab: 'vault', topic: focusTopic },
@@ -257,7 +257,7 @@ export function generateDailyPlan(params: GenerateDailyPlanParams): DailyLearnin
     } : {
       title: `${focusTopic} Concept Summary & Memory Triggers`,
       type: 'Notes',
-      platform: 'StudyMate Library',
+      platform: 'Ming Library',
       url: '#',
       isInternal: true,
       internalTarget: { tab: 'vault', topic: focusTopic },
@@ -315,7 +315,7 @@ export function generateDailyPlan(params: GenerateDailyPlanParams): DailyLearnin
     };
   } else {
     practiceItem = {
-      platform: 'StudyMate Quiz',
+      platform: 'Ming Quiz',
       problemTitle: `${focusTopic} Scenario-Based Questions`,
       difficulty: currentMastery >= 0.70 ? 'Medium' : 'Easy',
       url: '#'
@@ -323,7 +323,7 @@ export function generateDailyPlan(params: GenerateDailyPlanParams): DailyLearnin
     practiceResource = {
       title: `${focusTopic} Practical Case Study`,
       type: 'Quiz',
-      platform: 'StudyMate Library',
+      platform: 'Ming Library',
       url: '#',
       isInternal: true,
       internalTarget: { tab: 'assessment', topic: focusTopic },
@@ -356,7 +356,7 @@ export function generateDailyPlan(params: GenerateDailyPlanParams): DailyLearnin
     resource: {
       title: `Grounded Diagnostic Assessment (${focusTopic})`,
       type: 'Quiz',
-      platform: 'StudyMate Library',
+      platform: 'Ming Library',
       url: '#',
       isInternal: true,
       internalTarget: { tab: 'assessment', topic: focusTopic },

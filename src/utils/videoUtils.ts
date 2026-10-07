@@ -1,5 +1,5 @@
 /**
- * Video Utilities for StudyMate Video Learning Module
+ * Video Utilities for Ming Video Learning Module
  */
 
 export function extractYouTubeId(url: string): string | null {

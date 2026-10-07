@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seed Multimodal Knowledge Base for StudyMate Phase 7 Benchmarking.
+Seed Multimodal Knowledge Base for Ming Phase 7 Benchmarking.
 Ingests:
 1. OS Comprehensive Text (Deadlocks, Banker's, Concurrency)
 2. OS Multimodal PDF (Processes, Scheduling, Paging, Virtual Memory - Pages 1-4)

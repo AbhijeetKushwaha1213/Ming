@@ -622,7 +622,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
     return;
   }
 
-  // 12. Phase 6: StudyMate Evaluation & Benchmarking APIs
+  // 12. Phase 6: Ming Evaluation & Benchmarking APIs
   if (pathname.startsWith('/api/evaluation') || pathname.startsWith('/api/rag/evaluation')) {
     const normalizedReq = {
       ...req,

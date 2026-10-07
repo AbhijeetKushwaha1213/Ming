@@ -1,6 +1,6 @@
 # 🎯 Track D: Personalized Tutoring & Adaptive Learning — Comprehensive Completion Report
 
-**Project:** StudyMate AI  
+**Project:** Ming AI  
 **Challenge Track:** Track D — Personalized Tutoring & Adaptive Learning  
 **Target Audience:** Undergraduate & Postgraduate Students  
 **Audit Date:** October 2026  
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-StudyMate AI was comprehensively implemented and validated against the complete specification for **Track D: Personalized Tutoring & Adaptive Learning**. The system unifies lecture videos, textbooks, and slide decks into a persistent, source-grounded vector knowledge base with visual diagrams, Bayesian knowledge tracing, adaptive assessments, interactive prerequisite DAGs, 2-minute spoken audio briefs, multilingual Hinglish tutoring, and audio speech controls.
+Ming AI was comprehensively implemented and validated against the complete specification for **Track D: Personalized Tutoring & Adaptive Learning**. The system unifies lecture videos, textbooks, and slide decks into a persistent, source-grounded vector knowledge base with visual diagrams, Bayesian knowledge tracing, adaptive assessments, interactive prerequisite DAGs, 2-minute spoken audio briefs, multilingual Hinglish tutoring, and audio speech controls.
 
 ### Overall Readiness Score: **100 / 100 (Grade: A+)**
 
@@ -223,7 +223,7 @@ For the required **3-10 minute YouTube demonstration video**, follow this battle
 
 1. **Minute 0:00 – 1:00 | The Problem & Architecture Overview**
    * Show scattered slides, PDFs, and lecture videos.
-   * State the core thesis: Generic chatbots hallucinate and don't model the student; StudyMate AI provides **source-grounded tutoring + Bayesian learner modeling**.
+   * State the core thesis: Generic chatbots hallucinate and don't model the student; Ming AI provides **source-grounded tutoring + Bayesian learner modeling**.
 2. **Minute 1:00 – 2:00 | Multimodal Ingestion & Source Grounding Demo**
    * Upload/view a course PDF and slide deck.
    * Open **AI Chat** (`AIChat.tsx`). Ask a specific conceptual question.

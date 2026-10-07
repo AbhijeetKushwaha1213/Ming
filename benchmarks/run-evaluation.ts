@@ -18,7 +18,7 @@ const chatAdapter = async (query: string, topic?: string, userId: string = 'defa
 
 async function main() {
   console.log('================================================================');
-  console.log('🔬 StudyMate Phase 8: Multi-Hop Retrieval & Grounded Tutor Suite');
+  console.log('🔬 Ming Phase 8: Multi-Hop Retrieval & Grounded Tutor Suite');
   console.log('================================================================');
   console.log('Operating on isolated test data and verified learner models...\n');
 

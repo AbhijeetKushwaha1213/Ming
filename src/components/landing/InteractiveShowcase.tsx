@@ -416,12 +416,12 @@ function AchievementsSlide({ active }: { active: boolean }) {
 
 /* ───────────── main 3D cylinder showcase ───────────── */
 const slides = [
-  { label: 'AI Tutor', url: 'studymate.ai/tutor', Comp: ChatSlide },
-  { label: 'AI Generator', url: 'studymate.ai/generator', Comp: GeneratorSlide },
-  { label: 'Adaptive Quiz', url: 'studymate.ai/adaptive', Comp: AssessmentSlide },
-  { label: 'Video & DAG', url: 'studymate.ai/dag', Comp: VideoSlide },
-  { label: 'Daily Plan', url: 'studymate.ai/planner', Comp: DailyPlanSlide },
-  { label: 'Achievements', url: 'studymate.ai/progress', Comp: AchievementsSlide },
+  { label: 'AI Tutor', url: 'ming.ai/tutor', Comp: ChatSlide },
+  { label: 'AI Generator', url: 'ming.ai/generator', Comp: GeneratorSlide },
+  { label: 'Adaptive Quiz', url: 'ming.ai/adaptive', Comp: AssessmentSlide },
+  { label: 'Video & DAG', url: 'ming.ai/dag', Comp: VideoSlide },
+  { label: 'Daily Plan', url: 'ming.ai/planner', Comp: DailyPlanSlide },
+  { label: 'Achievements', url: 'ming.ai/progress', Comp: AchievementsSlide },
 ];
 
 export const InteractiveShowcase = () => {

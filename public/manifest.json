@@ -1,7 +1,7 @@
 
 {
-  "name": "StudyMate AI",
-  "short_name": "StudyMate",
+  "name": "Ming AI",
+  "short_name": "Ming",
   "description": "AI-powered study companion for exam preparation and college life",
   "start_url": "/",
   "display": "standalone",

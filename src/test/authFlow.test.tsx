@@ -44,7 +44,7 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
-describe('StudyMate Production-Ready Authentication System', () => {
+describe('Ming Production-Ready Authentication System', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthState = {

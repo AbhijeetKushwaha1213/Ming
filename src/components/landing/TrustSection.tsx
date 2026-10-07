@@ -39,7 +39,7 @@ export const TrustSection = () => {
             Trusted by Students <span className="italic font-serif text-[#165034] dark:text-emerald-400">Worldwide</span>
           </h2>
           <p className="text-base sm:text-lg text-[#2d4a3e] dark:text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Join thousands of university students and researchers who prepare for complex exams with StudyMate AI.
+            Join thousands of university students and researchers who prepare for complex exams with Ming AI.
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export const TrustSection = () => {
             ))}
           </div>
           <blockquote className="font-serif text-lg sm:text-xl text-[#002313] dark:text-foreground mb-6 leading-relaxed italic">
-            "StudyMate AI transformed my coursework workflow. Having an automated prerequisite knowledge graph alongside verifiable source citations makes technical exam prep structured and confident."
+            "Ming AI transformed my coursework workflow. Having an automated prerequisite knowledge graph alongside verifiable source citations makes technical exam prep structured and confident."
           </blockquote>
           <div className="text-[#2d4a3e] dark:text-muted-foreground">
             <div className="font-semibold text-sm text-[#002313] dark:text-foreground">Sarah Chen</div>

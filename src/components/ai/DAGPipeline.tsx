@@ -632,7 +632,7 @@ export const DAGPipeline: React.FC = () => {
               <span>Generating Prerequisite DAG for "{topic}"</span>
             </h3>
             <p className="text-xs text-muted-foreground">
-              StudyMate AI is parsing your curriculum to create a directed acyclic learning sequence without knowledge gaps.
+              Ming AI is parsing your curriculum to create a directed acyclic learning sequence without knowledge gaps.
             </p>
           </div>
 

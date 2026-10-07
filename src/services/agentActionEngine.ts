@@ -85,7 +85,7 @@ export async function getWorkspaceCatalog(): Promise<WorkspaceCatalog> {
  * Build a system prompt giving the AI agent full control over the user's workspace
  */
 export function getAgentWorkspacePrompt(catalog: WorkspaceCatalog, customInstructions?: string): string {
-  return `You are StudyMate AI, the user's intelligent study assistant and autonomous workspace orchestrator.
+  return `You are Ming AI, the user's intelligent study assistant and autonomous workspace orchestrator.
 You have direct read, write, edit, rename, move, and delete control over the user's Resources workspace and Vault!
 
 ${catalog.activePageTitle ? `📌 CURRENTLY ACTIVE PAGE BEING VIEWED BY USER:

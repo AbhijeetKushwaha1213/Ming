@@ -601,7 +601,7 @@ async function runTests() {
   }
 
   // =========================================================================
-  // Phase 6: StudyMate Evaluation & Benchmarking Integration Tests
+  // Phase 6: Ming Evaluation & Benchmarking Integration Tests
   // =========================================================================
 
   // Test 25: GET /api/evaluation/dataset

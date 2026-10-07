@@ -236,7 +236,7 @@ Rules:
 
     try {
       const preferredModel = (import.meta.env as any).VITE_GEMINI_MODEL || 'gemini-2.5-flash';
-      const candidateModels = [preferredModel, 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
+      const candidateModels = [preferredModel, 'gemini-flash-latest'];
       
       let lastErrorStatus = 0;
       let lastErrorDetails = '';

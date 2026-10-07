@@ -53,11 +53,11 @@ export const ViewResultsModal = ({ open, onOpenChange }: ViewResultsModalProps) 
         
         <div className="space-y-4 py-4">
           {mockResults.map((result) => (
-            <Card key={result.id} className="p-4">
+            <Card key={result.id} className="p-4 border-border">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h3 className="font-semibold text-lg">{result.name}</h3>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                  <h3 className="font-semibold text-lg text-foreground">{result.name}</h3>
+                  <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                     <span className="flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
                       {new Date(result.date).toLocaleDateString()}
@@ -68,7 +68,7 @@ export const ViewResultsModal = ({ open, onOpenChange }: ViewResultsModalProps) 
                     </span>
                   </div>
                 </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30">
                   Rank #{result.rank}
                 </Badge>
               </div>
@@ -76,8 +76,8 @@ export const ViewResultsModal = ({ open, onOpenChange }: ViewResultsModalProps) 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Overall Score</span>
-                    <span className="text-lg font-bold text-indigo-600">
+                    <span className="text-sm font-medium text-foreground">Overall Score</span>
+                    <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
                       {result.score}/{result.totalMarks}
                     </span>
                   </div>
@@ -85,11 +85,11 @@ export const ViewResultsModal = ({ open, onOpenChange }: ViewResultsModalProps) 
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Subject Breakdown</h4>
+                  <h4 className="text-sm font-medium text-foreground">Subject Breakdown</h4>
                   {Object.entries(result.subjects).map(([subject, score]) => (
-                    <div key={subject} className="flex justify-between text-sm">
+                    <div key={subject} className="flex justify-between text-sm text-muted-foreground">
                       <span className="capitalize">{subject}</span>
-                      <span className="font-medium">{score}/100</span>
+                      <span className="font-medium text-foreground">{score}/100</span>
                     </div>
                   ))}
                 </div>
@@ -106,12 +106,12 @@ export const ViewResultsModal = ({ open, onOpenChange }: ViewResultsModalProps) 
             </Card>
           ))}
 
-          <Card className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <Card className="p-4 bg-card border-border">
             <div className="flex items-center space-x-3">
-              <TrendingUp className="w-8 h-8 text-blue-600" />
+              <TrendingUp className="w-8 h-8 text-primary" />
               <div>
-                <h3 className="font-semibold text-gray-900">Performance Insights</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="font-semibold text-foreground">Performance Insights</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Your math scores are consistently improving! Focus on organic chemistry for better overall performance.
                 </p>
               </div>
@@ -128,8 +128,8 @@ export const ViewResultsModal = ({ open, onOpenChange }: ViewResultsModalProps) 
           </Button>
         </div>
 
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
+        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
             <strong>Coming Soon:</strong> Advanced analytics, comparison with peers, and AI-powered recommendations.
           </p>
         </div>

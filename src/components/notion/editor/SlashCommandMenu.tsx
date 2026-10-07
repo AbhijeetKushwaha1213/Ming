@@ -249,7 +249,7 @@ export function SlashCommandMenu({ position, onSelect, onClose }: SlashCommandMe
           placeholder="Search for a block type..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-2 py-1 text-sm bg-transparent outline-none transition-all duration-150"
+          className="w-full px-2 py-1 text-sm bg-transparent outline-none transition-all duration-150 text-foreground placeholder:text-muted-foreground"
           aria-label="Search block types"
           aria-controls="block-type-list"
         />
@@ -274,7 +274,7 @@ export function SlashCommandMenu({ position, onSelect, onClose }: SlashCommandMe
               >
                 <div className="mt-0.5 text-muted-foreground transition-transform duration-150 hover:scale-110" aria-hidden="true">{command.icon}</div>
                 <div className="flex-1 text-left">
-                  <div className="text-sm font-medium">{command.label}</div>
+                  <div className="text-sm font-medium text-foreground">{command.label}</div>
                   <div className="text-xs text-muted-foreground">{command.description}</div>
                 </div>
               </button>

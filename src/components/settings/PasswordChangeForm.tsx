@@ -115,7 +115,7 @@ export const PasswordChangeForm = () => {
       >
         {isSubmitting ? "Changing Password..." : "Change Password"}
       </Button>
-      <div className="text-sm text-gray-500 dark:text-gray-400">
+      <div className="text-sm text-muted-foreground">
         <p>Password requirements:</p>
         <ul className="list-disc list-inside ml-2">
           <li>At least 8 characters long</li>

@@ -182,8 +182,8 @@ export const UserTypeSelection = () => {
 
         {/* Additional Details Form */}
         {selectedType && (
-          <Card className="p-8 bg-white/90 backdrop-blur-sm shadow-xl border-0">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          <Card className="p-8 bg-card/90 backdrop-blur-sm shadow-xl border border-border">
+            <h3 className="text-2xl font-bold text-foreground mb-6 text-center">
               Tell us more about yourself
             </h3>
             
@@ -277,7 +277,7 @@ export const UserTypeSelection = () => {
         )}
 
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Don't worry! You can change your preferences later in settings
           </p>
         </div>

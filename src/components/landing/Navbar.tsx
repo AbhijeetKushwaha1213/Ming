@@ -26,8 +26,8 @@ export const Navbar = () => {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-white/95 backdrop-blur-md border-b border-[#DDE7E1] shadow-[0_4px_20px_rgba(6,59,42,0.04)] py-3.5'
-          : 'bg-[#F7FAF7]/90 backdrop-blur-sm py-5'
+          ? 'bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-[#DDE7E1] dark:border-border shadow-[0_4px_20px_rgba(6,59,42,0.04)] py-3.5'
+          : 'bg-[#F7FAF7]/90 dark:bg-background/90 backdrop-blur-sm py-5'
       }`}
     >
       <div className="max-w-[1240px] mx-auto px-5 sm:px-8 flex items-center justify-between gap-6">
@@ -36,7 +36,7 @@ export const Navbar = () => {
           onClick={() => navigate('/')}
           className="flex items-center gap-3 cursor-pointer group select-none"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#063B2A] flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
+          <div className="w-10 h-10 rounded-xl bg-[#063B2A] dark:bg-emerald-800 flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
             <img
               src="/assets/studymate-logo.png"
               alt="StudyMate AI"
@@ -47,19 +47,19 @@ export const Navbar = () => {
             />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-xl tracking-tight text-[#063B2A]">
+            <span className="font-extrabold text-xl tracking-tight text-[#063B2A] dark:text-foreground">
               StudyMate<span className="text-[#20B486]">.</span>
             </span>
           </div>
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8 text-[15px] font-medium text-[#66736D]">
+        <nav className="hidden md:flex items-center gap-8 text-[15px] font-medium text-[#66736D] dark:text-muted-foreground">
           {navLinks.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="hover:text-[#063B2A] transition-colors py-1"
+              className="hover:text-[#063B2A] dark:hover:text-emerald-400 transition-colors py-1"
             >
               {link.label}
             </a>
@@ -70,7 +70,7 @@ export const Navbar = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/login')}
-            className="hidden sm:inline-flex text-[#10231C] hover:text-[#063B2A] px-3 py-2 text-sm font-semibold transition-colors"
+            className="hidden sm:inline-flex text-[#10231C] dark:text-foreground hover:text-[#063B2A] dark:hover:text-emerald-400 px-3 py-2 text-sm font-semibold transition-colors"
           >
             Log in
           </button>
@@ -85,7 +85,7 @@ export const Navbar = () => {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl text-[#10231C] hover:bg-[#DDF7EC] transition-colors"
+            className="md:hidden p-2 rounded-xl text-[#10231C] dark:text-foreground hover:bg-[#DDF7EC] dark:hover:bg-muted transition-colors"
             aria-label="Toggle Menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -95,25 +95,25 @@ export const Navbar = () => {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-[#DDE7E1] px-6 py-5 space-y-3 shadow-lg animate-fade-in">
+        <div className="md:hidden bg-white dark:bg-card border-b border-[#DDE7E1] dark:border-border px-6 py-5 space-y-3 shadow-lg animate-fade-in">
           <nav className="flex flex-col space-y-3">
             {navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-base font-semibold text-[#10231C] hover:text-[#20B486] py-1 transition-colors"
+                className="text-base font-semibold text-[#10231C] dark:text-foreground hover:text-[#20B486] dark:hover:text-emerald-400 py-1 transition-colors"
               >
                 {link.label}
               </a>
             ))}
-            <div className="pt-3 border-t border-[#DDE7E1] flex flex-col gap-2.5">
+            <div className="pt-3 border-t border-[#DDE7E1] dark:border-border flex flex-col gap-2.5">
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   navigate('/login');
                 }}
-                className="w-full text-center py-2.5 text-sm font-bold text-[#063B2A] bg-[#F7FAF7] rounded-xl hover:bg-[#DDF7EC] transition-colors"
+                className="w-full text-center py-2.5 text-sm font-bold text-[#063B2A] dark:text-foreground bg-[#F7FAF7] dark:bg-muted rounded-xl hover:bg-[#DDF7EC] dark:hover:bg-accent transition-colors"
               >
                 Log in
               </button>

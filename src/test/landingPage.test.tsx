@@ -48,20 +48,15 @@ describe('Landing Page Integration & Friend PR Fixes', () => {
     expect(srcList).toContain('/assets/hero-student.png');
   });
 
-  it('supports feature highlights in hero', () => {
+  it('renders call to action buttons in hero', () => {
     render(
       <MemoryRouter>
         <Hero />
       </MemoryRouter>
     );
 
-    const studyMat = screen.getByText(/AI Study Materials/i);
-    const dags = screen.getByText(/Topological DAGs/i);
-    const recall = screen.getByText(/Spaced Recall/i);
-
-    expect(studyMat).toBeInTheDocument();
-    expect(dags).toBeInTheDocument();
-    expect(recall).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Start Learning/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Explore StudyMate/i })).toBeInTheDocument();
   });
 
   it('auto-rotates ProductShowcase slides on timer interval', () => {

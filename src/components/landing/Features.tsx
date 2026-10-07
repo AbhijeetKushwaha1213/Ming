@@ -87,18 +87,18 @@ export const Features = () => {
   ];
 
   return (
-    <section id="features" ref={sectionRef} className="py-24 px-4 bg-[#f6fbf3] relative overflow-hidden scroll-mt-20 border-t border-[#dfe4dd]/60">
+    <section id="features" ref={sectionRef} className="py-24 px-4 bg-[#f6fbf3] dark:bg-background relative overflow-hidden scroll-mt-20 border-t border-[#dfe4dd]/60 dark:border-border/60">
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section Header */}
         <div className="text-center mb-20">
-          <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#e8f3ed] text-[#165034] border border-[#165034]/20 rounded-full text-xs font-semibold uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#e8f3ed] dark:bg-emerald-950/40 text-[#165034] dark:text-emerald-300 border border-[#165034]/20 dark:border-emerald-800/30 rounded-full text-xs font-semibold uppercase tracking-wider mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Autonomous Learning Architecture</span>
           </div>
-          <h2 className="font-serif text-3xl md:text-5xl lg:text-6xl font-normal text-[#002313] mb-6 tracking-tight">
-            Everything You Need to <span className="italic font-serif text-[#165034]">Excel</span>
+          <h2 className="font-serif text-3xl md:text-5xl lg:text-6xl font-normal text-[#002313] dark:text-foreground mb-6 tracking-tight">
+            Everything You Need to <span className="italic font-serif text-[#165034] dark:text-emerald-400">Excel</span>
           </h2>
-          <p className="text-base sm:text-lg text-[#2d4a3e] max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-[#2d4a3e] dark:text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             AI-driven scholarly tools designed for university engineering, science, and professional exam preparation.
           </p>
         </div>
@@ -112,26 +112,26 @@ export const Features = () => {
               <Card 
                 key={index}
                 data-card-index={index}
-                className={`relative p-7 hover:shadow-md transition-all duration-300 border border-[#dfe4dd] bg-white/90 rounded-2xl group flex flex-col justify-between ${
+                className={`relative p-7 hover:shadow-md transition-all duration-300 border border-[#dfe4dd] dark:border-border bg-white/90 dark:bg-card/90 rounded-2xl group flex flex-col justify-between ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
                 }`}
                 style={{ transitionDelay: `${index * 40}ms` }}
               >
                 <div>
                   {/* Icon Container */}
-                  <div className="w-12 h-12 rounded-xl bg-[#e8f3ed] text-[#165034] flex items-center justify-center mb-5 group-hover:bg-[#165034] group-hover:text-white transition-colors duration-300">
+                  <div className="w-12 h-12 rounded-xl bg-[#e8f3ed] dark:bg-emerald-950/40 text-[#165034] dark:text-emerald-300 flex items-center justify-center mb-5 group-hover:bg-[#165034] dark:group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
                     <Icon className="w-6 h-6" />
                   </div>
 
-                  <h3 className="font-serif text-lg font-semibold text-[#002313] mb-2.5">
+                  <h3 className="font-serif text-lg font-semibold text-[#002313] dark:text-foreground mb-2.5">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-[#2d4a3e] leading-relaxed">
+                  <p className="text-sm text-[#2d4a3e] dark:text-muted-foreground leading-relaxed">
                     {feature.description}
                   </p>
                 </div>
 
-                <div className="pt-4 mt-4 border-t border-[#dfe4dd]/50 flex items-center text-xs font-medium text-[#165034] opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="pt-4 mt-4 border-t border-[#dfe4dd]/50 dark:border-border/50 flex items-center text-xs font-medium text-[#165034] dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
                   <span>Learn more</span>
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -144,7 +144,7 @@ export const Features = () => {
         <div className="text-center mt-16">
           <button
             onClick={() => navigate('/login')}
-            className="inline-flex items-center gap-3 bg-[#002313] hover:bg-[#165034] text-white px-8 py-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 font-medium text-base group cursor-pointer"
+            className="inline-flex items-center gap-3 bg-[#002313] dark:bg-emerald-700 hover:bg-[#165034] dark:hover:bg-emerald-600 text-white px-8 py-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 font-medium text-base group cursor-pointer"
           >
             <Zap className="w-5 h-5 text-[#a3b899] group-hover:rotate-12 transition-transform" />
             <span>Start Your Autonomous Learning Journey</span>

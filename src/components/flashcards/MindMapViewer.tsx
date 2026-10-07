@@ -127,31 +127,31 @@ export const MindMapViewer = ({ mindmap, title, difficulty, onClose }: MindMapVi
                     onClick={() => toggleBranch(index)}
                   >
                     <div className="flex items-center justify-between">
-                      <h4 className="text-lg font-semibold text-gray-900 flex items-center">
-                        <Lightbulb className="w-5 h-5 mr-2 text-orange-500" />
+                      <h4 className="text-lg font-semibold text-foreground flex items-center">
+                        <Lightbulb className="w-5 h-5 mr-2 text-amber-500" />
                         {branch.title}
                       </h4>
                       {isExpanded ? 
-                        <ChevronDown className="w-5 h-5 text-gray-600" /> : 
-                        <ChevronRight className="w-5 h-5 text-gray-600" />
+                        <ChevronDown className="w-5 h-5 text-muted-foreground" /> : 
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
                       }
                     </div>
                     {branch.details && (
-                      <p className="text-sm text-gray-700 mt-2">{branch.details}</p>
+                      <p className="text-sm text-muted-foreground mt-2">{branch.details}</p>
                     )}
                   </div>
 
                   {/* Subtopics */}
                   {isExpanded && (
                     <div className="px-4 pb-4">
-                      <div className="border-t pt-3 space-y-2">
+                      <div className="border-t border-border/50 pt-3 space-y-2">
                         {branch.subtopics.map((subtopic, subIndex) => (
                           <div 
                             key={subIndex}
-                            className="flex items-center p-2 bg-white bg-opacity-60 rounded border border-gray-200"
+                            className="flex items-center p-2 bg-background/60 rounded border border-border/70"
                           >
-                            <div className="w-2 h-2 bg-gray-400 rounded-full mr-3"></div>
-                            <span className="text-sm text-gray-800">{subtopic}</span>
+                            <div className="w-2 h-2 bg-primary/70 rounded-full mr-3"></div>
+                            <span className="text-sm text-foreground">{subtopic}</span>
                           </div>
                         ))}
                       </div>

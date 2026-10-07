@@ -3,8 +3,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
 
-const getAuthRedirectUrl = (path = '/auth/callback') =>
-  new URL(path, window.location.origin).toString();
+export const getAuthRedirectUrl = (path = '/auth/callback') => {
+  const envUrl = (
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SITE_URL) ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_URL) ||
+    ''
+  ).trim();
+
+  let baseUrl = '';
+  if (envUrl) {
+    baseUrl = envUrl.replace(/\/+$/, '');
+  } else if (typeof window !== 'undefined' && window.location?.origin) {
+    baseUrl = window.location.origin;
+  }
+
+  if (!baseUrl) {
+    return path;
+  }
+
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${baseUrl}${cleanPath}`;
+};
 
 export interface UserProfile {
   id: string;
@@ -636,7 +655,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const redirectUrl = new URL('/auth?mode=reset-password', window.location.origin).toString();
+      const redirectUrl = getAuthRedirectUrl('/auth?mode=reset-password');
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: redirectUrl,
       });

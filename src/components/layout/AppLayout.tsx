@@ -223,6 +223,7 @@ export const AppLayout = ({
               variant="ghost"
               size="sm"
               onClick={toggleDarkMode}
+              className="text-foreground hover:text-primary"
               title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -233,7 +234,7 @@ export const AppLayout = ({
               variant={chatPanelOpen ? "default" : "ghost"}
               size="sm"
               onClick={toggleChatPanel}
-              className="hidden sm:flex"
+              className={`hidden sm:flex ${chatPanelOpen ? 'text-primary-foreground' : 'text-foreground hover:text-primary'}`}
               title="AI Chat"
             >
               <MessageCircle className="w-5 h-5" />
@@ -244,7 +245,7 @@ export const AppLayout = ({
               variant={todoSidebarOpen ? "default" : "ghost"}
               size="sm"
               onClick={toggleTodoSidebar}
-              className="hidden sm:flex"
+              className={`hidden sm:flex ${todoSidebarOpen ? 'text-primary-foreground' : 'text-foreground hover:text-primary'}`}
               title="To-Do List"
             >
               <ListTodo className="w-5 h-5" />
@@ -255,7 +256,7 @@ export const AppLayout = ({
               variant="ghost"
               size="sm"
               onClick={toggleFullScreen}
-              className="hidden sm:flex"
+              className="hidden sm:flex text-foreground hover:text-primary"
               title={fullScreenMode ? 'Exit Full Screen' : 'Enter Full Screen'}
             >
               {fullScreenMode ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}

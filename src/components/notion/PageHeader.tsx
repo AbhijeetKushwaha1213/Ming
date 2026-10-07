@@ -207,8 +207,8 @@ export function PageHeader({
             editable && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground" aria-label="Add page icon">
-                    <Smile className="h-4 w-4 mr-1" aria-hidden="true" />
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Add page icon">
+                    <Smile className="h-4 w-4 mr-1 text-primary" aria-hidden="true" />
                     Add icon
                   </Button>
                 </PopoverTrigger>
@@ -245,14 +245,17 @@ export function PageHeader({
                   setIsEditingTitle(false);
                 }
               }}
-              className="text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto"
+              className="text-4xl font-bold text-foreground border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-muted-foreground"
               placeholder="Untitled"
               aria-label="Page title"
             />
           ) : (
             <h1
               onClick={() => setIsEditingTitle(true)}
-              className="text-4xl font-bold cursor-text hover:bg-accent/50 rounded px-2 -mx-2 transition-colors"
+              className={cn(
+                "text-4xl font-bold cursor-text hover:bg-accent/50 rounded px-2 -mx-2 transition-colors",
+                !localTitle ? "text-muted-foreground" : "text-foreground"
+              )}
               role="button"
               tabIndex={0}
               aria-label="Page title. Click to edit"
@@ -267,7 +270,7 @@ export function PageHeader({
             </h1>
           )
         ) : (
-          <h1 className="text-4xl font-bold" aria-label="Page title">
+          <h1 className={cn("text-4xl font-bold", !title ? "text-muted-foreground" : "text-foreground")} aria-label="Page title">
             {title || 'Untitled'}
           </h1>
         )}

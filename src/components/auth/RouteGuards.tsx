@@ -103,6 +103,22 @@ export const RootRedirectRoute: React.FC = () => {
     return <Navigate to={destination} replace />;
   }
 
+  // If OAuth or auth tokens/codes are present in URL hash or search params, redirect to /auth/callback to process them
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (
+      hash.includes('access_token=') ||
+      hash.includes('error=') ||
+      hash.includes('type=recovery') ||
+      search.includes('code=') ||
+      search.includes('error=') ||
+      search.includes('type=recovery')
+    ) {
+      return <Navigate to={`/auth/callback${search}${hash}`} replace />;
+    }
+  }
+
   // Instant check: If no auth token exists in local storage, route to landing in 0ms without waiting or showing a loading screen
   const hasToken =
     typeof window !== 'undefined' &&

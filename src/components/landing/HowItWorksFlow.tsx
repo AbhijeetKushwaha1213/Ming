@@ -123,29 +123,29 @@ export const HowItWorksFlow = () => {
   return (
     <section
       id="how-it-works"
-      className="py-20 lg:py-28 px-5 sm:px-8 bg-white border-b border-[#DDE7E1] scroll-mt-20 relative overflow-hidden"
+      className="py-20 lg:py-28 px-5 sm:px-8 bg-white dark:bg-background border-b border-[#DDE7E1] dark:border-border scroll-mt-20 relative overflow-hidden"
     >
       <div className="max-w-[1240px] mx-auto">
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DDF7EC] border border-[#20B486]/20 text-[#063B2A] text-xs font-bold uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DDF7EC] dark:bg-emerald-950/40 border border-[#20B486]/20 text-[#063B2A] dark:text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4">
             <Sparkles className="w-3.5 h-3.5 text-[#20B486]" />
             <span>The Product Workflow</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#10231C] tracking-tight leading-[1.15] mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#10231C] dark:text-foreground tracking-tight leading-[1.15] mb-4">
             From your syllabus to a{' '}
             <span className="text-[#20B486]">smarter learning path.</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#66736D] max-w-2xl mx-auto leading-[1.65]">
+          <p className="text-base sm:text-lg text-[#66736D] dark:text-muted-foreground max-w-2xl mx-auto leading-[1.65]">
             A continuous, intelligent system that converts unstructured academic resources into predictable exam mastery.
           </p>
         </div>
 
         {/* Horizontal Process Steps Ribbon */}
-        <div className="hidden lg:flex items-center justify-between mb-12 p-2.5 bg-[#F7FAF7] border border-[#DDE7E1] rounded-[20px] shadow-xs">
+        <div className="hidden lg:flex items-center justify-between mb-12 p-2.5 bg-[#F7FAF7] dark:bg-card/80 border border-[#DDE7E1] dark:border-border rounded-[20px] shadow-xs">
           {steps.map((stg, i) => {
             const isSelected = activeStep === i;
             return (
@@ -154,13 +154,13 @@ export const HowItWorksFlow = () => {
                   onClick={() => setActiveStep(i)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                     isSelected
-                      ? 'bg-[#063B2A] text-white shadow-xs'
-                      : 'text-[#66736D] hover:text-[#10231C] hover:bg-white'
+                      ? 'bg-[#063B2A] dark:bg-primary text-white shadow-xs'
+                      : 'text-[#66736D] dark:text-muted-foreground hover:text-[#10231C] dark:hover:text-foreground hover:bg-white dark:hover:bg-muted'
                   }`}
                 >
                   <span
                     className={`w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
-                      isSelected ? 'bg-[#20B486] text-white' : 'bg-[#DDE7E1] text-[#10231C]'
+                      isSelected ? 'bg-[#20B486] text-white' : 'bg-[#DDE7E1] dark:bg-muted text-[#10231C] dark:text-foreground'
                     }`}
                   >
                     {i + 1}
@@ -168,7 +168,7 @@ export const HowItWorksFlow = () => {
                   <span>{stg.label}</span>
                 </button>
                 {i < steps.length - 1 && (
-                  <ChevronRight className="w-4 h-4 text-[#DDE7E1] shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-[#DDE7E1] dark:text-muted-foreground/40 shrink-0" />
                 )}
               </React.Fragment>
             );
@@ -189,15 +189,15 @@ export const HowItWorksFlow = () => {
                   onClick={() => setActiveStep(idx)}
                   className={`p-4 rounded-[20px] border transition-all cursor-pointer flex items-start gap-4 ${
                     isSelected
-                      ? 'bg-[#F7FAF7] border-2 border-[#20B486] shadow-soft -translate-y-0.5'
-                      : 'bg-white border-[#DDE7E1] hover:border-[#20B486]/40'
+                      ? 'bg-[#F7FAF7] dark:bg-card border-2 border-[#20B486] shadow-soft -translate-y-0.5'
+                      : 'bg-white dark:bg-card/50 border-[#DDE7E1] dark:border-border hover:border-[#20B486]/40'
                   }`}
                 >
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                       isSelected
                         ? 'bg-[#20B486] text-white'
-                        : 'bg-[#DDF7EC] text-[#063B2A]'
+                        : 'bg-[#DDF7EC] dark:bg-emerald-950/50 text-[#063B2A] dark:text-emerald-300'
                     }`}
                   >
                     <StepIcon className="w-5 h-5" />
@@ -209,15 +209,15 @@ export const HowItWorksFlow = () => {
                         Stage {step.num}
                       </span>
                       {isSelected && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#DDF7EC] text-[#063B2A]">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#DDF7EC] dark:bg-emerald-950/60 text-[#063B2A] dark:text-emerald-300">
                           Active Preview
                         </span>
                       )}
                     </div>
-                    <h3 className="font-extrabold text-base sm:text-lg text-[#10231C] mt-0.5">
+                    <h3 className="font-extrabold text-base sm:text-lg text-[#10231C] dark:text-foreground mt-0.5">
                       {step.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#66736D] mt-1 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-[#66736D] dark:text-muted-foreground mt-1 leading-relaxed">
                       {step.desc}
                     </p>
                   </div>
@@ -228,37 +228,37 @@ export const HowItWorksFlow = () => {
 
           {/* Right: Stage Visual Illustration Card */}
           <div className="lg:col-span-7">
-            <div className="bg-[#F7FAF7] rounded-[24px] border border-[#DDE7E1] shadow-soft p-6 sm:p-8 min-h-[440px] flex flex-col justify-between">
+            <div className="bg-[#F7FAF7] dark:bg-card/90 rounded-[24px] border border-[#DDE7E1] dark:border-border shadow-soft p-6 sm:p-8 min-h-[440px] flex flex-col justify-between">
               
               <div className="space-y-6">
                 {/* Header of Active Stage Preview */}
-                <div className="flex items-center justify-between pb-4 border-b border-[#DDE7E1]">
+                <div className="flex items-center justify-between pb-4 border-b border-[#DDE7E1] dark:border-border">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#063B2A] text-white flex items-center justify-center">
-                      <Icon className="w-5 h-5 text-[#20B486]" />
+                    <div className="w-9 h-9 rounded-xl bg-[#063B2A] dark:bg-primary text-white flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-[#20B486] dark:text-white" />
                     </div>
                     <div>
                       <div className="font-mono text-xs font-bold text-[#20B486] uppercase">
                         Stage {current.num} Preview
                       </div>
-                      <div className="font-extrabold text-base text-[#10231C]">
+                      <div className="font-extrabold text-base text-[#10231C] dark:text-foreground">
                         {current.title}
                       </div>
                     </div>
                   </div>
 
-                  <span className="px-3 py-1 rounded-full bg-white border border-[#DDE7E1] text-xs font-bold text-[#063B2A]">
+                  <span className="px-3 py-1 rounded-full bg-white dark:bg-card border border-[#DDE7E1] dark:border-border text-xs font-bold text-[#063B2A] dark:text-emerald-300">
                     {current.preview.badge}
                   </span>
                 </div>
 
                 {/* Main Visual Box for the Current Stage */}
-                <div className="p-6 rounded-[20px] bg-white border border-[#DDE7E1] shadow-xs space-y-4">
+                <div className="p-6 rounded-[20px] bg-white dark:bg-card border border-[#DDE7E1] dark:border-border shadow-xs space-y-4">
                   <div>
-                    <h4 className="font-extrabold text-lg text-[#10231C]">
+                    <h4 className="font-extrabold text-lg text-[#10231C] dark:text-foreground">
                       {current.preview.title}
                     </h4>
-                    <p className="text-xs sm:text-sm text-[#66736D] mt-1">
+                    <p className="text-xs sm:text-sm text-[#66736D] dark:text-muted-foreground mt-1">
                       {current.preview.subtitle}
                     </p>
                   </div>
@@ -266,7 +266,7 @@ export const HowItWorksFlow = () => {
                   {/* Highlights checklist */}
                   <div className="space-y-2.5 pt-2">
                     {current.preview.highlights.map((h, i) => (
-                      <div key={i} className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-[#10231C]">
+                      <div key={i} className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-[#10231C] dark:text-foreground">
                         <CheckCircle2 className="w-4 h-4 text-[#20B486] shrink-0" />
                         <span>{h}</span>
                       </div>
@@ -276,12 +276,12 @@ export const HowItWorksFlow = () => {
               </div>
 
               {/* Bottom Nav Buttons for Stage */}
-              <div className="pt-4 border-t border-[#DDE7E1] flex items-center justify-between text-xs text-[#66736D]">
+              <div className="pt-4 border-t border-[#DDE7E1] dark:border-border flex items-center justify-between text-xs text-[#66736D] dark:text-muted-foreground">
                 <span>Stage {activeStep + 1} of {steps.length}</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setActiveStep((prev) => (prev > 0 ? prev - 1 : steps.length - 1))}
-                    className="px-3 py-1.5 rounded-xl bg-white border border-[#DDE7E1] font-bold text-[#10231C] hover:bg-[#DDF7EC] transition-colors"
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-card border border-[#DDE7E1] dark:border-border font-bold text-[#10231C] dark:text-foreground hover:bg-[#DDF7EC] dark:hover:bg-muted transition-colors"
                   >
                     Prev
                   </button>

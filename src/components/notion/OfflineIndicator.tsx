@@ -33,32 +33,32 @@ export function OfflineIndicator() {
           subtext: syncStatus.pendingCount > 0 
             ? `${syncStatus.pendingCount} pending` 
             : 'Working offline',
-          className: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-          iconClassName: 'text-yellow-600'
+          className: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
+          iconClassName: 'text-amber-600 dark:text-amber-400'
         };
       case 'syncing':
         return {
           icon: RefreshCw,
           text: 'Syncing',
           subtext: `${syncStatus.pendingCount} remaining`,
-          className: 'bg-blue-50 text-blue-700 border-blue-200',
-          iconClassName: 'text-blue-600 animate-spin'
+          className: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20',
+          iconClassName: 'text-sky-600 dark:text-sky-400 animate-spin'
         };
       case 'queued':
         return {
           icon: Cloud,
           text: 'Queued',
           subtext: `${syncStatus.pendingCount} pending`,
-          className: 'bg-gray-50 text-gray-700 border-gray-200',
-          iconClassName: 'text-gray-600'
+          className: 'bg-muted/80 text-foreground border-border',
+          iconClassName: 'text-muted-foreground'
         };
       case 'error':
         return {
           icon: AlertCircle,
           text: 'Sync Error',
           subtext: syncStatus.error || 'Failed to sync',
-          className: 'bg-red-50 text-red-700 border-red-200',
-          iconClassName: 'text-red-600'
+          className: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20',
+          iconClassName: 'text-red-600 dark:text-red-400'
         };
       case 'online':
         return {
@@ -67,16 +67,16 @@ export function OfflineIndicator() {
           subtext: syncStatus.pendingCount > 0 
             ? `Syncing ${syncStatus.pendingCount}...` 
             : 'Connected',
-          className: 'bg-green-50 text-green-700 border-green-200',
-          iconClassName: 'text-green-600'
+          className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+          iconClassName: 'text-emerald-600 dark:text-emerald-400'
         };
       default:
         return {
           icon: Cloud,
           text: 'Synced',
           subtext: 'All changes saved',
-          className: 'bg-gray-50 text-gray-700 border-gray-200',
-          iconClassName: 'text-gray-600'
+          className: 'bg-card text-foreground border-border',
+          iconClassName: 'text-muted-foreground'
         };
     }
   };

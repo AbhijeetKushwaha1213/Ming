@@ -269,10 +269,10 @@ export const AIFlashcardGenerator = () => {
           {/* File Upload Component */}
           <FileUploadComponent onFileContent={handleFileContent} />
 
-          <div className="text-center text-sm text-gray-500">OR</div>
+          <div className="text-center text-sm text-muted-foreground">OR</div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Study Content (paste text, notes, etc.)
             </label>
             <Textarea
@@ -283,10 +283,10 @@ export const AIFlashcardGenerator = () => {
             />
           </div>
 
-          <div className="text-center text-sm text-gray-500">OR</div>
+          <div className="text-center text-sm text-muted-foreground">OR</div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Topic/Subject
             </label>
             <Input
@@ -298,7 +298,7 @@ export const AIFlashcardGenerator = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
+              <label className="text-sm font-medium text-foreground mb-2 block">
                 Difficulty
               </label>
               <Select value={difficulty} onValueChange={(value: 'easy' | 'medium' | 'hard') => setDifficulty(value)}>
@@ -314,7 +314,7 @@ export const AIFlashcardGenerator = () => {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
+              <label className="text-sm font-medium text-foreground mb-2 block">
                 Number of Cards
               </label>
               <Select value={count} onValueChange={setCount}>

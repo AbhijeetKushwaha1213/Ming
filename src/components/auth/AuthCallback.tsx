@@ -147,8 +147,27 @@ export const AuthCallback = () => {
     const resolveSession = async () => {
       try {
         console.log('AuthCallback: Resolving OAuth session...');
+
+        // 1. If PKCE auth code is in query params, exchange it
+        const code = currentUrl.searchParams.get('code');
+        if (code) {
+          try {
+            console.log('AuthCallback: Exchanging PKCE auth code for session...');
+            const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+            if (!exchangeError && exchangeData?.session?.user) {
+              console.log('AuthCallback: PKCE code exchange succeeded for:', exchangeData.session.user.email);
+              if (isActive) {
+                await handleUserDestination(exchangeData.session.user);
+              }
+              return;
+            }
+          } catch (e) {
+            console.warn('AuthCallback: Note on exchangeCodeForSession:', e);
+          }
+        }
+
         // Allow brief time for Supabase client to process OAuth hash tokens
-        await new Promise((resolve) => setTimeout(resolve, 400));
+        await new Promise((resolve) => setTimeout(resolve, 350));
 
         const { data, error } = await supabase.auth.getSession();
 

@@ -115,7 +115,7 @@ export const CreateFlashcardDialog = ({ children, open, onOpenChange }: CreateFl
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Title
             </label>
             <Input
@@ -127,7 +127,7 @@ export const CreateFlashcardDialog = ({ children, open, onOpenChange }: CreateFl
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Question
             </label>
             <Textarea
@@ -140,7 +140,7 @@ export const CreateFlashcardDialog = ({ children, open, onOpenChange }: CreateFl
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Answer
             </label>
             <Textarea
@@ -153,7 +153,7 @@ export const CreateFlashcardDialog = ({ children, open, onOpenChange }: CreateFl
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Difficulty
             </label>
             <Select value={difficulty} onValueChange={(value: 'easy' | 'medium' | 'hard') => setDifficulty(value)}>
@@ -169,7 +169,7 @@ export const CreateFlashcardDialog = ({ children, open, onOpenChange }: CreateFl
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-foreground mb-2 block">
               Tags
             </label>
             <div className="flex space-x-2 mb-2">

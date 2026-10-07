@@ -16,43 +16,43 @@ export const StudentProgressSection = () => {
   return (
     <section
       id="progress"
-      className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#dfe4dd]/60 scroll-mt-20 relative overflow-hidden"
+      className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-white dark:bg-background border-b border-[#dfe4dd]/60 dark:border-border scroll-mt-20 relative overflow-hidden"
     >
       <div className="max-w-7xl mx-auto">
         
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#e8f3ed] border border-[#165034]/20 text-[#165034] text-xs font-bold uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#e8f3ed] dark:bg-emerald-950/40 border border-[#165034]/20 text-[#165034] dark:text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4">
             <Award className="w-3.5 h-3.5" />
             <span>Learning Analytics</span>
           </div>
 
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-[#002313] tracking-tight mb-3">
-            Real-time <span className="italic font-serif text-[#165034]">student progress.</span>
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-[#002313] dark:text-foreground tracking-tight mb-3">
+            Real-time <span className="italic font-serif text-[#165034] dark:text-emerald-400">student progress.</span>
           </h2>
 
-          <p className="text-sm sm:text-base text-[#2d4a3e]">
+          <p className="text-sm sm:text-base text-[#2d4a3e] dark:text-muted-foreground">
             One cohesive dashboard. Track overall mastery, active streaks, weak topics, and scheduled reviews at a glance.
           </p>
         </div>
 
         {/* Cohesive Dashboard Visualization (Not just boring cards!) */}
-        <div className="bg-[#f6fbf3] rounded-2xl border border-[#dfe4dd] shadow-premium p-6 sm:p-8 space-y-6">
+        <div className="bg-[#f6fbf3] dark:bg-card/90 rounded-2xl border border-[#dfe4dd] dark:border-border shadow-premium p-6 sm:p-8 space-y-6">
           
           {/* Top Command Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#dfe4dd]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#dfe4dd] dark:border-border">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-[#165034] text-white flex items-center justify-center font-serif font-bold text-lg shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-[#165034] dark:bg-primary text-white flex items-center justify-center font-serif font-bold text-lg shadow-sm">
                 AR
               </div>
               <div>
-                <div className="font-serif text-lg font-bold text-[#002313] flex items-center gap-2">
+                <div className="font-serif text-lg font-bold text-[#002313] dark:text-foreground flex items-center gap-2">
                   <span>Alex Rivera</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#e8f3ed] text-[#165034] font-sans font-bold">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#e8f3ed] dark:bg-emerald-950/60 text-[#165034] dark:text-emerald-300 font-sans font-bold">
                     Pro Scholar
                   </span>
                 </div>
-                <div className="text-xs text-[#52796f]">
+                <div className="text-xs text-[#52796f] dark:text-muted-foreground">
                   B.Tech Computer Science · Semester 5 · Midterm Target: 9.2 CGPA
                 </div>
               </div>
@@ -60,23 +60,23 @@ export const StudentProgressSection = () => {
 
             {/* Top Stat Pills */}
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#dfe4dd] shadow-2xs">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-card border border-[#dfe4dd] dark:border-border shadow-2xs">
                 <Flame className="w-4 h-4 text-orange-500" />
                 <div>
-                  <div className="text-[10px] text-[#52796f] uppercase font-mono">Streak</div>
-                  <div className="text-xs font-bold text-[#002313]">18 Days Active</div>
+                  <div className="text-[10px] text-[#52796f] dark:text-muted-foreground uppercase font-mono">Streak</div>
+                  <div className="text-xs font-bold text-[#002313] dark:text-foreground">18 Days Active</div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#dfe4dd] shadow-2xs">
-                <Clock className="w-4 h-4 text-[#165034]" />
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-card border border-[#dfe4dd] dark:border-border shadow-2xs">
+                <Clock className="w-4 h-4 text-[#165034] dark:text-emerald-400" />
                 <div>
-                  <div className="text-[10px] text-[#52796f] uppercase font-mono">Hours</div>
-                  <div className="text-xs font-bold text-[#002313]">38.5 hrs logged</div>
+                  <div className="text-[10px] text-[#52796f] dark:text-muted-foreground uppercase font-mono">Hours</div>
+                  <div className="text-xs font-bold text-[#002313] dark:text-foreground">38.5 hrs logged</div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#165034] text-white shadow-xs">
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#165034] dark:bg-primary text-white shadow-xs">
                 <Sparkles className="w-4 h-4" />
                 <div>
                   <div className="text-[10px] text-emerald-200 uppercase font-mono">Overall Mastery</div>
@@ -90,13 +90,13 @@ export const StudentProgressSection = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Left Column: Course Progress Bars */}
-            <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-[#dfe4dd] shadow-xs space-y-4">
+            <div className="lg:col-span-5 bg-white dark:bg-card p-5 rounded-xl border border-[#dfe4dd] dark:border-border shadow-xs space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-serif font-bold text-sm text-[#002313] flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-[#165034]" />
+                <h4 className="font-serif font-bold text-sm text-[#002313] dark:text-foreground flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[#165034] dark:text-emerald-400" />
                   <span>Enrolled Course Progress</span>
                 </h4>
-                <span className="text-xs text-[#52796f] font-mono">4 Active</span>
+                <span className="text-xs text-[#52796f] dark:text-muted-foreground font-mono">4 Active</span>
               </div>
 
               <div className="space-y-3.5">
@@ -108,12 +108,12 @@ export const StudentProgressSection = () => {
                 ].map((c, i) => (
                   <div key={i} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-[#002313]">{c.course}</span>
-                      <span className="font-mono font-bold text-[#165034]">{c.mastery}%</span>
+                      <span className="font-medium text-[#002313] dark:text-foreground">{c.course}</span>
+                      <span className="font-mono font-bold text-[#165034] dark:text-emerald-400">{c.mastery}%</span>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-[#dfe4dd] overflow-hidden">
+                    <div className="w-full h-2 rounded-full bg-[#dfe4dd] dark:bg-muted overflow-hidden">
                       <div
-                        className="h-full bg-[#165034] rounded-full transition-all"
+                        className="h-full bg-[#165034] dark:bg-primary rounded-full transition-all"
                         style={{ width: `${c.mastery}%` }}
                       />
                     </div>
@@ -123,13 +123,13 @@ export const StudentProgressSection = () => {
             </div>
 
             {/* Middle Column: Weak Topics Remediation */}
-            <div className="lg:col-span-4 bg-white p-5 rounded-xl border border-[#dfe4dd] shadow-xs space-y-4">
+            <div className="lg:col-span-4 bg-white dark:bg-card p-5 rounded-xl border border-[#dfe4dd] dark:border-border shadow-xs space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-serif font-bold text-sm text-[#002313] flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <h4 className="font-serif font-bold text-sm text-[#002313] dark:text-foreground flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>3 Flagged Weak Topics</span>
                 </h4>
-                <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded">
+                <span className="text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold px-2 py-0.5 rounded">
                   Action Required
                 </span>
               </div>
@@ -142,13 +142,13 @@ export const StudentProgressSection = () => {
                 ].map((item, i) => (
                   <div
                     key={i}
-                    className="p-2.5 rounded-lg bg-[#f6fbf3] border border-[#dfe4dd] flex items-center justify-between text-xs"
+                    className="p-2.5 rounded-lg bg-[#f6fbf3] dark:bg-card/60 border border-[#dfe4dd] dark:border-border flex items-center justify-between text-xs"
                   >
                     <div>
-                      <div className="font-bold text-[#002313]">{item.name}</div>
-                      <div className="text-[10px] text-[#52796f]">{item.course} · {item.decay}</div>
+                      <div className="font-bold text-[#002313] dark:text-foreground">{item.name}</div>
+                      <div className="text-[10px] text-[#52796f] dark:text-muted-foreground">{item.course} · {item.decay}</div>
                     </div>
-                    <button className="px-2 py-1 rounded bg-[#002313] text-white text-[11px] font-semibold hover:bg-[#165034] transition-colors">
+                    <button className="px-2 py-1 rounded bg-[#002313] dark:bg-primary text-white text-[11px] font-semibold hover:bg-[#165034] dark:hover:bg-primary/90 transition-colors">
                       Fix Now
                     </button>
                   </div>
@@ -157,21 +157,21 @@ export const StudentProgressSection = () => {
             </div>
 
             {/* Right Column: Upcoming Spaced Reviews & Streak Heatmap */}
-            <div className="lg:col-span-3 bg-white p-5 rounded-xl border border-[#dfe4dd] shadow-xs space-y-4 flex flex-col justify-between">
+            <div className="lg:col-span-3 bg-white dark:bg-card p-5 rounded-xl border border-[#dfe4dd] dark:border-border shadow-xs space-y-4 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-serif font-bold text-sm text-[#002313] flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[#165034]" />
+                  <h4 className="font-serif font-bold text-sm text-[#002313] dark:text-foreground flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#165034] dark:text-emerald-400" />
                     <span>Upcoming Reviews</span>
                   </h4>
                 </div>
 
                 <div className="space-y-2 text-xs">
-                  <div className="p-2.5 rounded-lg bg-[#e8f3ed] text-[#165034] font-medium flex items-center justify-between">
+                  <div className="p-2.5 rounded-lg bg-[#e8f3ed] dark:bg-emerald-950/40 text-[#165034] dark:text-emerald-300 font-medium flex items-center justify-between">
                     <span>Tomorrow, 09:00</span>
                     <span className="font-bold">14 Cards Due</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-[#f0f5ee] text-[#2d4a3e] font-medium flex items-center justify-between">
+                  <div className="p-2.5 rounded-lg bg-[#f0f5ee] dark:bg-muted/60 text-[#2d4a3e] dark:text-foreground font-medium flex items-center justify-between">
                     <span>Thursday, 18:00</span>
                     <span className="font-bold">8 Cards Due</span>
                   </div>
@@ -179,16 +179,16 @@ export const StudentProgressSection = () => {
               </div>
 
               {/* Mini 14-day study heatmap preview */}
-              <div className="pt-3 border-t border-[#dfe4dd]">
-                <div className="text-[11px] text-[#52796f] mb-1.5 flex justify-between">
+              <div className="pt-3 border-t border-[#dfe4dd] dark:border-border">
+                <div className="text-[11px] text-[#52796f] dark:text-muted-foreground mb-1.5 flex justify-between">
                   <span>14-Day Activity</span>
-                  <span className="text-emerald-700 font-bold">100% Consistency</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">100% Consistency</span>
                 </div>
                 <div className="grid grid-cols-7 gap-1">
                   {Array.from({ length: 14 }).map((_, i) => (
                     <span
                       key={i}
-                      className="h-4 rounded bg-[#165034] opacity-90 shadow-2xs"
+                      className="h-4 rounded bg-[#165034] dark:bg-primary opacity-90 shadow-2xs"
                       title={`Day ${i + 1}: Study goal met`}
                     />
                   ))}

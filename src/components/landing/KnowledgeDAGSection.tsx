@@ -131,34 +131,34 @@ export const KnowledgeDAGSection = () => {
       case 'Mastered':
         return 'bg-[#20B486] text-white';
       case 'Proficient':
-        return 'bg-[#063B2A] text-white';
+        return 'bg-[#063B2A] dark:bg-emerald-800 text-white';
       case 'Developing':
-        return 'bg-amber-100 text-amber-900 border border-amber-300';
+        return 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800/40';
       case 'Locked':
-        return 'bg-[#F7FAF7] text-[#66736D] border border-[#DDE7E1]';
+        return 'bg-[#F7FAF7] dark:bg-muted/40 text-[#66736D] dark:text-muted-foreground border border-[#DDE7E1] dark:border-border';
     }
   };
 
   return (
     <section
       id="dag"
-      className="py-20 lg:py-28 px-5 sm:px-8 bg-white border-b border-[#DDE7E1] scroll-mt-20 relative overflow-hidden"
+      className="py-20 lg:py-28 px-5 sm:px-8 bg-white dark:bg-background border-b border-[#DDE7E1] dark:border-border scroll-mt-20 relative overflow-hidden"
     >
       <div className="max-w-[1240px] mx-auto">
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DDF7EC] border border-[#20B486]/20 text-[#063B2A] text-xs font-bold uppercase tracking-wider mb-4">
-            <Network className="w-3.5 h-3.5 text-[#20B486]" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DDF7EC] dark:bg-emerald-950/40 border border-[#20B486]/20 dark:border-emerald-800/30 text-[#063B2A] dark:text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4">
+            <Network className="w-3.5 h-3.5 text-[#20B486] dark:text-emerald-400" />
             <span>Interactive Prerequisite Graph</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#10231C] tracking-tight leading-[1.15] mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#10231C] dark:text-foreground tracking-tight leading-[1.15] mb-4">
             Don't just study topics.{' '}
-            <span className="text-[#20B486]">Understand how they connect.</span>
+            <span className="text-[#20B486] dark:text-emerald-400">Understand how they connect.</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#66736D] max-w-2xl mx-auto leading-[1.65]">
+          <p className="text-base sm:text-lg text-[#66736D] dark:text-muted-foreground max-w-2xl mx-auto leading-[1.65]">
             StudyMate builds prerequisite-aware concept graphs so you know what to learn first, what comes next, and where you're struggling.
           </p>
         </div>
@@ -167,16 +167,16 @@ export const KnowledgeDAGSection = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left / Center: Interactive SVG DAG Canvas */}
-          <div className="lg:col-span-8 bg-[#F7FAF7] rounded-[24px] border border-[#DDE7E1] shadow-soft p-6 sm:p-8 relative min-h-[480px] flex flex-col justify-between overflow-hidden">
+          <div className="lg:col-span-8 bg-[#F7FAF7] dark:bg-card/90 rounded-[24px] border border-[#DDE7E1] dark:border-border shadow-soft p-6 sm:p-8 relative min-h-[480px] flex flex-col justify-between overflow-hidden">
             
-            <div className="flex items-center justify-between pb-3 border-b border-[#DDE7E1]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DDE7E1] dark:border-border">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#20B486] animate-pulse" />
-                <span className="text-xs font-mono font-bold text-[#063B2A] uppercase">
+                <span className="text-xs font-mono font-bold text-[#063B2A] dark:text-foreground uppercase">
                   Curriculum Graph: CS301 Operating Systems
                 </span>
               </div>
-              <span className="text-xs text-[#66736D] font-medium hidden sm:inline">
+              <span className="text-xs text-[#66736D] dark:text-muted-foreground font-medium hidden sm:inline">
                 Click any node to inspect details
               </span>
             </div>
@@ -218,24 +218,24 @@ export const KnowledgeDAGSection = () => {
                     }}
                     className={`absolute z-10 cursor-pointer p-2.5 sm:p-3 rounded-xl border transition-all duration-300 w-32 sm:w-36 text-left ${
                       isSelected
-                        ? 'bg-white border-2 border-[#20B486] shadow-soft-lg scale-105 ring-4 ring-[#20B486]/15'
-                        : 'bg-white/90 border-[#DDE7E1] hover:border-[#20B486]/50 shadow-xs'
+                        ? 'bg-white dark:bg-card border-2 border-[#20B486] dark:border-emerald-500 shadow-soft-lg scale-105 ring-4 ring-[#20B486]/15'
+                        : 'bg-white/90 dark:bg-card/80 border-[#DDE7E1] dark:border-border hover:border-[#20B486]/50 shadow-xs'
                     }`}
                   >
                     <div className="flex items-center justify-between text-[10px] mb-1">
-                      <span className="font-mono text-[#66736D] truncate">{node.category}</span>
+                      <span className="font-mono text-[#66736D] dark:text-muted-foreground truncate">{node.category}</span>
                       <span className={`px-1.5 py-0.2 rounded font-bold text-[9px] ${getStatusColor(node.status)}`}>
                         {node.status}
                       </span>
                     </div>
 
-                    <div className="font-bold text-xs text-[#10231C] truncate">
+                    <div className="font-bold text-xs text-[#10231C] dark:text-foreground truncate">
                       {node.title}
                     </div>
 
-                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#66736D]">
+                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#66736D] dark:text-muted-foreground">
                       <span>Mastery</span>
-                      <span className="font-mono font-bold text-[#063B2A]">{node.mastery}%</span>
+                      <span className="font-mono font-bold text-[#063B2A] dark:text-emerald-400">{node.mastery}%</span>
                     </div>
                   </div>
                 );
@@ -243,14 +243,14 @@ export const KnowledgeDAGSection = () => {
             </div>
 
             {/* Status Legend Strip */}
-            <div className="pt-3 border-t border-[#DDE7E1] flex flex-wrap items-center justify-between gap-3 text-xs text-[#66736D]">
+            <div className="pt-3 border-t border-[#DDE7E1] dark:border-border flex flex-wrap items-center justify-between gap-3 text-xs text-[#66736D] dark:text-muted-foreground">
               <div className="flex items-center gap-4">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#20B486]" />
                   Mastered (90%+)
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#063B2A]" />
+                  <span className="w-2 h-2 rounded-full bg-[#063B2A] dark:bg-emerald-600" />
                   Proficient (70–89%)
                 </span>
                 <span className="flex items-center gap-1.5">
@@ -258,7 +258,7 @@ export const KnowledgeDAGSection = () => {
                   Developing (&lt;70%)
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Lock className="w-3 h-3 text-[#66736D]" />
+                  <Lock className="w-3 h-3 text-[#66736D] dark:text-muted-foreground" />
                   Locked
                 </span>
               </div>
@@ -267,29 +267,29 @@ export const KnowledgeDAGSection = () => {
           </div>
 
           {/* Right Column: Node Details & Actions Drawer */}
-          <div className="lg:col-span-4 bg-[#F7FAF7] rounded-[24px] border border-[#DDE7E1] shadow-soft p-6 sm:p-7 space-y-5">
+          <div className="lg:col-span-4 bg-[#F7FAF7] dark:bg-card/90 rounded-[24px] border border-[#DDE7E1] dark:border-border shadow-soft p-6 sm:p-7 space-y-5">
             
-            <div className="flex items-center justify-between pb-3 border-b border-[#DDE7E1]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DDE7E1] dark:border-border">
               <span className={`px-2.5 py-0.5 rounded-full font-bold text-xs ${getStatusColor(activeNode.status)}`}>
                 {activeNode.status}
               </span>
-              <span className="text-xs font-mono font-bold text-[#063B2A]">
+              <span className="text-xs font-mono font-bold text-[#063B2A] dark:text-emerald-400">
                 {activeNode.mastery}% Mastery
               </span>
             </div>
 
             <div>
-              <h3 className="font-extrabold text-2xl text-[#10231C]">
+              <h3 className="font-extrabold text-2xl text-[#10231C] dark:text-foreground">
                 {activeNode.title}
               </h3>
-              <p className="text-xs sm:text-sm text-[#66736D] mt-2 leading-[1.65]">
+              <p className="text-xs sm:text-sm text-[#66736D] dark:text-muted-foreground mt-2 leading-[1.65]">
                 {activeNode.description}
               </p>
             </div>
 
             {/* Prerequisites */}
             <div className="space-y-2">
-              <div className="text-xs font-bold text-[#10231C] uppercase font-mono tracking-wider">
+              <div className="text-xs font-bold text-[#10231C] dark:text-foreground uppercase font-mono tracking-wider">
                 Prerequisites:
               </div>
               {activeNode.prerequisites.length > 0 ? (
@@ -297,15 +297,15 @@ export const KnowledgeDAGSection = () => {
                   {activeNode.prerequisites.map((p, i) => (
                     <div
                       key={i}
-                      className="p-2.5 rounded-xl bg-white border border-[#DDE7E1] text-xs font-semibold text-[#10231C] flex items-center gap-2"
+                      className="p-2.5 rounded-xl bg-white dark:bg-card border border-[#DDE7E1] dark:border-border text-xs font-semibold text-[#10231C] dark:text-foreground flex items-center gap-2"
                     >
-                      <CheckCircle2 className="w-4 h-4 text-[#20B486] shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-[#20B486] dark:text-emerald-400 shrink-0" />
                       <span>{p}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="p-2.5 rounded-xl bg-white border border-[#DDE7E1] text-xs text-[#66736D]">
+                <div className="p-2.5 rounded-xl bg-white dark:bg-card border border-[#DDE7E1] dark:border-border text-xs text-[#66736D] dark:text-muted-foreground">
                   None — Root foundational concept.
                 </div>
               )}
@@ -313,20 +313,20 @@ export const KnowledgeDAGSection = () => {
 
             {/* Source Reference */}
             <div className="space-y-1">
-              <div className="text-xs font-bold text-[#10231C] uppercase font-mono tracking-wider">
+              <div className="text-xs font-bold text-[#10231C] dark:text-foreground uppercase font-mono tracking-wider">
                 Source Material:
               </div>
-              <div className="p-2.5 rounded-xl bg-white border border-[#DDE7E1] text-xs text-[#063B2A] flex items-center gap-2 font-medium">
-                <BookOpen className="w-4 h-4 text-[#20B486] shrink-0" />
+              <div className="p-2.5 rounded-xl bg-white dark:bg-card border border-[#DDE7E1] dark:border-border text-xs text-[#063B2A] dark:text-emerald-300 flex items-center gap-2 font-medium">
+                <BookOpen className="w-4 h-4 text-[#20B486] dark:text-emerald-400 shrink-0" />
                 <span className="truncate">{activeNode.reference}</span>
               </div>
             </div>
 
             {/* Actions Requested by Prompt: Generate material, Practice quiz, Ask AI Tutor */}
-            <div className="pt-3 border-t border-[#DDE7E1] space-y-2">
+            <div className="pt-3 border-t border-[#DDE7E1] dark:border-border space-y-2">
               <button
                 onClick={() => window.location.href = '/signup'}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#20B486] text-white text-xs font-bold hover:bg-[#1aa378] transition-colors flex items-center justify-center gap-2 shadow-xs"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#20B486] hover:bg-[#1aa378] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-xs"
               >
                 <HelpCircle className="w-4 h-4" />
                 <span>Practice 5-Question Quiz →</span>
@@ -335,16 +335,16 @@ export const KnowledgeDAGSection = () => {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => window.location.href = '/signup'}
-                  className="py-2 px-3 rounded-xl bg-white border border-[#DDE7E1] text-[#063B2A] text-xs font-bold hover:bg-[#DDF7EC] transition-colors flex items-center justify-center gap-1.5"
+                  className="py-2 px-3 rounded-xl bg-white dark:bg-card border border-[#DDE7E1] dark:border-border text-[#063B2A] dark:text-foreground text-xs font-bold hover:bg-[#DDF7EC] dark:hover:bg-muted transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Layers className="w-3.5 h-3.5 text-[#20B486]" />
+                  <Layers className="w-3.5 h-3.5 text-[#20B486] dark:text-emerald-400" />
                   <span>Flashcards</span>
                 </button>
                 <button
                   onClick={() => window.location.href = '/signup'}
-                  className="py-2 px-3 rounded-xl bg-white border border-[#DDE7E1] text-[#063B2A] text-xs font-bold hover:bg-[#DDF7EC] transition-colors flex items-center justify-center gap-1.5"
+                  className="py-2 px-3 rounded-xl bg-white dark:bg-card border border-[#DDE7E1] dark:border-border text-[#063B2A] dark:text-foreground text-xs font-bold hover:bg-[#DDF7EC] dark:hover:bg-muted transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Brain className="w-3.5 h-3.5 text-[#20B486]" />
+                  <Brain className="w-3.5 h-3.5 text-[#20B486] dark:text-emerald-400" />
                   <span>Ask AI Tutor</span>
                 </button>
               </div>

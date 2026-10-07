@@ -66,14 +66,14 @@ export const AIAssistant = () => {
   };
 
   return (
-    <section className="py-20 px-4 bg-white">
+    <section className="py-20 px-4 bg-background">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
             Your AI
-            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> Study Mentor</span>
+            <span className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent"> Study Mentor</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Get instant help, personalized recommendations, and motivational support from your intelligent study companion.
           </p>
         </div>
@@ -81,17 +81,17 @@ export const AIAssistant = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* AI Chat Interface */}
           <div className="lg:col-span-2">
-            <Card className="h-96 flex flex-col bg-gradient-to-br from-indigo-50 to-purple-50 border-0 shadow-xl">
+            <Card className="h-96 flex flex-col bg-card/70 backdrop-blur-md border border-border shadow-xl">
               {/* Chat Header */}
-              <div className="flex items-center p-4 border-b border-white/20 bg-white/50 backdrop-blur-sm rounded-t-lg">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mr-3">
-                  <Bot className="w-5 h-5 text-white" />
+              <div className="flex items-center p-4 border-b border-border bg-card/80 backdrop-blur-sm rounded-t-lg">
+                <div className="w-10 h-10 bg-primary/20 text-primary rounded-full flex items-center justify-center mr-3">
+                  <Bot className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">AI Study Mentor</h3>
-                  <p className="text-sm text-gray-600">Always here to help</p>
+                  <h3 className="font-semibold text-foreground">AI Study Mentor</h3>
+                  <p className="text-sm text-muted-foreground">Always here to help</p>
                 </div>
-                <Badge className="ml-auto bg-green-100 text-green-800 hover:bg-green-100">Online</Badge>
+                <Badge className="ml-auto bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">Online</Badge>
               </div>
 
               {/* Chat Messages */}
@@ -100,11 +100,11 @@ export const AIAssistant = () => {
                   <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
                       msg.type === 'user' 
-                        ? 'bg-indigo-600 text-white' 
-                        : 'bg-white shadow-md text-gray-900'
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-secondary text-secondary-foreground shadow-sm'
                     }`}>
                       <p className="text-sm whitespace-pre-line">{msg.content}</p>
-                      <p className={`text-xs mt-2 ${msg.type === 'user' ? 'text-indigo-200' : 'text-gray-500'}`}>
+                      <p className={`text-xs mt-2 ${msg.type === 'user' ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                         {msg.time}
                       </p>
                     </div>
@@ -113,11 +113,11 @@ export const AIAssistant = () => {
                 
                 {isTyping && (
                   <div className="flex justify-start">
-                    <div className="bg-white shadow-md px-4 py-3 rounded-2xl">
+                    <div className="bg-secondary px-4 py-3 rounded-2xl">
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                       </div>
                     </div>
                   </div>
@@ -125,13 +125,13 @@ export const AIAssistant = () => {
               </div>
 
               {/* Chat Input */}
-              <div className="p-4 border-t border-white/20 bg-white/50 backdrop-blur-sm">
+              <div className="p-4 border-t border-border bg-card/80 backdrop-blur-sm">
                 <div className="flex space-x-2">
                   <Input
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Ask me anything about your studies..."
-                    className="flex-1 bg-white/80"
+                    className="flex-1 bg-background"
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   />
                   <Button 
@@ -147,26 +147,26 @@ export const AIAssistant = () => {
 
           {/* Quick Suggestions */}
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+            <h3 className="text-lg font-bold text-foreground mb-4">Quick Actions</h3>
             {suggestions.map((suggestion, index) => (
               <Card key={index} className="p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
                 <div className={`w-10 h-10 bg-gradient-to-br ${suggestion.color} rounded-lg flex items-center justify-center mb-3`}>
                   <suggestion.icon className="w-5 h-5 text-white" />
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-1">{suggestion.title}</h4>
-                <p className="text-sm text-gray-600">{suggestion.description}</p>
+                <h4 className="font-semibold text-foreground mb-1">{suggestion.title}</h4>
+                <p className="text-sm text-muted-foreground">{suggestion.description}</p>
               </Card>
             ))}
 
             {/* AI Insights Card */}
-            <Card className="p-6 bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
+            <Card className="p-6 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
               <div className="text-center">
-                <MessageCircle className="w-12 h-12 text-purple-600 mx-auto mb-3" />
-                <h4 className="font-bold text-gray-900 mb-2">AI Insights</h4>
-                <p className="text-sm text-gray-600 mb-4">
+                <MessageCircle className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                <h4 className="font-bold text-foreground mb-2">AI Insights</h4>
+                <p className="text-sm text-muted-foreground mb-4">
                   "You learn best in the morning hours. Consider scheduling difficult topics between 9-11 AM."
                 </p>
-                <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
+                <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
                   Personalized Tip
                 </Badge>
               </div>

@@ -317,7 +317,7 @@ export function PageView({ pageId, onNavigate }: PageViewProps) {
         {/* Right: Edited Time, Share, Favorite, and 3-dot Action Menu */}
         <div className="flex items-center gap-1 shrink-0">
           {page.updated_at && (
-            <span className="text-[11px] text-muted-foreground/60 hidden sm:inline-block mr-2 font-normal">
+            <span className="text-[11px] text-muted-foreground/85 hidden sm:inline-block mr-2 font-normal">
               Edited {formatDistanceToNow(new Date(page.updated_at), { addSuffix: true })}
             </span>
           )}

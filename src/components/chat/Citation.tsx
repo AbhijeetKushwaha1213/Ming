@@ -187,8 +187,8 @@ export const Citation: React.FC<CitationProps> = ({
                   </DialogDescription>
                 </div>
               </div>
-              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-xs gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <Badge variant="outline" className="border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 Verified
               </Badge>
             </div>
@@ -206,12 +206,12 @@ export const Citation: React.FC<CitationProps> = ({
 
               {/* Behavior by Source Type */}
               {stype.includes('PDF') && (
-                <div className="pt-2 flex items-center justify-between text-xs text-gray-600">
+                <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>Page {locationDetails.page_number || 'N/A'} of uploaded course document</span>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs gap-1 text-rose-700 border-rose-200 hover:bg-rose-50"
+                    className="h-7 text-xs gap-1 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                     onClick={() => {
                       toast({
                         title: `Opened Page ${locationDetails.page_number}`,
@@ -225,12 +225,12 @@ export const Citation: React.FC<CitationProps> = ({
               )}
 
               {(stype.includes('PPT') || stype.includes('SLIDE')) && (
-                <div className="pt-2 flex items-center justify-between text-xs text-gray-600">
+                <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>Slide #{locationDetails.slide_number || 'N/A'} in lecture presentation</span>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs gap-1 text-amber-700 border-amber-200 hover:bg-amber-50"
+                    className="h-7 text-xs gap-1 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40"
                     onClick={() => {
                       toast({
                         title: `Opened Slide ${locationDetails.slide_number}`,
@@ -244,14 +244,14 @@ export const Citation: React.FC<CitationProps> = ({
               )}
 
               {(stype.includes('VIDEO') || stype.includes('AUDIO')) && (
-                <div className="pt-2 flex items-center justify-between text-xs text-gray-600">
+                <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>
                     Timestamp {formatTime(locationDetails.timestamp_start)} - {formatTime(locationDetails.timestamp_end)}
                   </span>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs gap-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                    className="h-7 text-xs gap-1 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                     onClick={() => {
                       toast({
                         title: `Seek to ${formatTime(locationDetails.timestamp_start)}`,
@@ -279,7 +279,7 @@ export const Citation: React.FC<CitationProps> = ({
 
             {/* Verified Text Excerpt */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 Grounding Evidence Content
               </p>
               <div className="p-3.5 rounded-lg bg-secondary/40 border border-border text-sm text-foreground leading-relaxed max-h-48 overflow-y-auto">
@@ -294,12 +294,12 @@ export const Citation: React.FC<CitationProps> = ({
             </div>
 
             {/* Chunk & Document Identifiers */}
-            <div className="flex flex-wrap gap-2 text-[11px] text-gray-500 pt-1 font-mono">
-              <span className="px-2 py-0.5 rounded bg-gray-100">
+            <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground pt-1 font-mono">
+              <span className="px-2 py-0.5 rounded bg-muted border border-border">
                 chunk: {citation.chunk_id}
               </span>
               {citation.document_id && (
-                <span className="px-2 py-0.5 rounded bg-gray-100">
+                <span className="px-2 py-0.5 rounded bg-muted border border-border">
                   doc: {citation.document_id}
                 </span>
               )}

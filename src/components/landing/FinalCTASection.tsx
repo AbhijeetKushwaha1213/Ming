@@ -6,7 +6,7 @@ export const FinalCTASection = () => {
   const navigate = useNavigate();
 
   return (
-    <section className="py-20 lg:py-28 px-5 sm:px-8 bg-[#063B2A] text-white relative overflow-hidden">
+    <section className="py-20 lg:py-28 px-5 sm:px-8 bg-[#063B2A] dark:bg-emerald-950/70 dark:border-t dark:border-b dark:border-emerald-800/30 text-white relative overflow-hidden">
       {/* Background Subtle Mint Radial Accent */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[#20B486]/15 rounded-full blur-3xl pointer-events-none" />
 

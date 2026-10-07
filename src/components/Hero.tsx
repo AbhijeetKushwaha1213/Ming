@@ -17,19 +17,19 @@ export const Hero = () => {
       <div className="relative z-10 max-w-6xl mx-auto text-center">
         {/* Main Hero Content */}
         <div className="mb-8">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg mb-6">
-            <Brain className="w-5 h-5 text-indigo-600 mr-2" />
-            <span className="text-sm font-medium text-gray-700">Your AI Study Companion</span>
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-lg mb-6">
+            <Brain className="w-5 h-5 text-primary mr-2" />
+            <span className="text-sm font-medium text-foreground">Your AI Study Companion</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
             Master Your
-            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent"> Studies</span>
+            <span className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 bg-clip-text text-transparent"> Studies</span>
             <br />
             With AI Power
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
             Transform your learning journey with personalized study plans, AI-powered insights, 
             and motivational guidance that adapts to your pace and goals.
           </p>
@@ -37,39 +37,39 @@ export const Hero = () => {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-          <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-200">
+          <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-8 py-4 text-lg rounded-full shadow-lg transform hover:scale-105 transition-all duration-200">
             Start Your Journey
             <Zap className="w-5 h-5 ml-2" />
           </Button>
-          <Button variant="outline" className="px-8 py-4 text-lg rounded-full border-2 border-gray-300 hover:border-indigo-400 hover:text-indigo-600 transition-all duration-200">
+          <Button variant="outline" className="px-8 py-4 text-lg rounded-full border border-border text-foreground hover:bg-muted transition-all duration-200">
             Watch Demo
           </Button>
         </div>
 
         {/* Feature Cards Grid */}
         <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+          <Card className="p-6 bg-card/80 backdrop-blur-sm border border-border shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
               <Target className="w-6 h-6 text-white" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Smart Goals</h3>
-            <p className="text-gray-600">AI creates personalized study plans based on your exam goals and learning pace.</p>
+            <h3 className="text-xl font-bold text-foreground mb-2">Smart Goals</h3>
+            <p className="text-muted-foreground">AI creates personalized study plans based on your exam goals and learning pace.</p>
           </Card>
 
-          <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+          <Card className="p-6 bg-card/80 backdrop-blur-sm border border-border shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Progress Tracking</h3>
-            <p className="text-gray-600">Visualize your learning journey with beautiful charts and milestone celebrations.</p>
+            <h3 className="text-xl font-bold text-foreground mb-2">Progress Tracking</h3>
+            <p className="text-muted-foreground">Visualize your learning journey with beautiful charts and milestone celebrations.</p>
           </Card>
 
-          <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
+          <Card className="p-6 bg-card/80 backdrop-blur-sm border border-border shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
               <Brain className="w-6 h-6 text-white" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">AI Insights</h3>
-            <p className="text-gray-600">Get personalized recommendations and motivational tips from your AI mentor.</p>
+            <h3 className="text-xl font-bold text-foreground mb-2">AI Insights</h3>
+            <p className="text-muted-foreground">Get personalized recommendations and motivational tips from your AI mentor.</p>
           </Card>
         </div>
       </div>

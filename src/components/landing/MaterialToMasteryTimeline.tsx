@@ -67,24 +67,24 @@ export const MaterialToMasteryTimeline = () => {
   return (
     <section
       id="how-it-works"
-      className="py-20 lg:py-28 px-5 sm:px-8 bg-[#F7FAF7] border-b border-[#DDE7E1] scroll-mt-20 relative overflow-hidden"
+      className="py-20 lg:py-28 px-5 sm:px-8 bg-[#F7FAF7] dark:bg-background border-b border-[#DDE7E1] dark:border-border scroll-mt-20 relative overflow-hidden"
     >
       <div id="timeline" className="scroll-mt-20" />
       <div className="max-w-[1240px] mx-auto">
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DDF7EC] border border-[#20B486]/20 text-[#063B2A] text-xs font-bold uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DDF7EC] dark:bg-emerald-950/40 border border-[#20B486]/20 text-[#063B2A] dark:text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4">
             <Sparkles className="w-3.5 h-3.5 text-[#20B486]" />
             <span>The 8-Stage Architecture</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#10231C] tracking-tight leading-[1.15] mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#10231C] dark:text-foreground tracking-tight leading-[1.15] mb-4">
             From material to{' '}
             <span className="text-[#20B486]">cognitive mastery.</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#66736D] max-w-2xl mx-auto leading-[1.65]">
+          <p className="text-base sm:text-lg text-[#66736D] dark:text-muted-foreground max-w-2xl mx-auto leading-[1.65]">
             A structured cognitive science pipeline guiding every hour from your initial PDF upload to permanent exam recall.
           </p>
         </div>
@@ -93,7 +93,7 @@ export const MaterialToMasteryTimeline = () => {
         <div className="max-w-4xl mx-auto relative">
           
           {/* Central Connecting Vertical Line for Desktop */}
-          <div className="hidden md:block absolute left-1/2 top-4 bottom-4 w-0.5 bg-[#DDE7E1] -translate-x-1/2" />
+          <div className="hidden md:block absolute left-1/2 top-4 bottom-4 w-0.5 bg-[#DDE7E1] dark:bg-border -translate-x-1/2" />
 
           <div className="space-y-6 md:space-y-10 relative">
             {steps.map((stg, i) => {
@@ -109,9 +109,9 @@ export const MaterialToMasteryTimeline = () => {
                 >
                   {/* Content Card */}
                   <div className="w-full md:w-1/2">
-                    <div className="p-5 rounded-[20px] bg-white border border-[#DDE7E1] shadow-soft hover:shadow-soft-lg hover:border-[#20B486]/40 transition-all duration-300">
+                    <div className="p-5 rounded-[20px] bg-white dark:bg-card border border-[#DDE7E1] dark:border-border shadow-soft hover:shadow-soft-lg hover:border-[#20B486]/40 transition-all duration-300">
                       <div className={`flex items-center gap-2 mb-1.5 ${isEven ? 'md:justify-end' : ''}`}>
-                        <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-[#DDF7EC] text-[#063B2A]">
+                        <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-[#DDF7EC] dark:bg-emerald-950/60 text-[#063B2A] dark:text-emerald-300">
                           Step 0{i + 1}
                         </span>
                         <span className="font-mono text-xs font-bold text-[#20B486] uppercase tracking-wider">
@@ -119,19 +119,19 @@ export const MaterialToMasteryTimeline = () => {
                         </span>
                       </div>
 
-                      <h3 className="font-extrabold text-base sm:text-lg text-[#10231C]">
+                      <h3 className="font-extrabold text-base sm:text-lg text-[#10231C] dark:text-foreground">
                         {stg.title}
                       </h3>
 
-                      <p className="text-xs sm:text-sm text-[#66736D] mt-1 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-[#66736D] dark:text-muted-foreground mt-1 leading-relaxed">
                         {stg.desc}
                       </p>
                     </div>
                   </div>
 
                   {/* Center Node Icon */}
-                  <div className="w-12 h-12 rounded-2xl bg-[#063B2A] text-white flex items-center justify-center shrink-0 z-10 shadow-xs border-4 border-white">
-                    <Icon className="w-5 h-5 text-[#20B486]" />
+                  <div className="w-12 h-12 rounded-2xl bg-[#063B2A] dark:bg-primary text-white flex items-center justify-center shrink-0 z-10 shadow-xs border-4 border-white dark:border-card">
+                    <Icon className="w-5 h-5 text-[#20B486] dark:text-white" />
                   </div>
 
                   {/* Empty Spacer on Opposite Side */}

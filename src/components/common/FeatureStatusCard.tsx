@@ -73,12 +73,12 @@ export const FeatureStatusCard = () => {
   };
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-green-50 to-blue-50 border-green-200">
+    <Card className="p-6 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 border-emerald-500/20">
       <div className="mb-4">
-        <h3 className="text-lg font-bold text-gray-900 mb-2">Feature Implementation Status</h3>
+        <h3 className="text-lg font-bold text-foreground mb-2">Feature Implementation Status</h3>
         <div className="flex items-center space-x-2">
-          <CheckCircle className="w-5 h-5 text-green-600" />
-          <span className="text-green-800 font-medium">
+          <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-emerald-800 dark:text-emerald-300 font-medium">
             {completedCount}/{features.length} features implemented successfully!
           </span>
         </div>
@@ -86,12 +86,12 @@ export const FeatureStatusCard = () => {
 
       <div className="space-y-3">
         {features.map((feature, index) => (
-          <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+          <div key={index} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
             <div className="flex items-center space-x-3">
               {getStatusIcon(feature.status)}
               <div>
-                <h4 className="font-medium text-gray-900">{feature.name}</h4>
-                <p className="text-sm text-gray-600">{feature.description}</p>
+                <h4 className="font-medium text-foreground">{feature.name}</h4>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
               </div>
             </div>
             {getStatusBadge(feature.status)}
@@ -99,14 +99,14 @@ export const FeatureStatusCard = () => {
         ))}
       </div>
 
-      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="mt-4 p-3 bg-sky-500/10 rounded-lg border border-sky-500/20">
         <div className="flex items-center space-x-2">
-          <CheckCircle className="w-5 h-5 text-blue-600" />
-          <span className="text-blue-800 font-medium">
+          <CheckCircle className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+          <span className="text-sky-800 dark:text-sky-300 font-medium">
             All requested features have been successfully implemented!
           </span>
         </div>
-        <p className="text-sm text-blue-700 mt-1">
+        <p className="text-sm text-sky-800/80 dark:text-sky-300/80 mt-1">
           The app now includes all functional fixes, UI enhancements, and user type personalizations as requested.
         </p>
       </div>

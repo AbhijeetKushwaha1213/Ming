@@ -77,19 +77,26 @@ Visit: https://app.supabase.com/project/YOUR_PROJECT_ID
 2. Paste your **Client Secret** from Step 1.4
 3. Click "Save"
 
-### 2.4 Configure Site URLs
-1. Still in Authentication settings, go to "URL Configuration"
-2. Set **Site URL**:
-   - Development: `http://localhost:5173`
-   - Production: `https://your-domain.com`
+### 2.4 Configure Site URLs & Redirect Allowlist (CRITICAL)
 
-3. Add **Redirect URLs** (under "Redirect URLs"):
+> ⚠️ **Why does login collapse to `localhost:5173` ("Site can't be reached") in production?**
+> If Supabase does not recognize the production domain in its **Redirect URLs allowlist**, it treats the incoming redirect as untrusted. Supabase will still authenticate the user and save their email in `auth.users`, but it will **silently discard your redirect and send the user back to the default Site URL (`http://localhost:5173`)**. On any remote device or mobile phone, `localhost` does not exist, causing the browser to collapse with `ERR_CONNECTION_REFUSED`.
+
+1. Go to your Supabase Dashboard:
+   `https://supabase.com/dashboard/project/cmcbkatdyhunlvlktwlv`
+2. Navigate to **Authentication** > **URL Configuration**.
+3. Set **Site URL**:
+   - Set this to your live production domain:
+     `https://your-production-domain.com` (e.g., `https://studymate.vercel.app`)
+4. Add to **Redirect URLs** (Add all of these so both local dev and production work):
    ```
+   https://your-production-domain.com/**
+   https://your-production-domain.com/auth/callback
+   http://localhost:5173/**
    http://localhost:5173/auth/callback
-   https://your-domain.com/auth/callback
    ```
-
-4. Click "Save"
+   *(If deploying on Vercel preview branches, you can also add `https://*-yourteam.vercel.app/**`)*
+5. Click **Save** at the bottom of the page.
 
 ---
 

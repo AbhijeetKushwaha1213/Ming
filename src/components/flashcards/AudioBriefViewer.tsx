@@ -170,9 +170,9 @@ export const AudioBriefViewer: React.FC<AudioBriefViewerProps> = ({
   const masteryPct = brief.mastery_score !== undefined ? Math.round(brief.mastery_score * 100) : null;
 
   return (
-    <Card className={`border shadow-lg overflow-hidden bg-gradient-to-b from-indigo-50/40 via-white to-white ${className}`}>
+    <Card className={`border border-border shadow-lg overflow-hidden bg-card ${className}`}>
       {/* Header Bar */}
-      <CardHeader className="p-5 pb-3 border-b bg-white/70 backdrop-blur-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <CardHeader className="p-5 pb-3 border-b border-border bg-card/70 backdrop-blur-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1 text-xs px-2.5 py-0.5">
@@ -180,21 +180,21 @@ export const AudioBriefViewer: React.FC<AudioBriefViewerProps> = ({
               2-Min Spoken Audio Brief
             </Badge>
             {masteryPct !== null && masteryPct <= 45 && (
-              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 text-xs gap-1">
-                <Flame className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+              <Badge variant="outline" className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs gap-1">
+                <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 fill-amber-500" />
                 Targeting Weak Area ({masteryPct}% Mastery)
               </Badge>
             )}
-            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-xs gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <Badge variant="outline" className="border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               Source Grounded
             </Badge>
           </div>
-          <CardTitle className="text-xl font-bold tracking-tight text-gray-900 pt-1">
+          <CardTitle className="text-xl font-bold tracking-tight text-foreground pt-1">
             {brief.title}
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Topic: <span className="font-semibold text-gray-700">{brief.topic}</span>
+            Topic: <span className="font-semibold text-foreground">{brief.topic}</span>
             {brief.target_concept && ` • Focused on: ${brief.target_concept}`}
           </p>
         </div>
@@ -311,15 +311,15 @@ export const AudioBriefViewer: React.FC<AudioBriefViewerProps> = ({
 
         {/* Key Revision Takeaways */}
         {brief.key_takeaways && brief.key_takeaways.length > 0 && (
-          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider">
-              <Sparkles className="w-4 h-4 text-amber-600" />
+          <div className="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               High-Yield Exam Takeaways
             </div>
-            <ul className="space-y-1 text-sm text-amber-900">
+            <ul className="space-y-1 text-sm text-amber-900 dark:text-amber-200">
               {brief.key_takeaways.map((takeaway, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-amber-600 font-bold">•</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-bold">•</span>
                   <span>{takeaway}</span>
                 </li>
               ))}
@@ -330,23 +330,23 @@ export const AudioBriefViewer: React.FC<AudioBriefViewerProps> = ({
         {/* Spoken Audio Script */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-gray-600" /> Spoken Narration Script
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-muted-foreground" /> Spoken Narration Script
             </span>
             <span className="text-xs text-muted-foreground font-mono">
               ~{brief.script.split(/\s+/).length} words
             </span>
           </div>
 
-          <div className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 text-sm text-gray-800 leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap font-sans">
+          <div className="p-4 rounded-xl bg-muted/40 border border-border text-sm text-foreground leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap font-sans">
             {brief.script}
           </div>
         </div>
 
         {/* Verified Course Citations */}
         {brief.citations && brief.citations.length > 0 && (
-          <div className="pt-2 border-t space-y-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="pt-2 border-t border-border space-y-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Source Material Grounding Coordinates
             </span>
             <div className="flex flex-wrap gap-2">
@@ -354,9 +354,9 @@ export const AudioBriefViewer: React.FC<AudioBriefViewerProps> = ({
                 <Badge
                   key={i}
                   variant="outline"
-                  className="bg-white border-indigo-200 text-indigo-800 text-xs py-1 px-2.5 gap-1.5 shadow-2xs"
+                  className="bg-card border-border text-foreground text-xs py-1 px-2.5 gap-1.5 shadow-2xs"
                 >
-                  <BookmarkCheck className="w-3.5 h-3.5 text-indigo-600" />
+                  <BookmarkCheck className="w-3.5 h-3.5 text-indigo-500" />
                   <span className="font-semibold">{c.label}</span>
                   <span className="text-muted-foreground font-mono text-[11px]">({c.coordinate})</span>
                 </Badge>

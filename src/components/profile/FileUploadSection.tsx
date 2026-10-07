@@ -169,7 +169,7 @@ export const FileUploadSection = ({ onFileUpload }: FileUploadSectionProps) => {
             htmlFor="file-upload"
             className={`cursor-pointer block ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <Upload className="w-12 h-12 text-muted-foreground/60 mx-auto mb-2" />
             <div className="text-sm text-muted-foreground mb-1">
               {uploading ? 'Uploading...' : 'Click to upload or drag and drop'}
             </div>

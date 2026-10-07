@@ -73,8 +73,8 @@ export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void 
   const getStatusBadge = (status: MasteryStatus, attempts: number) => {
     if (attempts === 0 || status === 'unassessed') {
       return (
-        <Badge variant="outline" className="border-gray-300 text-gray-600 bg-gray-50 flex items-center gap-1">
-          <HelpCircle className="w-3 h-3 text-gray-500" />
+        <Badge variant="outline" className="border-border text-muted-foreground bg-muted/50 flex items-center gap-1">
+          <HelpCircle className="w-3 h-3 text-muted-foreground" />
           Unassessed
         </Badge>
       );
@@ -82,22 +82,22 @@ export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void 
     switch (status) {
       case 'developing':
         return (
-          <Badge className="bg-amber-500/10 text-amber-700 border-amber-300 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3 text-amber-600" />
+          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
             Developing
           </Badge>
         );
       case 'proficient':
         return (
-          <Badge className="bg-blue-500/10 text-blue-700 border-blue-300 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3 text-blue-600" />
+          <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
             Proficient
           </Badge>
         );
       case 'mastered':
         return (
-          <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-300 flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-emerald-600" />
+          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             Mastered
           </Badge>
         );
@@ -112,9 +112,9 @@ export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-indigo-600" />
+            <Brain className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h3 className="text-lg font-bold text-foreground">Knowledge Mastery Model (BKT)</h3>
-            <Badge variant="outline" className="text-xs text-indigo-700 bg-indigo-50 border-indigo-200">
+            <Badge variant="outline" className="text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/40">
               Bayesian Tracing
             </Badge>
           </div>
@@ -137,7 +137,7 @@ export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void 
       {/* Cold Start State (No evidence yet) */}
       {!isLoading && assessedList.length === 0 && (
         <div className="py-6 text-center space-y-3 bg-muted/30 rounded-xl p-4 border border-dashed border-border">
-          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
+          <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400">
             <HelpCircle className="w-5 h-5" />
           </div>
           <div>
@@ -168,21 +168,21 @@ export const LearnerMasteryCard: React.FC<{ onNavigateToAssessment?: () => void 
         <>
           {/* Status Breakdown Pills */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-200 text-center">
-              <span className="text-xs font-semibold text-emerald-800">Mastered (≥85%)</span>
-              <p className="text-lg font-bold text-emerald-700">{countByStatus.mastered}</p>
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center">
+              <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Mastered (≥85%)</span>
+              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{countByStatus.mastered}</p>
             </div>
-            <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-200 text-center">
-              <span className="text-xs font-semibold text-blue-800">Proficient (60-84%)</span>
-              <p className="text-lg font-bold text-blue-700">{countByStatus.proficient}</p>
+            <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+              <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">Proficient (60-84%)</span>
+              <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{countByStatus.proficient}</p>
             </div>
-            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-200 text-center">
-              <span className="text-xs font-semibold text-amber-800">Developing (&lt;60%)</span>
-              <p className="text-lg font-bold text-amber-700">{countByStatus.developing}</p>
+            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+              <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Developing (&lt;60%)</span>
+              <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{countByStatus.developing}</p>
             </div>
-            <div className="p-2.5 rounded-lg bg-gray-100 border border-gray-200 text-center">
-              <span className="text-xs font-semibold text-gray-700">Unassessed</span>
-              <p className="text-lg font-bold text-gray-800">{countByStatus.unassessed}</p>
+            <div className="p-2.5 rounded-lg bg-muted/60 border border-border text-center">
+              <span className="text-xs font-semibold text-muted-foreground">Unassessed</span>
+              <p className="text-lg font-bold text-foreground">{countByStatus.unassessed}</p>
             </div>
           </div>
 

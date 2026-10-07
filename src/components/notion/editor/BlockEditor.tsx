@@ -395,7 +395,7 @@ export function BlockEditor({
             <div className="max-w-md mx-auto">
               <div className="text-muted-foreground mb-4">
                 <svg
-                  className="w-16 h-16 mx-auto mb-4 opacity-30"
+                  className="w-16 h-16 mx-auto mb-4 opacity-50"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -420,13 +420,13 @@ export function BlockEditor({
               </p>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>💡 Try adding headings, lists, images, tables, and more</p>
-                <p className="mt-3 font-medium">Keyboard shortcuts:</p>
+                <p className="mt-3 font-semibold text-foreground">Keyboard shortcuts:</p>
                 <p>• Tab / Shift+Tab - Navigate between blocks</p>
                 <p>• Alt+↑/↓ - Select previous/next block</p>
                 <p>• Cmd/Ctrl+D - Duplicate block</p>
                 <p>• Cmd/Ctrl+Shift+Backspace - Delete block</p>
                 <p>• Cmd/Ctrl+Shift+↑/↓ - Move block up/down</p>
-                <p className="mt-3 font-medium">Mouse actions:</p>
+                <p className="mt-3 font-semibold text-foreground">Mouse actions:</p>
                 <p>• Hover over a block to see the menu (⋯) in the top-right</p>
                 <p>• Click the menu to delete or duplicate blocks</p>
                 <p>• Drag the grip icon (⋮⋮) to reorder blocks</p>

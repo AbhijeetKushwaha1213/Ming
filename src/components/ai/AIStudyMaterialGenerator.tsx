@@ -452,46 +452,46 @@ export const AIStudyMaterialGenerator = () => {
             
             {/* Enhanced preview content */}
             {material.type === 'flashcards' && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 <p><strong>Q:</strong> {material.content.question}</p>
                 <p className="mt-1"><strong>A:</strong> {material.content.answer?.substring(0, 100)}...</p>
               </div>
             )}
             
             {material.type === 'mindmaps' && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 <p><strong>Central Topic:</strong> {material.content.central_topic}</p>
                 <p><strong>Branches:</strong> {material.content.branches?.length || 0} main branches</p>
               </div>
             )}
             
             {material.type === 'quizzes' && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 <p><strong>Questions:</strong> {material.content.questions?.length || 0} quiz questions</p>
                 <p><strong>Type:</strong> Multiple choice with explanations</p>
               </div>
             )}
             
             {material.type === 'diagrams' && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 <p><strong>Title:</strong> {material.content.title}</p>
                 <p><strong>Components:</strong> {material.content.components?.length || 0} elements</p>
               </div>
             )}
             
             {material.type === 'notes' && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 <p><strong>Key Points:</strong> {material.content.key_points?.length || 0} main concepts</p>
                 <p>{material.content.summary?.substring(0, 100)}...</p>
               </div>
             )}
 
             {material.type === 'audio_briefs' && (
-              <div className="text-sm text-gray-600">
-                <p className="flex items-center gap-1.5 text-indigo-700 font-semibold">
+              <div className="text-sm text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-semibold">
                   <Headphones className="w-3.5 h-3.5" /> 2-Minute Spoken Revision Brief
                 </p>
-                <p className="mt-1 line-clamp-2 italic text-gray-700">"{material.content?.script?.substring(0, 120)}..."</p>
+                <p className="mt-1 line-clamp-2 italic text-foreground">"{material.content?.script?.substring(0, 120)}..."</p>
               </div>
             )}
           </div>
@@ -733,13 +733,13 @@ export const AIStudyMaterialGenerator = () => {
             <div className="space-y-4">
               {/* File Upload */}
               <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700">Upload Study Material</label>
+                <label className="text-sm font-medium text-foreground">Upload Study Material</label>
                 
                 {!uploadedFile ? (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 mb-2">Upload your notes, documents, or study materials</p>
-                    <p className="text-xs text-gray-500 mb-3">Supported: PDF, TXT (Max: 50KB)</p>
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                    <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-2">Upload your notes, documents, or study materials</p>
+                    <p className="text-xs text-muted-foreground mb-3">Supported: PDF, TXT (Max: 50KB)</p>
                     <Input
                       type="file"
                       accept=".pdf,.txt"
@@ -756,17 +756,17 @@ export const AIStudyMaterialGenerator = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg">
                     <div className="flex items-center space-x-2">
-                      <FileCheck className="w-5 h-5 text-green-600" />
-                      <span className="text-sm font-medium text-green-800">{uploadedFile}</span>
+                      <FileCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-sm font-medium text-emerald-800 dark:text-emerald-300">{uploadedFile}</span>
                     </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={clearFile}
-                      className="text-green-600 hover:text-green-800"
+                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -774,11 +774,11 @@ export const AIStudyMaterialGenerator = () => {
                 )}
               </div>
 
-              <div className="text-center text-sm text-gray-500">OR</div>
+              <div className="text-center text-sm text-muted-foreground">OR</div>
 
               {/* Manual Content Input */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-sm font-medium text-foreground mb-2 block">
                   Paste Study Content
                 </label>
                 <Textarea
@@ -789,11 +789,11 @@ export const AIStudyMaterialGenerator = () => {
                 />
               </div>
 
-              <div className="text-center text-sm text-gray-500">OR</div>
+              <div className="text-center text-sm text-muted-foreground">OR</div>
 
               {/* Topic Input */}
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <label className="text-sm font-medium text-foreground mb-2 block">
                   Enter Topic/Subject
                 </label>
                 <Input
@@ -808,7 +808,7 @@ export const AIStudyMaterialGenerator = () => {
           {/* Configuration Options */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
+              <label className="text-sm font-medium text-foreground mb-2 block">
                 Difficulty Level
               </label>
               <Select value={difficulty} onValueChange={(value: 'easy' | 'medium' | 'hard') => setDifficulty(value)}>
@@ -824,7 +824,7 @@ export const AIStudyMaterialGenerator = () => {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
+              <label className="text-sm font-medium text-foreground mb-2 block">
                 Number to Generate
               </label>
               <Select value={count} onValueChange={setCount}>
@@ -866,13 +866,13 @@ export const AIStudyMaterialGenerator = () => {
       {generatedMaterials.length > 0 && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-foreground">
               Generated {materialType.charAt(0).toUpperCase() + materialType.slice(1)}
             </h3>
             <Button 
               onClick={saveSelectedMaterials}
               disabled={isCreating || !generatedMaterials.some(material => material.selected)}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isCreating ? (
                 <>

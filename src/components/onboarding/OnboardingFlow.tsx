@@ -331,14 +331,14 @@ export const OnboardingFlow = () => {
               <Card 
                 className={`p-8 cursor-pointer transition-all duration-300 hover:shadow-xl ${
                   data.learningMode === 'college' 
-                    ? 'border-blue-500 bg-blue-50 shadow-lg ring-2 ring-blue-200' 
-                    : 'hover:border-blue-300 bg-white hover:shadow-lg'
+                    ? 'border-blue-500 bg-blue-500/10 shadow-lg ring-2 ring-blue-500/30' 
+                    : 'hover:border-blue-400/50 bg-card hover:shadow-lg border-border'
                 }`}
                 onClick={() => setData({...data, learningMode: 'college'})}
               >
                 <div className="text-center">
-                  <GraduationCap className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-                  <h3 className="font-bold text-xl mb-3">College Student</h3>
+                  <GraduationCap className="w-16 h-16 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+                  <h3 className="font-bold text-xl mb-3 text-foreground">College Student</h3>
                   <p className="text-muted-foreground leading-relaxed">Building skills, managing coursework, working on projects, and preparing for your career</p>
                 </div>
               </Card>
@@ -346,14 +346,14 @@ export const OnboardingFlow = () => {
               <Card 
                 className={`p-8 cursor-pointer transition-all duration-300 hover:shadow-xl ${
                   data.learningMode === 'exam' 
-                    ? 'border-green-500 bg-green-50 shadow-lg ring-2 ring-green-200' 
-                    : 'hover:border-green-300 bg-white hover:shadow-lg'
+                    ? 'border-emerald-500 bg-emerald-500/10 shadow-lg ring-2 ring-emerald-500/30' 
+                    : 'hover:border-emerald-400/50 bg-card hover:shadow-lg border-border'
                 }`}
                 onClick={() => setData({...data, learningMode: 'exam'})}
               >
                 <div className="text-center">
-                  <Target className="w-16 h-16 text-green-600 mx-auto mb-4" />
-                  <h3 className="font-bold text-xl mb-3">Exam Preparation</h3>
+                  <Target className="w-16 h-16 text-emerald-600 dark:text-emerald-400 mx-auto mb-4" />
+                  <h3 className="font-bold text-xl mb-3 text-foreground">Exam Preparation</h3>
                   <p className="text-muted-foreground leading-relaxed">Focused preparation for competitive exams like JEE, NEET, UPSC, GATE, and more</p>
                 </div>
               </Card>

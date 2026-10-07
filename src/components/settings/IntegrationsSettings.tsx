@@ -28,7 +28,7 @@ export const IntegrationsSettings = () => {
       description: 'Sync your repositories and track coding progress',
       icon: <Github className="w-6 h-6" />,
       connected: false,
-      color: 'border-gray-800 bg-gray-50'
+      color: 'border-border bg-card'
     },
     {
       id: 'linkedin',
@@ -36,7 +36,7 @@ export const IntegrationsSettings = () => {
       description: 'Share achievements and connect with professionals',
       icon: <Linkedin className="w-6 h-6" />,
       connected: false,
-      color: 'border-blue-600 bg-blue-50'
+      color: 'border-blue-500/30 bg-blue-500/5'
     },
     {
       id: 'hackerrank',
@@ -44,7 +44,7 @@ export const IntegrationsSettings = () => {
       description: 'Import coding challenges and track problem-solving stats',
       icon: <Code className="w-6 h-6" />,
       connected: false,
-      color: 'border-green-600 bg-green-50',
+      color: 'border-emerald-500/30 bg-emerald-500/5',
       comingSoon: true
     },
     {
@@ -53,7 +53,7 @@ export const IntegrationsSettings = () => {
       description: 'Sync coding practice and interview preparation progress',
       icon: <Trophy className="w-6 h-6" />,
       connected: false,
-      color: 'border-orange-600 bg-orange-50',
+      color: 'border-orange-500/30 bg-orange-500/5',
       comingSoon: true
     }
   ]);
@@ -131,29 +131,29 @@ export const IntegrationsSettings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Account Integrations</h2>
-        <p className="text-gray-600">Connect your accounts to enhance your study experience</p>
+        <h2 className="text-xl font-semibold text-foreground mb-2">Account Integrations</h2>
+        <p className="text-muted-foreground">Connect your accounts to enhance your study experience</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {integrations.map((integration) => (
-          <Card key={integration.id} className={`p-6 border-2 ${integration.color} ${integration.connected ? 'ring-2 ring-indigo-500' : ''}`}>
+          <Card key={integration.id} className={`p-6 border ${integration.color} ${integration.connected ? 'ring-2 ring-primary' : ''}`}>
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-lg ${integration.connected ? 'bg-indigo-100' : 'bg-gray-100'}`}>
+                <div className={`p-2 rounded-lg ${integration.connected ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                   {integration.icon}
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <h3 className="font-semibold text-gray-900">{integration.name}</h3>
+                    <h3 className="font-semibold text-foreground">{integration.name}</h3>
                     {integration.connected && (
-                      <Badge className="bg-green-100 text-green-800">Connected</Badge>
+                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30">Connected</Badge>
                     )}
                     {integration.comingSoon && (
-                      <Badge variant="outline">Coming Soon</Badge>
+                      <Badge variant="outline" className="text-muted-foreground border-border">Coming Soon</Badge>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">{integration.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{integration.description}</p>
                 </div>
               </div>
             </div>
@@ -171,7 +171,7 @@ export const IntegrationsSettings = () => {
                     }
                   }}
                 />
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   {integration.connected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
@@ -185,10 +185,10 @@ export const IntegrationsSettings = () => {
             </div>
 
             {integration.connected && (
-              <div className="mt-4 p-3 bg-indigo-50 rounded-lg">
+              <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-indigo-800">Last synced:</span>
-                  <span className="text-indigo-600">Just now</span>
+                  <span className="text-foreground">Last synced:</span>
+                  <span className="text-primary font-medium">Just now</span>
                 </div>
               </div>
             )}
@@ -196,14 +196,14 @@ export const IntegrationsSettings = () => {
         ))}
       </div>
 
-      <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+      <Card className="p-6 bg-card border-border">
         <div className="flex items-center space-x-3 mb-4">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <ExternalLink className="w-6 h-6 text-blue-600" />
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <ExternalLink className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">More Integrations</h3>
-            <p className="text-sm text-gray-600">Request new integrations or suggest improvements</p>
+            <h3 className="font-semibold text-foreground">More Integrations</h3>
+            <p className="text-sm text-muted-foreground">Request new integrations or suggest improvements</p>
           </div>
         </div>
         

@@ -13,7 +13,7 @@ import { Footer } from '../components/landing/Footer';
 
 const Landing = () => {
   return (
-    <div className="min-h-screen bg-[#F7FAF7] text-[#10231C] font-sans antialiased selection:bg-[#DDF7EC] selection:text-[#063B2A]">
+    <div className="min-h-screen bg-[#F7FAF7] dark:bg-background text-[#10231C] dark:text-foreground font-sans antialiased selection:bg-[#DDF7EC] dark:selection:bg-emerald-900 selection:text-[#063B2A] dark:selection:text-emerald-200">
       {/* 1. Clean Navigation Bar */}
       <Navbar />
 

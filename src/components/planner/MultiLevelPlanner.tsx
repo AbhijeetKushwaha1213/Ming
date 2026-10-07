@@ -125,9 +125,9 @@ export const MultiLevelPlanner = () => {
 
   const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
+      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300';
+      case 'medium': return 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300';
+      case 'low': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
     }
   };
 
@@ -142,8 +142,8 @@ export const MultiLevelPlanner = () => {
   return (
     <div className="space-y-6 pb-20">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Multi-Level Planner</h1>
-        <p className="text-gray-600">{getMotivationalMessage()}</p>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Multi-Level Planner</h1>
+        <p className="text-muted-foreground">{getMotivationalMessage()}</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -157,8 +157,8 @@ export const MultiLevelPlanner = () => {
         <TabsContent value="today" className="space-y-4">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center">
-                <Clock className="w-5 h-5 mr-2 text-indigo-600" />
+              <h3 className="text-lg font-semibold flex items-center text-foreground">
+                <Clock className="w-5 h-5 mr-2 text-indigo-500" />
                 Today's Plan - {format(new Date(), 'EEEE, MMMM d')}
               </h3>
               <Button size="sm">
@@ -169,19 +169,19 @@ export const MultiLevelPlanner = () => {
             
             <div className="space-y-3">
               {getTodayTasks().length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-3 text-emerald-500" />
                   <p>All tasks completed for today! 🎉</p>
                   <p className="text-sm mt-2">Ready to add some new tasks for tomorrow?</p>
                 </div>
               ) : (
                 getTodayTasks().map((task) => (
-                  <div key={task.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                  <div key={task.id} className="flex items-center p-3 bg-secondary/80 border border-border/80 rounded-lg">
                     <input type="checkbox" className="mr-3" />
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{task.title}</h4>
+                      <h4 className="font-medium text-foreground">{task.title}</h4>
                       {task.description && (
-                        <p className="text-sm text-gray-600">{task.description}</p>
+                        <p className="text-sm text-muted-foreground">{task.description}</p>
                       )}
                     </div>
                     <Badge className={getPriorityColor(task.priority)}>
@@ -239,8 +239,8 @@ export const MultiLevelPlanner = () => {
         <TabsContent value="monthly" className="space-y-4">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+              <h3 className="text-lg font-semibold flex items-center text-foreground">
+                <Calendar className="w-5 h-5 mr-2 text-sky-500" />
                 Monthly Goals - {format(new Date(), 'MMMM yyyy')}
               </h3>
               <Button size="sm">
@@ -251,9 +251,9 @@ export const MultiLevelPlanner = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {getGoalsByType('monthly').length === 0 ? (
-                <div className="col-span-full text-center py-8 text-gray-500">
-                  <Calendar className="w-12 h-12 mx-auto mb-3 text-blue-300" />
-                  <h3 className="text-lg font-semibold mb-2">No Monthly Goals Set</h3>
+                <div className="col-span-full text-center py-8 text-muted-foreground">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 text-sky-500/40" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Monthly Goals Set</h3>
                   <p className="mb-4">Set monthly goals to track your progress over time!</p>
                   <Button>
                     <Plus className="w-4 h-4 mr-2" />
@@ -262,19 +262,19 @@ export const MultiLevelPlanner = () => {
                 </div>
               ) : (
                 getGoalsByType('monthly').map((goal) => (
-                  <div key={goal.id} className="p-4 bg-blue-50 rounded-lg">
+                  <div key={goal.id} className="p-4 bg-sky-500/10 border border-sky-500/20 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-gray-900">{goal.title}</h4>
+                      <h4 className="font-semibold text-foreground">{goal.title}</h4>
                       <Badge className={getPriorityColor(goal.priority)}>
                         {goal.priority}
                       </Badge>
                     </div>
                     <Progress value={getCompletionPercentage(goal)} className="h-3 mb-2" />
-                    <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
                       <span>{goal.current_value} / {goal.target_value}</span>
                       <span>{Math.round(getCompletionPercentage(goal))}%</span>
                     </div>
-                    <p className="text-sm text-gray-600">{goal.description}</p>
+                    <p className="text-sm text-muted-foreground">{goal.description}</p>
                   </div>
                 ))
               )}
@@ -285,8 +285,8 @@ export const MultiLevelPlanner = () => {
         <TabsContent value="yearly" className="space-y-4">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center">
-                <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
+              <h3 className="text-lg font-semibold flex items-center text-foreground">
+                <TrendingUp className="w-5 h-5 mr-2 text-emerald-500" />
                 Yearly Vision - {format(new Date(), 'yyyy')}
               </h3>
               <Button size="sm">
@@ -297,9 +297,9 @@ export const MultiLevelPlanner = () => {
             
             <div className="space-y-6">
               {getGoalsByType('yearly').length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <TrendingUp className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-semibold mb-2">No Yearly Goals Set</h3>
+                <div className="text-center py-12 text-muted-foreground">
+                  <TrendingUp className="w-16 h-16 mx-auto mb-4 text-muted-foreground/40" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Yearly Goals Set</h3>
                   <p className="mb-4">Set your big picture goals to guide your year!</p>
                   <Button>
                     <Plus className="w-4 h-4 mr-2" />
@@ -308,25 +308,25 @@ export const MultiLevelPlanner = () => {
                 </div>
               ) : (
                 getGoalsByType('yearly').map((goal) => (
-                  <div key={goal.id} className="p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border">
+                  <div key={goal.id} className="p-6 bg-gradient-to-r from-emerald-500/10 to-sky-500/10 rounded-lg border border-border">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-xl font-bold text-gray-900">{goal.title}</h4>
+                      <h4 className="text-xl font-bold text-foreground">{goal.title}</h4>
                       <Badge className={`${getPriorityColor(goal.priority)} text-base px-3 py-1`}>
                         {goal.priority} priority
                       </Badge>
                     </div>
                     
                     <div className="mb-4">
-                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                      <div className="flex justify-between text-sm text-muted-foreground mb-2">
                         <span>Progress</span>
                         <span>{goal.current_value} / {goal.target_value} ({Math.round(getCompletionPercentage(goal))}%)</span>
                       </div>
                       <Progress value={getCompletionPercentage(goal)} className="h-4" />
                     </div>
                     
-                    <p className="text-gray-700 mb-4">{goal.description}</p>
+                    <p className="text-foreground/90 mb-4">{goal.description}</p>
                     
-                    <div className="flex justify-between text-sm text-gray-500">
+                    <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Due: {format(new Date(goal.due_date), 'MMM d, yyyy')}</span>
                       <span>Created: {format(new Date(goal.created_at), 'MMM d, yyyy')}</span>
                     </div>

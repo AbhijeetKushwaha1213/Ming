@@ -99,24 +99,24 @@ export const FlashcardViewer = ({ flashcards, title, difficulty, startingIndex =
             isFlipped ? 'rotate-y-180' : ''
           }`}>
             {/* Front Side - Question */}
-            <Card className="absolute inset-0 flex items-center justify-center p-8 backface-hidden bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200 hover:shadow-lg transition-shadow">
+            <Card className="absolute inset-0 flex items-center justify-center p-8 backface-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/40 dark:to-indigo-950/50 border-2 border-blue-200 dark:border-blue-800/60 hover:shadow-lg transition-shadow">
               <div className="text-center space-y-4">
-                <div className="text-sm font-medium text-blue-600 mb-4">Question</div>
-                <p className="text-xl font-semibold text-gray-900 leading-relaxed">
+                <div className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-4">Question</div>
+                <p className="text-xl font-semibold text-gray-900 dark:text-foreground leading-relaxed">
                   {currentCard.question}
                 </p>
-                <p className="text-sm text-gray-500 mt-6">Click to reveal answer</p>
+                <p className="text-sm text-gray-500 dark:text-muted-foreground mt-6">Click to reveal answer</p>
               </div>
             </Card>
 
             {/* Back Side - Answer */}
-            <Card className="absolute inset-0 flex items-center justify-center p-8 backface-hidden rotate-y-180 bg-gradient-to-br from-green-50 to-emerald-100 border-2 border-green-200 hover:shadow-lg transition-shadow">
+            <Card className="absolute inset-0 flex items-center justify-center p-8 backface-hidden rotate-y-180 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-emerald-950/40 dark:to-teal-950/50 border-2 border-green-200 dark:border-emerald-800/60 hover:shadow-lg transition-shadow">
               <div className="text-center space-y-4">
-                <div className="text-sm font-medium text-green-600 mb-4">Answer</div>
-                <p className="text-lg text-gray-900 leading-relaxed">
+                <div className="text-sm font-medium text-green-600 dark:text-emerald-400 mb-4">Answer</div>
+                <p className="text-lg text-gray-900 dark:text-foreground leading-relaxed">
                   {currentCard.answer}
                 </p>
-                <p className="text-sm text-gray-500 mt-6">Click to see question</p>
+                <p className="text-sm text-gray-500 dark:text-muted-foreground mt-6">Click to see question</p>
               </div>
             </Card>
           </div>
@@ -137,9 +137,9 @@ export const FlashcardViewer = ({ flashcards, title, difficulty, startingIndex =
               {showHint ? 'Hide Hint' : 'Show Hint'}
             </Button>
             {showHint && (
-              <Card className="p-4 bg-yellow-50 border-yellow-200">
-                <p className="text-sm text-gray-700">
-                  <strong>Hint:</strong> {currentCard.hint}
+              <Card className="p-4 bg-yellow-50 dark:bg-amber-950/30 border-yellow-200 dark:border-amber-800/50">
+                <p className="text-sm text-gray-700 dark:text-foreground">
+                  <strong className="text-amber-800 dark:text-amber-300">Hint:</strong> {currentCard.hint}
                 </p>
               </Card>
             )}

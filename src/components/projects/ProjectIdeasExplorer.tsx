@@ -111,10 +111,10 @@ export const ProjectIdeasExplorer = ({ open, onOpenChange }: ProjectIdeasExplore
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'Beginner': return 'bg-green-100 text-green-800';
-      case 'Intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'Advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'Beginner': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
+      case 'Intermediate': return 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300';
+      case 'Advanced': return 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -137,7 +137,7 @@ export const ProjectIdeasExplorer = ({ open, onOpenChange }: ProjectIdeasExplore
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
-            <Lightbulb className="w-6 h-6 mr-2 text-yellow-500" />
+            <Lightbulb className="w-6 h-6 mr-2 text-amber-500" />
             Project Ideas Explorer
           </DialogTitle>
         </DialogHeader>
@@ -146,7 +146,7 @@ export const ProjectIdeasExplorer = ({ open, onOpenChange }: ProjectIdeasExplore
           {/* Search and Filter */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
                 placeholder="Search project ideas..."
                 value={searchTerm}
@@ -171,16 +171,16 @@ export const ProjectIdeasExplorer = ({ open, onOpenChange }: ProjectIdeasExplore
                 {filteredIdeas.map((idea) => (
                   <Card key={idea.id} className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold">{idea.title}</h3>
+                      <h3 className="text-lg font-semibold text-foreground">{idea.title}</h3>
                       {idea.trending && (
-                        <Badge className="bg-orange-100 text-orange-800">
+                        <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
                           <TrendingUp className="w-3 h-3 mr-1" />
                           Trending
                         </Badge>
                       )}
                     </div>
                     
-                    <p className="text-gray-600 mb-4 text-sm">{idea.description}</p>
+                    <p className="text-muted-foreground mb-4 text-sm">{idea.description}</p>
                     
                     <div className="flex flex-wrap gap-2 mb-4">
                       {idea.technologies.map((tech) => (
@@ -191,7 +191,7 @@ export const ProjectIdeasExplorer = ({ open, onOpenChange }: ProjectIdeasExplore
                     </div>
                     
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center">
                           <Star className="w-4 h-4 mr-1" />
                           <Badge className={getDifficultyColor(idea.difficulty)}>
@@ -227,9 +227,9 @@ export const ProjectIdeasExplorer = ({ open, onOpenChange }: ProjectIdeasExplore
               
               {filteredIdeas.length === 0 && (
                 <div className="text-center py-12">
-                  <Search className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No ideas found</h3>
-                  <p className="text-gray-500">Try adjusting your search or category filter.</p>
+                  <Search className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No ideas found</h3>
+                  <p className="text-muted-foreground">Try adjusting your search or category filter.</p>
                 </div>
               )}
             </TabsContent>

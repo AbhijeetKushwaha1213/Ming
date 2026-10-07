@@ -151,13 +151,13 @@ export const DAGViewer: React.FC<DAGViewerProps> = ({
               <svg className="absolute inset-0 pointer-events-none" width={canvasWidth} height={canvasHeight}>
                 <defs>
                   <marker id="viewer-arrow-met" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                    <polygon points="0 0, 8 3, 0 6" fill="#165034" />
+                    <polygon points="0 0, 8 3, 0 6" className="fill-emerald-600 dark:fill-emerald-400" />
                   </marker>
                   <marker id="viewer-arrow-gap" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                    <polygon points="0 0, 8 3, 0 6" fill="#d97706" />
+                    <polygon points="0 0, 8 3, 0 6" className="fill-amber-600 dark:fill-amber-400" />
                   </marker>
                   <marker id="viewer-arrow-unmet" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                    <polygon points="0 0, 8 3, 0 6" fill="#94a3b8" />
+                    <polygon points="0 0, 8 3, 0 6" className="fill-slate-400 dark:fill-slate-500" />
                   </marker>
                 </defs>
 
@@ -166,7 +166,13 @@ export const DAGViewer: React.FC<DAGViewerProps> = ({
                     key={idx}
                     d={e.path}
                     fill="none"
-                    stroke={e.isMet ? '#165034' : e.isGap ? '#d97706' : '#94a3b8'}
+                    className={
+                      e.isMet
+                        ? 'stroke-emerald-600 dark:stroke-emerald-400'
+                        : e.isGap
+                        ? 'stroke-amber-600 dark:stroke-amber-400'
+                        : 'stroke-slate-400 dark:stroke-slate-500'
+                    }
                     strokeWidth={e.isMet ? '2.5' : '1.75'}
                     strokeDasharray={e.isMet ? 'none' : '4 3'}
                     markerEnd={e.isMet ? 'url(#viewer-arrow-met)' : e.isGap ? 'url(#viewer-arrow-gap)' : 'url(#viewer-arrow-unmet)'}

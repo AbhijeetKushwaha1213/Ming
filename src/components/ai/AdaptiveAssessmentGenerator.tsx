@@ -814,7 +814,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
 
       {/* Configuration Form */}
       <Card className="p-6 space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Brain className="w-5 h-5 text-indigo-600" />
           Configure Assessment Parameters
         </h3>
@@ -873,7 +873,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Source / Course Selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Course Source Material</label>
+            <label className="text-sm font-medium text-foreground">Course Source Material</label>
             <Select
               value={selectedSourceId}
               onValueChange={(val) => {
@@ -942,7 +942,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
           {/* Subject / Discipline */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-emerald-600" />
                 Subject / Discipline
               </label>
@@ -991,7 +991,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
 
           {/* Topic */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Topic *</label>
+            <label className="text-sm font-medium text-foreground">Topic *</label>
             <Input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
@@ -1002,7 +1002,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
 
           {/* Subtopic */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Subtopic (Optional)</label>
+            <label className="text-sm font-medium text-foreground">Subtopic (Optional)</label>
             <Input
               value={subtopic}
               onChange={(e) => setSubtopic(e.target.value)}
@@ -1013,7 +1013,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
 
           {/* Number of Questions */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Question Count</label>
+            <label className="text-sm font-medium text-foreground">Question Count</label>
             <Select value={String(count)} onValueChange={(val) => setCount(Number(val))}>
               <SelectTrigger>
                 <SelectValue />
@@ -1028,7 +1028,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
 
           {/* Difficulty */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Difficulty Level</label>
+            <label className="text-sm font-medium text-foreground">Difficulty Level</label>
             <div className="grid grid-cols-3 gap-2">
               {(['easy', 'medium', 'hard'] as const).map((diff) => (
                 <Button
@@ -1054,7 +1054,7 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
 
           {/* Question Type */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Question Format</label>
+            <label className="text-sm font-medium text-foreground">Question Format</label>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { type: 'MCQ', label: 'Multiple Choice' },

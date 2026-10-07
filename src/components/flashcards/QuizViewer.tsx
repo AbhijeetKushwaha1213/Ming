@@ -411,14 +411,14 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
             </h3>
             <div className="space-y-2">
               {recommendedSourceMaterial.map((rec, rIdx) => (
-                <div key={rIdx} className="p-3 rounded-lg bg-white border border-indigo-100 text-xs text-gray-800 space-y-1">
+                <div key={rIdx} className="p-3 rounded-lg bg-card border border-border text-xs text-foreground space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-indigo-900">{rec.topic} ({rec.subtopic})</span>
-                    <Badge variant="outline" className="border-indigo-200 text-indigo-700 bg-indigo-50">
+                    <span className="font-semibold text-indigo-700 dark:text-indigo-300">{rec.topic} ({rec.subtopic})</span>
+                    <Badge variant="outline" className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40">
                       {rec.coordinate}
                     </Badge>
                   </div>
-                  <p className="text-gray-600">{rec.recommendation}</p>
+                  <p className="text-muted-foreground">{rec.recommendation}</p>
                 </div>
               ))}
             </div>
@@ -696,9 +696,9 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
               className="text-base p-4 h-12"
             />
             {showResults && (
-              <div className="p-3 rounded-lg border bg-gray-50 text-xs space-y-1">
-                <p className="text-gray-500 font-medium">Expected key concept:</p>
-                <p className="font-semibold text-emerald-800">{String(currentQuestion.correct_answer)}</p>
+              <div className="p-3 rounded-lg border border-border bg-muted/40 text-xs space-y-1">
+                <p className="text-muted-foreground font-medium">Expected key concept:</p>
+                <p className="font-semibold text-emerald-700 dark:text-emerald-300">{String(currentQuestion.correct_answer)}</p>
               </div>
             )}
           </div>
@@ -717,10 +717,10 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
               className="text-base p-4 h-12 font-mono"
             />
             {showResults && (
-              <div className="p-3 rounded-lg border bg-gray-50 text-xs space-y-1">
-                <p className="text-gray-500 font-medium">Verified target value:</p>
-                <p className="font-semibold text-emerald-800">
-                  {String(currentQuestion.correct_answer)} <span className="font-normal text-gray-500">(±3% tolerance)</span>
+              <div className="p-3 rounded-lg border border-border bg-muted/40 text-xs space-y-1">
+                <p className="text-muted-foreground font-medium">Verified target value:</p>
+                <p className="font-semibold text-emerald-700 dark:text-emerald-300">
+                  {String(currentQuestion.correct_answer)} <span className="font-normal text-muted-foreground">(±3% tolerance)</span>
                 </p>
               </div>
             )}

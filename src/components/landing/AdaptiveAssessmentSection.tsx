@@ -36,23 +36,23 @@ export const AdaptiveAssessmentSection = () => {
   return (
     <section
       id="assessment"
-      className="py-20 lg:py-28 px-5 sm:px-8 bg-white border-b border-[#DDE7E1] scroll-mt-20 relative overflow-hidden"
+      className="py-20 lg:py-28 px-5 sm:px-8 bg-white dark:bg-background border-b border-[#DDE7E1] dark:border-border scroll-mt-20 relative overflow-hidden"
     >
       <div className="max-w-[1240px] mx-auto">
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DDF7EC] border border-[#20B486]/20 text-[#063B2A] text-xs font-bold uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DDF7EC] dark:bg-emerald-950/40 border border-[#20B486]/20 text-[#063B2A] dark:text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4">
             <Target className="w-3.5 h-3.5 text-[#20B486]" />
             <span>Personalized Difficulty Engine</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#10231C] tracking-tight leading-[1.15] mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#10231C] dark:text-foreground tracking-tight leading-[1.15] mb-4">
             An assessment that{' '}
             <span className="text-[#20B486]">adapts to you.</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#66736D] max-w-2xl mx-auto leading-[1.65]">
+          <p className="text-base sm:text-lg text-[#66736D] dark:text-muted-foreground max-w-2xl mx-auto leading-[1.65]">
             Diagnostic quizzes dynamically adjust based on your performance. Target weak spots before they turn into exam-day surprises.
           </p>
         </div>
@@ -61,23 +61,23 @@ export const AdaptiveAssessmentSection = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Column: Simulated Adaptive Quiz */}
-          <div className="lg:col-span-7 bg-[#F7FAF7] rounded-[24px] border border-[#DDE7E1] shadow-soft p-6 sm:p-8 space-y-6">
+          <div className="lg:col-span-7 bg-[#F7FAF7] dark:bg-card/90 rounded-[24px] border border-[#DDE7E1] dark:border-border shadow-soft p-6 sm:p-8 space-y-6">
             
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#DDE7E1]">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#DDE7E1] dark:border-border">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-full bg-[#063B2A] text-white text-xs font-bold font-mono">
+                <span className="px-2.5 py-1 rounded-full bg-[#063B2A] dark:bg-primary text-white text-xs font-bold font-mono">
                   Live Adaptive Drill
                 </span>
-                <span className="text-xs font-bold text-[#10231C]">{question.title}</span>
+                <span className="text-xs font-bold text-[#10231C] dark:text-foreground">{question.title}</span>
               </div>
 
-              <span className="px-2.5 py-0.5 rounded-full bg-[#DDF7EC] text-[#20B486] text-xs font-bold font-mono">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#DDF7EC] dark:bg-emerald-950/60 text-[#20B486] dark:text-emerald-300 text-xs font-bold font-mono">
                 {difficultyTier}
               </span>
             </div>
 
             <div className="space-y-3">
-              <p className="text-base font-bold text-[#10231C] leading-snug">
+              <p className="text-base font-bold text-[#10231C] dark:text-foreground leading-snug">
                 "{question.text}"
               </p>
 
@@ -91,9 +91,9 @@ export const AdaptiveAssessmentSection = () => {
                       className={`w-full text-left p-3.5 rounded-xl border text-xs sm:text-sm font-medium transition-all flex items-center justify-between gap-3 ${
                         isSelected
                           ? opt.correct
-                            ? 'bg-[#DDF7EC] border-2 border-[#20B486] text-[#063B2A] font-bold'
-                            : 'bg-red-50 border-2 border-red-500 text-red-950'
-                          : 'bg-white border-[#DDE7E1] text-[#10231C] hover:border-[#20B486]/50'
+                            ? 'bg-[#DDF7EC] dark:bg-emerald-950/60 border-2 border-[#20B486] text-[#063B2A] dark:text-emerald-300 font-bold'
+                            : 'bg-red-50 dark:bg-red-950/60 border-2 border-red-500 text-red-950 dark:text-red-200'
+                          : 'bg-white dark:bg-card border-[#DDE7E1] dark:border-border text-[#10231C] dark:text-foreground hover:border-[#20B486]/50'
                       }`}
                     >
                       <span>{opt.text}</span>
@@ -107,28 +107,28 @@ export const AdaptiveAssessmentSection = () => {
             </div>
 
             {selectedOption !== null && (
-              <div className="p-3.5 rounded-xl bg-white border border-[#DDE7E1] text-xs space-y-1 animate-fade-in">
-                <div className="flex items-center justify-between font-bold text-[#063B2A]">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-card border border-[#DDE7E1] dark:border-border text-xs space-y-1 animate-fade-in">
+                <div className="flex items-center justify-between font-bold text-[#063B2A] dark:text-emerald-300">
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-[#20B486]" />
                     AI Evaluation & Citation
                   </span>
-                  <span className="text-[11px] font-mono text-[#66736D]">{question.citation}</span>
+                  <span className="text-[11px] font-mono text-[#66736D] dark:text-muted-foreground">{question.citation}</span>
                 </div>
-                <p className="text-[#66736D]">
+                <p className="text-[#66736D] dark:text-muted-foreground">
                   Correct! Both processes check their turn & intent. StudyMate has adjusted your difficulty to Level 4 for the next question.
                 </p>
               </div>
             )}
 
-            <div className="pt-2 flex items-center justify-between text-xs text-[#66736D]">
+            <div className="pt-2 flex items-center justify-between text-xs text-[#66736D] dark:text-muted-foreground">
               <span>Click options above to test real-time difficulty recalibration.</span>
               <button
                 onClick={() => {
                   setSelectedOption(null);
                   setDifficultyTier('Level 3 · Standard');
                 }}
-                className="font-bold text-[#063B2A] hover:underline flex items-center gap-1"
+                className="font-bold text-[#063B2A] dark:text-emerald-400 hover:underline flex items-center gap-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Reset
@@ -137,15 +137,15 @@ export const AdaptiveAssessmentSection = () => {
 
           </div>
 
-          {/* Right Column: Mastery Breakdown & AI Recommendation (Exact Prompt Spec!) */}
-          <div className="lg:col-span-5 bg-[#F7FAF7] rounded-[24px] border border-[#DDE7E1] shadow-soft p-6 sm:p-7 space-y-6">
+          {/* Right Column: Mastery Breakdown & AI Recommendation */}
+          <div className="lg:col-span-5 bg-[#F7FAF7] dark:bg-card/90 rounded-[24px] border border-[#DDE7E1] dark:border-border shadow-soft p-6 sm:p-7 space-y-6">
             
             {/* Header */}
-            <div className="pb-3 border-b border-[#DDE7E1]">
+            <div className="pb-3 border-b border-[#DDE7E1] dark:border-border">
               <span className="text-xs font-mono font-bold text-[#20B486] uppercase">
                 Diagnostic Feedback
               </span>
-              <h3 className="font-extrabold text-xl text-[#10231C] mt-0.5">
+              <h3 className="font-extrabold text-xl text-[#10231C] dark:text-foreground mt-0.5">
                 Your Concept Mastery
               </h3>
             </div>
@@ -154,19 +154,19 @@ export const AdaptiveAssessmentSection = () => {
             <div className="space-y-3">
               {[
                 { name: 'CPU Scheduling', mastery: 82, status: '✓ Mastered', color: 'text-[#20B486]', bar: 'bg-[#20B486]' },
-                { name: 'Process Management', mastery: 74, status: 'Proficient', color: 'text-[#063B2A]', bar: 'bg-[#063B2A]' },
-                { name: 'Deadlocks', mastery: 41, status: '! Weak', color: 'text-amber-600', bar: 'bg-amber-500' },
-                { name: 'Synchronization', mastery: 63, status: 'Developing', color: 'text-[#66736D]', bar: 'bg-[#20B486]/70' },
+                { name: 'Process Management', mastery: 74, status: 'Proficient', color: 'text-[#063B2A] dark:text-emerald-300', bar: 'bg-[#063B2A] dark:bg-emerald-600' },
+                { name: 'Deadlocks', mastery: 41, status: '! Weak', color: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' },
+                { name: 'Synchronization', mastery: 63, status: 'Developing', color: 'text-[#66736D] dark:text-muted-foreground', bar: 'bg-[#20B486]/70' },
               ].map((item, i) => (
-                <div key={i} className="p-3 rounded-xl bg-white border border-[#DDE7E1] space-y-1.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-[#10231C]">
+                <div key={i} className="p-3 rounded-xl bg-white dark:bg-card border border-[#DDE7E1] dark:border-border space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-[#10231C] dark:text-foreground">
                     <span>{item.name}</span>
                     <span className="font-mono flex items-center gap-1.5">
                       <span>{item.mastery}%</span>
                       <span className={`text-[11px] ${item.color}`}>{item.status}</span>
                     </span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-[#F7FAF7] overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-[#F7FAF7] dark:bg-muted overflow-hidden">
                     <div
                       className={`h-full rounded-full ${item.bar}`}
                       style={{ width: `${item.mastery}%` }}
@@ -176,18 +176,18 @@ export const AdaptiveAssessmentSection = () => {
               ))}
             </div>
 
-            {/* AI Recommendation Card (Directly from Prompt Spec) */}
-            <div className="p-4 rounded-xl bg-white border-2 border-[#20B486] shadow-xs space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[#063B2A] uppercase font-mono">
+            {/* AI Recommendation Card */}
+            <div className="p-4 rounded-xl bg-white dark:bg-card border-2 border-[#20B486] shadow-xs space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#063B2A] dark:text-emerald-300 uppercase font-mono">
                 <Sparkles className="w-3.5 h-3.5 text-[#20B486]" />
                 <span>AI Recommendation</span>
               </div>
 
-              <div className="text-sm font-extrabold text-[#10231C]">
+              <div className="text-sm font-extrabold text-[#10231C] dark:text-foreground">
                 Focus on: Deadlock Prevention
               </div>
 
-              <p className="text-xs text-[#66736D] leading-relaxed">
+              <p className="text-xs text-[#66736D] dark:text-muted-foreground leading-relaxed">
                 <strong>Reason:</strong> Your prerequisite mastery in Synchronization is below 70%. Resolving race conditions first guarantees a 92% retention rate on Deadlocks.
               </p>
 

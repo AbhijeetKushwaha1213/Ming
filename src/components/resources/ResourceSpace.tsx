@@ -541,10 +541,10 @@ export const ResourceSpace = () => {
 
               {newResource.type === 'PDF' && (
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">PDF File (Textbook / Chapter / Paper)</label>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 p-4 hover:border-indigo-400">
-                    <Upload className="h-5 w-5 text-gray-500" />
-                    <span className="text-sm text-gray-600">
+                  <label className="block text-sm font-medium text-foreground">PDF File (Textbook / Chapter / Paper)</label>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border p-4 hover:border-primary/50 transition-colors">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
                       {selectedFile ? selectedFile.name : 'Choose a PDF up to 10MB'}
                     </span>
                     <input
@@ -559,10 +559,10 @@ export const ResourceSpace = () => {
 
               {newResource.type === 'PPTX' && (
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">Slide Deck File (PPTX / PPT)</label>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 p-4 hover:border-amber-400">
+                  <label className="block text-sm font-medium text-foreground">Slide Deck File (PPTX / PPT)</label>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border p-4 hover:border-primary/50 transition-colors">
                     <Presentation className="h-5 w-5 text-amber-500" />
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-muted-foreground">
                       {selectedFile ? selectedFile.name : 'Choose a PPTX / PPT slide deck'}
                     </span>
                     <input
@@ -578,7 +578,7 @@ export const ResourceSpace = () => {
               {newResource.type === 'VIDEO' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="mb-2 block text-sm font-medium">Lecture Video URL (YouTube / Video Stream)</label>
+                    <label className="mb-2 block text-sm font-medium text-foreground">Lecture Video URL (YouTube / Video Stream)</label>
                     <Input
                       value={newResource.linkUrl}
                       onChange={(event) =>
@@ -588,13 +588,13 @@ export const ResourceSpace = () => {
                     />
                   </div>
                   <div className="relative flex py-1 items-center">
-                    <div className="flex-grow border-t border-gray-200"></div>
-                    <span className="flex-shrink mx-3 text-xs text-gray-400 uppercase">Or upload media file</span>
-                    <div className="flex-grow border-t border-gray-200"></div>
+                    <div className="flex-grow border-t border-border"></div>
+                    <span className="flex-shrink mx-3 text-xs text-muted-foreground uppercase">Or upload media file</span>
+                    <div className="flex-grow border-t border-border"></div>
                   </div>
                   <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border p-4 hover:border-primary/50 transition-colors">
                     <Video className="h-5 w-5 text-primary" />
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-muted-foreground">
                       {selectedFile ? selectedFile.name : 'Upload MP4, WebM, MP3, WAV lecture file'}
                     </span>
                     <input
@@ -857,7 +857,7 @@ export const ResourceSpace = () => {
           <Card className="p-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
-                <Search className="w-4 h-4 text-gray-500" />
+                <Search className="w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search resources"
                   value={searchTerm}
@@ -930,14 +930,14 @@ export const ResourceSpace = () => {
                         {getResourceIcon(resource.type)}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{resource.title}</h3>
-                        <p className="text-sm text-gray-500">{resource.type}</p>
+                        <h3 className="font-semibold text-foreground">{resource.title}</h3>
+                        <p className="text-sm text-muted-foreground">{resource.type}</p>
                       </div>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-gray-500"
+                      className="text-muted-foreground hover:text-destructive"
                       onClick={() => handleDeleteResource(resource)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -945,15 +945,15 @@ export const ResourceSpace = () => {
                   </div>
 
                   {resource.description ? (
-                    <p className="text-sm text-gray-600">{resource.description}</p>
+                    <p className="text-sm text-muted-foreground">{resource.description}</p>
                   ) : null}
 
                   {resource.type === 'NOTE' && resource.noteContent ? (
-                    <p className="line-clamp-5 text-sm text-gray-700">{resource.noteContent}</p>
+                    <p className="line-clamp-5 text-sm text-foreground/85">{resource.noteContent}</p>
                   ) : null}
 
                   {resource.type === 'LINK' && resource.linkUrl ? (
-                    <p className="truncate text-sm text-blue-600">{resource.linkUrl}</p>
+                    <p className="truncate text-sm text-emerald-600 dark:text-emerald-400">{resource.linkUrl}</p>
                   ) : null}
 
                   <div className="mt-auto space-y-3">
@@ -967,7 +967,7 @@ export const ResourceSpace = () => {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {new Date(resource.createdAt).toLocaleDateString()}
                       </span>
                       <Button variant="outline" size="sm" onClick={() => handleOpenResource(resource)}>

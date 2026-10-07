@@ -390,7 +390,7 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
             <div className="space-y-2 pt-1 border-t border-border">
               <Label>Syllabus Roadmap Source</Label>
               <div className="flex gap-4 mt-1">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                   <input
                     type="radio"
                     name="syllabusType"
@@ -400,7 +400,7 @@ export const AddSkillDialog = ({ trigger }: AddSkillDialogProps) => {
                   />
                   AI generated roadmap (Recommended)
                 </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                   <input
                     type="radio"
                     name="syllabusType"

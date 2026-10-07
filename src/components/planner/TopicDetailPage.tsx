@@ -88,8 +88,8 @@ export const TopicDetailPage = ({
             <Button variant="ghost" onClick={onBack} className="mb-2">
               ← Back to Study Plan
             </Button>
-            <h1 className="text-3xl font-bold text-gray-900">{subject}</h1>
-            <h2 className="text-xl text-gray-600">{topic}</h2>
+            <h1 className="text-3xl font-bold text-foreground">{subject}</h1>
+            <h2 className="text-xl text-muted-foreground">{topic}</h2>
           </div>
           <div className="flex space-x-2">
             <Badge variant={topicData.status === 'Completed' ? 'default' : 'secondary'}>
@@ -105,12 +105,12 @@ export const TopicDetailPage = ({
             <div>
               <h3 className="font-semibold mb-2">Progress</h3>
               <Progress value={topicData.progress} className="h-3 mb-2" />
-              <p className="text-sm text-gray-600">{topicData.progress}% Complete</p>
+              <p className="text-sm text-muted-foreground">{topicData.progress}% Complete</p>
             </div>
             <div>
               <h3 className="font-semibold mb-2">Time Required</h3>
               <div className="flex items-center">
-                <Clock className="w-4 h-4 mr-2 text-gray-600" />
+                <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
                 <span>{topicData.timeEstimate}</span>
               </div>
             </div>
@@ -127,13 +127,13 @@ export const TopicDetailPage = ({
           {/* Learning Objectives */}
           <Card className="p-6">
             <h3 className="text-xl font-bold mb-4 flex items-center">
-              <Target className="w-5 h-5 mr-2" />
+              <Target className="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400" />
               Learning Objectives
             </h3>
             <div className="space-y-3">
               {topicData.objectives.map((objective, index) => (
                 <div key={index} className="flex items-start">
-                  <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-green-600" />
+                  <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-sm">{objective}</span>
                 </div>
               ))}
@@ -143,19 +143,19 @@ export const TopicDetailPage = ({
           {/* Study Resources */}
           <Card className="p-6">
             <h3 className="text-xl font-bold mb-4 flex items-center">
-              <BookOpen className="w-5 h-5 mr-2" />
+              <BookOpen className="w-5 h-5 mr-2 text-sky-600 dark:text-sky-400" />
               Study Resources
             </h3>
             <div className="space-y-3">
               {topicData.resources.map((resource, index) => (
                 <div 
                   key={index}
-                  className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                  className="flex items-center p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
                   onClick={() => handleResourceClick(resource)}
                 >
-                  <resource.icon className="w-5 h-5 mr-3 text-gray-600" />
-                  <span className="flex-1 text-sm font-medium">{resource.name}</span>
-                  <ExternalLink className="w-4 h-4 text-gray-400" />
+                  <resource.icon className="w-5 h-5 mr-3 text-muted-foreground" />
+                  <span className="flex-1 text-sm font-medium text-foreground">{resource.name}</span>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
                 </div>
               ))}
             </div>
@@ -167,7 +167,7 @@ export const TopicDetailPage = ({
             <div className="space-y-3">
               {topicData.readingMaterial.map((material, index) => (
                 <div key={index} className="flex items-start">
-                  <BookOpen className="w-4 h-4 mr-3 mt-1 text-blue-600" />
+                  <BookOpen className="w-4 h-4 mr-3 mt-1 text-sky-600 dark:text-sky-400" />
                   <span className="text-sm">{material}</span>
                 </div>
               ))}
@@ -179,9 +179,9 @@ export const TopicDetailPage = ({
             <h3 className="text-xl font-bold mb-4">❓ Practice Questions</h3>
             <div className="space-y-4">
               {topicData.practiceQuestions.map((question, index) => (
-                <div key={index} className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm font-medium text-blue-900">Q{index + 1}.</p>
-                  <p className="text-sm text-blue-800 mt-1">{question}</p>
+                <div key={index} className="p-3 bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-800/40 rounded-lg">
+                  <p className="text-sm font-medium text-sky-900 dark:text-sky-300">Q{index + 1}.</p>
+                  <p className="text-sm text-sky-800 dark:text-sky-300/80 mt-1">{question}</p>
                 </div>
               ))}
             </div>

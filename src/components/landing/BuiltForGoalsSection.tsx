@@ -43,35 +43,35 @@ export const BuiltForGoalsSection = () => {
   return (
     <section
       id="personas"
-      className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#f6fbf3] border-b border-[#dfe4dd]/60 scroll-mt-20 relative overflow-hidden"
+      className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#f6fbf3] dark:bg-background border-b border-[#dfe4dd]/60 dark:border-border/60 scroll-mt-20 relative overflow-hidden"
     >
       <div className="max-w-7xl mx-auto">
         
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#e8f3ed] border border-[#165034]/20 text-[#165034] text-xs font-bold uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#e8f3ed] dark:bg-emerald-950/40 border border-[#165034]/20 dark:border-emerald-800/30 text-[#165034] dark:text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4">
             <GraduationCap className="w-3.5 h-3.5" />
             <span>Tailored Learning Modes</span>
           </div>
 
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-[#002313] tracking-tight mb-3">
-            Built around <span className="italic font-serif text-[#165034]">your learning.</span>
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-[#002313] dark:text-foreground tracking-tight mb-3">
+            Built around <span className="italic font-serif text-[#165034] dark:text-emerald-400">your learning.</span>
           </h2>
 
-          <p className="text-sm sm:text-base text-[#2d4a3e]">
+          <p className="text-sm sm:text-base text-[#2d4a3e] dark:text-muted-foreground">
             The platform adapts its knowledge graph and daily pacing whether you're taking semester exams or competitive trials.
           </p>
         </div>
 
         {/* Persona Switcher Toggle */}
         <div className="flex justify-center mb-10">
-          <div className="p-1.5 rounded-2xl bg-white border border-[#dfe4dd] shadow-xs flex items-center gap-2">
+          <div className="p-1.5 rounded-2xl bg-white dark:bg-card border border-[#dfe4dd] dark:border-border shadow-xs flex items-center gap-2">
             <button
               onClick={() => setActivePersona('college')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                 activePersona === 'college'
-                  ? 'bg-[#002313] text-white shadow-xs'
-                  : 'text-[#52796f] hover:text-[#002313]'
+                  ? 'bg-[#002313] dark:bg-emerald-600 text-white shadow-xs'
+                  : 'text-[#52796f] dark:text-muted-foreground hover:text-[#002313] dark:hover:text-foreground'
               }`}
             >
               <GraduationCap className="w-4 h-4" />
@@ -82,8 +82,8 @@ export const BuiltForGoalsSection = () => {
               onClick={() => setActivePersona('competitive')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                 activePersona === 'competitive'
-                  ? 'bg-[#002313] text-white shadow-xs'
-                  : 'text-[#52796f] hover:text-[#002313]'
+                  ? 'bg-[#002313] dark:bg-emerald-600 text-white shadow-xs'
+                  : 'text-[#52796f] dark:text-muted-foreground hover:text-[#002313] dark:hover:text-foreground'
               }`}
             >
               <Target className="w-4 h-4" />
@@ -93,12 +93,12 @@ export const BuiltForGoalsSection = () => {
         </div>
 
         {/* Persona Display Cards */}
-        <div className="max-w-4xl mx-auto bg-white rounded-2xl border border-[#dfe4dd] shadow-premium p-6 sm:p-8 space-y-6">
-          <div className="pb-4 border-b border-[#dfe4dd]">
-            <h3 className="font-serif text-2xl font-bold text-[#002313]">
+        <div className="max-w-4xl mx-auto bg-white dark:bg-card/90 rounded-2xl border border-[#dfe4dd] dark:border-border shadow-premium p-6 sm:p-8 space-y-6">
+          <div className="pb-4 border-b border-[#dfe4dd] dark:border-border">
+            <h3 className="font-serif text-2xl font-bold text-[#002313] dark:text-foreground">
               {current.title}
             </h3>
-            <p className="text-sm text-[#2d4a3e] mt-1">
+            <p className="text-sm text-[#2d4a3e] dark:text-muted-foreground mt-1">
               {current.subtitle}
             </p>
           </div>
@@ -107,19 +107,19 @@ export const BuiltForGoalsSection = () => {
             {current.modules.map((mod, i) => (
               <div
                 key={i}
-                className="p-4 rounded-xl bg-[#f6fbf3] border border-[#dfe4dd] flex flex-col justify-between hover:border-[#165034]/40 transition-colors"
+                className="p-4 rounded-xl bg-[#f6fbf3] dark:bg-muted/40 border border-[#dfe4dd] dark:border-border flex flex-col justify-between hover:border-[#165034]/40 dark:hover:border-emerald-500/40 transition-colors"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="w-2 h-2 rounded-full bg-[#165034]" />
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white text-[#165034] border border-[#dfe4dd]">
+                    <span className="w-2 h-2 rounded-full bg-[#165034] dark:bg-emerald-400" />
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white dark:bg-card text-[#165034] dark:text-emerald-400 border border-[#dfe4dd] dark:border-border">
                       {mod.tag}
                     </span>
                   </div>
-                  <div className="font-serif font-bold text-sm text-[#002313]">
+                  <div className="font-serif font-bold text-sm text-[#002313] dark:text-foreground">
                     {mod.name}
                   </div>
-                  <p className="text-xs text-[#52796f] mt-1.5 leading-relaxed">
+                  <p className="text-xs text-[#52796f] dark:text-muted-foreground mt-1.5 leading-relaxed">
                     {mod.desc}
                   </p>
                 </div>
@@ -127,13 +127,12 @@ export const BuiltForGoalsSection = () => {
             ))}
           </div>
 
-          <div className="pt-3 border-t border-[#dfe4dd] flex flex-wrap items-center justify-between text-xs text-[#52796f]">
+          <div className="pt-3 border-t border-[#dfe4dd] dark:border-border flex flex-wrap items-center justify-between text-xs text-[#52796f] dark:text-muted-foreground">
             <span>StudyMate automatically configures its SM-2 intervals according to your exam deadline.</span>
-            <span className="text-[#165034] font-semibold">Zero Friction Setup</span>
+            <span className="text-[#165034] dark:text-emerald-400 font-semibold">Zero Friction Setup</span>
           </div>
-        </div>
-
       </div>
     </section>
   );
 };
+

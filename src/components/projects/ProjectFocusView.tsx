@@ -615,8 +615,8 @@ export default function ProjectFocusView({
     switch (priority) {
       case 'high': return 'text-red-400';
       case 'medium': return 'text-yellow-400';
-      case 'low': return 'text-green-400';
-      default: return 'text-gray-400';
+      case 'low': return 'text-emerald-400';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -1045,7 +1045,7 @@ export default function ProjectFocusView({
                 </div>
 
                 {/* Expanded Countdown / Focus Timer Block */}
-                <div className="mt-4 bg-gradient-to-br from-card via-card to-emerald-500/10 dark:from-gray-900 dark:via-gray-900/95 dark:to-emerald-950/20 rounded-xl p-5 sm:p-6 lg:p-7 border border-border shadow-md relative overflow-hidden">
+                <div className="mt-4 bg-gradient-to-br from-card via-card to-emerald-500/10 dark:from-card dark:via-card/95 dark:to-emerald-950/20 rounded-xl p-5 sm:p-6 lg:p-7 border border-border shadow-md relative overflow-hidden">
                   {/* Subtle ambient decorative blur */}
                   <div className="absolute -right-16 -top-16 w-56 h-56 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
 

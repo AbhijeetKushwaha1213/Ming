@@ -458,20 +458,20 @@ export const InteractiveShowcase = () => {
     <section
       id="showcase"
       ref={ref}
-      className="relative overflow-hidden bg-[#f6fbf3] py-20 lg:py-28 scroll-mt-20 border-b border-[#dfe4dd]/60"
+      className="relative overflow-hidden bg-[#f6fbf3] dark:bg-background py-20 lg:py-28 scroll-mt-20 border-b border-[#dfe4dd]/60 dark:border-border/60"
     >
       {/* Background Archival Grid */}
       <div className="absolute inset-0 bg-grid-pattern opacity-25 pointer-events-none" />
 
       {/* Heading */}
       <div className="mx-auto mb-10 max-w-3xl px-5 text-center relative z-10">
-        <span className="rounded-full bg-[#DDF7EC] border border-[#20B486]/20 px-4 py-1.5 text-xs font-bold font-mono tracking-wide text-[#063B2A] uppercase shadow-xs">
+        <span className="rounded-full bg-[#DDF7EC] dark:bg-emerald-950/40 border border-[#20B486]/20 dark:border-emerald-800/30 px-4 py-1.5 text-xs font-bold font-mono tracking-wide text-[#063B2A] dark:text-emerald-300 uppercase shadow-xs">
           Interactive Product Showcase
         </span>
-        <h2 className="mt-5 text-3xl sm:text-4xl lg:text-[44px] text-[#10231C] font-extrabold tracking-tight leading-[1.15]">
-          From lecture to lab to <span className="text-[#20B486]">exam mastery.</span>
+        <h2 className="mt-5 text-3xl sm:text-4xl lg:text-[44px] text-[#10231C] dark:text-foreground font-extrabold tracking-tight leading-[1.15]">
+          From lecture to lab to <span className="text-[#20B486] dark:text-emerald-400">exam mastery.</span>
         </h2>
-        <p className="mt-3 text-sm sm:text-base text-[#66736D] leading-[1.65]">
+        <p className="mt-3 text-sm sm:text-base text-[#66736D] dark:text-muted-foreground leading-[1.65]">
           Experience the 3D rotating product cylinder. Click any card or indicator to inspect.
         </p>
       </div>
@@ -486,18 +486,18 @@ export const InteractiveShowcase = () => {
         {/* Floating Left and Right Navigation Arrow Buttons */}
         <button
           onClick={prevSlide}
-          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white hover:bg-[#DDF7EC] text-[#063B2A] shadow-soft border border-[#DDE7E1] transition-all hover:scale-110 active:scale-95"
+          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white dark:bg-card hover:bg-[#DDF7EC] dark:hover:bg-accent text-[#063B2A] dark:text-foreground shadow-soft border border-[#DDE7E1] dark:border-border transition-all hover:scale-110 active:scale-95"
           aria-label="Rotate Cylinder Previous"
         >
-          <ChevronLeft className="w-5 h-5 text-[#20B486]" />
+          <ChevronLeft className="w-5 h-5 text-[#20B486] dark:text-emerald-400" />
         </button>
 
         <button
           onClick={nextSlide}
-          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white hover:bg-[#DDF7EC] text-[#063B2A] shadow-soft border border-[#DDE7E1] transition-all hover:scale-110 active:scale-95"
+          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white dark:bg-card hover:bg-[#DDF7EC] dark:hover:bg-accent text-[#063B2A] dark:text-foreground shadow-soft border border-[#DDE7E1] dark:border-border transition-all hover:scale-110 active:scale-95"
           aria-label="Rotate Cylinder Next"
         >
-          <ChevronRight className="w-5 h-5 text-[#20B486]" />
+          <ChevronRight className="w-5 h-5 text-[#20B486] dark:text-emerald-400" />
         </button>
 
         {slides.map(({ Comp, url }, i) => {
@@ -541,13 +541,13 @@ export const InteractiveShowcase = () => {
             onClick={() => setActive(i)}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ${
               i === active
-                ? 'bg-[#20B486] text-white shadow-xs'
-                : 'bg-white border border-[#DDE7E1] text-[#66736D] hover:text-[#063B2A]'
+                ? 'bg-[#20B486] dark:bg-emerald-600 text-white shadow-xs'
+                : 'bg-white dark:bg-card border border-[#DDE7E1] dark:border-border text-[#66736D] dark:text-muted-foreground hover:text-[#063B2A] dark:hover:text-foreground'
             }`}
           >
             <span
               className={`w-2 h-2 rounded-full ${
-                i === active ? 'bg-white' : 'bg-[#DDE7E1]'
+                i === active ? 'bg-white' : 'bg-[#DDE7E1] dark:bg-muted-foreground/40'
               }`}
             />
             <span>{s.label}</span>

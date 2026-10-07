@@ -601,7 +601,7 @@ export const ChooseSubjectsStep: React.FC<ChooseSubjectsStepProps> = ({
                   onClick={() => handleRequestCountChange(n)}
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
                     subjectCount === n
-                      ? 'bg-[#063B2A] text-white shadow-sm scale-105'
+                      ? 'bg-primary text-primary-foreground shadow-sm scale-105'
                       : 'bg-background hover:bg-muted text-muted-foreground border border-border'
                   }`}
                 >
@@ -799,7 +799,7 @@ export const ChooseSubjectsStep: React.FC<ChooseSubjectsStepProps> = ({
                               onClick={() => handleSelectSubject(slotIndex, sub.name)}
                               className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition-colors ${
                                 isCurrentSelected
-                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#063B2A] dark:text-emerald-300 font-semibold'
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
                                   : isChosenElsewhere
                                   ? 'opacity-40 cursor-not-allowed text-muted-foreground'
                                   : 'hover:bg-muted text-foreground'
@@ -857,7 +857,7 @@ export const ChooseSubjectsStep: React.FC<ChooseSubjectsStepProps> = ({
                             type="button"
                             size="sm"
                             onClick={() => handleAddCustomSubject(slotIndex)}
-                            className="w-full h-8 text-xs bg-[#063B2A] hover:bg-[#0A4D37] text-white font-semibold mt-1"
+                            className="w-full h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold mt-1"
                           >
                             Add Subject
                           </Button>

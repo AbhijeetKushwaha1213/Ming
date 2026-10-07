@@ -83,10 +83,10 @@ export const RevisionLogModal = ({ open, onOpenChange }: RevisionLogModalProps) 
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'hard': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'easy': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
+      case 'medium': return 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300';
+      case 'hard': return 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -182,11 +182,11 @@ export const RevisionLogModal = ({ open, onOpenChange }: RevisionLogModalProps) 
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
                           {entry.completed ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                           ) : (
-                            <Circle className="w-5 h-5 text-gray-400" />
+                            <Circle className="w-5 h-5 text-muted-foreground" />
                           )}
-                          <h4 className="font-medium">{entry.topic}</h4>
+                          <h4 className="font-medium text-foreground">{entry.topic}</h4>
                           <Badge className={getSubjectColor(entry.subject)}>
                             {entry.subject}
                           </Badge>
@@ -195,7 +195,7 @@ export const RevisionLogModal = ({ open, onOpenChange }: RevisionLogModalProps) 
                           </Badge>
                         </div>
                         {entry.notes && (
-                          <p className="text-sm text-gray-600 ml-7">{entry.notes}</p>
+                          <p className="text-sm text-muted-foreground ml-7">{entry.notes}</p>
                         )}
                       </div>
                       <Button variant="outline" size="sm">
@@ -211,8 +211,8 @@ export const RevisionLogModal = ({ open, onOpenChange }: RevisionLogModalProps) 
           {/* Upcoming Revisions */}
           {upcomingRevisions.length > 0 && (
             <div>
-              <h3 className="font-semibold text-lg mb-3 flex items-center">
-                <Clock className="w-5 h-5 mr-2 text-blue-600" />
+              <h3 className="font-semibold text-lg mb-3 flex items-center text-foreground">
+                <Clock className="w-5 h-5 mr-2 text-sky-600 dark:text-sky-400" />
                 Upcoming Revisions
               </h3>
               <div className="space-y-3">
@@ -220,15 +220,15 @@ export const RevisionLogModal = ({ open, onOpenChange }: RevisionLogModalProps) 
                   <Card key={entry.id} className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <Circle className="w-5 h-5 text-gray-400" />
+                        <Circle className="w-5 h-5 text-muted-foreground" />
                         <div>
                           <div className="flex items-center space-x-2">
-                            <h4 className="font-medium">{entry.topic}</h4>
+                            <h4 className="font-medium text-foreground">{entry.topic}</h4>
                             <Badge className={getSubjectColor(entry.subject)}>
                               {entry.subject}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-muted-foreground">
                             Scheduled for {new Date(entry.scheduledDate).toLocaleDateString()}
                           </p>
                         </div>
@@ -246,21 +246,21 @@ export const RevisionLogModal = ({ open, onOpenChange }: RevisionLogModalProps) 
           {/* Past Revisions */}
           {pastRevisions.length > 0 && (
             <div>
-              <h3 className="font-semibold text-lg mb-3">Recent Revisions</h3>
+              <h3 className="font-semibold text-lg mb-3 text-foreground">Recent Revisions</h3>
               <div className="space-y-3">
                 {pastRevisions.map((entry) => (
                   <Card key={entry.id} className="p-4 opacity-75">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                         <div>
                           <div className="flex items-center space-x-2">
-                            <h4 className="font-medium">{entry.topic}</h4>
+                            <h4 className="font-medium text-foreground">{entry.topic}</h4>
                             <Badge className={getSubjectColor(entry.subject)}>
                               {entry.subject}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-muted-foreground">
                             Completed on {new Date(entry.scheduledDate).toLocaleDateString()}
                           </p>
                         </div>

@@ -46,10 +46,10 @@ export const AppHeader = ({
         <div className="flex items-center space-x-2.5 lg:hidden">
           <img
             src="/assets/ming-logo.png"
-            alt="Ming AI Logo"
+            alt="Ming Logo"
             className="w-7 h-7 rounded-lg bg-white border border-border/50 object-contain p-0.5 shadow-xs"
           />
-          <h1 className="font-serif font-bold text-foreground text-base">Ming AI</h1>
+          <h1 className="font-serif font-bold text-foreground text-base">Ming</h1>
         </div>
 
         {/* Right side */}

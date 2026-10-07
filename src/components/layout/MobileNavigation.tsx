@@ -75,10 +75,10 @@ export const MobileNavigation = ({
                 <div className="flex items-center gap-2">
                   <img
                     src="/assets/ming-logo.png"
-                    alt="Ming AI Logo"
+                    alt="Ming Logo"
                     className="w-6 h-6 rounded-md bg-white border border-border/50 object-contain p-0.5 shadow-xs"
                   />
-                  <h2 className="text-lg font-serif font-bold text-foreground">Ming AI</h2>
+                  <h2 className="text-lg font-serif font-bold text-foreground">Ming</h2>
                 </div>
                 <Button 
                   variant="ghost" 

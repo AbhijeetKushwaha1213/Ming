@@ -289,7 +289,7 @@ export default function ProjectFocusView({
     try {
       let responseText = '';
       try {
-        const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        const invokePromise = supabase.functions.invoke('ai-assistant', {
           body: {
             message: userMsgText,
             context: `project focus bot for ${projectName} (${projectType})`,
@@ -299,6 +299,10 @@ export default function ProjectFocusView({
             }))
           }
         });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Edge function timeout')), 3500)
+        );
+        const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as any;
 
         if (error) throw error;
         responseText = data.response;

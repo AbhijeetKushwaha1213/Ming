@@ -15,6 +15,7 @@ import {
 } from "./components/auth/RouteGuards";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SecurityHeaders } from "./components/security/SecurityHeaders";
+import { GeminiQuotaExceededModal } from "./components/ai/GeminiQuotaExceededModal";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import { EvaluationDashboard } from "./components/dev/EvaluationDashboard";
@@ -46,6 +47,7 @@ export const App = () => {
           <SecurityHeaders />
           <Toaster />
           <Sonner />
+          <GeminiQuotaExceededModal />
           <BrowserRouter>
             <AuthProvider>
               <Routes>

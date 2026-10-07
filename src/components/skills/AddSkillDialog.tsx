@@ -84,7 +84,8 @@ const getFallbackSyllabus = (skillName: string): string[] => {
  * and a strict 4.5s timeout.
  */
 const generateSyllabusWithAI = async (skillName: string): Promise<string[]> => {
-  const rawKey = import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
+  const customKey = typeof window !== 'undefined' ? localStorage.getItem('ming_gemini_api_key') : null;
+  const rawKey = customKey || import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
   const apiKey = rawKey?.trim().replace(/^["']|["']$/g, '');
 
   if (!apiKey) {
@@ -113,6 +114,13 @@ const generateSyllabusWithAI = async (skillName: string): Promise<string[]> => {
     });
 
     if (!response.ok) {
+      if (response.status === 429 && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('gemini-quota-exceeded', {
+            detail: { status: 429, message: 'Gemini API limit reached for today' },
+          })
+        );
+      }
       throw new Error(`Gemini status ${response.status}`);
     }
 

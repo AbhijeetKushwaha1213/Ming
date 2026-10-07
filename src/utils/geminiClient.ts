@@ -24,7 +24,8 @@ export interface GeminiResponse {
 
 export const geminiClient = {
   async generateContent(req: GeminiRequest): Promise<GeminiResponse> {
-    const rawKey = import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
+    const customLocalKey = typeof window !== 'undefined' ? localStorage.getItem('ming_gemini_api_key') : null;
+    const rawKey = customLocalKey || import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
     const apiKey = rawKey?.trim().replace(/^["']|["']$/g, '');
     
     if (!apiKey) {
@@ -269,7 +270,26 @@ Rules:
           if (!response.ok) {
             lastErrorStatus = response.status;
             lastErrorDetails = await response.text();
-            console.warn(`Gemini model ${model} failed with ${response.status}, trying next fallback...`);
+            console.warn(`Gemini model ${model} failed with ${response.status}:`, lastErrorDetails);
+
+            const isQuotaExceeded =
+              response.status === 429 ||
+              lastErrorDetails.includes('RESOURCE_EXHAUSTED') ||
+              lastErrorDetails.toLowerCase().includes('quota') ||
+              lastErrorDetails.toLowerCase().includes('rate limit');
+
+            if (isQuotaExceeded && typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('gemini-quota-exceeded', {
+                  detail: {
+                    status: response.status,
+                    message: "You've hit your daily Gemini API quota limit. Please wait or use a custom API key.",
+                    details: lastErrorDetails,
+                  },
+                })
+              );
+            }
+
             continue;
           }
 
@@ -292,9 +312,27 @@ Rules:
         }
       }
 
+      const isQuotaExceeded =
+        lastErrorStatus === 429 ||
+        lastErrorDetails.includes('RESOURCE_EXHAUSTED') ||
+        lastErrorDetails.toLowerCase().includes('quota') ||
+        lastErrorDetails.toLowerCase().includes('rate limit');
+
+      if (isQuotaExceeded && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('gemini-quota-exceeded', {
+            detail: {
+              status: lastErrorStatus || 429,
+              message: "You've hit your daily Gemini API quota limit.",
+              details: lastErrorDetails,
+            },
+          })
+        );
+      }
+
       return {
         response: "",
-        error: `Gemini API error: ${lastErrorStatus || 'Network/Model Unavailable'}`,
+        error: isQuotaExceeded ? "Gemini API Quota Exceeded (HTTP 429)" : `Gemini API error: ${lastErrorStatus || 'Network/Model Unavailable'}`,
         details: lastErrorDetails || 'Failed across all candidate Gemini models.'
       };
     } catch (error) {

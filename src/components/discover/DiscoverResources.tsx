@@ -242,16 +242,22 @@ export const DiscoverResources = ({ onNavigate }: DiscoverResourcesProps) => {
   const handleExploreIdeas = async () => {
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
-        body: {
-          message: `Generate 5 project ideas for a ${user?.userType} student interested in programming and ${user?.examType || 'general studies'}. Include difficulty level and key technologies.`,
-          context: [],
-          userType: user?.userType || 'exam',
-          subject: 'Project Ideas'
-        }
-      });
-
-      if (error) throw error;
+      try {
+        const invokePromise = supabase.functions.invoke('ai-assistant', {
+          body: {
+            message: `Generate 5 project ideas for a ${user?.userType} student interested in programming and ${user?.examType || 'general studies'}. Include difficulty level and key technologies.`,
+            context: [],
+            userType: user?.userType || 'exam',
+            subject: 'Project Ideas'
+          }
+        });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Edge function timeout')), 3000)
+        );
+        await Promise.race([invokePromise, timeoutPromise]);
+      } catch (invokeErr) {
+        // Fall back gracefully to curated educational project blueprints
+      }
 
       const ideas = [
         {

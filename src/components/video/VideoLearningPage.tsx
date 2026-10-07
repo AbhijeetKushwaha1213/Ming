@@ -51,8 +51,7 @@ export const VideoLearningPage: React.FC = () => {
         if (found) setActiveVideo(found);
       }
     } catch (err: any) {
-      console.error('Failed to load videos:', err);
-      toast.error('Failed to load videos. Ensure local API is active.');
+      console.warn('Video fetch notice (local cache active):', err);
     } finally {
       setIsLoadingVideos(false);
     }

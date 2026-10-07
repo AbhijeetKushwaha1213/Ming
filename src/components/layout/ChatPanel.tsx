@@ -228,7 +228,7 @@ Please tailor your response specifically to this concept and its prerequisite hi
 
       let responseText = '';
       try {
-        const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        const invokePromise = supabase.functions.invoke('ai-assistant', {
           body: {
             message: finalPrompt,
             context: 'sidebar assistant',
@@ -239,6 +239,10 @@ Please tailor your response specifically to this concept and its prerequisite hi
             }))
           }
         });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Edge function timeout')), 3500)
+        );
+        const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as any;
 
         if (error) throw error;
         responseText = data.response;

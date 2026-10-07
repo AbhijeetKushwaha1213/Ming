@@ -51,7 +51,7 @@ export const AIFlashcardGenerator = () => {
       
       try {
         const { supabase } = await import('@/integrations/supabase/client');
-        const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        const invokePromise = supabase.functions.invoke('ai-assistant', {
           body: {
             contentType: 'flashcards',
             topic: topic || finalContent,
@@ -61,6 +61,10 @@ export const AIFlashcardGenerator = () => {
             message: finalContent || topic
           }
         });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Edge function timeout')), 3500)
+        );
+        const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as any;
 
         if (error) {
           console.error('AIFlashcardGenerator: Supabase function error:', error);

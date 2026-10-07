@@ -34,7 +34,7 @@
 <!-- 👉 REPLACE: record a 10–15s GIF of the full flow (upload → generate → study) and save to docs/media/demo.gif -->
 <img src="https://placehold.co/1100x620/0f172a/8b5cf6/gif?text=%E2%96%B6+Demo+GIF%0A(docs%2Fmedia%2Fdemo.gif)&font=montserrat" alt="Ming AI demo" width="90%"/>
 
-<sub>🔗 <a href="#">Live Site</a> &nbsp;•&nbsp; 🎥 <a href="#">Watch Video Walkthrough</a> &nbsp;•&nbsp; 📑 <a href="#">Pitch Deck</a></sub>
+<sub>🔗 <a href="https://study-mate-ai-fawn-gamma.vercel.app" target="_blank">Live Site</a> &nbsp;•&nbsp; 🎥 <a href="#">Watch Video Walkthrough</a> &nbsp;•&nbsp; 📑 <a href="#">Pitch Deck</a></sub>
 
 </div>
 

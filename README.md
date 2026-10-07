@@ -1,48 +1,163 @@
-# 📚 StudyMate AI — Multimodal AI Study Companion
+<!-- ═══════════════════════ ANIMATED HERO BANNER ═══════════════════════ -->
+<div align="center">
 
-> An intelligent, multimodal AI-powered personal learning platform and study companion designed for students to master complex coursework, exam preparation, and skill development — all in one unified workspace.
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:6366F1,50:8B5CF6,100:06B6D4&height=240&section=header&text=StudyMate%20AI&fontSize=64&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=Your%20Multimodal%20AI%20Study%20Companion&descSize=20&descAlignY=58" alt="StudyMate AI banner" width="100%"/>
 
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20DB-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
-[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-1.5%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
+<a href="https://github.com/AbhijeetKushwaha1213/StudyMate-Multimodal-AI-Hackathon-2026">
+  <img src="https://readme-typing-svg.demolab.com?font=Inter&weight=600&size=22&duration=3000&pause=900&color=8B5CF6&center=true&vCenter=true&width=700&lines=Turn+scattered+notes+into+structured+learning;Flashcards%2C+quizzes%2C+mind+maps+%E2%80%94+generated+in+seconds;Powered+by+Google+Gemini+%7C+Built+with+React+%2B+Supabase;Study+smarter.+Retain+longer.+Score+higher." alt="Typing animation" />
+</a>
+
+<br/>
+
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20DB-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Gemini](https://img.shields.io/badge/Gemini-1.5%20Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+![Hackathon](https://img.shields.io/badge/Multimodal%20AI%20Hackathon-2026-ff69b4?style=flat-square)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
+![Made with love](https://img.shields.io/badge/made%20with-%E2%9D%A4-red?style=flat-square)
+
+**[Live Demo](#-live-demo) · [Features](#-key-features) · [Screenshots](#-screenshots) · [Getting Started](#-getting-started) · [Roadmap](#-roadmap)**
+
+</div>
+
+---
+
+## 🎬 Live Demo
+
+<div align="center">
+
+<!-- 👉 REPLACE: record a 10–15s GIF of the full flow (upload → generate → study) and save to docs/media/demo.gif -->
+<img src="https://placehold.co/1100x620/0f172a/8b5cf6/gif?text=%E2%96%B6+Demo+GIF%0A(docs%2Fmedia%2Fdemo.gif)&font=montserrat" alt="StudyMate AI demo" width="90%"/>
+
+<sub>🔗 <a href="#">Live Site</a> &nbsp;•&nbsp; 🎥 <a href="#">Watch Video Walkthrough</a> &nbsp;•&nbsp; 📑 <a href="#">Pitch Deck</a></sub>
+
+</div>
 
 ---
 
 ## 🚀 Overview
 
-**StudyMate AI** bridges the gap between scattered study materials (lecture slides, textbook PDFs, notes, and problem sets) and structured learning. By leveraging multimodal AI capabilities powered by Google Gemini, StudyMate helps learners understand concepts deeply, test their knowledge adaptively, and retain what they learn.
+**StudyMate AI** bridges the gap between scattered study materials (lecture slides, textbook PDFs, notes, and problem sets) and structured learning. Powered by **Google Gemini**, it helps learners understand concepts deeply, test their knowledge adaptively, and retain what they learn, all in one unified workspace.
 
-Developed by **Abhijeet Kushwaha** for the **Multimodal AI Hackathon 2026**.
+> 🏆 Built by **[Abhijeet Kushwaha](https://github.com/AbhijeetKushwaha1213)** for the **Multimodal AI Hackathon 2026**.
+
+<table>
+<tr>
+<td align="center" width="25%"><h3>📄</h3><b>Upload</b><br/><sub>PDFs, notes, or just a topic</sub></td>
+<td align="center" width="25%"><h3>🧠</h3><b>Generate</b><br/><sub>8 types of study material</sub></td>
+<td align="center" width="25%"><h3>🎯</h3><b>Practice</b><br/><sub>Adaptive quizzes & flashcards</sub></td>
+<td align="center" width="25%"><h3>📈</h3><b>Track</b><br/><sub>Progress across subjects</sub></td>
+</tr>
+</table>
 
 ---
 
 ## ✨ Key Features
 
 ### 🧠 1. Multimodal AI Content Generator
-- **8 Interactive Material Types**: Generate Flashcards, Quizzes, Mind Maps, Flowcharts, Smart Summaries, Revision Sheets, and Concept Breakdowns.
-- **Flexible Input Modes**: Upload document files (PDF/Text), paste lecture notes, or enter a topic for instant curriculum-aligned generation.
-- **Adaptive Difficulty**: Select from Easy, Medium, Hard, or Adaptive AI modes with customized depth and key exam pointers.
+- **8 Interactive Material Types:** Flashcards, Quizzes, Mind Maps, Flowcharts, Smart Summaries, Revision Sheets, and Concept Breakdowns.
+- **Flexible Input Modes:** Upload documents (PDF/Text), paste lecture notes, or enter a topic for instant curriculum-aligned generation.
+- **Adaptive Difficulty:** Easy, Medium, Hard, or Adaptive AI mode with customized depth and key exam pointers.
+
+<div align="center">
+<!-- 👉 REPLACE: docs/screenshots/generator.png -->
+<img src="https://placehold.co/1000x560/111827/6366f1?text=AI+Generator+Wizard%0A(docs%2Fscreenshots%2Fgenerator.png)&font=montserrat" alt="AI Generator" width="85%"/>
+</div>
 
 ### 📊 2. Dual-Mode Student Dashboards
-- **College Mode**: Track academic courses, ongoing software projects, daily skill milestones, and portfolio progress.
-- **Exam Preparation Mode**: Syllabus breakdown, mock test schedules, revision logs, and performance tracking across subjects.
+- **🎓 College Mode:** Track courses, ongoing software projects, daily skill milestones, and portfolio progress.
+- **📝 Exam Prep Mode:** Syllabus breakdown, mock test schedules, revision logs, and per-subject performance tracking.
+
+<div align="center">
+<!-- 👉 REPLACE: docs/screenshots/dashboard-college.png & dashboard-exam.png -->
+<img src="https://placehold.co/490x300/111827/06b6d4?text=College+Dashboard&font=montserrat" alt="College dashboard" width="48%"/>
+<img src="https://placehold.co/490x300/111827/8b5cf6?text=Exam+Dashboard&font=montserrat" alt="Exam dashboard" width="48%"/>
+</div>
 
 ### 💬 3. Grounded AI Tutor & Chat Assistant
-- Interactive study assistant for instant doubt clarification, step-by-step problem solving, and concept deconstruction.
-- Context-aware explanations with markdown formatting, code highlighting, and formula rendering.
+- Instant doubt clarification, step-by-step problem solving, and concept deconstruction.
+- Context-aware explanations with **markdown**, **code highlighting**, and **formula rendering**.
+
+<div align="center">
+<!-- 👉 REPLACE: docs/media/chat.gif -->
+<img src="https://placehold.co/1000x500/111827/3ecf8e/gif?text=AI+Tutor+Chat+GIF%0A(docs%2Fmedia%2Fchat.gif)&font=montserrat" alt="AI chat" width="85%"/>
+</div>
 
 ### ⏱️ 4. Focus Workspace & Interactive Dev Tools
-- Integrated Pomodoro focus timer with ambient soundscapes.
-- Embedded Monaco code editor and scratchpad with live problem-solving environments.
-- Practice launcher integrated with platforms like LeetCode and GitHub.
+- Integrated **Pomodoro** timer with ambient soundscapes.
+- Embedded **Monaco** code editor and scratchpad for live problem solving.
+- Practice launcher for **LeetCode** and **GitHub**.
 
 ### 📝 5. Notion-Style Resource Manager & Vault
-- Block-based rich text note-taking editor.
-- Flashcard Vault with spaced revision cycles and difficulty rating.
-- Offline support and caching via IndexedDB for uninterrupted learning.
+- Block-based rich text note editor (TipTap).
+- **Flashcard Vault** with spaced revision cycles and difficulty rating.
+- **Offline support** and caching via IndexedDB for uninterrupted learning.
+
+---
+
+## 🖼️ Screenshots
+
+> 💡 Replace each placeholder with a real capture. Recommended size: **1600×900**, PNG or WebP, stored in `docs/screenshots/`.
+
+<details open>
+<summary><b>🌗 Light & Dark Mode</b></summary>
+<br/>
+<div align="center">
+<img src="https://placehold.co/600x360/ffffff/6366f1?text=Landing+Page+(Light)&font=montserrat" width="48%" alt="Landing light"/>
+<img src="https://placehold.co/600x360/0f172a/8b5cf6?text=Landing+Page+(Dark)&font=montserrat" width="48%" alt="Landing dark"/>
+</div>
+</details>
+
+<details>
+<summary><b>🃏 Flashcards, Quizzes & Mind Maps</b></summary>
+<br/>
+<div align="center">
+<img src="https://placehold.co/400x260/111827/f59e0b?text=Flashcards&font=montserrat" width="32%" alt="Flashcards"/>
+<img src="https://placehold.co/400x260/111827/ef4444?text=Quiz+Runner&font=montserrat" width="32%" alt="Quiz"/>
+<img src="https://placehold.co/400x260/111827/10b981?text=Mind+Map&font=montserrat" width="32%" alt="Mind map"/>
+</div>
+</details>
+
+<details>
+<summary><b>📅 Planner, Notes & Focus Timer</b></summary>
+<br/>
+<div align="center">
+<img src="https://placehold.co/400x260/111827/6366f1?text=Study+Planner&font=montserrat" width="32%" alt="Planner"/>
+<img src="https://placehold.co/400x260/111827/06b6d4?text=Notion-style+Editor&font=montserrat" width="32%" alt="Notes"/>
+<img src="https://placehold.co/400x260/111827/ec4899?text=Pomodoro+Focus&font=montserrat" width="32%" alt="Focus"/>
+</div>
+</details>
+
+<details>
+<summary><b>📱 Mobile / PWA</b></summary>
+<br/>
+<div align="center">
+<img src="https://placehold.co/260x520/111827/8b5cf6?text=Mobile+Home&font=montserrat" width="22%" alt="Mobile home"/>
+<img src="https://placehold.co/260x520/111827/06b6d4?text=Mobile+Chat&font=montserrat" width="22%" alt="Mobile chat"/>
+<img src="https://placehold.co/260x520/111827/3ecf8e?text=Mobile+Quiz&font=montserrat" width="22%" alt="Mobile quiz"/>
+</div>
+</details>
+
+---
+
+## 🧩 How It Works
+
+```mermaid
+flowchart LR
+    A[📄 PDF / Notes / Topic] --> B[⚛️ React Client]
+    B --> C{{⚡ Supabase Edge Function}}
+    C --> D[🤖 Gemini 1.5 Flash]
+    D --> C
+    C --> B
+    B --> E[(🗄️ Supabase DB)]
+    B --> F[(💾 IndexedDB Cache)]
+    B --> G[🃏 Flashcards · 📝 Quizzes · 🗺️ Mind Maps · 📑 Summaries]
+```
 
 ---
 
@@ -50,54 +165,58 @@ Developed by **Abhijeet Kushwaha** for the **Multimodal AI Hackathon 2026**.
 
 | Layer | Technology |
 | :--- | :--- |
-| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Radix UI, Lucide Icons |
-| **State & Data** | TanStack React Query, Dexie (IndexedDB), LocalStorage |
-| **Editor & UI** | Monaco Editor, TipTap, Framer-motion / Tailwind animations |
-| **Backend & DB** | Supabase (PostgreSQL, Auth, Storage, Edge Functions), Node.js server, Prisma, LibSQL |
-| **AI Engine** | Google Gemini API (`gemini-1.5-flash`), Supabase Edge Functions |
+| 🎨 **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Radix UI, Lucide Icons |
+| 🔄 **State & Data** | TanStack React Query, Dexie (IndexedDB), LocalStorage |
+| ✍️ **Editor & UI** | Monaco Editor, TipTap, Framer Motion / Tailwind animations |
+| ☁️ **Backend & DB** | Supabase (PostgreSQL, Auth, Storage, Edge Functions), Node.js server, Prisma, LibSQL |
+| 🤖 **AI Engine** | Google Gemini API (`gemini-1.5-flash`), Supabase Edge Functions |
 
 ---
 
 ## 🏁 Getting Started
 
 ### Prerequisites
-- Node.js (v18.0 or higher)
-- npm or pnpm
+- **Node.js** v18.0 or higher
+- **npm** or **pnpm**
+- A [Supabase](https://supabase.com/) project and a [Google Gemini API key](https://aistudio.google.com/)
 
 ### Installation
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/AbhijeetKushwaha1213/StudyMate-Multimodal-AI-Hackathon-2026.git
-   cd StudyMate-Multimodal-AI-Hackathon-2026
-   ```
+```bash
+# 1. Clone the repository
+git clone https://github.com/AbhijeetKushwaha1213/StudyMate-Multimodal-AI-Hackathon-2026.git
+cd StudyMate-Multimodal-AI-Hackathon-2026
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+# 2. Install dependencies
+npm install
 
-3. **Configure Environment Variables:**
-   Copy the example environment configuration:
-   ```bash
-   cp .env.example .env
-   ```
-   Provide your Supabase URL, Anon Key, and Google Gemini API Key in `.env`:
-   ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   VITE_GEMINI_API_KEY=your_gemini_api_key
-   ```
+# 3. Set up environment variables
+cp .env.example .env
+```
 
-4. **Run the Development Server:**
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) or [http://localhost:5173](http://localhost:5173) in your browser.
+Add your keys to `.env`:
+
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_GEMINI_API_KEY=your_gemini_api_key
+```
+
+```bash
+# 4. Start the dev server
+npm run dev
+```
+
+Open **http://localhost:3000** or **http://localhost:5173** 🎉
+
+> ⚠️ **Never commit your `.env` file.** Keep API keys out of version control.
 
 ---
 
 ## 📁 Project Structure
+
+<details>
+<summary><b>Click to expand</b></summary>
 
 ```
 ├── api/                    # Server API handlers and SQLite resource management
@@ -125,16 +244,63 @@ Developed by **Abhijeet Kushwaha** for the **Multimodal AI Hackathon 2026**.
 └── supabase/               # Supabase migrations and Edge Functions
 ```
 
+</details>
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Multimodal AI content generator (8 material types)
+- [x] College & Exam dual dashboards
+- [x] AI tutor chat with markdown, code & formula rendering
+- [x] Pomodoro focus timer & Monaco scratchpad
+- [x] Offline caching with IndexedDB
+- [ ] Voice-based doubt solving
+- [ ] Collaborative study rooms
+- [ ] Spaced-repetition analytics & streaks
+- [ ] Native mobile apps
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+1. 🍴 Fork the project
+2. 🌿 Create your branch: `git checkout -b feature/amazing-feature`
+3. 💾 Commit: `git commit -m "feat: add amazing feature"`
+4. 🚀 Push: `git push origin feature/amazing-feature`
+5. 🔁 Open a Pull Request
+
 ---
 
 ## 👨‍💻 Author
 
-**Abhijeet Kushwaha**
-- GitHub: [@AbhijeetKushwaha1213](https://github.com/AbhijeetKushwaha1213)
-- Email: [abhijeetkushwaha1213@gmail.com](mailto:abhijeetkushwaha1213@gmail.com)
+<div align="center">
+
+<a href="https://github.com/AbhijeetKushwaha1213">
+  <img src="https://github.com/AbhijeetKushwaha1213.png" width="100" style="border-radius:50%" alt="Abhijeet Kushwaha"/>
+</a>
+
+### **Abhijeet Kushwaha**
+
+[![GitHub](https://img.shields.io/badge/GitHub-@AbhijeetKushwaha1213-181717?style=for-the-badge&logo=github)](https://github.com/AbhijeetKushwaha1213)
+[![Email](https://img.shields.io/badge/Email-abhijeetkushwaha1213%40gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:abhijeetkushwaha1213@gmail.com)
+
+</div>
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License — see the LICENSE file for details.
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
+
+<div align="center">
+
+<br/>
+
+⭐ **If StudyMate AI helped you, please give it a star!** ⭐
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:06B6D4,50:8B5CF6,100:6366F1&height=120&section=footer" width="100%" alt="footer"/>
+
+</div>

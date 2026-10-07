@@ -495,8 +495,8 @@ describe('DAG Pipeline & Learning Path Architecture', () => {
     });
   });
 
-  describe('AddSkillDialog "Create Learning DAG" Integration', () => {
-    it('renders mode switcher and switches to Create Learning DAG form', async () => {
+  describe('AddSkillDialog Dedicated Skill Pathway', () => {
+    it('renders dedicated Add Skill Pathway form without DAG mode switcher', async () => {
       render(
         <QueryClientProvider client={queryClient}>
           <AddSkillDialog />
@@ -508,20 +508,12 @@ describe('DAG Pipeline & Learning Path Architecture', () => {
       fireEvent.click(openBtn);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Create Learning DAG/i })).toBeDefined();
-      });
-
-      // Switch to DAG mode
-      fireEvent.click(screen.getByRole('button', { name: /Create Learning DAG/i }));
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Skill \/ Subject Topic/i)).toBeDefined();
-        expect(screen.getByLabelText(/Course \/ Field/i)).toBeDefined();
-        expect(screen.getByLabelText(/Subtopic \/ Focus/i)).toBeDefined();
-        expect(screen.getByLabelText(/Target Difficulty/i)).toBeDefined();
-        expect(screen.getByLabelText(/Graph Depth/i)).toBeDefined();
-        expect(screen.getByLabelText(/Learning Goal/i)).toBeDefined();
-        expect(screen.getByRole('button', { name: /Generate & Save DAG/i })).toBeDefined();
+        expect(screen.getByText(/Add Skill Pathway/i)).toBeDefined();
+        expect(screen.getByLabelText(/Skill Name/i)).toBeDefined();
+        expect(screen.getByLabelText(/Category/i)).toBeDefined();
+        expect(screen.getByRole('button', { name: /Create Pathway/i })).toBeDefined();
+        // DAG mode switcher is removed as requested
+        expect(screen.queryByRole('button', { name: /Create Learning DAG/i })).toBeNull();
       });
     });
   });

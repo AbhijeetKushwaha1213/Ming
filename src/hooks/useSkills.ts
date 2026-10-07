@@ -91,13 +91,24 @@ export const useSkills = () => {
         return localStore.getSkills() as Skill[];
       }
 
-      const { data, error } = await supabase
-        .from('user_skills')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('user_skills')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data as Skill[];
+        if (error) throw error;
+        const local = localStore.getSkills() as Skill[];
+        if (local && local.length > 0) {
+          const cloudIds = new Set((data || []).map((s: any) => s.id));
+          const uniqueLocal = local.filter(s => !cloudIds.has(s.id));
+          return [...(data || []), ...uniqueLocal] as Skill[];
+        }
+        return (data || []) as Skill[];
+      } catch (err) {
+        console.warn('Supabase fetch skills failed, using localStore fallback:', err);
+        return localStore.getSkills() as Skill[];
+      }
     },
   });
 
@@ -108,22 +119,30 @@ export const useSkills = () => {
         return localStore.saveSkill(skillData);
       }
 
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('User not authenticated');
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id;
+        if (!userId) {
+          return localStore.saveSkill(skillData);
+        }
 
-      const { data, error } = await supabase
-        .from('user_skills')
-        .insert([{ 
-          user_id: user.user.id,
-          skill: skillData.skill,
-          category: skillData.category,
-          progress: skillData.progress || 0
-        }])
-        .select()
-        .single();
+        const { data, error } = await supabase
+          .from('user_skills')
+          .insert([{ 
+            user_id: userId,
+            skill: skillData.skill,
+            category: skillData.category,
+            progress: skillData.progress || 0
+          }])
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      } catch (err) {
+        console.warn('Supabase createSkill failed, saving to localStore:', err);
+        return localStore.saveSkill(skillData);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
@@ -144,19 +163,24 @@ export const useSkills = () => {
   // Update skill
   const updateSkillMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: UpdateSkillData }) => {
-      if (isLocalMode()) {
+      if (isLocalMode() || id.startsWith('local-')) {
         return localStore.updateSkill(id, updates);
       }
 
-      const { data, error } = await supabase
-        .from('user_skills')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('user_skills')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      } catch (err) {
+        console.warn('Supabase updateSkill failed, updating localStore:', err);
+        return localStore.updateSkill(id, updates);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
@@ -177,16 +201,21 @@ export const useSkills = () => {
   // Delete skill
   const deleteSkillMutation = useMutation({
     mutationFn: async (id: string) => {
-      if (isLocalMode()) {
+      if (isLocalMode() || id.startsWith('local-')) {
         return localStore.deleteSkill(id);
       }
 
-      const { error } = await supabase
-        .from('user_skills')
-        .delete()
-        .eq('id', id);
+      try {
+        const { error } = await supabase
+          .from('user_skills')
+          .delete()
+          .eq('id', id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } catch (err) {
+        console.warn('Supabase deleteSkill failed, deleting from localStore:', err);
+        localStore.deleteSkill(id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
@@ -209,6 +238,7 @@ export const useSkills = () => {
     isLoading,
     error,
     createSkill: createSkillMutation.mutate,
+    createSkillAsync: createSkillMutation.mutateAsync,
     updateSkill: updateSkillMutation.mutate,
     deleteSkill: deleteSkillMutation.mutate,
     isCreating: createSkillMutation.isPending,

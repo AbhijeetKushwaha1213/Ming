@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from './AuthProvider';
 import { getPostAuthDestination, ROUTES } from './authNavigation';
 import { Brain } from 'lucide-react';
 
@@ -31,10 +32,12 @@ const getAuthErrorMessage = () => {
 export const AuthCallback = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { syncUserFromSession } = useAuth();
   const [statusMessage, setStatusMessage] = useState('Completing authentication...');
 
   useEffect(() => {
     let isActive = true;
+    let hasHandledDestination = false;
     let fallbackTimer: number | undefined;
 
     const currentUrl = new URL(window.location.href);
@@ -69,59 +72,14 @@ export const AuthCallback = () => {
     }
 
     const handleUserDestination = async (supabaseUser: any) => {
+      if (hasHandledDestination || !isActive) return;
+      hasHandledDestination = true;
+
       try {
         setStatusMessage('Loading your study profile...');
-        const email = supabaseUser.email?.toLowerCase().trim() || '';
-        const userName =
-          supabaseUser.user_metadata?.full_name ||
-          supabaseUser.user_metadata?.name ||
-          email.split('@')[0] ||
-          'User';
 
-        // 1. Fetch profile with account-linking support (check user_id OR email)
-        const { data: existingProfiles, error: fetchErr } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .or(`user_id.eq.${supabaseUser.id},email.eq.${email}`)
-          .limit(1);
-
-        let finalProfile: any = null;
-
-        if (existingProfiles && existingProfiles.length > 0) {
-          finalProfile = existingProfiles[0];
-          // Account linking: update user_id if needed
-          if (finalProfile.user_id !== supabaseUser.id) {
-            console.log('AuthCallback: Linking existing profile for email:', email, 'to user_id:', supabaseUser.id);
-            await supabase
-              .from('user_profiles')
-              .update({ user_id: supabaseUser.id, updated_at: new Date().toISOString() })
-              .eq('id', finalProfile.id);
-          }
-        } else {
-          // 2. Create profile if none exists
-          console.log('AuthCallback: Creating new profile for OAuth user:', email);
-          const newProfileRow = {
-            user_id: supabaseUser.id,
-            email: email,
-            name: userName,
-            user_type: 'exam',
-            study_streak: 0,
-            total_study_hours: 0,
-            current_level: 1,
-            experience_points: 0,
-          };
-
-          const { data: inserted, error: insertErr } = await supabase
-            .from('user_profiles')
-            .insert(newProfileRow)
-            .select('*')
-            .single();
-
-          if (insertErr) {
-            console.warn('AuthCallback: profile insertion warning:', insertErr);
-          }
-          finalProfile = inserted || newProfileRow;
-        }
+        // 1. Sync user profile atomically with AuthProvider
+        const finalProfile = await syncUserFromSession(supabaseUser);
 
         sessionStorage.removeItem('google_oauth_initiated');
 
@@ -130,7 +88,7 @@ export const AuthCallback = () => {
           description: 'Successfully signed in.',
         });
 
-        // 3. Centralized post-auth redirect
+        // 2. Centralized post-auth redirect
         const destination = getPostAuthDestination(finalProfile);
         console.log('AuthCallback: Navigating to destination:', destination);
         if (isActive) {

@@ -67,6 +67,7 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<void>;
   updateUserType: (type: 'exam' | 'college', details: any) => Promise<void>;
   updateUser: (updatedUser: UserProfile) => void;
+  syncUserFromSession: (supabaseUser: SupabaseUser, defaultName?: string) => Promise<UserProfile | null>;
   refetch: () => Promise<void>;
 }
 
@@ -87,6 +88,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const [isLoading, setIsLoading] = useState<boolean>(() => {
     try {
+      const isAuthCallback =
+        typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/auth/callback') ||
+         window.location.search.includes('code=') ||
+         window.location.hash.includes('access_token=') ||
+         sessionStorage.getItem('google_oauth_initiated') === 'true');
+      if (isAuthCallback) return true;
+
       if (localStorage.getItem('studymate-offline-session')) return false;
       if (localStorage.getItem('studymate_cached_profile')) return false;
       const hasToken = Object.keys(localStorage).some(
@@ -284,11 +293,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Fast check: if no Supabase tokens exist in localStorage, resolve immediately
+    const isAuthCallback =
+      typeof window !== 'undefined' &&
+      (window.location.pathname.startsWith('/auth/callback') ||
+       window.location.search.includes('code=') ||
+       window.location.hash.includes('access_token=') ||
+       sessionStorage.getItem('google_oauth_initiated') === 'true');
+
+    // Fast check: if no Supabase tokens exist in localStorage and not in OAuth callback, resolve immediately
     const hasToken = Object.keys(localStorage).some(
       (key) => key.startsWith('sb-') && key.endsWith('-auth-token')
     );
-    if (!hasToken) {
+    if (!hasToken && !isAuthCallback) {
       if (isMounted) {
         updateUserState(null);
         setIsLoading(false);
@@ -776,8 +792,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const syncUserFromSession = async (
+    supabaseUser: SupabaseUser,
+    defaultName?: string
+  ): Promise<UserProfile | null> => {
+    setIsLoading(true);
+    try {
+      const profile = await ensureUserProfileExists(supabaseUser, defaultName);
+      if (profile) {
+        updateUserState(profile);
+        return profile;
+      }
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const updateUser = (updatedUser: UserProfile) => {
-    setUser(updatedUser);
+    updateUserState(updatedUser);
+    setIsLoading(false);
   };
 
   const updateUserType = async (type: 'exam' | 'college', details: any) => {
@@ -905,6 +939,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       updatePassword,
       updateUserType,
       updateUser,
+      syncUserFromSession,
       refetch
     }}>
       {children}

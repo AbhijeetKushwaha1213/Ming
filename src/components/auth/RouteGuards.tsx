@@ -33,6 +33,11 @@ export const ProtectedRoute: React.FC<{
   }
 
   if (!isAuthenticated || !user) {
+    const hasCachedProfile =
+      typeof window !== 'undefined' && localStorage.getItem('studymate_cached_profile');
+    if (hasCachedProfile) {
+      return <AuthLoadingScreen message="Loading Ming..." />;
+    }
     return <Navigate to={AUTH_ROUTES.LOGIN} state={{ from: location }} replace />;
   }
 
@@ -58,6 +63,11 @@ export const OnboardingRoute: React.FC<{ children: React.ReactNode }> = ({ child
   }
 
   if (!isAuthenticated || !user) {
+    const hasCachedProfile =
+      typeof window !== 'undefined' && localStorage.getItem('studymate_cached_profile');
+    if (hasCachedProfile) {
+      return <AuthLoadingScreen message="Loading onboarding..." />;
+    }
     return <Navigate to={AUTH_ROUTES.LOGIN} state={{ from: location }} replace />;
   }
 

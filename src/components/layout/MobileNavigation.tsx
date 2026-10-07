@@ -174,17 +174,6 @@ export const MobileNavigation = ({
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-border">
-              <Button
-                onClick={handleSignOut}
-                variant="outline"
-                className="w-full justify-start text-destructive border-destructive/20 hover:bg-destructive/10"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
           </div>
         </SheetContent>
       </Sheet>

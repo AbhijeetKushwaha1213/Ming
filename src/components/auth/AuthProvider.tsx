@@ -627,30 +627,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     try {
-      localStorage.removeItem('studymate-offline-session');
-      
-      // Check if there is an active Supabase session before attempting to sign out from cloud
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          toast({
-            title: "Sign Out Failed",
-            description: error.message,
-            variant: "destructive",
-          });
-          throw error;
+      setIsLoading(true);
+      console.log('AuthProvider: Signing out user and clearing all sessions...');
+
+      // 1. Clear local offline and cached profiles
+      try {
+        localStorage.removeItem('studymate-offline-session');
+        localStorage.removeItem('studymate_cached_profile');
+        sessionStorage.removeItem('google_oauth_initiated');
+
+        // Clear all Supabase auth tokens from localStorage
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            localStorage.removeItem(key);
+          }
         }
+      } catch (storageErr) {
+        console.warn('AuthProvider: localStorage cleanup warning:', storageErr);
       }
-      
+
+      // 2. Clear user state immediately
       updateUserState(null);
+
+      // 3. Perform Supabase sign out with timeout so network failures never block
+      try {
+        await Promise.race([
+          supabase.auth.signOut({ scope: 'local' }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Sign out timeout')), 1500)),
+        ]);
+      } catch (cloudErr) {
+        console.warn('AuthProvider: Supabase cloud signOut note (local signout completed):', cloudErr);
+      }
+
       toast({
         title: "Signed Out",
         description: "You have been successfully signed out.",
       });
     } catch (error) {
       console.error('Sign out error:', error);
-      throw error;
+      updateUserState(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 

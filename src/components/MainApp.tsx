@@ -77,18 +77,10 @@ export const MainApp = () => {
     try {
       console.log('MainApp: Signing out user');
       await signOut();
-      toast({
-        title: "Signed Out",
-        description: "You have been successfully signed out.",
-      });
-      navigate('/login');
     } catch (error) {
       console.error('Sign out error:', error);
-      toast({
-        title: "Sign Out Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
+    } finally {
+      navigate('/login', { replace: true });
     }
   };
 

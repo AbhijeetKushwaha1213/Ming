@@ -146,21 +146,6 @@ export const DesktopSidebar = ({ activeTab, onTabChange, onSignOut, isCollapsed 
           </div>
         </div>
       </nav>
-
-      {/* Footer */}
-      <div className={`p-4 border-t border-sidebar-border flex-shrink-0 ${isCollapsed ? 'px-2' : ''}`}>
-        <Button
-          variant="ghost"
-          className={`w-full h-9 text-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 ${
-            isCollapsed ? 'justify-center px-0' : 'justify-start px-3'
-          }`}
-          onClick={onSignOut}
-          title={isCollapsed ? 'Sign Out' : undefined}
-        >
-          <LogOut className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`} />
-          {!isCollapsed && <span className="text-sm truncate">Sign Out</span>}
-        </Button>
-      </div>
     </div>
   );
 };

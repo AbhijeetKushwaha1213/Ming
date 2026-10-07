@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -13,13 +14,16 @@ import { useToast } from '@/hooks/use-toast';
 import { IntegrationsSettings } from './IntegrationsSettings';
 import { PasswordChangeForm } from './PasswordChangeForm';
 import { supabase } from '@/integrations/supabase/client';
+import { LogOut } from 'lucide-react';
 
 export const SettingsPage = () => {
-  const { user, updateUserType, updateUser } = useAuth();
+  const { user, updateUserType, updateUser, signOut } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [selectedType, setSelectedType] = useState(user?.userType || 'exam');
   const [examType, setExamType] = useState(user?.examType || '');
   const [college, setCollege] = useState(user?.college || '');
@@ -108,6 +112,18 @@ export const SettingsPage = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('SettingsPage: Sign out error:', err);
+    } finally {
+      setIsSigningOut(false);
+      navigate('/login', { replace: true });
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20">
       <div>
@@ -126,35 +142,57 @@ export const SettingsPage = () => {
         </TabsList>
 
         <TabsContent value="profile">
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Profile Information</h2>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your Name"
-                />
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Profile Information</h2>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    type="text"
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your Name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Your Email"
+                    disabled
+                  />
+                </div>
+                <Button onClick={handleProfileUpdate} disabled={isSubmitting}>
+                  {isSubmitting ? "Updating..." : "Update Profile"}
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  type="email"
-                  id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your Email"
-                  disabled
-                />
+            </Card>
+
+            <Card className="p-6 border-destructive/20 bg-destructive/5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Sign Out</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Securely sign out of your Ming AI account on this device.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="shrink-0 gap-2 shadow-sm"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {isSigningOut ? "Signing Out..." : "Sign Out"}
+                </Button>
               </div>
-              <Button onClick={handleProfileUpdate} disabled={isSubmitting}>
-                {isSubmitting ? "Updating..." : "Update Profile"}
-              </Button>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="study">
@@ -246,10 +284,30 @@ export const SettingsPage = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="privacy">
+        <TabsContent value="privacy" className="space-y-6">
           <Card className="p-6">
             <h2 className="text-lg font-semibold text-foreground mb-4">Privacy & Security</h2>
             <PasswordChangeForm />
+          </Card>
+
+          <Card className="p-6 border-destructive/20 bg-destructive/5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Sign Out</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Securely sign out of your Ming AI account on this device.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+                className="shrink-0 gap-2 shadow-sm"
+              >
+                <LogOut className="w-4 h-4" />
+                {isSigningOut ? "Signing Out..." : "Sign Out"}
+              </Button>
+            </div>
           </Card>
         </TabsContent>
 

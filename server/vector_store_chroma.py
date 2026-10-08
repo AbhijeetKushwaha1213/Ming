@@ -116,18 +116,18 @@ class ChromaVectorStore(BaseVectorStore):
         elif topic:
             conditions.append({"topic": {"$eq": str(topic)}})
 
-        if where_conditions:
-            conditions.append(where_conditions)
-
         query_params = {
             "query_texts": query_texts,
             "n_results": top_k
         }
 
-        if len(conditions) == 1:
-            query_params["where"] = conditions[0]
-        elif len(conditions) > 1:
-            query_params["where"] = {"$and": conditions}
+        if where_conditions:
+            query_params["where"] = where_conditions
+        else:
+            if len(conditions) == 1:
+                query_params["where"] = conditions[0]
+            elif len(conditions) > 1:
+                query_params["where"] = {"$and": conditions}
 
         try:
             results = self.collection.query(**query_params)

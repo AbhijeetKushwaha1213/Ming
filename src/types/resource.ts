@@ -109,3 +109,18 @@ export interface GroundedChatResponse {
   retrieved_count?: number;
 }
 
+/**
+ * Canonical Phase 3 Grounding Contracts (Re-exported for Frontend Consumers)
+ */
+export type {
+  CanonicalEvidence,
+  GroundedClaim,
+  ClaimSupportStatus,
+  VerifiedCitation,
+  CitationVerificationStatus,
+  SourceLocation,
+  GroundedAnswerContract,
+  SourceType,
+  ExtractionMethod,
+} from '../../server/groundingTypes.ts';
+

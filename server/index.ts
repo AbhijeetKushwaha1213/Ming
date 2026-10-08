@@ -58,7 +58,7 @@ async function readBody(req: IncomingMessage) {
 }
 
 function createRouteResponse(res: ServerResponse) {
-  return {
+  return Object.assign(res, {
     status(code: number) {
       res.statusCode = code;
       return this;
@@ -69,13 +69,7 @@ function createRouteResponse(res: ServerResponse) {
       }
       res.end(JSON.stringify(body));
     },
-    setHeader(name: string, value: string) {
-      res.setHeader(name, value);
-    },
-    end(body?: string) {
-      res.end(body);
-    },
-  };
+  });
 }
 
 async function handleRequest(req: IncomingMessage, res: ServerResponse) {
@@ -226,7 +220,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
-  if (url.pathname === '/api/resources') {
+  if (url.pathname === '/api/resources' || url.pathname.startsWith('/api/resources/')) {
     const body = await readBody(req);
     await resourcesHandler(
       {

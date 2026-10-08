@@ -492,3 +492,136 @@ export async function ensureDAGSchema() {
 
   return dagSchemaPromise;
 }
+
+let ingestionSchemaPromise: Promise<void> | null = null;
+
+async function createIngestionSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS ingestion_records (
+      id TEXT PRIMARY KEY NOT NULL,
+      resourceId TEXT NOT NULL,
+      userId TEXT NOT NULL,
+      tenantType TEXT NOT NULL DEFAULT 'USER_PRIVATE',
+      documentId TEXT NOT NULL,
+      sourceType TEXT NOT NULL,
+      status TEXT NOT NULL,
+      contentHash TEXT NOT NULL,
+      chunkCount INTEGER NOT NULL DEFAULT 0,
+      error TEXT,
+      metricsJson TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS ingestion_records_userId_resourceId_idx ON ingestion_records(userId, resourceId)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS ingestion_records_userId_contentHash_idx ON ingestion_records(userId, contentHash)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS ingestion_records_userId_status_idx ON ingestion_records(userId, status)',
+  );
+}
+
+export async function ensureIngestionSchema() {
+  if (!ingestionSchemaPromise) {
+    ingestionSchemaPromise = createIngestionSchema();
+  }
+
+  return ingestionSchemaPromise;
+}
+
+export async function upsertIngestionRecord(data: {
+  id?: string;
+  resourceId: string;
+  userId: string;
+  tenantType?: string;
+  documentId: string;
+  sourceType: string;
+  status: string;
+  contentHash: string;
+  chunkCount?: number;
+  error?: string | null;
+  metricsJson?: string | null;
+}) {
+  await ensureIngestionSchema();
+  const existing = await getIngestionRecord(data.resourceId, data.userId);
+  const now = new Date().toISOString();
+
+  if (existing) {
+    await prisma.$executeRawUnsafe(
+      `UPDATE ingestion_records SET
+        status = ?,
+        chunkCount = ?,
+        error = ?,
+        metricsJson = ?,
+        updatedAt = CURRENT_TIMESTAMP
+      WHERE resourceId = ? AND userId = ?`,
+      data.status,
+      data.chunkCount ?? existing.chunkCount,
+      data.error !== undefined ? data.error : existing.error,
+      data.metricsJson !== undefined ? data.metricsJson : existing.metricsJson,
+      data.resourceId,
+      data.userId,
+    );
+    return getIngestionRecord(data.resourceId, data.userId);
+  }
+
+  const recordId = data.id || `ing_${data.resourceId}`;
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO ingestion_records (
+      id, resourceId, userId, tenantType, documentId, sourceType, status, contentHash, chunkCount, error, metricsJson, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    recordId,
+    data.resourceId,
+    data.userId,
+    data.tenantType || 'USER_PRIVATE',
+    data.documentId,
+    data.sourceType,
+    data.status,
+    data.contentHash,
+    data.chunkCount || 0,
+    data.error || null,
+    data.metricsJson || null,
+  );
+
+  return getIngestionRecord(data.resourceId, data.userId);
+}
+
+export async function getIngestionRecord(resourceId: string, userId: string): Promise<any | null> {
+  await ensureIngestionSchema();
+  const rows = (await prisma.$queryRawUnsafe(
+    `SELECT * FROM ingestion_records WHERE resourceId = ? AND userId = ? LIMIT 1`,
+    resourceId,
+    userId,
+  )) as any[];
+
+  return rows && rows.length > 0 ? rows[0] : null;
+}
+
+export async function updateIngestionStatus(
+  resourceId: string,
+  userId: string,
+  status: string,
+  extra: { error?: string | null; chunkCount?: number; metricsJson?: string | null } = {},
+) {
+  await ensureIngestionSchema();
+  await prisma.$executeRawUnsafe(
+    `UPDATE ingestion_records SET
+      status = ?,
+      error = COALESCE(?, error),
+      chunkCount = COALESCE(?, chunkCount),
+      metricsJson = COALESCE(?, metricsJson),
+      updatedAt = CURRENT_TIMESTAMP
+    WHERE resourceId = ? AND userId = ?`,
+    status,
+    extra.error ?? null,
+    extra.chunkCount ?? null,
+    extra.metricsJson ?? null,
+    resourceId,
+    userId,
+  );
+  return getIngestionRecord(resourceId, userId);
+}

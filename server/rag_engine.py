@@ -438,7 +438,47 @@ def ingest_source(
     chunks_to_add = []
     stype = source_type.upper().strip()
     
-    # Extraction
+    # Unified Canonical Phase 2 Multimodal Ingestion Pipeline
+    if os.path.exists(file_path_or_url):
+        try:
+            from multimodal_ingest import ingest_multimodal_document
+            doc = ingest_multimodal_document(
+                file_path=file_path_or_url,
+                user_id=user_id,
+                tenant_type="USER_PRIVATE",
+                source_id=source_id,
+                document_id=document_id,
+                topic=topic,
+                subtopic=subtopic,
+                custom_transcript=custom_transcript,
+            )
+            chunks_count = len(doc.get("chunks", []))
+            _save_job_status(job_id, {
+                "job_id": job_id,
+                "status": "completed",
+                "progress": 100,
+                "source_id": source_id,
+                "document_id": document_id,
+                "chunk_count": chunks_count,
+                "source_type": doc.get("source_type", source_type),
+                "metrics": doc.get("metrics", {})
+            })
+            return {
+                "job_id": job_id,
+                "status": "completed",
+                "source_id": source_id,
+                "document_id": document_id,
+                "source_type": doc.get("source_type", source_type),
+                "topic": topic,
+                "subtopic": subtopic,
+                "chunk_count": chunks_count,
+                "preview_chunks": [c["text"][:160] for c in doc.get("chunks", [])[:3]],
+                "document": doc,
+            }
+        except Exception as e:
+            logger.warning(f"Unified multimodal ingestion encountered error, falling back: {e}")
+
+    # Extraction Fallback
     try:
         if stype in ["PDF"]:
             pages = extract_pdf(file_path_or_url)
@@ -915,8 +955,8 @@ def search_relevant_chunks(
                     multi_ors.append({"source_id": {"$eq": str(sid)}})
                     multi_ors.append({"document_id": {"$eq": str(sid)}})
                 where_conditions.append({"$or": multi_ors})
-        elif sq_topic:
-            where_conditions.append({"topic": {"$eq": str(sq_topic)}})
+        elif topic and str(topic).strip() and str(topic).strip().lower() not in ["all", "*", "none"]:
+            where_conditions.append({"topic": {"$eq": str(topic)}})
 
         # Multi-query augmentation: query Chroma with raw, subject-anchored, and overview variants
         is_overview_match = any(k in (sq_norm or norm_query).lower() for k in OVERVIEW_INDICATORS)
@@ -1049,10 +1089,10 @@ def search_relevant_chunks(
 
                     location = {
                         "source_type": meta.get("source_type", "UNKNOWN"),
-                        "page_number": meta.get("page_number") if meta.get("page_number", -1) != -1 else None,
-                        "slide_number": meta.get("slide_number") if meta.get("slide_number", -1) != -1 else None,
-                        "timestamp_start": meta.get("timestamp_start") if meta.get("timestamp_start", -1.0) != -1.0 else None,
-                        "timestamp_end": meta.get("timestamp_end") if meta.get("timestamp_end", -1.0) != -1.0 else None,
+                        "page_number": meta.get("page_number") if meta.get("page_number", -1) not in (-1, None, "-1") else None,
+                        "slide_number": meta.get("slide_number") if meta.get("slide_number", -1) not in (-1, None, "-1") else None,
+                        "timestamp_start": meta.get("timestamp_start") if meta.get("timestamp_start", -1.0) not in (-1.0, -1, None, "-1.0") else None,
+                        "timestamp_end": meta.get("timestamp_end") if meta.get("timestamp_end", -1.0) not in (-1.0, -1, None, "-1.0") else None,
                     }
 
                     if chunk_id in candidates_by_id:
@@ -1078,11 +1118,20 @@ def search_relevant_chunks(
                             "source_id": meta.get("source_id"),
                             "document_id": meta.get("document_id"),
                             "user_id": meta.get("user_id"),
+                            "tenant_type": meta.get("tenant_type"),
                             "source_type": location["source_type"],
                             "page_number": location["page_number"],
                             "slide_number": location["slide_number"],
                             "timestamp_start": location["timestamp_start"],
                             "timestamp_end": location["timestamp_end"],
+                            "extraction_method": meta.get("extraction_method"),
+                            "content_hash": meta.get("content_hash"),
+                            "chunk_index": meta.get("chunk_index"),
+                            "section": meta.get("section"),
+                            "heading": meta.get("heading"),
+                            "embedding_model": meta.get("embedding_model"),
+                            "embedding_version": meta.get("embedding_version"),
+                            "created_at": meta.get("created_at"),
                             "location": location,
                             "matched_sub_queries": matched_sqs
                         }
@@ -1201,7 +1250,8 @@ def search_relevant_chunks(
         "selected_source_ids": selected_source_ids,
         "discarded_chunks": discarded_chunks,
         "total_results": len(serializable_results),
-        "results": serializable_results
+        "results": serializable_results,
+        "candidates": serializable_results
     }
 
 def get_chunk_metadata(chunk_id: str) -> Dict[str, Any]:

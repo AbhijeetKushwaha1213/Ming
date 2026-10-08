@@ -3,7 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
-import { prisma, ensureResourceSchema, ensureAssessmentSchema, ensureLearnerSchema } from './prisma.ts';
+import { prisma, ensureResourceSchema, ensureAssessmentSchema, ensureLearnerSchema, upsertIngestionRecord, updateIngestionStatus, getIngestionRecord } from './prisma.ts';
+import { validateUploadedBuffer, validateFileOnDisk, sanitizeAndAssertPath, ValidationError } from './fileValidator.ts';
 import { updateMasteryFromEvidence, getTopicLearnerMastery } from './bktService.ts';
 import { processAssessmentIntelligence, getUserMisconceptions, getAttemptDiagnostic } from './assessmentIntelligenceService.ts';
 import { learnerHandler } from './learnerHandler.ts';
@@ -116,6 +117,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       });
 
       if (existingResource && !body.forceReprocess && !body.base64Data) {
+        const existingRecord = await getIngestionRecord(existingResource.id, userId);
         res.status(200).json({
           success: true,
           jobId: `existing_${existingResource.id}`,
@@ -124,31 +126,35 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
           sourceType: existingResource.type,
           topic,
           subtopic,
-          chunkCount: 0,
+          chunkCount: existingRecord?.chunkCount || 0,
           isExisting: true,
           message: 'Source already ingested for this user (idempotent)',
           previewChunks: [],
+          lifecycleStatus: existingRecord?.status || 'COMPLETED',
         });
         return;
       }
 
-      // If binary or base64 file provided
+      // If binary or base64 file provided, perform strict magic-byte and MIME validation
       if (body.base64Data && body.fileName) {
-        const ext = path.extname(body.fileName).toLowerCase();
-        if (ext === '.pdf') sourceType = 'PDF';
-        else if (ext === '.pptx' || ext === '.ppt') sourceType = 'PPTX';
-        else if (['.mp4', '.webm', '.mp3', '.wav', '.m4a'].includes(ext)) sourceType = 'VIDEO';
-        
-        const tempName = `${Date.now()}_${contentFingerprint.slice(0, 8)}${ext || '.bin'}`;
-        filePath = path.join(userUploadsDir, tempName);
         const buffer = Buffer.from(body.base64Data, 'base64');
+        const validation = validateUploadedBuffer(buffer, body.fileName);
+        sourceType = validation.sourceType;
+
+        const safeFilename = path.basename(body.fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
+        const tempName = `${Date.now()}_${contentFingerprint.slice(0, 8)}_${safeFilename}`;
+        filePath = sanitizeAndAssertPath(userUploadsDir, tempName);
         await fs.writeFile(filePath, buffer);
       } else if (body.text) {
         // Plain text ingestion
         const tempName = `text_${Date.now()}_${contentFingerprint.slice(0, 8)}.txt`;
-        filePath = path.join(userUploadsDir, tempName);
+        filePath = sanitizeAndAssertPath(userUploadsDir, tempName);
         await fs.writeFile(filePath, body.text, 'utf8');
         sourceType = 'TEXT';
+      } else if (filePath && !filePath.startsWith('http')) {
+        // Validate local file on disk
+        const validation = await validateFileOnDisk(filePath, body.fileName);
+        sourceType = validation.sourceType;
       }
 
       if (!filePath) {
@@ -159,6 +165,17 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       const jobId = `job_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
       const sourceId = body.sourceId || `src_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
       const documentId = body.documentId || `doc_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+
+      // Record lifecycle state as PROCESSING
+      await upsertIngestionRecord({
+        resourceId: documentId,
+        userId,
+        tenantType: 'USER_PRIVATE',
+        documentId,
+        sourceType,
+        status: 'PROCESSING',
+        contentHash: contentFingerprint,
+      });
 
       // Save metadata in SQLite database via Prisma
       try {
@@ -177,7 +194,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
           }
         });
       } catch (dbError) {
-        console.warn('Could not record resource in local SQLite, continuing ingestion:', dbError);
+        console.warn('Could not record resource in database, continuing ingestion:', dbError);
       }
 
       // Execute ingestion
@@ -198,22 +215,65 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       }
 
       const result = await runPythonCli(args);
+      const isSuccess = result.status === 'completed' || result.lifecycle_status === 'COMPLETED';
+      const chunkCount = result.chunk_count || (result.document?.chunks?.length) || 0;
+      const finalStatus = isSuccess ? (chunkCount > 0 ? 'COMPLETED' : 'PARTIAL') : 'FAILED';
+
+      // Update canonical lifecycle state in DB
+      await updateIngestionStatus(documentId, userId, finalStatus, {
+        chunkCount,
+        metricsJson: JSON.stringify(result.document?.metrics || result.metrics || {}),
+        error: isSuccess ? null : (result.error || 'Ingestion completed with failures'),
+      });
+
       res.status(200).json({
-        success: result.status === 'completed',
+        success: isSuccess,
         jobId,
         sourceId,
         documentId,
         sourceType,
         topic,
         subtopic,
-        chunkCount: result.chunk_count || 0,
+        chunkCount,
         previewChunks: result.preview_chunks || [],
+        lifecycleStatus: finalStatus,
         details: result,
       });
       return;
     } catch (err: any) {
+      if (err instanceof ValidationError || err.name === 'ValidationError') {
+        res.status(err.statusCode || 400).json({
+          error: err.message,
+          code: err.code || 'VALIDATION_ERROR',
+        });
+        return;
+      }
       console.error('Ingest error:', err);
       res.status(500).json({ error: err.message || 'Ingestion failed' });
+      return;
+    }
+  }
+
+  // 1.1 Ingestion Lifecycle Status Record
+  // GET /api/rag/lifecycle?resourceId=... or /api/rag/lifecycle/:id
+  if (method === 'GET' && pathname.startsWith('/api/rag/lifecycle')) {
+    try {
+      const userId = await resolveContextUser(req);
+      const segments = pathname.split('/').filter(Boolean);
+      const resourceId = segments[3] || req.query?.resourceId || req.query?.id;
+      if (!resourceId) {
+        res.status(400).json({ error: 'resourceId parameter is required' });
+        return;
+      }
+      const record = await getIngestionRecord(String(resourceId), userId);
+      if (!record) {
+        res.status(404).json({ error: 'Ingestion record not found for this tenant' });
+        return;
+      }
+      res.status(200).json(record);
+      return;
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to retrieve lifecycle record' });
       return;
     }
   }

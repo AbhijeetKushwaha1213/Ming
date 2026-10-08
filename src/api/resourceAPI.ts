@@ -148,3 +148,11 @@ export async function createPdfSignedUrl(storagePath: string) {
 
   return data.signedUrl;
 }
+
+/**
+ * Canonical Phase 3 authenticated source access URL generator.
+ * Returns the canonical endpoint for streaming original citation resources.
+ */
+export function getResourceFileUrl(resourceId: string): string {
+  return `/api/resources/${encodeURIComponent(resourceId)}/file`;
+}

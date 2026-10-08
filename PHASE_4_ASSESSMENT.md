@@ -243,5 +243,188 @@ Before any NUMERICAL question is presented to a student, the server verifies:
 | 13 | Integration with ragHandler generation pipeline | ✅ |
 | 14 | 78 numerical assessment tests pass | ✅ |
 | 15 | Existing regression suites pass | ✅ |
-| 16 | TypeScript: 0 errors | ✅ |
 | 17 | Documentation complete | ✅ |
+
+---
+
+# CANONICAL PHASE 4 — STEP 2
+## Robust Answer Verification & Harder Misconception Detection
+
+**Status:** COMPLETE ✅  
+**Phase:** 4 of 7 (Canonical Roadmap)  
+**Roadmap Progress:**
+- Phase 4 Step 1: COMPLETE ✅
+- Phase 4 Step 2: COMPLETE ✅
+- Phase 4 Step 3+: NOT STARTED ⏳
+
+---
+
+## 1. Executive Summary
+
+Phase 4 Step 2 establishes Ming's **Universal Server-Authoritative Grading Engine** (`robustAnswerVerifier.ts`) across all supported question types:
+- `NUMERICAL`
+- `MCQ`
+- `SHORT_ANSWER`
+- `TRUE_FALSE`
+- `MULTI_SELECT`
+
+The LLM is **strictly excluded** from authoritative grading, scoring, answer keys, tolerance, and verifiability. Deterministic grading executes server-side, with error and misconception detection bound to provable evidence. Explanatory feedback is grounded via Phase 3's deterministic citation verification pipeline (`citationVerifier.ts`).
+
+---
+
+## 2. Question-Type Grading Matrix
+
+| Question Type | Authoritative Storage | Normalization Strategy | Correctness Engine | Partial Credit Policy | Deterministic Error / Misconception Detection |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`NUMERICAL`** | `correct_answer` (numeric / expression) + `expected_unit` + `tolerance` | `parseStudentAnswer()` + `normalizeUnit()` via `numericalVerifier.ts` | Tolerance bounds (`EXACT`, `RELATIVE`, `ABSOLUTE`, `SIG_FIGS`) | 0.0, 0.5 (sign/unit/rounding), 1.0 | `SIGN_ERROR`, `ORDER_OF_MAGNITUDE`, `UNIT_MISMATCH`, `ROUNDING_ERROR`, `FORMULA_ERROR`, `PARSE_ERROR` |
+| **`MCQ`** | `correct_answer` matching authoritative option ID / label | Trimming, uppercase label mapping (e.g. "A" vs ID "opt_a") | Strict ID/label identity against authoritative answer | Discrete: `0.0` or `1.0` only | `INVALID_OPTION`, distractor pedagogical metadata (if defined), else `WRONG_OPTION` |
+| **`MULTI_SELECT`** | `correct_answers` or `correct_answer[]` array of valid option IDs | Array unique-set normalization, whitespace trimmed | Set equality against server expected options | Controlled set overlap: `|selected ∩ correct| / |correct| - 0.5 * |extra| / |all_options|`, clamped $[0.0, 1.0]$ | `INVALID_OPTION`, `MISSING_REQUIRED_COMPONENT`, `EXTRA_COMPONENT`, `NO_MISCONCEPTION` |
+| **`TRUE_FALSE`** | `correct_answer` strictly `"true"` or `"false"` (boolean/string) | Canonical token parser (`true`/`t`/`yes`/`1` vs `false`/`f`/`no`/`0`) | Strict boolean equivalence | Discrete: `0.0` or `1.0` only | `INVALID_FORMAT` (on unparseable input), `CONCEPTUAL_MISMATCH`, `NO_MISCONCEPTION` |
+| **`SHORT_ANSWER`** | `correct_answer` + optional `accepted_variants[]` + `required_components[]` | Case-insensitive trimmed punctuation strip | Layered: 1. Exact match, 2. Accepted variant match, 3. Component overlap | Controlled: Ratio of present required components clamped $[0.0, 1.0]$; or 0.0 / 1.0 | `MISSING_REQUIRED_COMPONENT`, `INCOMPLETE_ANSWER`, `UNVERIFIABLE` (fallback without guessing) |
+
+---
+
+## 3. Preservation of Numerical Verifier
+
+The Phase 4 Step 1 `numericalVerifier.ts` remains the **sole arithmetic authority**.
+- Zero `eval()`, zero `Function()`, zero dynamic execution.
+- Recursive-descent expression evaluator with depth and character bounds.
+- 35 canonical unit groups with automatic SI/imperial/computing normalization.
+- 4 tolerance evaluation modes.
+- `robustAnswerVerifier.ts` delegates all `NUMERICAL` grading directly to `gradeNumericalAnswer()`, preserving 100% backward compatibility and test contracts.
+
+---
+
+## 4. Deterministic Non-Numerical Verifiers
+
+### 4.1 Deterministic MCQ Verification
+- Authoritative option IDs are loaded from server state.
+- Option membership validation: submitted options that do not exist in question definition immediately yield `INVALID_OPTION` (0.0 credit).
+- Distractor metadata preservation: if distractors define pedagogical misconceptions (e.g. `sign_confusion`, `formula_confusion`), the student's selected option yields that exact diagnosis deterministically. If absent, system reports `WRONG_OPTION`.
+
+### 4.2 Deterministic Multi-Select Verification
+- Set intersection and difference:
+  - Exact match: `CORRECT` (1.0 credit).
+  - Subset with missing options: `PARTIALLY_CORRECT` / `INCORRECT` with `MISSING_REQUIRED_COMPONENT`.
+  - Superset with extra distractors: `PARTIALLY_CORRECT` / `INCORRECT` with `EXTRA_COMPONENT`.
+  - Invalid option ID submitted: yields `INVALID_OPTION`.
+- Partial credit is bounded by policy and never arbitrarily assigned.
+
+### 4.3 Deterministic True/False Verification
+- Strict canonical parsing handles standard boolean aliases (`"true"`, `"t"`, `"yes"`, `"1"` vs `"false"`, `"f"`, `"no"`, `"0"`).
+- Invalid representations (e.g. `"maybe"`, random strings) produce `INVALID_FORMAT` (0.0 credit).
+
+### 4.4 Layered Short-Answer Verification
+- **Layer 1:** Canonical exact/normalized string match.
+- **Layer 2:** Authoritative accepted variants match (`accepted_variants` list).
+- **Layer 3:** Structured component presence verification (`required_components` keywords).
+- **Layer 4 (Safe Fallback):** When answer matches neither exact, variant, nor components, and cannot be deterministically verified, the system marks it `UNVERIFIABLE` with error `UNVERIFIABLE` or `UNDETERMINED`. The server never invents correctness or hallucinated misconception diagnoses.
+
+---
+
+## 5. Harder Misconception Detection Engine
+
+The system supports 15 structured error categories without LLM speculation:
+```typescript
+type MisconceptionCategory =
+  | 'SIGN_ERROR'
+  | 'ORDER_OF_MAGNITUDE'
+  | 'UNIT_MISMATCH'
+  | 'ROUNDING_ERROR'
+  | 'FORMULA_ERROR'
+  | 'PARSE_ERROR'
+  | 'WRONG_OPTION'
+  | 'INVALID_OPTION'
+  | 'MISSING_REQUIRED_COMPONENT'
+  | 'EXTRA_COMPONENT'
+  | 'CONCEPTUAL_MISMATCH'
+  | 'INCOMPLETE_ANSWER'
+  | 'UNVERIFIABLE'
+  | 'UNDETERMINED'
+  | 'NO_MISCONCEPTION';
+```
+
+Rule: If the system cannot prove why an answer is wrong, it returns `UNDETERMINED`. Fabricated diagnoses (e.g. guessing student cognitive deficits) are strictly prohibited.
+
+---
+
+## 6. Pre-Delivery Answer-Key & Question Integrity
+
+Implemented in `validateQuestionIntegrity(question)`:
+- Validates question stem (minimum length $\ge 8$).
+- Validates answer key presence.
+- For `MCQ`: validates at least 2 options, no duplicate option IDs, and correct answer points to an existing option ID/label.
+- For `MULTI_SELECT`: validates at least 2 options, all correct answers point to existing options.
+- For `NUMERICAL`: passes `verifyNumericalQuestion()` (finite value, valid units, valid tolerance, quantitative keywords).
+- For `TRUE_FALSE`: verifies answer resolves strictly to `"true"` or `"false"`.
+- Questions failing integrity checks are quarantined/rejected prior to student delivery.
+
+---
+
+## 7. Zero-Trust Submission Security
+
+1. **Client Tampering Defense:**
+   - Client submission payload cannot dictate `correct_answer`, `score`, `tolerance`, `unit`, `rubric`, or `errorCategory`.
+   - The server resolves the authoritative question directly from the database or question registry.
+2. **Student-Facing Result Sanitization:**
+   - `sanitizeResultForStudent(result)` strips internal rubric models, prompt templates, and hidden distractor metadata.
+   - Hidden answer keys are withheld unless the assessment policy explicitly permits post-submission review.
+3. **Cross-Tenant Isolation:**
+   - Assessment submissions and grounded feedback strictly adhere to tenant authorization boundaries.
+
+---
+
+## 8. Grounded Feedback Integration
+
+Reuses Phase 3's canonical Grounding layer:
+- Post-grading feedback can attach source citations via `attachGroundedFeedback(result, citations, tenantId)`.
+- Reuses `verifyCitation()` from `citationVerifier.ts`.
+- Cross-tenant citations are rejected (`CROSS_TENANT_REJECTED` / `TENANT_VIOLATION`).
+- Deleted or unavailable sources gracefully mark citation as `SOURCE_UNAVAILABLE`.
+- Citations do **not** alter the deterministic grade or score.
+
+---
+
+## 9. Verification & Quality Gates
+
+### Test Suites Passed
+- `src/test/answerVerification.test.ts`: **40/40 PASS**
+- `src/test/numericalAssessment.test.ts`: **78/78 PASS**
+- `src/test/phase9AssessmentIntelligence.test.tsx`: **19/19 PASS**
+- `src/test/groundingVerification.test.ts`: **30/30 PASS**
+- `src/test/sourceNavigation.test.tsx`: **25/25 PASS**
+- `src/test/productionSecurityAndIsolation.test.ts`: **23/23 PASS**
+- `src/test/resourceStreaming.test.ts`: **22/22 PASS**
+- `src/test/multimodalIngestion.test.ts`: **24/24 PASS**
+- `src/test/productionSmokeIntegration.test.ts`: **17/17 PASS**
+- `src/test/ragVectorStoreEquivalence.test.ts`: **8/8 PASS**
+
+**Total Baseline Test Suite:** **286 / 286 PASS (100%)**
+
+### Compilation & Build
+- `npx tsc --noEmit`: **0 errors**
+- `npm run build`: **SUCCESS** (vite v5.4.21 bundle transformed and minified cleanly in 9.98s)
+
+---
+
+## 10. Definition of Done (Step 2)
+
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | Grading matrix defined for all supported types (`NUMERICAL`, `MCQ`, `SHORT_ANSWER`, `TRUE_FALSE`, `MULTI_SELECT`) | ✅ |
+| 2 | `numericalVerifier.ts` preserved as sole numerical authority | ✅ |
+| 3 | MCQ deterministic verification with distractor misconception awareness | ✅ |
+| 4 | Multi-select deterministic verification with controlled partial credit | ✅ |
+| 5 | True/False deterministic verification with strict format validation | ✅ |
+| 6 | Layered short-answer evaluation with safe `UNVERIFIABLE` fallback | ✅ |
+| 7 | Bounded $[0.0, 1.0]$ deterministic server-computed scoring | ✅ |
+| 8 | Structured misconception detection (15 categories) without LLM speculation | ✅ |
+| 9 | Pre-delivery question and answer-key integrity verification | ✅ |
+| 10 | Zero-trust submission security (client cannot manipulate grade/answer key) | ✅ |
+| 11 | Phase 3 grounded feedback integration with citation verification | ✅ |
+| 12 | 40/40 tests in `src/test/answerVerification.test.ts` pass | ✅ |
+| 13 | All 286 regression tests pass | ✅ |
+| 14 | TypeScript 0 errors | ✅ |
+| 15 | Production build succeeds | ✅ |
+| 16 | Documentation complete | ✅ |
+

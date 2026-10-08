@@ -1,14 +1,21 @@
 import { prisma, ensureAssessmentSchema, ensureLearnerSchema } from './prisma.ts';
 import { updateMasteryFromEvidence, getTopicLearnerMastery, type BKTParameters } from './bktService.ts';
 import { gradeNumericalAnswer, parseStudentAnswer } from './numericalVerifier.ts';
-import type { NumericalQuestion, NumericalAnswerSubmission } from './assessmentTypes.ts';
+import type {
+  NumericalQuestion,
+  NumericalAnswerSubmission,
+  AuthoritativeQuestion,
+  AnswerSubmissionPayload,
+  MisconceptionCategory,
+} from './assessmentTypes.ts';
 import { DEFAULT_TOLERANCE } from './assessmentTypes.ts';
+import { gradeUniversalAnswer, normalizeText } from './robustAnswerVerifier.ts';
 
 export type AnswerClassification = 'correct' | 'partially_correct' | 'incorrect';
 
 export interface AnswerEvaluationInput {
   questionId: string;
-  type: string; // 'MCQ' | 'SHORT_ANSWER' | 'NUMERICAL'
+  type: string; // 'MCQ' | 'SHORT_ANSWER' | 'NUMERICAL' | 'TRUE_FALSE' | 'MULTI_SELECT'
   question: string;
   userAnswer: string;
   correctAnswer: string;
@@ -23,6 +30,8 @@ export interface AnswerEvaluationInput {
   slideNumber?: number | null;
   timestampStart?: number | null;
   timestampEnd?: number | null;
+  acceptedVariants?: string[];
+  requiredComponents?: string[];
 }
 
 export interface EvaluatedAnswerResult {
@@ -49,6 +58,7 @@ export interface EvaluatedAnswerResult {
     source_type?: string;
   };
   detectedMisconception?: DetectedMisconception | null;
+  errorCategory?: MisconceptionCategory;
 }
 
 export interface DetectedMisconception {
@@ -62,6 +72,7 @@ export interface DetectedMisconception {
   sourceId?: string | null;
   chunkId?: string | null;
   severity: 'high' | 'medium' | 'low';
+  errorCategory?: MisconceptionCategory;
 }
 
 export interface RepeatedMistake {
@@ -125,7 +136,7 @@ export interface DiagnosticReportResult {
 }
 
 // =========================================================================
-// 1. Core Answer Evaluation (MCQ, Short Answer, Numerical)
+// 1. Core Answer Evaluation (MCQ, Short Answer, Numerical, True/False, Multi-Select)
 // =========================================================================
 
 function tokenizeWords(text: string): string[] {
@@ -137,15 +148,12 @@ function tokenizeWords(text: string): string[] {
 }
 
 export function evaluateSingleAnswer(input: AnswerEvaluationInput): EvaluatedAnswerResult {
-  const qType = (input.type || 'MCQ').toUpperCase();
+  const rawQType = (input.type || 'MCQ').toUpperCase();
+  const validTypes = ['NUMERICAL', 'MCQ', 'SHORT_ANSWER', 'TRUE_FALSE', 'MULTI_SELECT'];
+  const qType = validTypes.includes(rawQType) ? rawQType : 'MCQ';
+
   const userRaw = String(input.userAnswer ?? '').trim();
   const correctRaw = String(input.correctAnswer ?? '').trim();
-  const userLower = userRaw.toLowerCase();
-  const correctLower = correctRaw.toLowerCase();
-
-  let classification: AnswerClassification = 'incorrect';
-  let credit = 0.0;
-  let feedback = '';
 
   const coordLabel = input.pageNumber
     ? `Page ${input.pageNumber}`
@@ -155,114 +163,55 @@ export function evaluateSingleAnswer(input: AnswerEvaluationInput): EvaluatedAns
     ? `${Math.floor(input.timestampStart / 60)}m${Math.floor(input.timestampStart % 60)}s`
     : 'Course Material Excerpt';
 
-  if (qType === 'MCQ') {
-    // 1. Exact text match
-    if (userLower === correctLower) {
-      classification = 'correct';
-      credit = 1.0;
-      feedback = `Correct! Verified in ${coordLabel}: ${correctRaw}`;
-    }
-    // 2. Index match if user answered 0, 1, 2, 3
-    else if (!isNaN(Number(userRaw)) && Array.isArray(input.options)) {
-      const idx = Number(userRaw);
-      const chosen = input.options[idx];
-      if (chosen && String(chosen).trim().toLowerCase() === correctLower) {
-        classification = 'correct';
-        credit = 1.0;
-        feedback = `Correct! Option ${idx + 1} (${chosen}) matches ${coordLabel}.`;
-      } else {
-        classification = 'incorrect';
-        credit = 0.0;
-        feedback = `Incorrect. You chose option ${idx + 1}${chosen ? ` ("${chosen}")` : ''}. Correct answer is "${correctRaw}" as stated in ${coordLabel}.`;
-      }
-    } else {
-      classification = 'incorrect';
-      credit = 0.0;
-      feedback = `Incorrect. You answered "${userRaw}". Verified answer in ${coordLabel} is "${correctRaw}".`;
-    }
-  } else if (qType === 'NUMERICAL') {
-    // Phase 4: Delegate to the canonical deterministic numerical verifier
-    const correctVal = parseFloat(correctRaw.replace(/[^\d.\-]/g, ''));
-    if (isNaN(correctVal)) {
-      classification = 'incorrect';
-      credit = 0.0;
-      feedback = `Invalid numerical format for correct answer. Expected numerical value.`;
-    } else {
-      const numericalQuestion: NumericalQuestion = {
-        question_id: input.questionId,
-        type: 'NUMERICAL',
-        topic: input.topic || 'General',
-        subtopic: input.subtopic,
-        difficulty: (input.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
-        source_id: input.sourceId,
-        chunk_id: input.chunkId,
-        page_number: input.pageNumber,
-        slide_number: input.slideNumber,
-        timestamp_start: input.timestampStart,
-        timestamp_end: input.timestampEnd,
-        question: input.question,
-        correct_answer: correctVal,
-        correct_answer_raw: correctRaw,
-        tolerance: DEFAULT_TOLERANCE,
-        verifiability: 'VERIFIED',
-        explanation: input.explanation || '',
-      };
+  // Construct server-authoritative question contract
+  const authQ: AuthoritativeQuestion = {
+    question_id: input.questionId,
+    type: qType as any,
+    topic: input.topic || 'General',
+    subtopic: input.subtopic,
+    difficulty: (input.difficulty as any) || 'medium',
+    question: input.question,
+    correct_answer: input.correctAnswer,
+    correct_answer_raw: correctRaw,
+    options: input.options,
+    accepted_variants: input.acceptedVariants,
+    required_components: input.requiredComponents,
+    page_number: input.pageNumber,
+    slide_number: input.slideNumber,
+    timestamp_start: input.timestampStart,
+    timestamp_end: input.timestampEnd,
+    source_id: input.sourceId,
+    chunk_id: input.chunkId,
+    explanation: input.explanation,
+    tolerance: DEFAULT_TOLERANCE,
+    verifiability: 'VERIFIED',
+  };
 
-      const numericalSubmission: NumericalAnswerSubmission = {
-        question_id: input.questionId,
-        raw_answer: userRaw,
-      };
+  const subPayload: AnswerSubmissionPayload = {
+    question_id: input.questionId,
+    raw_answer: input.userAnswer,
+  };
 
-      const gradingResult = gradeNumericalAnswer(numericalSubmission, numericalQuestion);
+  // Grade through the deterministic robust verifier
+  const gradingResult = gradeUniversalAnswer(subPayload, authQ);
 
-      if (gradingResult.classification === 'invalid_format') {
-        classification = 'incorrect';
-        credit = 0.0;
-      } else {
-        classification = gradingResult.classification as AnswerClassification;
-        credit = gradingResult.credit;
-      }
-      feedback = gradingResult.feedback;
-    }
+  // Map to AnswerClassification: correct | partially_correct | incorrect
+  let classification: AnswerClassification = 'incorrect';
+  if (gradingResult.classification === 'correct') {
+    classification = 'correct';
+  } else if (gradingResult.classification === 'partially_correct') {
+    classification = 'partially_correct';
   } else {
-    // SHORT_ANSWER
-    const userTokens = tokenizeWords(userRaw);
-    const correctTokens = tokenizeWords(correctRaw);
-
-    if (userTokens.length === 0 || correctTokens.length === 0) {
-      classification = 'incorrect';
-      credit = 0.0;
-      feedback = `Incomplete answer. Missing key conceptual components from ${coordLabel}.`;
-    } else {
-      let matchedCount = 0;
-      for (const ct of correctTokens) {
-        if (userTokens.includes(ct) || userLower.includes(ct)) {
-          matchedCount++;
-        }
-      }
-      const overlapRatio = matchedCount / correctTokens.length;
-
-      if (overlapRatio >= 0.75 || userLower === correctLower) {
-        classification = 'correct';
-        credit = 1.0;
-        feedback = `Correct! Your response accurately captures the core principles verified in ${coordLabel}.`;
-      } else if (overlapRatio >= 0.35 || userLower.includes(correctLower) || correctLower.includes(userLower)) {
-        classification = 'partially_correct';
-        credit = 0.5;
-        const missing = correctTokens.filter((ct) => !userTokens.includes(ct) && !userLower.includes(ct));
-        feedback = `Partially correct. You identified key concepts (${Math.round(overlapRatio * 100)}% coverage), but missed critical details: ${missing.slice(0, 3).join(', ')}. Review ${coordLabel}.`;
-      } else {
-        classification = 'incorrect';
-        credit = 0.0;
-        feedback = `Incorrect. Your response does not reflect the course principles verified in ${coordLabel}: "${correctRaw}".`;
-      }
-    }
+    classification = 'incorrect';
   }
+
+  const credit = gradingResult.credit;
+  const feedback = gradingResult.feedback;
 
   // Detect likely misconceptions for incorrect and partial answers
   let detectedMisconception: DetectedMisconception | null = null;
   if (classification !== 'correct') {
-    detectedMisconception = detectDeterministicMisconception(input, classification);
+    detectedMisconception = detectDeterministicMisconception(input, classification, gradingResult.error_category);
   }
 
   return {
@@ -288,6 +237,7 @@ export function evaluateSingleAnswer(input: AnswerEvaluationInput): EvaluatedAns
       timestamp_end: input.timestampEnd,
     },
     detectedMisconception,
+    errorCategory: gradingResult.error_category,
   };
 }
 
@@ -297,7 +247,8 @@ export function evaluateSingleAnswer(input: AnswerEvaluationInput): EvaluatedAns
 
 export function detectDeterministicMisconception(
   input: AnswerEvaluationInput,
-  classification: AnswerClassification
+  classification: AnswerClassification,
+  errorCategory?: MisconceptionCategory
 ): DetectedMisconception {
   const qLower = (input.question || '').toLowerCase();
   const ansLower = (input.userAnswer || '').toLowerCase();
@@ -312,6 +263,91 @@ export function detectDeterministicMisconception(
     : input.timestampStart !== null && input.timestampStart !== undefined
     ? `${Math.floor(input.timestampStart / 60)}m${Math.floor(input.timestampStart % 60)}s`
     : 'Course Material Excerpt';
+
+  // Category Check 1: Sign Error
+  if (errorCategory === 'SIGN_ERROR') {
+    return {
+      topic,
+      subtopic,
+      concept: 'Algebraic Sign Inversion',
+      misconceptionType: 'CALCULATION_ERROR',
+      description: `Sign error: Student provided opposite algebraic sign for calculation at ${coordLabel}.`,
+      evidenceQuote: `Verified reference value: ${input.correctAnswer}`,
+      sourceCoordinate: coordLabel,
+      sourceId: input.sourceId,
+      chunkId: input.chunkId,
+      severity: 'low',
+      errorCategory: 'SIGN_ERROR',
+    };
+  }
+
+  // Category Check 2: Unit Mismatch
+  if (errorCategory === 'UNIT_MISMATCH') {
+    return {
+      topic,
+      subtopic,
+      concept: 'Unit Conversion Discrepancy',
+      misconceptionType: 'CALCULATION_ERROR',
+      description: `Unit mismatch: Student numeric value was correct/near-correct but specified incompatible units at ${coordLabel}.`,
+      evidenceQuote: `Verified reference value: ${input.correctAnswer}`,
+      sourceCoordinate: coordLabel,
+      sourceId: input.sourceId,
+      chunkId: input.chunkId,
+      severity: 'low',
+      errorCategory: 'UNIT_MISMATCH',
+    };
+  }
+
+  // Category Check 3: Order of Magnitude
+  if (errorCategory === 'ORDER_OF_MAGNITUDE') {
+    return {
+      topic,
+      subtopic,
+      concept: 'Order of Magnitude Discrepancy',
+      misconceptionType: 'CALCULATION_ERROR',
+      description: `Order of magnitude error: Calculation is off by a factor of 10 or more. Verify SI prefixes at ${coordLabel}.`,
+      evidenceQuote: `Verified reference value: ${input.correctAnswer}`,
+      sourceCoordinate: coordLabel,
+      sourceId: input.sourceId,
+      chunkId: input.chunkId,
+      severity: 'medium',
+      errorCategory: 'ORDER_OF_MAGNITUDE',
+    };
+  }
+
+  // Category Check 4: Missing Required Component
+  if (errorCategory === 'MISSING_REQUIRED_COMPONENT') {
+    return {
+      topic,
+      subtopic,
+      concept: `${subtopic || topic} Essential Requirements`,
+      misconceptionType: 'PARTIAL_DEFINITION',
+      description: `Missing required conceptual components verified in ${coordLabel}.`,
+      evidenceQuote: input.correctAnswer,
+      sourceCoordinate: coordLabel,
+      sourceId: input.sourceId,
+      chunkId: input.chunkId,
+      severity: 'medium',
+      errorCategory: 'MISSING_REQUIRED_COMPONENT',
+    };
+  }
+
+  // Category Check 5: Invalid Option
+  if (errorCategory === 'INVALID_OPTION') {
+    return {
+      topic,
+      subtopic,
+      concept: 'Option Universe Selection',
+      misconceptionType: 'CONCEPT_CONFUSION',
+      description: `Selected option outside the authorized option set for the question at ${coordLabel}.`,
+      evidenceQuote: input.correctAnswer,
+      sourceCoordinate: coordLabel,
+      sourceId: input.sourceId,
+      chunkId: input.chunkId,
+      severity: 'high',
+      errorCategory: 'INVALID_OPTION',
+    };
+  }
 
   // Rule 1: Operating Systems - Deadlock Avoidance vs Deadlock Prevention
   if (

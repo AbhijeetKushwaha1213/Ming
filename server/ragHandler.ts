@@ -13,6 +13,7 @@ import { evaluationHandler } from './evaluationHandler.ts';
 import { resolveContextUser } from './authMiddleware.ts';
 import { verifyGroundedAnswer, buildCanonicalEvidenceIndex } from './citationVerifier.ts';
 import { verifyNumericalQuestion, normalizeCorrectAnswer, computeNumericalFingerprint } from './numericalVerifier.ts';
+import { validateQuestionIntegrity } from './robustAnswerVerifier.ts';
 import type { NumericalQuestion } from './assessmentTypes.ts';
 import { DEFAULT_TOLERANCE } from './assessmentTypes.ts';
 
@@ -565,8 +566,13 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
             rejectedNumerical.push({ question: q, issues: verification.issues });
           }
         } else {
-          // Non-numerical questions pass through unchanged
-          questions.push(q);
+          // Non-numerical questions: validate integrity (options, correct answer, duplicates)
+          const valResult = validateQuestionIntegrity(q);
+          if (valResult.valid) {
+            questions.push(q);
+          } else {
+            console.warn(`Phase 4: Rejected invalid ${q.type || 'MCQ'} question:`, valResult.errors);
+          }
         }
       }
 
@@ -643,6 +649,46 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         return;
       }
 
+      // Zero-Trust: Resolve authoritative question data from database if stored,
+      // preventing client tampering with answer keys, score, or options.
+      const authoritativeQuestions = await Promise.all(
+        questions.map(async (q) => {
+          const qId = q.question_id || q.id;
+          if (qId) {
+            try {
+              const dbRows: any[] = await prisma.$queryRawUnsafe(
+                'SELECT * FROM assessment_questions WHERE id = ? AND userId = ? LIMIT 1',
+                qId,
+                userId
+              );
+              if (dbRows && dbRows.length > 0) {
+                const row = dbRows[0];
+                let opts = q.options;
+                if (row.optionsJson) {
+                  try { opts = JSON.parse(row.optionsJson); } catch {}
+                }
+                return {
+                  ...q,
+                  type: row.type || q.type,
+                  question: row.question || q.question,
+                  options: opts,
+                  correct_answer: row.correctAnswer,
+                  correctAnswer: row.correctAnswer,
+                  explanation: row.explanation || q.explanation,
+                  source_id: row.sourceId || q.source_id,
+                  chunk_id: row.chunkId || q.chunk_id,
+                  page_number: row.pageNumber ?? q.page_number,
+                  slide_number: row.slideNumber ?? q.slide_number,
+                  timestamp_start: row.timestampStart ?? q.timestamp_start,
+                  timestamp_end: row.timestampEnd ?? q.timestamp_end,
+                };
+              }
+            } catch {}
+          }
+          return q;
+        })
+      );
+
       const attemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const { results, diagnosticReport } = await processAssessmentIntelligence({
         userId,
@@ -650,7 +696,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         topic,
         subtopic,
         difficulty,
-        questions,
+        questions: authoritativeQuestions,
         answers,
         attemptId,
       });

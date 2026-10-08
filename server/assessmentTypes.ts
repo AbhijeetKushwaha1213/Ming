@@ -226,3 +226,174 @@ export interface Token {
   type: TokenType;
   value: number | null;
 }
+
+// =========================================================================
+// Canonical Phase 4 — Step 2: Universal Assessment & Misconception Types
+// =========================================================================
+
+/**
+ * Question types supported across Ming's assessment pipeline.
+ */
+export type SupportedQuestionType =
+  | 'NUMERICAL'
+  | 'MCQ'
+  | 'SHORT_ANSWER'
+  | 'TRUE_FALSE'
+  | 'MULTI_SELECT';
+
+/**
+ * Deterministic error and misconception categories.
+ * Assigned ONLY when deterministically supported by evidence or question metadata.
+ * If uncertain, defaults to 'UNDETERMINED'.
+ */
+export type MisconceptionCategory =
+  | 'SIGN_ERROR'                   // Wrong sign (+ instead of -)
+  | 'ROUNDING_ERROR'               // Precision / rounding discrepancy
+  | 'ORDER_OF_MAGNITUDE'           // Factor of 10/100/1000 off
+  | 'UNIT_MISMATCH'                // Value correct or near-correct, unit incorrect
+  | 'FORMULA_ERROR'                // Determinable wrong arithmetic/formula branch
+  | 'PARSE_ERROR'                  // Malformed / unparseable student input
+  | 'WRONG_OPTION'                 // Chose an incorrect MCQ distractor without specific metadata
+  | 'INVALID_OPTION'               // Chose an option ID or text not in the question's option universe
+  | 'MISSING_REQUIRED_COMPONENT'   // Omitted a required token, keyword, or multi-select option
+  | 'EXTRA_COMPONENT'              // Included an extraneous/incorrect option or contradictory token
+  | 'CONCEPTUAL_MISMATCH'          // Confused distinct domain concepts
+  | 'INCOMPLETE_ANSWER'            // Empty or near-empty submission
+  | 'UNVERIFIABLE'                 // Semantic answer cannot be reliably verified
+  | 'NO_MISCONCEPTION'             // Correct answer
+  | 'UNDETERMINED';                // Cannot definitively ascertain cause of error
+
+/**
+ * Distractor pedagogical metadata optionally attached to MCQ options.
+ */
+export interface DistractorMetadata {
+  optionText: string;
+  misconceptionCategory?: MisconceptionCategory;
+  misconceptionLabel?: string;
+  rationale?: string;
+}
+
+/**
+ * Structured option definition for MCQ / MULTI_SELECT.
+ */
+export interface QuestionOptionItem {
+  id?: string;
+  text: string;
+  distractorMetadata?: DistractorMetadata;
+}
+
+/**
+ * Server-authoritative assessment question model.
+ * Contains ground truth; client payloads are never allowed to override these fields.
+ */
+export interface AuthoritativeQuestion {
+  question_id: string;
+  assessment_id?: string;
+  type: SupportedQuestionType;
+  topic: string;
+  subtopic?: string | null;
+  difficulty: 'easy' | 'medium' | 'hard';
+  question: string;
+  
+  // Authoritative Answer Data (Server-Only)
+  correct_answer: any;
+  correct_answer_raw?: string;
+  options?: Array<string | QuestionOptionItem>;
+  accepted_variants?: string[];      // For SHORT_ANSWER: acceptable variant strings
+  required_components?: string[];    // For SHORT_ANSWER / MULTI_SELECT: required tokens/items
+  
+  // Numerical fields
+  expected_unit?: string | null;
+  tolerance?: TolerancePolicy;
+  verifiability?: VerifiabilityStatus;
+  
+  // Provenance & Source coordinates
+  source_id?: string | null;
+  resource_id?: string | null;
+  chunk_id?: string | null;
+  page_number?: number | null;
+  slide_number?: number | null;
+  timestamp_start?: number | null;
+  timestamp_end?: number | null;
+  source_type?: string;
+  
+  // Explanations
+  explanation?: string;
+  fingerprint?: string;
+  normalized_question?: string;
+}
+
+/**
+ * Student answer submission contract.
+ * Contains ONLY student-provided inputs. No answer keys, tolerances, or scores.
+ */
+export interface AnswerSubmissionPayload {
+  question_id: string;
+  raw_answer: any; // string, number, string[], or boolean
+}
+
+/**
+ * Complete deterministic grading output for any supported question type.
+ */
+export interface UniversalGradingResult {
+  question_id: string;
+  question_type: SupportedQuestionType;
+  classification: 'correct' | 'partially_correct' | 'incorrect' | 'invalid_format' | 'unverifiable';
+  credit: number; // Strictly bounded [0.0, 1.0]
+  is_correct: boolean;
+  is_partial: boolean;
+  
+  // Error & Misconception
+  error_category: MisconceptionCategory;
+  misconception_description?: string;
+  
+  // Explanatory feedback (purely pedagogical, cannot alter grade)
+  feedback: string;
+  explanation: string;
+  
+  // Provenance & Grounding
+  source_citation?: string;
+  citation_label?: string;
+  location?: {
+    source_id?: string | null;
+    resource_id?: string | null;
+    chunk_id?: string | null;
+    page_number?: number | null;
+    slide_number?: number | null;
+    timestamp_start?: number | null;
+    timestamp_end?: number | null;
+    source_type?: string;
+  };
+  grounded_citation?: any;
+  
+  // Zero-trust raw echo
+  raw_student_answer: any;
+  normalized_student_answer?: any;
+}
+
+/**
+ * Validation result for assessment question integrity prior to delivery.
+ */
+export interface QuestionValidationResult {
+  valid: boolean;
+  errors: string[];
+  sanitized_question?: AuthoritativeQuestion;
+}
+
+/**
+ * Student-facing sanitized result (excludes internal keys, prompts, or tenant secrets).
+ */
+export interface StudentFacingResult {
+  question_id: string;
+  question_type: SupportedQuestionType;
+  classification: 'correct' | 'partially_correct' | 'incorrect' | 'invalid_format' | 'unverifiable';
+  credit: number;
+  is_correct: boolean;
+  is_partial: boolean;
+  error_category: MisconceptionCategory;
+  feedback: string;
+  explanation: string;
+  citation_label?: string;
+  location?: UniversalGradingResult['location'];
+}
+

@@ -79,6 +79,11 @@ jobs:
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install -r requirements.txt
 
+      - name: Initialize Benchmark Knowledge Base & Warm Embedding Model
+        run: |
+          .venv/bin/python benchmarks/seed_benchmark_kb.py
+          .venv/bin/python scripts/migrate_chroma_to_pgvector.py
+
       - name: Install NPM Dependencies
         run: npm ci
 

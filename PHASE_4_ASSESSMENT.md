@@ -428,3 +428,170 @@ Reuses Phase 3's canonical Grounding layer:
 | 15 | Production build succeeds | ✅ |
 | 16 | Documentation complete | ✅ |
 
+---
+
+# CANONICAL PHASE 4 — STEP 3
+## Assessment Quality, Ambiguity & Generation Hardening
+
+**Status:** COMPLETE ✅  
+**Phase:** 4 of 7 (Canonical Roadmap)  
+**Roadmap Progress:**
+- Phase 4 Step 1: COMPLETE ✅
+- Phase 4 Step 2: COMPLETE ✅
+- Phase 4 Step 3: COMPLETE ✅
+- Phase 5+: NOT STARTED ⏳
+
+---
+
+## 1. Executive Summary
+
+Phase 4 Step 3 establishes Ming's **Assessment Quality, Ambiguity & Generation Hardening Engine** (`server/questionQualityValidator.ts`).
+While the LLM may propose candidate assessment items, the server remains **strictly authoritative** over:
+- Question validity
+- Structural well-formedness
+- System prompt leakage and script injection detection
+- Type-specific integrity and distractor quality
+- Ambiguity detection
+- Internal question/answer/explanation consistency
+- Deterministic SHA-256 question fingerprinting and near-duplicate protection
+- Traceable source grounding and tenant authorization
+- Fail-closed batch quarantine prior to student presentation
+
+No generated question can bypass these deterministic quality gates or reach student-facing views without passing verification.
+
+---
+
+## 2. Canonical Question Quality Contract
+
+Every candidate question is evaluated against strict type-specific invariants:
+
+| Category | Requirement & Validation Policy | Rejection Code |
+| :--- | :--- | :--- |
+| **General Structure** | Non-empty question stem; minimum 8 characters; valid question type; valid metadata; answer key presence. | `MISSING_STEM`, `STEM_TOO_SHORT`, `UNSUPPORTED_TYPE`, `MISSING_ANSWER_KEY` |
+| **Prompt Leakage & Script Defense** | Scans stem, options, explanation for system instruction markers (`"You are an AI"`, `"System prompt:"`, `"Return ONLY JSON"`, `"[EVIDENCE_"`, `"<script>"`, `"javascript:"`, `"ignore previous instructions"`). | `PROMPT_LEAKAGE` |
+| **MCQ Options & Distractors** | Minimum 2 options (3–5 preferred); unique option IDs; non-empty option text; no duplicate options; exactly one correct choice matching available options; no empty distractors. | `INSUFFICIENT_OPTIONS`, `DUPLICATE_OPTION_ID`, `DUPLICATE_OPTION_TEXT`, `EMPTY_OPTION_TEXT`, `CORRECT_OPTION_NOT_FOUND`, `DISTRACTOR_EQUALS_CORRECT` |
+| **Multi-Select Set Integrity** | Minimum 2 options; unique option IDs; at least 1 correct option; all correct choices must exist in options universe; no duplicate option texts. | `INSUFFICIENT_OPTIONS`, `DUPLICATE_OPTION_TEXT`, `CORRECT_OPTION_NOT_FOUND`, `MISSING_ANSWER_KEY` |
+| **True/False Assertion** | Canonical boolean representation (`true`/`false`/`t`/`f`/`yes`/`no`/`1`/`0`); unparseable, evasive, or ambiguous representations (`"maybe"`, `"sometimes"`) rejected as hard errors. | `MALFORMED_BOOLEAN` |
+| **Numerical Specification** | Finite expected value (rejects NaN/Infinity); safe expression evaluation (rejects division-by-zero); valid positive tolerance; verifier contract compatibility via `verifyNumericalQuestion()`. | `NON_FINITE_NUMERICAL`, `MATHEMATICALLY_INVALID`, `INVALID_TOLERANCE`, `UNVERIFIABLE_NUMERICAL` |
+| **Short-Answer Specifics** | Non-empty canonical answer; distinct accepted variants; non-contradictory required components. | `EMPTY_SHORT_ANSWER`, `CONTRADICTORY_COMPONENTS` |
+
+---
+
+## 3. Validation States & Ambiguity Policy
+
+The validator emits a canonical three-state verdict:
+1. **`VALID`**: Passes all structural, type, distractor, consistency, duplicate, and grounding checks. Safe for delivery.
+2. **`REVIEW_REQUIRED`**: Soft ambiguity detected (e.g. excessively broad tolerance $\ge 50\%$, stem asking for units without `expected_unit`, near-duplicate question with Jaccard similarity $\ge 0.85$). Quarantined from automated student delivery.
+3. **`INVALID`**: Hard violation (missing stem, contradictory answer key, prompt leakage, duplicate option IDs, cross-tenant evidence). Quarantined and suppressed.
+
+Ambiguity is never resolved by guessing or unconstrained LLM heuristics. Ambiguous content is rejected or quarantined.
+
+---
+
+## 4. Deterministic Question Fingerprinting & Deduplication
+
+### 4.1 SHA-256 Fingerprint
+A stable, normalized fingerprint is computed for every question:
+$$\text{payload} = \text{type} \mathbin{::} \text{normalized\_stem} \mathbin{::} \text{sorted\_normalized\_options} \mathbin{::} \text{normalized\_answer}$$
+$$\text{fingerprint} = \text{SHA-256}(\text{payload})$$
+
+Features:
+- Case-insensitive, punctuation-stripped, whitespace-collapsed.
+- Permutation-invariant across option presentation orders.
+- Identical questions produce identical 64-character hex strings across sessions and databases.
+
+### 4.2 Near-Duplicate Detection
+Calculates word set Jaccard similarity:
+$$J(A, B) = \frac{|A \cap B|}{|A \cup B|}$$
+- If exact fingerprint or exact normalized stem match $\to$ `DUPLICATE_QUESTION` (`REJECT`).
+- If $J \ge 0.85$ $\to$ `NEAR_DUPLICATE_QUESTION` (`REVIEW_REQUIRED`).
+- If $J < 0.85$ $\to$ Allowed as a distinct question.
+
+---
+
+## 5. Source Grounding Requirement (Phase 3 Integration)
+
+For source-grounded assessments, candidate questions must provide verifiable provenance:
+1. **Evidence Resolution**: Looks up `chunk_id` in the local canonical evidence index (`buildCanonicalEvidenceIndex`).
+2. **Tenant Isolation**: Verifies `chunk.user_id === authenticated_user_id` or `SYSTEM_PUBLIC`. Cross-tenant chunks are rejected with `CROSS_TENANT_REJECTED`.
+3. **Resource Availability**: Verifies that the underlying document/resource exists and is not soft-deleted. Deleted resources return `SOURCE_UNAVAILABLE`.
+4. **Coordinate Integrity**: Checks that question coordinates (`page_number`, `slide_number`) match the underlying chunk coordinates. Mismatches return `COORDINATE_MISMATCH`.
+
+If grounding fails, the question is **quarantined** and never delivered as a valid grounded assessment item.
+
+---
+
+## 6. Question / Answer / Explanation Consistency
+
+Deterministic consistency verification prevents contradictory items:
+- **MCQ**: Explanation cannot explicitly designate a different option (e.g. key is A, but explanation says "The correct answer is B").
+- **True/False**: Explanation cannot contradict the truth value (e.g. key is True, but explanation begins "False. ...").
+- **Numerical**: Calculation numbers cited in explanation cannot contradict the authoritative expected value by $> 30\%$.
+- **Short-Answer**: Required components cannot contradict the canonical answer.
+
+---
+
+## 7. Fail-Closed Batch Generation & Quarantine
+
+Implemented in `validateHardenedQuestionBatch(questions, context)`:
+- Processes the full array of candidate items proposed by the generation engine.
+- Performs **intra-batch deduplication** (if two questions in the same batch share a fingerprint, the second is quarantined).
+- Quarantines invalid or review-required items with detailed error codes.
+- Only completely `VALID` questions are persisted and delivered to students.
+- In `/api/rag/assessment/generate`, if all proposed items fail validation, the endpoint returns an empty set of valid questions without delivering broken or corrupted questions.
+
+---
+
+## 8. Zero-Trust Grading Preservation
+
+The generation hardening engine sits strictly **before delivery**.
+Once delivered, student submissions are graded by `robustAnswerVerifier.ts` from Step 2:
+- Student submission payloads cannot provide answer keys, scores, tolerances, or error categories.
+- Authoritative question data is loaded from the database by ID.
+- Student-facing responses pass through `sanitizeResultForStudent()`, stripping hidden prompts and internal diagnostic keys.
+
+---
+
+## 9. Verification & Quality Gates
+
+### Test Suites Passed
+- `src/test/questionQualityValidation.test.ts`: **50/50 PASS**
+- `src/test/numericalAssessment.test.ts`: **78/78 PASS**
+- `src/test/answerVerification.test.ts`: **40/40 PASS**
+- `src/test/phase9AssessmentIntelligence.test.tsx`: **19/19 PASS**
+- `src/test/groundingVerification.test.ts`: **30/30 PASS**
+- `src/test/sourceNavigation.test.tsx`: **25/25 PASS**
+- `src/test/productionSecurityAndIsolation.test.ts`: **23/23 PASS**
+- `src/test/resourceStreaming.test.ts`: **22/22 PASS**
+- `src/test/multimodalIngestion.test.ts`: **24/24 PASS**
+- `src/test/productionSmokeIntegration.test.ts`: **17/17 PASS**
+- `src/test/ragVectorStoreEquivalence.test.ts`: **8/8 PASS**
+
+**Total Baseline Test Suite:** **336 / 336 PASS (100%)**
+
+### Compilation & Build
+- `npx tsc --noEmit`: **0 errors**
+- `npm run build`: **SUCCESS** (vite v5.4.21 bundle transformed and minified cleanly in 9.86s)
+
+---
+
+## 10. Definition of Done (Step 3)
+
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | Canonical question quality contract defined across all types | ✅ |
+| 2 | Prompt leakage and script injection detection | ✅ |
+| 3 | Distractor quality verification (uniqueness, plausibility, non-empty) | ✅ |
+| 4 | Deterministic ambiguity detection with `REVIEW_REQUIRED` state | ✅ |
+| 5 | Question-answer-explanation consistency checks | ✅ |
+| 6 | SHA-256 fingerprinting and near-duplicate detection | ✅ |
+| 7 | Source grounding verification reusing Phase 3 contracts | ✅ |
+| 8 | Fail-closed batch generation and quarantine pipeline | ✅ |
+| 9 | Zero-trust submission security preserved via Step 2 engine | ✅ |
+| 10 | 50/50 tests in `src/test/questionQualityValidation.test.ts` pass | ✅ |
+| 11 | All 336 regression tests pass | ✅ |
+| 12 | TypeScript 0 errors | ✅ |
+| 13 | Production build succeeds | ✅ |
+| 14 | Documentation complete | ✅ |
+
+

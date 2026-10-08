@@ -43,6 +43,20 @@ import {
   type ResourceVerificationRecord,
 } from './citationVerifier.ts';
 
+export {
+  computeNormalizedStem,
+  computeQuestionFingerprint,
+  calculateJaccardSimilarity,
+  detectPromptLeakage,
+  checkDistractorQuality,
+  checkQuestionAmbiguity,
+  checkQuestionConsistency,
+  detectNearDuplicate,
+  verifyQuestionGrounding,
+  validateHardenedQuestion,
+  validateHardenedQuestionBatch,
+} from './questionQualityValidator.ts';
+
 // =========================================================================
 // 1. Text Normalization Utilities
 // =========================================================================

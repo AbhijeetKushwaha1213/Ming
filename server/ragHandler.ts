@@ -14,6 +14,7 @@ import { resolveContextUser } from './authMiddleware.ts';
 import { verifyGroundedAnswer, buildCanonicalEvidenceIndex } from './citationVerifier.ts';
 import { verifyNumericalQuestion, normalizeCorrectAnswer, computeNumericalFingerprint } from './numericalVerifier.ts';
 import { validateQuestionIntegrity } from './robustAnswerVerifier.ts';
+import { validateHardenedQuestionBatch, computeQuestionFingerprint } from './questionQualityValidator.ts';
 import type { NumericalQuestion } from './assessmentTypes.ts';
 import { DEFAULT_TOLERANCE } from './assessmentTypes.ts';
 
@@ -518,67 +519,28 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         return;
       }
 
-      // 3. Phase 4: Server-side numerical question verification
-      // Reject NUMERICAL questions that cannot be independently verified
+      // 3. Phase 4 Step 3: Server-side hardened question quality, ambiguity, and deduplication verification
       const rawQuestions = genResult.questions || [];
-      const questions: any[] = [];
-      const rejectedNumerical: any[] = [];
+      const validationContext = {
+        authenticated_user_id: String(userId),
+        require_grounding: Boolean(sourceId),
+        existing_fingerprints: existingFps,
+        existing_questions: existingQuestions.map((q) => ({ question: q })),
+      };
 
-      for (const q of rawQuestions) {
-        if (String(q.type || '').toUpperCase() === 'NUMERICAL') {
-          const normalized = normalizeCorrectAnswer(String(q.correct_answer ?? ''));
-          if (!normalized.valid || normalized.value === null) {
-            rejectedNumerical.push({ question: q, reason: 'Unparseable correct_answer' });
-            continue;
-          }
+      const batchValidation = await validateHardenedQuestionBatch(rawQuestions, validationContext);
+      const questions = batchValidation.valid_questions;
+      const quarantined = batchValidation.quarantined_questions;
 
-          const numericalQ: NumericalQuestion = {
-            question_id: q.question_id || `q_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            type: 'NUMERICAL',
-            topic: q.topic || topic,
-            subtopic: q.subtopic || null,
-            difficulty: q.difficulty || difficulty,
-            source_id: q.source_id || null,
-            chunk_id: q.chunk_id || null,
-            page_number: q.page_number ?? null,
-            slide_number: q.slide_number ?? null,
-            timestamp_start: q.timestamp_start ?? null,
-            timestamp_end: q.timestamp_end ?? null,
-            question: q.question,
-            correct_answer: normalized.value,
-            correct_answer_raw: String(q.correct_answer),
-            expected_unit: q.expected_unit || null,
-            tolerance: DEFAULT_TOLERANCE,
-            verifiability: 'PENDING',
-            explanation: q.explanation || '',
-            fingerprint: q.fingerprint,
-            normalized_question: q.normalized_question,
-          };
-
-          const verification = verifyNumericalQuestion(numericalQ);
-          if (verification.verified) {
-            // Verified: update the question with canonical data
-            q.correct_answer = String(normalized.value);
-            q.fingerprint = q.fingerprint || computeNumericalFingerprint(q.question, normalized.value, q.topic || topic);
-            q.verification_status = 'VERIFIED';
-            questions.push(q);
-          } else {
-            rejectedNumerical.push({ question: q, issues: verification.issues });
-          }
-        } else {
-          // Non-numerical questions: validate integrity (options, correct answer, duplicates)
-          const valResult = validateQuestionIntegrity(q);
-          if (valResult.valid) {
-            questions.push(q);
-          } else {
-            console.warn(`Phase 4: Rejected invalid ${q.type || 'MCQ'} question:`, valResult.errors);
-          }
-        }
-      }
-
-      if (rejectedNumerical.length > 0) {
-        console.warn(`Phase 4: Rejected ${rejectedNumerical.length} unverifiable NUMERICAL question(s):`,
-          rejectedNumerical.map(r => ({ q: r.question?.question?.substring(0, 60), issues: r.issues || r.reason })));
+      if (quarantined.length > 0) {
+        console.warn(`Phase 4 Step 3: Quarantined ${quarantined.length} question(s) failing quality/ambiguity validation:`,
+          quarantined.map(r => ({
+            q: r.question?.question?.substring(0, 60),
+            status: r.validation?.status,
+            errors: r.validation?.errors || [],
+            warnings: r.validation?.warnings || []
+          }))
+        );
       }
 
       // 4. Persist valid generated questions into assessment_questions table with full deduplication metadata

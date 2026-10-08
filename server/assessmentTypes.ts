@@ -397,3 +397,112 @@ export interface StudentFacingResult {
   location?: UniversalGradingResult['location'];
 }
 
+// =========================================================================
+// Canonical Phase 4 — Step 3: Hardened Question Quality & Ambiguity Contracts
+// =========================================================================
+
+/**
+ * Three-state canonical validation verdict:
+ * - VALID: Passes all structural, type, ambiguity, grounding, and consistency checks.
+ * - INVALID: Hard error (missing stem, contradictory answer key, prompt leakage, etc.) -> quarantined.
+ * - REVIEW_REQUIRED: Question has soft ambiguity, near-duplicate, or low-confidence issue needing review.
+ */
+export type QuestionValidationStatus = 'VALID' | 'INVALID' | 'REVIEW_REQUIRED';
+
+export type QualityIssueCode =
+  | 'MISSING_STEM'
+  | 'STEM_TOO_SHORT'
+  | 'UNSUPPORTED_TYPE'
+  | 'MISSING_ANSWER_KEY'
+  | 'TYPE_ANSWER_MISMATCH'
+  | 'PROMPT_LEAKAGE'
+  | 'INSUFFICIENT_OPTIONS'
+  | 'DUPLICATE_OPTION_ID'
+  | 'DUPLICATE_OPTION_TEXT'
+  | 'EMPTY_OPTION_TEXT'
+  | 'CORRECT_OPTION_NOT_FOUND'
+  | 'MULTIPLE_IDENTICAL_CORRECT'
+  | 'DISTRACTOR_EQUALS_CORRECT'
+  | 'EMPTY_DISTRACTOR'
+  | 'MALFORMED_BOOLEAN'
+  | 'NON_FINITE_NUMERICAL'
+  | 'INVALID_TOLERANCE'
+  | 'TOLERANCE_TOO_BROAD'
+  | 'MATHEMATICALLY_INVALID'
+  | 'EMPTY_SHORT_ANSWER'
+  | 'CONTRADICTORY_COMPONENTS'
+  | 'EXPLANATION_CONTRADICTS_ANSWER'
+  | 'NUMERICAL_EXPLANATION_MISMATCH'
+  | 'UNGROUNDED_EVIDENCE'
+  | 'CROSS_TENANT_EVIDENCE'
+  | 'SOURCE_UNAVAILABLE'
+  | 'COORDINATE_MISMATCH'
+  | 'DUPLICATE_QUESTION'
+  | 'NEAR_DUPLICATE_QUESTION'
+  | 'UNVERIFIABLE_NUMERICAL'
+  | 'MALFORMED_METADATA';
+
+export interface QuestionQualityIssue {
+  code: QualityIssueCode | string;
+  message: string;
+  severity: 'ERROR' | 'WARNING';
+  field?: string;
+}
+
+export interface AmbiguityCheckResult {
+  is_ambiguous: boolean;
+  requires_review: boolean;
+  reasons: string[];
+}
+
+export interface ConsistencyCheckResult {
+  is_consistent: boolean;
+  inconsistencies: string[];
+}
+
+export interface DistractorQualityResult {
+  valid: boolean;
+  issues: string[];
+}
+
+export interface GroundingValidationResult {
+  grounded: boolean;
+  status: 'VERIFIED' | 'UNGROUNDED' | 'SOURCE_UNAVAILABLE' | 'CROSS_TENANT_REJECTED';
+  reason?: string;
+  citation?: any;
+}
+
+export interface DuplicateCheckResult {
+  is_duplicate: boolean;
+  is_near_duplicate: boolean;
+  fingerprint: string;
+  similarity: number;
+  matched_question_id?: string;
+  action: 'ALLOW' | 'REJECT' | 'REVIEW_REQUIRED';
+}
+
+export interface HardenedQuestionValidationResult {
+  status: QuestionValidationStatus;
+  valid: boolean; // true ONLY if status === 'VALID'
+  errors: string[];
+  warnings: string[];
+  issues: QuestionQualityIssue[];
+  fingerprint: string;
+  sanitized_question?: AuthoritativeQuestion;
+  ambiguity: AmbiguityCheckResult;
+  consistency: ConsistencyCheckResult;
+  distractor_quality: DistractorQualityResult;
+  grounding?: GroundingValidationResult;
+  duplicate_check?: DuplicateCheckResult;
+}
+
+export interface QuestionValidationContext {
+  authenticated_user_id?: string;
+  require_grounding?: boolean;
+  existing_questions?: any[];
+  existing_fingerprints?: string[];
+  evidence_index?: any;
+  resource_checker?: (resourceId: string) => Promise<{ exists: boolean; isDeleted: boolean; userId: string; tenantType?: string } | null>;
+}
+
+

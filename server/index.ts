@@ -13,6 +13,14 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { handleAiGenerate } from './aiProxyHandler.ts';
 import { prisma } from './prisma.ts';
+import {
+  getLivenessStatus,
+  getReadinessStatus,
+  getComprehensiveHealth,
+  logStructured,
+  safeUserId,
+} from './observability.ts';
+import { assertValidConfiguration } from './configValidator.ts';
 
 const PORT = Number(process.env.API_PORT || 3001);
 const HOST = process.env.API_HOST || '127.0.0.1';
@@ -115,34 +123,29 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
-  // Comprehensive multi-component health endpoint
-  if (req.method === 'GET' && url.pathname === '/api/health') {
-    let dbStatus = 'healthy';
-    try {
-      await prisma.resource.count({ take: 1 });
-    } catch {
-      dbStatus = 'degraded';
-    }
-
-    const aiConfigured = Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
-    const storageHealthy = fs.existsSync('./server/uploads');
-    const vectorProvider = (process.env.VECTOR_STORE || 'chroma').toLowerCase().trim();
-
+  // 1. Liveness Probe
+  if (req.method === 'GET' && url.pathname === '/api/health/live') {
+    res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
-    res.end(
-      JSON.stringify({
-        status: dbStatus === 'healthy' ? 'healthy' : 'degraded',
-        uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
-        components: {
-          api: 'healthy',
-          database: dbStatus,
-          vectorStore: vectorProvider,
-          aiProvider: aiConfigured ? 'configured' : 'unconfigured',
-          storage: storageHealthy ? 'healthy' : 'uninitialized',
-        },
-        timestamp: new Date().toISOString(),
-      }),
-    );
+    res.end(JSON.stringify(getLivenessStatus()));
+    return;
+  }
+
+  // 2. Readiness Probe
+  if (req.method === 'GET' && url.pathname === '/api/health/ready') {
+    const readiness = await getReadinessStatus();
+    res.statusCode = readiness.statusCode;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(readiness));
+    return;
+  }
+
+  // 3. Comprehensive Health Diagnostic
+  if (req.method === 'GET' && url.pathname === '/api/health') {
+    const health = await getComprehensiveHealth();
+    res.statusCode = health.status === 'healthy' ? 200 : 503;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(health));
     return;
   }
 
@@ -272,29 +275,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   res.end(JSON.stringify({ error: 'Not found' }));
 }
 
-function validateConfigurationAtStartup() {
-  const vectorStore = (process.env.VECTOR_STORE || 'chroma').toLowerCase().trim();
-  if (vectorStore === 'pgvector') {
-    const dbUrl = process.env.DATABASE_URL?.trim() || '';
-    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
-    const pgvectorUrl = process.env.PGVECTOR_URL?.trim() || '';
-    const hasConfig =
-      dbUrl.startsWith('postgres://') ||
-      dbUrl.startsWith('postgresql://') ||
-      Boolean(supabaseUrl) ||
-      Boolean(pgvectorUrl) ||
-      process.env.PGVECTOR_TEST_LOCAL === '1';
-
-    if (!hasConfig) {
-      throw new Error(
-        "Startup Configuration Error: VECTOR_STORE is configured to 'pgvector', but required PostgreSQL/pgvector configuration (DATABASE_URL, SUPABASE_URL, or PGVECTOR_URL) is missing. Failing closed: cannot silently downgrade to Chroma in production."
-      );
-    }
-  }
-}
-
 async function start() {
-  validateConfigurationAtStartup();
+  assertValidConfiguration();
 
   const server = http.createServer((req, res) => {
     handleRequest(req, res).catch((error) => {

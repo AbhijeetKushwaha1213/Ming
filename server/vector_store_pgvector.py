@@ -146,6 +146,59 @@ class PgVectorStore(BaseVectorStore):
                 chunks[idx]["embedding"] = emb if isinstance(emb, list) else emb.tolist()
 
         inserted_count = 0
+
+        # 1. If Supabase is configured and not purely local test, sync to Supabase PostgREST
+        if self.supabase_url and self.supabase_key and os.environ.get("PGVECTOR_TEST_LOCAL") != "1":
+            try:
+                import requests
+                headers = {
+                    "apikey": self.supabase_key,
+                    "Authorization": f"Bearer {self.supabase_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates"
+                }
+                pg_payload = []
+                for c in chunks:
+                    meta = c.get("metadata", {})
+                    pg_payload.append({
+                        "id": c["id"],
+                        "chunk_id": c["id"],
+                        "document_id": meta.get("document_id") or c["id"],
+                        "source_id": meta.get("source_id") or c["id"],
+                        "user_id": str(meta.get("user_id") or "USER"),
+                        "tenant_type": str(meta.get("tenant_type") or "USER"),
+                        "topic": meta.get("topic"),
+                        "subtopic": meta.get("subtopic"),
+                        "concept": meta.get("concept"),
+                        "source_type": meta.get("source_type") or "TEXT",
+                        "page_number": meta.get("page_number"),
+                        "slide_number": meta.get("slide_number"),
+                        "timestamp_start": meta.get("timestamp_start"),
+                        "timestamp_end": meta.get("timestamp_end"),
+                        "content_hash": meta.get("content_hash"),
+                        "embedding_model": EMBEDDING_MODEL_NAME,
+                        "embedding_version": EMBEDDING_VERSION,
+                        "embedding_dimension": EMBEDDING_DIMENSION,
+                        "content": c["text"],
+                        "metadata_json": meta,
+                        "embedding": c["embedding"]
+                    })
+                resp = requests.post(
+                    f"{self.supabase_url}/rest/v1/rag_chunks",
+                    headers=headers,
+                    json=pg_payload,
+                    timeout=15.0
+                )
+                if not resp.ok and resp.status_code != 201:
+                    logger.warning(f"Supabase PostgREST upsert returned {resp.status_code}: {resp.text}")
+                    if os.environ.get("NODE_ENV") == "production":
+                        raise RuntimeError(f"Failed to upsert vectors to production Supabase: {resp.text}")
+            except Exception as e:
+                logger.error(f"Error syncing to Supabase PostgREST: {e}")
+                if os.environ.get("NODE_ENV") == "production":
+                    raise
+
+        # 2. Local persistent store (for offline verification and fast local testing)
         with sqlite3.connect(self.local_db_path) as conn:
             for c in chunks:
                 emb = c["embedding"]
@@ -225,8 +278,79 @@ class PgVectorStore(BaseVectorStore):
         Strictly enforces tenant scoping: user U can only access chunks where
         user_id == U or tenant_type == SYSTEM_PUBLIC.
         """
+        if not query_texts:
+            return {"ids": [], "documents": [], "metadatas": [], "distances": []}
+
         fn = get_embedding_function()
-        query_embeddings = fn(query_texts)
+        raw_embs = fn(query_texts)
+        query_embeddings = [emb if isinstance(emb, list) else emb.tolist() for emb in raw_embs]
+
+        # 1. Real Supabase RPC vector query when configured
+        if self.supabase_url and self.supabase_key and os.environ.get("PGVECTOR_TEST_LOCAL") != "1":
+            try:
+                import requests
+                headers = {
+                    "apikey": self.supabase_key,
+                    "Authorization": f"Bearer {self.supabase_key}",
+                    "Content-Type": "application/json"
+                }
+                s_ids = None
+                if source_id and str(source_id).strip().lower() not in ["all", "*", "none"]:
+                    s_ids = [s.strip() for s in str(source_id).split(',') if s.strip() and s.strip().lower() not in ["all", "*", "none"]]
+
+                rpc_ids = []
+                rpc_docs = []
+                rpc_metas = []
+                rpc_dists = []
+
+                for q_emb in query_embeddings:
+                    rpc_payload = {
+                        "query_embedding": q_emb if isinstance(q_emb, list) else q_emb.tolist(),
+                        "match_count": top_k,
+                        "filter_user_id": str(user_id) if user_id and str(user_id) not in ["*", "all", "none"] else None,
+                        "filter_topic": str(topic) if topic else None,
+                        "filter_source_ids": s_ids if s_ids else None
+                    }
+                    resp = requests.post(
+                        f"{self.supabase_url}/rest/v1/rpc/match_rag_chunks",
+                        headers=headers,
+                        json=rpc_payload,
+                        timeout=15.0
+                    )
+                    if resp.ok:
+                        rows = resp.json()
+                        sub_ids = []
+                        sub_docs = []
+                        sub_metas = []
+                        sub_dists = []
+                        for r in rows:
+                            # Defense-in-depth tenant check
+                            if user_id and str(user_id) not in ["*", "all", "none"]:
+                                if str(r.get("user_id")) != str(user_id) and str(r.get("tenant_type")) != "SYSTEM_PUBLIC":
+                                    continue
+                            elif str(r.get("tenant_type")) != "SYSTEM_PUBLIC":
+                                continue
+                            sub_ids.append(r.get("chunk_id"))
+                            sub_docs.append(r.get("content"))
+                            sub_metas.append(r.get("metadata_json") or {})
+                            sub_dists.append(max(0.0, 1.0 - float(r.get("similarity", 0.5))))
+                        rpc_ids.append(sub_ids)
+                        rpc_docs.append(sub_docs)
+                        rpc_metas.append(sub_metas)
+                        rpc_dists.append(sub_dists)
+                    else:
+                        raise RuntimeError(f"Supabase RPC match_rag_chunks failed: {resp.status_code} {resp.text}")
+
+                return {
+                    "ids": rpc_ids,
+                    "documents": rpc_docs,
+                    "metadatas": rpc_metas,
+                    "distances": rpc_dists
+                }
+            except Exception as e:
+                logger.warning(f"Supabase RPC match_rag_chunks error: {e}")
+                if os.environ.get("NODE_ENV") == "production":
+                    raise RuntimeError(f"Production pgvector search failed: {e}")
 
         all_ids = []
         all_docs = []

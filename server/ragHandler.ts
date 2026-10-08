@@ -40,13 +40,16 @@ export type RagApiResponse = {
   end: (body?: string) => void;
 };
 
-export function runPythonCli(args: string[]): Promise<any> {
+const RAG_TIMEOUT_MS = Number(process.env.RAG_TIMEOUT_MS || 45000);
+
+export function runPythonCli(args: string[], timeoutMs = RAG_TIMEOUT_MS): Promise<any> {
   return new Promise((resolve, reject) => {
     execFile(
       PYTHON_PATH,
       [RAG_ENGINE_PATH, ...args],
       {
         cwd: PROJECT_ROOT,
+        timeout: timeoutMs,
         env: {
           ...process.env,
           PYTHONUNBUFFERED: '1',
@@ -55,6 +58,9 @@ export function runPythonCli(args: string[]): Promise<any> {
       },
       (error, stdout, stderr) => {
         if (error) {
+          if ((error as any).killed || error.signal === 'SIGTERM') {
+            return reject(new Error(`RAG Engine execution timed out after ${timeoutMs}ms`));
+          }
           console.error('RAG Engine error:', stderr || error.message);
           return reject(new Error(stderr || error.message));
         }

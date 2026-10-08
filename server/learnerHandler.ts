@@ -1,4 +1,3 @@
-import type { IncomingMessage } from 'node:http';
 import {
   getAllLearnerMastery,
   getTopicLearnerMastery,
@@ -6,6 +5,11 @@ import {
   updateMasteryFromEvidence,
   initializeDiagnosticMastery,
 } from './bktService.ts';
+import {
+  getLearnerMasteryAudit,
+  extractLearnerEvidence,
+  recordLearnerEvidence,
+} from './learnerEvidenceService.ts';
 import { resolveContextUser } from './authMiddleware.ts';
 
 interface SimpleRequest {
@@ -36,13 +40,32 @@ export async function learnerHandler(req: SimpleRequest, res: SimpleResponse): P
     return;
   }
 
+  // 1b. GET /api/learner/mastery/audit?topic=...
+  if (method === 'GET' && pathname === '/api/learner/mastery/audit') {
+    try {
+      const topic = req.query?.topic || urlObj.searchParams.get('topic');
+      const subtopic = req.query?.subtopic || urlObj.searchParams.get('subtopic') || null;
+      if (!topic) {
+        res.status(400).json({ error: 'Topic is required for mastery audit' });
+        return;
+      }
+      const auditRecord = await getLearnerMasteryAudit(userId, topic, subtopic);
+      res.status(200).json({ success: true, audit: auditRecord });
+      return;
+    } catch (err: any) {
+      console.error('Error auditing learner mastery:', err);
+      res.status(500).json({ error: 'Failed to audit learner mastery', details: err.message });
+      return;
+    }
+  }
+
   // 1. GET /api/learner/mastery or /api/learner/mastery/:topic
   if (method === 'GET' && pathname.startsWith('/api/learner/mastery')) {
     try {
       const parts = pathname.split('/').filter(Boolean); // ['api', 'learner', 'mastery', optionalTopic]
 
       let topic: string | undefined = req.query?.topic;
-      if (parts.length >= 4 && parts[3]) {
+      if (parts.length >= 4 && parts[3] && parts[3] !== 'audit') {
         topic = decodeURIComponent(parts[3]);
       }
 
@@ -100,19 +123,42 @@ export async function learnerHandler(req: SimpleRequest, res: SimpleResponse): P
         return;
       }
 
-      const result = await updateMasteryFromEvidence({
-        userId,
-        topic,
-        subtopic,
-        isCorrect,
-        difficulty,
-        sourceId,
-        eventType,
-        customParameters,
-        evidenceDetails,
-      });
+      const attemptId = body.attemptId || body.sourceId || `att_${Date.now()}`;
+      const questionId = body.questionId || `q_${Date.now()}`;
+      const credit = typeof body.credit === 'number' ? body.credit : (isCorrect ? 1.0 : 0.0);
 
-      res.status(200).json({ success: true, update: result });
+      const evidence = extractLearnerEvidence(
+        {
+          questionId,
+          isCorrect,
+          credit,
+          classification: isCorrect ? 'correct' : 'incorrect',
+          difficulty,
+          sourceId,
+        },
+        {
+          userId,
+          attemptId,
+          topic,
+          subtopic,
+          difficulty,
+        }
+      );
+
+      const result = await recordLearnerEvidence(evidence);
+
+      res.status(200).json({
+        success: true,
+        update: result.updated_state
+          ? {
+              ...result.updated_state,
+              userId: result.updated_state.user_id,
+              masteryProbability: result.updated_state.mastery_estimate,
+            }
+          : null,
+        duplicate: result.duplicate,
+        applied: result.applied,
+      });
       return;
     } catch (err: any) {
       console.error('Error updating learner mastery:', err);

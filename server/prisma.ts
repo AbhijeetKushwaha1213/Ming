@@ -321,15 +321,23 @@ async function createLearnerSchema() {
       difficulty TEXT,
       parametersJson TEXT,
       evidenceDetails TEXT,
+      idempotencyKey TEXT,
       timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE learner_events ADD COLUMN idempotencyKey TEXT');
+  } catch {}
 
   await prisma.$executeRawUnsafe(
     'CREATE INDEX IF NOT EXISTS learner_events_user_time_idx ON learner_events(userId, timestamp)',
   );
   await prisma.$executeRawUnsafe(
     'CREATE INDEX IF NOT EXISTS learner_events_user_topic_idx ON learner_events(userId, topic)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE UNIQUE INDEX IF NOT EXISTS learner_events_idempotency_idx ON learner_events(idempotencyKey)',
   );
 }
 

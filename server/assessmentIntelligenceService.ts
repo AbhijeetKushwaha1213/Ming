@@ -1,5 +1,6 @@
 import { prisma, ensureAssessmentSchema, ensureLearnerSchema } from './prisma.ts';
 import { updateMasteryFromEvidence, getTopicLearnerMastery, type BKTParameters } from './bktService.ts';
+import { extractLearnerEvidence, recordLearnerEvidence, getTopicMasteryState } from './learnerEvidenceService.ts';
 import { gradeNumericalAnswer, parseStudentAnswer } from './numericalVerifier.ts';
 import type {
   NumericalQuestion,
@@ -661,23 +662,44 @@ export async function processAssessmentIntelligence(params: {
 
     try {
       // Prior mastery before update
-      const priorState = await getTopicLearnerMastery(userId, qTopic, qSubtopic || undefined);
-      const priorMastery = priorState ? priorState.masteryProbability : 0.15;
+      const priorState = await getTopicMasteryState(userId, qTopic, qSubtopic);
+      const priorMastery = priorState ? priorState.mastery_estimate : 0.15;
+      const priorConfidence = priorState ? priorState.confidence : 0.0;
 
-      // Update BKT: for partially_correct, we update with 0.50 scaled observation
-      const bktResult = await updateMasteryFromEvidence({
-        userId,
-        topic: qTopic,
-        subtopic: qSubtopic,
-        isCorrect: ev.isCorrect,
-        credit: ev.credit,
-        difficulty: q.difficulty || difficulty,
-        sourceId: attemptId,
-        eventType: 'ASSESSMENT_ANSWER',
-        evidenceDetails: `Phase 9 Assessment: "${q.question?.slice(0, 50)}..." [${ev.classification.toUpperCase()}, credit=${ev.credit}]`,
-      });
+      // Phase 5 Step 1: Extract authoritative learner evidence
+      const canonicalEvidence = extractLearnerEvidence(
+        {
+          ...ev,
+          topic: qTopic,
+          subtopic: qSubtopic,
+          difficulty: q.difficulty || difficulty,
+        },
+        {
+          userId,
+          attemptId,
+          topic: qTopic,
+          subtopic: qSubtopic,
+          difficulty: q.difficulty || difficulty,
+        }
+      );
 
-      const posteriorMastery = bktResult.posteriorMastery;
+      const ingestionResult = await recordLearnerEvidence(canonicalEvidence);
+
+      if (ingestionResult.discarded) {
+        // Discarded evidence (e.g. UNVERIFIABLE or INVALID_FORMAT) does not mutate mastery or penalize learner
+        confidenceAndMasteryChanges.push({
+          topic: qTopic,
+          subtopic: qSubtopic,
+          priorMastery: Math.round(priorMastery * 1000) / 1000,
+          posteriorMastery: Math.round(priorMastery * 1000) / 1000,
+          delta: 0,
+          confidence: Math.round(priorConfidence * 1000) / 1000,
+        });
+        continue;
+      }
+
+      const updatedState = ingestionResult.updated_state || (await getTopicMasteryState(userId, qTopic, qSubtopic));
+      const posteriorMastery = updatedState.mastery_estimate;
       const delta = Math.round((posteriorMastery - priorMastery) * 1000) / 1000;
 
       confidenceAndMasteryChanges.push({
@@ -686,7 +708,7 @@ export async function processAssessmentIntelligence(params: {
         priorMastery: Math.round(priorMastery * 1000) / 1000,
         posteriorMastery: Math.round(posteriorMastery * 1000) / 1000,
         delta,
-        confidence: Math.round(bktResult.confidence * 1000) / 1000,
+        confidence: Math.round(updatedState.confidence * 1000) / 1000,
       });
 
       if (!topicWiseMastery[qTopic]) {
@@ -697,15 +719,15 @@ export async function processAssessmentIntelligence(params: {
           masteryDelta: delta,
           correctCount: 0,
           totalCount: 0,
-          status: bktResult.status,
+          status: updatedState.status,
         };
       }
       topicWiseMastery[qTopic].totalCount++;
       if (ev.isCorrect) topicWiseMastery[qTopic].correctCount++;
       topicWiseMastery[qTopic].posteriorMastery = Math.round(posteriorMastery * 100) / 100;
-      topicWiseMastery[qTopic].status = bktResult.status;
+      topicWiseMastery[qTopic].status = updatedState.status;
     } catch (err: any) {
-      console.warn('Could not update BKT mastery for question:', err.message);
+      console.warn('Could not update learner mastery for question:', err.message);
     }
   }
 

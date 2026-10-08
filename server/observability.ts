@@ -69,8 +69,10 @@ export function scrubSensitiveData(obj: any): any {
  * Emits a single structured log line in production JSON format.
  */
 export function logStructured(level: 'info' | 'warn' | 'error', message: string, meta: Partial<RequestMetrics> & Record<string, any>) {
+  const env = (process.env.APP_ENV || process.env.NODE_ENV || 'development').toLowerCase();
   const payload = {
     level,
+    environment: env,
     message,
     timestamp: new Date().toISOString(),
     ...scrubSensitiveData(meta),
@@ -114,7 +116,20 @@ export async function getReadinessStatus(): Promise<{ ready: boolean; statusCode
 
   // 2. Check Vector Store Provider
   const vectorProvider = (process.env.VECTOR_STORE || 'chroma').toLowerCase().trim();
-  checks.vectorStore = `configured (${vectorProvider})`;
+  const isPostgres = Boolean(
+    process.env.DATABASE_URL?.startsWith('postgres') ||
+    process.env.DATABASE_URL?.startsWith('postgresql') ||
+    process.env.PGVECTOR_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.PGVECTOR_TEST_LOCAL === '1'
+  );
+
+  if (vectorProvider === 'pgvector' && !isPostgres) {
+    ready = false;
+    checks.vectorStore = `failed: pgvector unconfigured (${vectorProvider})`;
+  } else {
+    checks.vectorStore = `configured (${vectorProvider})`;
+  }
 
   return {
     ready,
@@ -145,4 +160,102 @@ export async function getComprehensiveHealth() {
     publicConfig: config.publicConfig,
     timestamp: new Date().toISOString(),
   };
+}
+
+/**
+ * OpenTelemetry-Compatible Distributed Tracing Abstraction
+ * Implements W3C TraceContext standards (traceparent: 00-<trace_id>-<span_id>-<flags>).
+ * Never captures document bodies or secret headers in span attributes.
+ */
+export interface TraceSpan {
+  traceId: string;
+  spanId: string;
+  parentSpanId?: string;
+  name: string;
+  startTime: number;
+  durationMs?: number;
+  attributes: Record<string, any>;
+  status: 'ok' | 'error';
+  errorMessage?: string;
+}
+
+export function parseTraceparent(header?: string): { traceId: string; parentSpanId?: string } {
+  if (!header || typeof header !== 'string') {
+    return { traceId: crypto.randomBytes(16).toString('hex') };
+  }
+
+  const parts = header.trim().split('-');
+  if (parts.length >= 4 && parts[0] === '00' && parts[1].length === 32) {
+    return {
+      traceId: parts[1],
+      parentSpanId: parts[2],
+    };
+  }
+
+  return { traceId: crypto.randomBytes(16).toString('hex') };
+}
+
+export function formatTraceparent(span: TraceSpan): string {
+  return `00-${span.traceId}-${span.spanId}-01`;
+}
+
+export function startSpan(
+  name: string,
+  options?: {
+    traceparent?: string;
+    parentSpan?: TraceSpan;
+    attributes?: Record<string, any>;
+  }
+): TraceSpan {
+  let traceId: string;
+  let parentSpanId: string | undefined;
+
+  if (options?.parentSpan) {
+    traceId = options.parentSpan.traceId;
+    parentSpanId = options.parentSpan.spanId;
+  } else if (options?.traceparent) {
+    const parsed = parseTraceparent(options.traceparent);
+    traceId = parsed.traceId;
+    parentSpanId = parsed.parentSpanId;
+  } else {
+    traceId = crypto.randomBytes(16).toString('hex');
+  }
+
+  const spanId = crypto.randomBytes(8).toString('hex');
+
+  return {
+    traceId,
+    spanId,
+    parentSpanId,
+    name,
+    startTime: Date.now(),
+    attributes: scrubSensitiveData(options?.attributes || {}),
+    status: 'ok',
+  };
+}
+
+export function endSpan(
+  span: TraceSpan,
+  options?: {
+    error?: Error | string;
+    attributes?: Record<string, any>;
+  }
+): TraceSpan {
+  span.durationMs = Date.now() - span.startTime;
+
+  if (options?.attributes) {
+    span.attributes = {
+      ...span.attributes,
+      ...scrubSensitiveData(options.attributes),
+    };
+  }
+
+  if (options?.error) {
+    span.status = 'error';
+    span.errorMessage = typeof options.error === 'string' ? options.error : options.error.message;
+    span.attributes['error'] = true;
+    span.attributes['error.message'] = span.errorMessage;
+  }
+
+  return span;
 }

@@ -17,6 +17,7 @@
     "test:ui": "vitest --ui",
     "test:rag": "node test-rag-api.ts",
     "benchmark": "node benchmarks/run-evaluation.ts",
+    "loadtest": "node scripts/run-load-benchmark.ts",
     "eval": "node benchmarks/run-evaluation.ts",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma && prisma generate --schema=prisma/schema.postgresql.prisma",
     "postinstall": "npm run prisma:generate"

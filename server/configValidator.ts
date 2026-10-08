@@ -5,7 +5,7 @@
  * Never exposes raw secret values in logs or diagnostics.
  */
 
-export type EnvironmentMode = 'development' | 'test' | 'production';
+export type EnvironmentMode = 'development' | 'test' | 'staging' | 'production';
 
 export interface ValidationResult {
   valid: boolean;
@@ -32,8 +32,8 @@ export function maskSecret(secret?: string): string {
 }
 
 export function validateProductionConfig(): ValidationResult {
-  const env = (process.env.NODE_ENV || 'development').toLowerCase() as EnvironmentMode;
-  const isProduction = env === 'production';
+  const env = (process.env.APP_ENV || process.env.NODE_ENV || 'development').toLowerCase() as EnvironmentMode;
+  const isProductionLike = env === 'production' || env === 'staging';
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -53,8 +53,8 @@ export function validateProductionConfig(): ValidationResult {
   const isPostgres = dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://');
 
   // 1. VectorStore Validation
-  if (isProduction && vectorStore !== 'pgvector') {
-    errors.push(`Production requires VECTOR_STORE='pgvector'. Current: '${vectorStore}'.`);
+  if (isProductionLike && vectorStore !== 'pgvector') {
+    errors.push(`Production/Staging requires VECTOR_STORE='pgvector'. Current: '${vectorStore}'.`);
   }
 
   if (vectorStore === 'pgvector') {
@@ -65,39 +65,39 @@ export function validateProductionConfig(): ValidationResult {
   }
 
   // 2. Database Validation
-  if (isProduction && !isPostgres) {
-    errors.push('Production requires a PostgreSQL DATABASE_URL connection string (postgres:// or postgresql://).');
+  if (isProductionLike && !isPostgres) {
+    errors.push('Production/Staging requires a PostgreSQL DATABASE_URL connection string (postgres:// or postgresql://).');
   }
 
-  if (isProduction && !directUrl) {
+  if (isProductionLike && !directUrl) {
     warnings.push('DIRECT_URL is not configured. Direct connections are recommended for Prisma migrations alongside pooled DATABASE_URL.');
   }
 
   // 3. Supabase Auth Validation
   if (!supabaseUrl) {
-    if (isProduction) {
-      errors.push('SUPABASE_URL is required in production for user authentication.');
+    if (isProductionLike) {
+      errors.push('SUPABASE_URL is required in production/staging for user authentication.');
     } else {
       warnings.push('SUPABASE_URL is not set. Local development auth bypass will be used.');
     }
   }
 
-  if (!supabaseKey && isProduction) {
-    errors.push('SUPABASE_PUBLISHABLE_KEY / ANON_KEY is required in production for JWT verification.');
+  if (!supabaseKey && isProductionLike) {
+    errors.push('SUPABASE_PUBLISHABLE_KEY / ANON_KEY is required in production/staging for JWT verification.');
   }
 
   // 4. AI Provider Gateway Validation
   if (!geminiKey) {
-    if (isProduction) {
-      errors.push('GEMINI_API_KEY is required in production for grounded tutor and AI services.');
+    if (isProductionLike) {
+      errors.push('GEMINI_API_KEY is required in production/staging for grounded tutor and AI services.');
     } else {
       warnings.push('GEMINI_API_KEY is not set. AI generation endpoints will return 503.');
     }
   }
 
-  // 5. Security Invariant: Disallow Auth Bypass in Production
-  if (isProduction && allowDevBypass) {
-    errors.push('CRITICAL SECURITY VIOLATION: ALLOW_DEV_AUTH_BYPASS cannot be true in production.');
+  // 5. Security Invariant: Disallow Auth Bypass in Production & Staging
+  if (isProductionLike && allowDevBypass) {
+    errors.push('CRITICAL SECURITY VIOLATION: ALLOW_DEV_AUTH_BYPASS cannot be true in production or staging.');
   }
 
   const valid = errors.length === 0;
@@ -115,7 +115,7 @@ export function validateProductionConfig(): ValidationResult {
       embeddingDimension: 384,
       supabaseConfigured: Boolean(supabaseUrl && supabaseKey),
       geminiConfigured: Boolean(geminiKey),
-      authBypassAllowed: !isProduction && allowDevBypass,
+      authBypassAllowed: !isProductionLike && allowDevBypass,
     },
   };
 }

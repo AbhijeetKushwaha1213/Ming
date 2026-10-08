@@ -104,6 +104,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
         console.log(
           JSON.stringify({
             level: 'info',
+            environment: (process.env.APP_ENV || process.env.NODE_ENV || 'development').toLowerCase(),
             timestamp: new Date().toISOString(),
             requestId,
             method: req.method,

@@ -1,0 +1,77 @@
+name: Continuous Integration (CI)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build, Test & Security Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NODE_ENV: test
+      VECTOR_STORE: pgvector
+      PGVECTOR_TEST_LOCAL: "1"
+      ALLOW_DEV_AUTH_BYPASS: "false"
+      MING_TEST_SECRET: ${{ secrets.MING_TEST_SECRET || 'ci-test-secret-key-12345' }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'AIzaSyCiMockKeyForProxyValidation12345' }}
+      DATABASE_URL: "file:./dev.db"
+      SUPABASE_URL: "https://cmcbkatdyhunlvlktwlv.supabase.co"
+      ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_ci_anon_key"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install chromadb numpy onnxruntime requests
+
+      - name: Clean Install NPM Dependencies
+        run: npm ci
+
+      - name: TypeScript Typecheck
+        run: npx tsc --noEmit
+
+      - name: Dependency Security Audit
+        run: npm audit --audit-level=high || true
+
+      - name: Run Full Unit & Component Test Suite
+        run: npm test
+
+      - name: Production Webpack/Vite Build
+        run: npm run build
+
+      - name: Run Production Smoke & Integration Suite
+        run: npm test src/test/productionSmokeIntegration.test.ts
+
+      - name: Run Production Security & Multi-Tenant Isolation Suite
+        run: npm test src/test/productionSecurityAndIsolation.test.ts
+
+      - name: Run VectorStore Equivalence & Dimension Invariant Suite
+        run: npm test src/test/ragVectorStoreEquivalence.test.ts
+
+      - name: Run Concurrency, Load Hardening & Resilience Suite
+        run: npm test src/test/concurrencyLoadAndResilience.test.ts
+

@@ -85,12 +85,13 @@ export async function handleAiGenerate(
     return;
   }
 
-  const body = (req.body || {}) as BackendAiGenerateRequest;
-  const message = sanitizeDataPayload(body.message || '');
+  const body = (req.body || {}) as BackendAiGenerateRequest & { prompt?: string; timeoutMs?: number; requestId?: string };
+  const message = sanitizeDataPayload(body.message || body.prompt || '');
   const topic = sanitizeDataPayload(body.topic || '');
   const subject = sanitizeDataPayload(body.subject || 'General');
   const difficulty = sanitizeDataPayload(body.difficulty || 'medium');
   const contentType = body.contentType ? sanitizeDataPayload(body.contentType) : undefined;
+  const timeoutMs = body.timeoutMs || DEFAULT_TIMEOUT_MS;
 
   if (!message && !topic && !body.groundedContext) {
     res.status(400).json({ error: 'Missing prompt message, topic, or grounded context' });
@@ -146,6 +147,7 @@ CRITICAL SECURITY INVARIANT:
 
   let lastErrorStatus = 0;
   let lastErrorDetails = '';
+  let timedOut = false;
 
   for (const model of candidateModels) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -168,7 +170,7 @@ CRITICAL SECURITY INVARIANT:
               },
             }),
           },
-          DEFAULT_TIMEOUT_MS
+          timeoutMs
         );
 
         if (!response.ok) {
@@ -195,6 +197,7 @@ CRITICAL SECURITY INVARIANT:
 
         res.status(200).json({
           success: true,
+          content: aiText.trim(),
           response: aiText.trim(),
           model,
           promptTokens: data.usageMetadata?.promptTokenCount,
@@ -203,17 +206,31 @@ CRITICAL SECURITY INVARIANT:
         return;
       } catch (err: any) {
         lastErrorDetails = err.message || 'Fetch error';
+        if (err.name === 'AbortError' || lastErrorDetails.toLowerCase().includes('abort')) {
+          timedOut = true;
+          break; // Do not endlessly retry explicit timeouts
+        }
         if (attempt < MAX_RETRIES) {
           await new Promise((r) => setTimeout(r, 800 * attempt));
         }
       }
     }
+    if (timedOut) break;
+  }
+
+  if (timedOut) {
+    res.status(504).json({
+      error: `AI generation timed out after ${timeoutMs}ms`,
+      details: lastErrorDetails,
+      category: 'TIMEOUT_ERROR',
+    });
+    return;
   }
 
   const isRateLimited = lastErrorStatus === 429 || lastErrorDetails.includes('RESOURCE_EXHAUSTED');
   res.status(isRateLimited ? 429 : 502).json({
     error: isRateLimited ? 'Upstream AI Rate Limit Exceeded' : 'AI Generation Failed across candidate models',
     details: lastErrorDetails,
-    category: isRateLimited ? 'UPSTREAM_RATE_LIMIT' : 'AI_PROVIDER_ERROR',
+    category: isRateLimited ? 'UPSTREAM_RATE_LIMIT' : 'PROVIDER_ERROR',
   });
 }

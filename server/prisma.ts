@@ -1,8 +1,19 @@
-import { createRequire } from 'node:module';
+import * as nodeModule from 'node:module';
 import { PrismaClient } from '@prisma/client';
 import { PrismaLibSQL } from '@prisma/adapter-libsql';
 
-const require = createRequire(import.meta.url);
+function getRequire() {
+  if (typeof (nodeModule as any)?.createRequire === 'function') {
+    return (nodeModule as any).createRequire(import.meta.url);
+  }
+  if (typeof (nodeModule as any)?.default?.createRequire === 'function') {
+    return (nodeModule as any).default.createRequire(import.meta.url);
+  }
+  if (typeof (globalThis as any).require === 'function') {
+    return (globalThis as any).require;
+  }
+  return null;
+}
 
 declare global {
   // eslint-disable-next-line no-var
@@ -50,7 +61,11 @@ function createPrismaClient(): PrismaClient {
 
   if (isPostgresDatabase()) {
     try {
-      const pgModule = require('../prisma/generated-pg-client/index.js');
+      const requireFn = getRequire();
+      if (!requireFn) {
+        throw new Error('createRequire is not available in the current execution context');
+      }
+      const pgModule = requireFn('../prisma/generated-pg-client/index.js');
       baseClient = new pgModule.PrismaClient({
         datasources: {
           db: {

@@ -200,7 +200,7 @@ def execute_search(item):
     dt = time.time() - t0
     return {"qid": qid, "count": len(res.get("ids", [[]])[0]), "duration_ms": dt * 1000}
 
-with ThreadPoolExecutor(max_workers=10) as executor:
+with ThreadPoolExecutor(max_workers=4) as executor:
     results = list(executor.map(execute_search, queries))
 
 all_durations = [r["duration_ms"] for r in results]

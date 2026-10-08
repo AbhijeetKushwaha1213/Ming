@@ -7,7 +7,7 @@
  */
 
 import crypto from 'node:crypto';
-import { prisma } from './prisma.ts';
+import { prisma, ensureResourceSchema } from './prisma.ts';
 import { validateProductionConfig } from './configValidator.ts';
 
 export interface RequestMetrics {
@@ -106,12 +106,25 @@ export async function getReadinessStatus(): Promise<{ ready: boolean; statusCode
 
   // 1. Check Database
   const startDb = Date.now();
-  try {
-    await prisma.resource.count({ take: 1 });
-    checks.database = `ok (${Date.now() - startDb}ms)`;
-  } catch (dbErr: any) {
+  let lastDbErr: any = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await ensureResourceSchema();
+      await prisma.resource.count({ take: 1 });
+      checks.database = `ok (${Date.now() - startDb}ms)`;
+      lastDbErr = null;
+      break;
+    } catch (dbErr: any) {
+      lastDbErr = dbErr;
+      if (attempt < 3) {
+        await new Promise((res) => setTimeout(res, 500));
+      }
+    }
+  }
+
+  if (lastDbErr) {
     ready = false;
-    checks.database = `failed: ${dbErr.message || 'unreachable'}`;
+    checks.database = `failed: ${lastDbErr.message || 'unreachable'}`;
   }
 
   // 2. Check Vector Store Provider

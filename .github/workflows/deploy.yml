@@ -54,6 +54,20 @@ jobs:
     needs: [build_artifact]
     runs-on: ubuntu-latest
     environment: staging
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -130,6 +144,9 @@ jobs:
           VECTOR_STORE: pgvector
           PGVECTOR_TEST_LOCAL: "1"
           ALLOW_DEV_AUTH_BYPASS: "false"
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://cmcbkatdyhunlvlktwlv.supabase.co' }}
+          ANON_KEY: ${{ secrets.ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_ci_anon_key' }}
           MING_TEST_SECRET: ${{ secrets.MING_TEST_SECRET || 'ci-test-secret-key-12345' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'AIzaSyCiMockKeyForProxyValidation12345' }}
         run: |

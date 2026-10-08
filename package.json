@@ -17,7 +17,9 @@
     "test:ui": "vitest --ui",
     "test:rag": "node test-rag-api.ts",
     "benchmark": "node benchmarks/run-evaluation.ts",
-    "eval": "node benchmarks/run-evaluation.ts"
+    "eval": "node benchmarks/run-evaluation.ts",
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma && prisma generate --schema=prisma/schema.postgresql.prisma",
+    "postinstall": "npm run prisma:generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

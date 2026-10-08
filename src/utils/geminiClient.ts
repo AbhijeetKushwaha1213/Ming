@@ -1,5 +1,4 @@
-// Client-side Google Gemini API Client
-// Used as a fallback when Supabase Edge Functions are unreachable
+import { supabase } from '@/integrations/supabase/client';
 
 export interface GeminiRequest {
   message: string;
@@ -25,17 +24,6 @@ export interface GeminiResponse {
 export const geminiClient = {
   async generateContent(req: GeminiRequest): Promise<GeminiResponse> {
     const customLocalKey = typeof window !== 'undefined' ? localStorage.getItem('ming_gemini_api_key') : null;
-    const rawKey = customLocalKey || import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
-    const apiKey = rawKey?.trim().replace(/^["']|["']$/g, '');
-    
-    if (!apiKey) {
-      return {
-        response: "",
-        error: "Gemini API key not configured",
-        details: "VITE_GEMINI_API_KEY is not defined in your environment variables. Please check your .env configuration."
-      };
-    }
-
     const { message, context, userType, subject, contentType, topic, difficulty, count } = req;
 
     // System Prompts matching the Deno Edge Function
@@ -236,111 +224,90 @@ Rules:
     }
 
     try {
-      const preferredModel = (import.meta.env as any).VITE_GEMINI_MODEL || 'gemini-2.5-flash';
-      const candidateModels = [preferredModel, 'gemini-flash-latest'];
-      
-      let lastErrorStatus = 0;
-      let lastErrorDetails = '';
+      const apiEndpoint = typeof window !== 'undefined' ? '/api/ai/generate' : 'http://127.0.0.1:3001/api/ai/generate';
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
 
-      for (const model of candidateModels) {
-        try {
-          const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-          
-          const response = await fetch(geminiEndpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: promptParts
-              }],
-              generationConfig: {
-                temperature: 0.1,
-                maxOutputTokens: 4096,
-                topP: 0.8,
-                topK: 10,
-                ...(contentType && ['notes', 'flashcards', 'quizzes', 'mindmaps'].includes(contentType)
-                  ? { responseMimeType: 'application/json' }
-                  : {}),
-              }
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.access_token) {
+          headers['Authorization'] = `Bearer ${data.session.access_token}`;
+        }
+      } catch {
+        // Fallback for non-browser or test execution
+      }
+
+      if (customLocalKey) {
+        headers['x-custom-api-key'] = customLocalKey;
+      }
+
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          message,
+          context,
+          userType,
+          subject,
+          contentType,
+          topic,
+          difficulty,
+          count,
+          systemPrompt: effectiveSystemPrompt,
+          promptParts,
+          groundedContext: req.groundedContext,
+          sourceTitle: req.sourceTitle,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        const isQuotaExceeded =
+          response.status === 429 ||
+          errorText.includes('RESOURCE_EXHAUSTED') ||
+          errorText.toLowerCase().includes('quota') ||
+          errorText.toLowerCase().includes('rate limit');
+
+        if (isQuotaExceeded && typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('gemini-quota-exceeded', {
+              detail: {
+                status: response.status,
+                message: "You've hit your daily Gemini API quota limit. Please wait or use a custom API key.",
+                details: errorText,
+              },
             }),
-          });
+          );
+        }
 
-          if (!response.ok) {
-            lastErrorStatus = response.status;
-            lastErrorDetails = await response.text();
-            console.warn(`Gemini model ${model} failed with ${response.status}:`, lastErrorDetails);
+        return {
+          response: '',
+          error: isQuotaExceeded ? 'Gemini API Quota Exceeded (HTTP 429)' : `AI Gateway Error (${response.status})`,
+          details: errorText,
+        };
+      }
 
-            const isQuotaExceeded =
-              response.status === 429 ||
-              lastErrorDetails.includes('RESOURCE_EXHAUSTED') ||
-              lastErrorDetails.toLowerCase().includes('quota') ||
-              lastErrorDetails.toLowerCase().includes('rate limit');
+      const data = await response.json();
+      let aiResponse = data.response || "I'm sorry, I couldn't generate a response.";
 
-            if (isQuotaExceeded && typeof window !== 'undefined') {
-              window.dispatchEvent(
-                new CustomEvent('gemini-quota-exceeded', {
-                  detail: {
-                    status: response.status,
-                    message: "You've hit your daily Gemini API quota limit. Please wait or use a custom API key.",
-                    details: lastErrorDetails,
-                  },
-                })
-              );
-            }
-
-            continue;
-          }
-
-          const data = await response.json();
-          let aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't generate a response.";
-          
-          // Only clean raw markdown fences when generating structured format files (flashcards/notes/quizzes/etc.)
-          if (contentType) {
-            if (aiResponse.includes('```json')) {
-              aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-            } else if (aiResponse.includes('```')) {
-              aiResponse = aiResponse.replace(/```\s*/g, '');
-            }
-          }
-          
-          aiResponse = aiResponse.trim();
-          return { response: aiResponse };
-        } catch (fetchErr) {
-          console.warn(`Gemini request to ${model} failed:`, fetchErr);
+      // Only clean raw markdown fences when generating structured format files (flashcards/notes/quizzes/etc.)
+      if (contentType) {
+        if (aiResponse.includes('```json')) {
+          aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+        } else if (aiResponse.includes('```')) {
+          aiResponse = aiResponse.replace(/```\s*/g, '');
         }
       }
 
-      const isQuotaExceeded =
-        lastErrorStatus === 429 ||
-        lastErrorDetails.includes('RESOURCE_EXHAUSTED') ||
-        lastErrorDetails.toLowerCase().includes('quota') ||
-        lastErrorDetails.toLowerCase().includes('rate limit');
-
-      if (isQuotaExceeded && typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('gemini-quota-exceeded', {
-            detail: {
-              status: lastErrorStatus || 429,
-              message: "You've hit your daily Gemini API quota limit.",
-              details: lastErrorDetails,
-            },
-          })
-        );
-      }
-
-      return {
-        response: "",
-        error: isQuotaExceeded ? "Gemini API Quota Exceeded (HTTP 429)" : `Gemini API error: ${lastErrorStatus || 'Network/Model Unavailable'}`,
-        details: lastErrorDetails || 'Failed across all candidate Gemini models.'
-      };
+      aiResponse = aiResponse.trim();
+      return { response: aiResponse };
     } catch (error) {
-      console.error('Error calling Gemini directly:', error);
+      console.error('Error calling AI Gateway:', error);
       return {
-        response: "",
-        error: error instanceof Error ? error.message : "Failed to contact Gemini API",
-        details: "Network connection or request execution failed."
+        response: '',
+        error: error instanceof Error ? error.message : 'Failed to contact AI Gateway',
+        details: 'Network connection or backend gateway request execution failed.',
       };
     }
   }

@@ -151,16 +151,8 @@ const getFallbackSyllabus = (skillName: string): string[] => {
 const generateSyllabusWithAI = async (skillName: string): Promise<string[]> => {
   const curated = getFallbackSyllabus(skillName);
 
-  // Check if a valid API key exists
-  const customLocalKey = typeof window !== 'undefined' ? localStorage.getItem('ming_gemini_api_key') : null;
-  const envKey = import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY;
-  const activeKey = customLocalKey || envKey;
-  const hasValidFormat = activeKey && activeKey.trim().startsWith('AIza');
+  // AI generation routes securely through backend AI proxy (/api/ai/generate)
 
-  // If no valid Gemini key, don't waste network round-trips that fail policy; return curated syllabus instantly!
-  if (!hasValidFormat) {
-    return curated;
-  }
 
   const prompt = `Generate a structured syllabus of exactly 12 learning topics for the skill '${skillName}', ordered logically from beginner to advanced. Return ONLY a JSON array of 12 strings, e.g. ["Topic 1", "Topic 2", ...]. Do not include markdown codeblocks, numbers, or any additional text.`;
 

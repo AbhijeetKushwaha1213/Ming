@@ -6,6 +6,7 @@ import {
   updateMasteryFromEvidence,
   initializeDiagnosticMastery,
 } from './bktService.ts';
+import { resolveContextUser } from './authMiddleware.ts';
 
 interface SimpleRequest {
   method?: string;
@@ -27,10 +28,17 @@ export async function learnerHandler(req: SimpleRequest, res: SimpleResponse): P
   const urlObj = new URL(req.url || '/', 'http://localhost');
   const pathname = urlObj.pathname;
 
+  let userId: string;
+  try {
+    userId = await resolveContextUser(req as any);
+  } catch (authErr: any) {
+    res.status(401).json({ error: authErr.message || 'Unauthorized' });
+    return;
+  }
+
   // 1. GET /api/learner/mastery or /api/learner/mastery/:topic
   if (method === 'GET' && pathname.startsWith('/api/learner/mastery')) {
     try {
-      const userId = req.query?.userId || 'default_user';
       const parts = pathname.split('/').filter(Boolean); // ['api', 'learner', 'mastery', optionalTopic]
 
       let topic: string | undefined = req.query?.topic;
@@ -57,7 +65,6 @@ export async function learnerHandler(req: SimpleRequest, res: SimpleResponse): P
   // 2. GET /api/learner/events
   if (method === 'GET' && pathname === '/api/learner/events') {
     try {
-      const userId = req.query?.userId || 'default_user';
       const limit = Number(req.query?.limit || 50);
       const events = await getLearnerEventHistory(userId, limit);
       res.status(200).json({ success: true, events });
@@ -74,7 +81,6 @@ export async function learnerHandler(req: SimpleRequest, res: SimpleResponse): P
     try {
       const body = req.body || {};
       const {
-        userId = 'default_user',
         topic,
         subtopic,
         isCorrect,
@@ -120,7 +126,6 @@ export async function learnerHandler(req: SimpleRequest, res: SimpleResponse): P
     try {
       const body = req.body || {};
       const {
-        userId = 'default_user',
         topic,
         subtopic,
         score = 0,

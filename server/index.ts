@@ -9,14 +9,20 @@ import { evaluationHandler } from './evaluationHandler.ts';
 import { videoHandler } from './videoHandler.ts';
 import { dagHandler } from './dagHandler.ts';
 
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import { handleAiGenerate } from './aiProxyHandler.ts';
+import { prisma } from './prisma.ts';
+
 const PORT = Number(process.env.API_PORT || 3001);
 const HOST = process.env.API_HOST || '127.0.0.1';
+const SERVER_START_TIME = Date.now();
 
 type HeaderValue = string | string[] | undefined;
 
 function setCorsHeaders(res: ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || 'http://localhost:8080');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-ming-test-key, x-ming-user-id, x-dev-user-id, x-request-id');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
 }
 
@@ -74,6 +80,34 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   }
 
   const url = new URL(req.url, `http://${req.headers.host || `${HOST}:${PORT}`}`);
+  const requestId = (req.headers['x-request-id'] as string) || crypto.randomUUID();
+  const startTime = Date.now();
+
+  res.setHeader('x-request-id', requestId);
+
+  // Structured request completion logging (excluding sensitive payloads)
+  const originalEnd = res.end;
+  let logged = false;
+  res.end = function (...args: any[]) {
+    if (!logged) {
+      logged = true;
+      const durationMs = Date.now() - startTime;
+      if (url.pathname !== '/api/health') {
+        console.log(
+          JSON.stringify({
+            level: 'info',
+            timestamp: new Date().toISOString(),
+            requestId,
+            method: req.method,
+            path: url.pathname,
+            statusCode: res.statusCode,
+            durationMs,
+          }),
+        );
+      }
+    }
+    return originalEnd.apply(this, args);
+  } as any;
 
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;
@@ -81,9 +115,50 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  // Comprehensive multi-component health endpoint
   if (req.method === 'GET' && url.pathname === '/api/health') {
+    let dbStatus = 'healthy';
+    try {
+      await prisma.resource.count({ take: 1 });
+    } catch {
+      dbStatus = 'degraded';
+    }
+
+    const aiConfigured = Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
+    const storageHealthy = fs.existsSync('./server/uploads');
+    const vectorProvider = (process.env.VECTOR_STORE || 'chroma').toLowerCase().trim();
+
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ ok: true }));
+    res.end(
+      JSON.stringify({
+        status: dbStatus === 'healthy' ? 'healthy' : 'degraded',
+        uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
+        components: {
+          api: 'healthy',
+          database: dbStatus,
+          vectorStore: vectorProvider,
+          aiProvider: aiConfigured ? 'configured' : 'unconfigured',
+          storage: storageHealthy ? 'healthy' : 'uninitialized',
+        },
+        timestamp: new Date().toISOString(),
+      }),
+    );
+    return;
+  }
+
+  // Secure Server-side AI Proxy Gateway
+  if (url.pathname === '/api/ai/generate') {
+    const body = await readBody(req);
+    await handleAiGenerate(
+      {
+        method: req.method,
+        headers: req.headers as Record<string, HeaderValue>,
+        query: Object.fromEntries(url.searchParams.entries()),
+        url: url.toString(),
+        body,
+      },
+      createRouteResponse(res),
+    );
     return;
   }
 
@@ -197,7 +272,30 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   res.end(JSON.stringify({ error: 'Not found' }));
 }
 
+function validateConfigurationAtStartup() {
+  const vectorStore = (process.env.VECTOR_STORE || 'chroma').toLowerCase().trim();
+  if (vectorStore === 'pgvector') {
+    const dbUrl = process.env.DATABASE_URL?.trim() || '';
+    const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
+    const pgvectorUrl = process.env.PGVECTOR_URL?.trim() || '';
+    const hasConfig =
+      dbUrl.startsWith('postgres://') ||
+      dbUrl.startsWith('postgresql://') ||
+      Boolean(supabaseUrl) ||
+      Boolean(pgvectorUrl) ||
+      process.env.PGVECTOR_TEST_LOCAL === '1';
+
+    if (!hasConfig) {
+      throw new Error(
+        "Startup Configuration Error: VECTOR_STORE is configured to 'pgvector', but required PostgreSQL/pgvector configuration (DATABASE_URL, SUPABASE_URL, or PGVECTOR_URL) is missing. Failing closed: cannot silently downgrade to Chroma in production."
+      );
+    }
+  }
+}
+
 async function start() {
+  validateConfigurationAtStartup();
+
   const server = http.createServer((req, res) => {
     handleRequest(req, res).catch((error) => {
       console.error('API server error:', error);

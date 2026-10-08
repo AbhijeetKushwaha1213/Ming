@@ -335,6 +335,7 @@ export async function updateMasteryFromEvidence(params: {
   });
 
   return {
+    userId: params.userId,
     topic: params.topic,
     subtopic: params.subtopic || null,
     priorMastery: prior,

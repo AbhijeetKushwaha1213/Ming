@@ -1,0 +1,266 @@
+// prisma/schema.postgresql.prisma
+// Production PostgreSQL Prisma Schema for Supabase
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated-pg-client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Resource {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  title       String
+  description String?
+  type        String
+  noteContent String?  @map("note_content")
+  linkUrl     String?  @map("link_url")
+  fileUrl     String?  @map("file_url")
+  storagePath String?  @map("storage_path")
+  folder      String?
+  tagsJson    String?  @map("tags_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@index([userId, type])
+  @@map("resources")
+}
+
+model AssessmentQuestion {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  assessmentId       String?  @map("assessment_id")
+  fingerprint        String
+  normalizedQuestion String?  @map("normalized_question")
+  type               String
+  topic              String
+  subtopic           String?
+  difficulty         String
+  sourceId           String?  @map("source_id")
+  chunkId            String?  @map("chunk_id")
+  pageNumber         Int?     @map("page_number")
+  slideNumber        Int?     @map("slide_number")
+  timestampStart     Float?   @map("timestamp_start")
+  timestampEnd       Float?   @map("timestamp_end")
+  question           String
+  optionsJson        String?  @map("options_json")
+  correctAnswer      String   @map("correct_answer")
+  explanation        String
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@index([userId, topic])
+  @@index([userId, fingerprint])
+  @@index([assessmentId])
+  @@map("assessment_questions")
+}
+
+model AssessmentAttempt {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  title          String
+  topic          String
+  subtopic       String?
+  difficulty     String
+  score          Float
+  totalQuestions Int      @map("total_questions")
+  correctCount   Int      @map("correct_count")
+  percentage     Float
+  questionsJson  String   @map("questions_json")
+  answersJson    String   @map("answers_json")
+  diagnosticJson String   @map("diagnostic_json")
+  completedAt    DateTime @default(now()) @map("completed_at")
+
+  @@index([userId, completedAt])
+  @@index([userId, topic])
+  @@map("assessment_attempts")
+}
+
+model LearnerMastery {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  courseId           String?   @map("course_id")
+  topic              String
+  subtopic           String?
+  masteryProbability Float     @default(0.0) @map("mastery_probability")
+  attempts           Int       @default(0)
+  correctCount       Int       @default(0) @map("correct_count")
+  incorrectCount     Int       @default(0) @map("incorrect_count")
+  confidence         Float     @default(0.0)
+  status             String    @default("unassessed")
+  lastAssessedAt     DateTime? @map("last_assessed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, topic])
+  @@index([userId, status])
+  @@map("learner_mastery")
+}
+
+model LearnerEvent {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  topic            String
+  subtopic         String?
+  eventType        String   @map("event_type")
+  sourceId         String?  @map("source_id")
+  priorMastery     Float    @map("prior_mastery")
+  posteriorMastery Float    @map("posterior_mastery")
+  isCorrect        Boolean? @map("is_correct")
+  difficulty       String?
+  parametersJson   String?  @map("parameters_json")
+  evidenceDetails  String?  @map("evidence_details")
+  timestamp        DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([userId, topic])
+  @@map("learner_events")
+}
+
+model StudyPlan {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  planDate      String   @map("plan_date")
+  title         String
+  targetMinutes Int      @default(60) @map("target_minutes")
+  status        String   @default("active")
+  summary       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, planDate])
+  @@index([userId, status])
+  @@map("study_plans")
+}
+
+model StudyPlanItem {
+  id               String    @id @default(cuid())
+  planId           String    @map("plan_id")
+  userId           String    @map("user_id")
+  priority         Int
+  priorityScore    Float     @map("priority_score")
+  topic            String
+  subtopic         String?
+  activityType     String    @map("activity_type")
+  title            String
+  description      String
+  estimatedMinutes Int       @map("estimated_minutes")
+  reason           String
+  expectedOutcome  String    @map("expected_outcome")
+  sourceId         String?   @map("source_id")
+  chunkId          String?   @map("chunk_id")
+  sourceTitle      String?   @map("source_title")
+  sourceCoordinate String?   @map("source_coordinate")
+  status           String    @default("pending")
+  completedAt      DateTime? @map("completed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, planId])
+  @@index([userId, status])
+  @@map("study_plan_items")
+}
+
+model AssessmentEvaluation {
+  id               String   @id @default(cuid())
+  attemptId        String   @map("attempt_id")
+  userId           String   @map("user_id")
+  questionId       String   @map("question_id")
+  questionText     String   @map("question_text")
+  questionType     String   @map("question_type")
+  userAnswer       String   @map("user_answer")
+  correctAnswer    String   @map("correct_answer")
+  classification   String
+  credit           Float
+  feedback         String
+  explanation      String?
+  sourceId         String?  @map("source_id")
+  chunkId          String?  @map("chunk_id")
+  sourceCoordinate String?  @map("source_coordinate")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([attemptId])
+  @@index([userId, createdAt])
+  @@map("assessment_evaluations")
+}
+
+model AssessmentMisconception {
+  id                String   @id @default(cuid())
+  attemptId         String   @map("attempt_id")
+  evaluationId      String?  @map("evaluation_id")
+  userId            String   @map("user_id")
+  topic             String
+  subtopic          String?
+  concept           String
+  misconceptionType String   @map("misconception_type")
+  description       String
+  studentAnswer     String   @map("student_answer")
+  expectedAnswer    String   @map("expected_answer")
+  sourceId          String?  @map("source_id")
+  chunkId           String?  @map("chunk_id")
+  sourceCoordinate  String?  @map("source_coordinate")
+  severity          String   @default("medium")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([userId, topic])
+  @@index([attemptId])
+  @@index([concept])
+  @@map("assessment_misconceptions")
+}
+
+model Video {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  title            String
+  sourceType       String   @map("source_type")
+  youtubeUrl       String?  @map("youtube_url")
+  youtubeVideoId   String?  @map("youtube_video_id")
+  storagePath      String?  @map("storage_path")
+  fileUrl          String?  @map("file_url")
+  status           String   @default("pending")
+  durationSeconds  Float    @default(0) @map("duration_seconds")
+  thumbnailUrl     String?  @map("thumbnail_url")
+  transcriptStatus String   @default("pending") @map("transcript_status")
+  transcriptJson   String?  @map("transcript_json")
+  errorMessage     String?  @map("error_message")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@index([userId, sourceType])
+  @@map("videos")
+}
+
+model LearningDAG {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  title                String
+  courseId             String?  @map("course_id")
+  topic                String
+  subtopic             String?
+  sourceMaterialIds    String?  @map("source_material_ids")
+  graphDepth           String   @default("Standard") @map("graph_depth")
+  learningGoal         String   @default("Concept Mastery") @map("learning_goal")
+  nodesJson            String   @map("nodes_json")
+  edgesJson            String?  @map("edges_json")
+  masteryStatesJson    String?  @map("mastery_states_json")
+  sourceReferencesJson String?  @map("source_references_json")
+  progressStatus       String   @default("active") @map("progress_status")
+  progressPercent      Float    @default(0.0) @map("progress_percent")
+  currentConceptId     String?  @map("current_concept_id")
+  nextConceptId        String?  @map("next_concept_id")
+  totalConcepts        Int      @default(0) @map("total_concepts")
+  masteredConcepts     Int      @default(0) @map("mastered_concepts")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  lastOpenedAt         DateTime @default(now()) @map("last_opened_at")
+
+  @@index([userId, updatedAt])
+  @@index([userId, topic])
+  @@map("learning_dags")
+}

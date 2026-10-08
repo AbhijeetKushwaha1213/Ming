@@ -1,23 +1,82 @@
+import { createRequire } from 'node:module';
 import { PrismaClient } from '@prisma/client';
 import { PrismaLibSQL } from '@prisma/adapter-libsql';
+
+const require = createRequire(import.meta.url);
 
 declare global {
   // eslint-disable-next-line no-var
   var __academiaPrisma__: PrismaClient | undefined;
 }
 
-function createPrismaClient() {
-  const rawTurso = process.env.TURSO_DATABASE_URL?.trim();
-  const isTursoConfigured = rawTurso && !rawTurso.includes('your_turso_database_url_here') && (rawTurso.startsWith('libsql://') || rawTurso.startsWith('https://') || rawTurso.startsWith('http://'));
-  const url = (isTursoConfigured ? rawTurso : process.env.DATABASE_URL) || 'file:./prisma/dev.db';
-  const authToken = isTursoConfigured ? process.env.TURSO_AUTH_TOKEN : undefined;
+export function isPostgresDatabase(): boolean {
+  const url = process.env.DATABASE_URL?.trim() || '';
+  return url.startsWith('postgres://') || url.startsWith('postgresql://');
+}
 
-  const adapter = new PrismaLibSQL({
-    url,
-    ...(authToken && !authToken.includes('your_turso_auth_token_here') ? { authToken } : {}),
-  });
+export function adaptSqlForDialect(query: string): string {
+  if (isPostgresDatabase()) {
+    let paramIndex = 1;
+    let adapted = query.replace(/\?/g, () => `$${paramIndex++}`);
+    adapted = adapted.replace(/\bDATETIME\b/gi, 'TIMESTAMPTZ');
+    return adapted;
+  }
+  return query;
+}
 
-  return new PrismaClient({ adapter });
+function wrapClientWithDialectAdapter(rawClient: any): PrismaClient {
+  const handler: ProxyHandler<any> = {
+    get(target, prop, receiver) {
+      if (prop === '$queryRawUnsafe') {
+        return (query: string, ...values: any[]) => {
+          const adapted = adaptSqlForDialect(query);
+          return target.$queryRawUnsafe(adapted, ...values);
+        };
+      }
+      if (prop === '$executeRawUnsafe') {
+        return (query: string, ...values: any[]) => {
+          const adapted = adaptSqlForDialect(query);
+          return target.$executeRawUnsafe(adapted, ...values);
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  };
+  return new Proxy(rawClient, handler);
+}
+
+function createPrismaClient(): PrismaClient {
+  let baseClient: any;
+
+  if (isPostgresDatabase()) {
+    try {
+      const pgModule = require('../prisma/generated-pg-client/index.js');
+      baseClient = new pgModule.PrismaClient({
+        datasources: {
+          db: {
+            url: process.env.DATABASE_URL,
+          },
+        },
+      });
+    } catch (err) {
+      console.error('Failed to initialize PostgreSQL Prisma client:', err);
+      throw err;
+    }
+  } else {
+    const rawTurso = process.env.TURSO_DATABASE_URL?.trim();
+    const isTursoConfigured = rawTurso && !rawTurso.includes('your_turso_database_url_here') && (rawTurso.startsWith('libsql://') || rawTurso.startsWith('https://') || rawTurso.startsWith('http://'));
+    const url = (isTursoConfigured ? rawTurso : process.env.DATABASE_URL) || 'file:./prisma/dev.db';
+    const authToken = isTursoConfigured ? process.env.TURSO_AUTH_TOKEN : undefined;
+
+    const adapter = new PrismaLibSQL({
+      url,
+      ...(authToken && !authToken.includes('your_turso_auth_token_here') ? { authToken } : {}),
+    });
+
+    baseClient = new PrismaClient({ adapter });
+  }
+
+  return wrapClientWithDialectAdapter(baseClient);
 }
 
 export const prisma = globalThis.__academiaPrisma__ ?? createPrismaClient();

@@ -6,6 +6,7 @@ import {
   updateDAGProgress,
   deleteDAG,
 } from './dagService.ts';
+import { resolveContextUser } from './authMiddleware.ts';
 
 export async function dagHandler(req: RouteRequest, res: RouteResponse) {
   const method = req.method?.toUpperCase();
@@ -13,9 +14,10 @@ export async function dagHandler(req: RouteRequest, res: RouteResponse) {
   const pathname = url.pathname;
 
   try {
-    // 1. List user DAGs: GET /api/dag/list?userId=...
+    const userId = await resolveContextUser(req);
+
+    // 1. List user DAGs: GET /api/dag/list
     if (method === 'GET' && pathname === '/api/dag/list') {
-      const userId = req.query?.userId || 'default_user';
       const dags = await getUserDAGs(userId);
       res.status(200).json({ success: true, dags });
       return;
@@ -23,7 +25,6 @@ export async function dagHandler(req: RouteRequest, res: RouteResponse) {
 
     // 2. Save DAG: POST /api/dag/save
     if (method === 'POST' && pathname === '/api/dag/save') {
-      const userId = req.body?.userId || req.query?.userId || 'default_user';
       if (!req.body?.topic && !req.body?.title) {
         res.status(400).json({ error: 'Topic or title is required' });
         return;
@@ -36,9 +37,7 @@ export async function dagHandler(req: RouteRequest, res: RouteResponse) {
     // 3. Update Progress: POST /api/dag/:id/progress
     if (method === 'POST' && pathname.includes('/progress')) {
       const segments = pathname.split('/').filter(Boolean);
-      // e.g. ['api', 'dag', 'dag_123', 'progress']
       const id = segments[2];
-      const userId = req.body?.userId || req.query?.userId || 'default_user';
       if (!id) {
         res.status(400).json({ error: 'DAG ID is required' });
         return;
@@ -52,7 +51,6 @@ export async function dagHandler(req: RouteRequest, res: RouteResponse) {
     if (method === 'GET' && pathname.startsWith('/api/dag/')) {
       const segments = pathname.split('/').filter(Boolean);
       const id = segments[2];
-      const userId = req.query?.userId || 'default_user';
       if (!id || id === 'list') {
         res.status(400).json({ error: 'DAG ID is required' });
         return;
@@ -70,7 +68,6 @@ export async function dagHandler(req: RouteRequest, res: RouteResponse) {
     if (method === 'DELETE' && pathname.startsWith('/api/dag/')) {
       const segments = pathname.split('/').filter(Boolean);
       const id = segments[2];
-      const userId = req.query?.userId || 'default_user';
       if (!id) {
         res.status(400).json({ error: 'DAG ID is required' });
         return;

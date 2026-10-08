@@ -44,6 +44,7 @@ __pycache__/
 *.sw?
 
 /generated/prisma
+prisma/generated-pg-client/
 
 # SQLite local database
 prisma/dev.db

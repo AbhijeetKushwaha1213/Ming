@@ -43,34 +43,10 @@ export interface VideoApiResponse {
   end: (body?: any) => void;
 }
 
+import { resolveContextUser } from './authMiddleware.ts';
+
 export async function resolveAuthenticatedUserId(req: VideoApiRequest): Promise<string> {
-  const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined;
-  
-  if (authHeader?.startsWith('Bearer ')) {
-    try {
-      const user = await verifySupabaseToken(authHeader);
-      if (user?.id) return user.id;
-    } catch {
-      // Fall through to header/param check
-    }
-  }
-
-  const customHeader = req.headers['x-user-id'];
-  if (typeof customHeader === 'string' && customHeader.trim()) {
-    return customHeader.trim();
-  }
-
-  const queryUserId = req.query?.userId || req.query?.user_id;
-  if (queryUserId && typeof queryUserId === 'string' && queryUserId.trim()) {
-    return queryUserId.trim();
-  }
-
-  const bodyUserId = req.body?.userId || req.body?.user_id;
-  if (bodyUserId && typeof bodyUserId === 'string' && bodyUserId.trim()) {
-    return bodyUserId.trim();
-  }
-
-  return 'default_user';
+  return resolveContextUser(req as any);
 }
 
 export async function videoHandler(req: VideoApiRequest, res: VideoApiResponse): Promise<void> {
@@ -82,7 +58,13 @@ export async function videoHandler(req: VideoApiRequest, res: VideoApiResponse):
   const videoId = segments[2];
   const subAction = segments[3];
 
-  const userId = await resolveAuthenticatedUserId(req);
+  let userId: string;
+  try {
+    userId = await resolveAuthenticatedUserId(req);
+  } catch (err: any) {
+    res.status(401).json({ error: err.message || 'Unauthorized' });
+    return;
+  }
 
   // 1. POST /api/videos - Add YouTube video or Uploaded video
   if (method === 'POST' && pathname === '/api/videos') {

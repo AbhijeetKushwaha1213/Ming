@@ -107,10 +107,12 @@ export async function computeDeterministicPriorities(params: {
   // 2. Fetch recent learner events (for mistake recency)
   const recentEvents: any[] = await getLearnerEventHistory(userId, 50);
 
-  // 3. Fetch available uploaded resources for topic coverage
+  // 3. Fetch available uploaded resources for topic coverage strictly scoped to user
   const resources: any[] = await prisma.$queryRawUnsafe(
-    "SELECT * FROM resources WHERE userId = ? OR userId = 'default_user' ORDER BY createdAt DESC",
-    userId
+    userId === 'default_user'
+      ? "SELECT * FROM resources WHERE userId = 'default_user' ORDER BY createdAt DESC"
+      : "SELECT * FROM resources WHERE userId = ? ORDER BY createdAt DESC",
+    ...(userId === 'default_user' ? [] : [userId])
   );
 
   // 4. Fetch persistent misconceptions and repeated mistakes (Phase 9)
@@ -254,6 +256,10 @@ export async function computeDeterministicPriorities(params: {
  * 2. Generate Personalized Daily Study Plan
  * Connects deterministic priority scores with real grounded course evidence.
  */
+export async function generateAdaptiveDailyPlan(userId: string): Promise<DailyStudyPlanResult> {
+  return generatePersonalizedDailyPlan({ userId });
+}
+
 export async function generatePersonalizedDailyPlan(params: {
   userId: string;
   targetMinutes?: number;
@@ -282,10 +288,12 @@ export async function generatePersonalizedDailyPlan(params: {
     availableMinutes: targetMinutes,
   });
 
-  // Query real uploaded course materials to ground recommendations
+  // Query real uploaded course materials to ground recommendations strictly scoped to user
   const resources: any[] = await prisma.$queryRawUnsafe(
-    "SELECT * FROM resources WHERE userId = ? OR userId = 'default_user' ORDER BY createdAt DESC LIMIT 10",
-    userId
+    userId === 'default_user'
+      ? "SELECT * FROM resources WHERE userId = 'default_user' ORDER BY createdAt DESC LIMIT 10"
+      : "SELECT * FROM resources WHERE userId = ? ORDER BY createdAt DESC LIMIT 10",
+    ...(userId === 'default_user' ? [] : [userId])
   );
 
   const recommendedItems: StudyPlanRecommendation[] = [];

@@ -230,4 +230,33 @@ model Video {
   @@map("videos")
 }
 
+model LearningDAG {
+  id                   String   @id @default(cuid())
+  userId               String
+  title                String
+  courseId             String?
+  topic                String
+  subtopic             String?
+  sourceMaterialIds    String?
+  graphDepth           String   @default("Standard")
+  learningGoal         String   @default("Concept Mastery")
+  nodesJson            String
+  edgesJson            String?
+  masteryStatesJson    String?
+  sourceReferencesJson String?
+  progressStatus       String   @default("active")
+  progressPercent      Float    @default(0.0)
+  currentConceptId     String?
+  nextConceptId        String?
+  totalConcepts        Int      @default(0)
+  masteredConcepts     Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  lastOpenedAt         DateTime @default(now())
+
+  @@index([userId, updatedAt])
+  @@index([userId, topic])
+  @@map("learning_dags")
+}
+
 

@@ -9,6 +9,7 @@ import { processAssessmentIntelligence, getUserMisconceptions, getAttemptDiagnos
 import { learnerHandler } from './learnerHandler.ts';
 import { studyAgentHandler } from './studyAgentHandler.ts';
 import { evaluationHandler } from './evaluationHandler.ts';
+import { resolveContextUser } from './authMiddleware.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,11 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const PYTHON_PATH = path.join(PROJECT_ROOT, '.venv', 'bin', 'python');
 const RAG_ENGINE_PATH = path.join(PROJECT_ROOT, 'server', 'rag_engine.py');
 const UPLOADS_DIR = path.join(PROJECT_ROOT, 'server', 'uploads');
+
+export function computeDocumentFingerprint(userId: string, content: string, version = 'v1'): string {
+  const hash = crypto.createHash('sha256').update(content).digest('hex');
+  return `${userId}:${hash}:${version}`;
+}
 
 type HeaderValue = string | string[] | undefined;
 
@@ -81,29 +87,60 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
   if (method === 'POST' && pathname === '/api/rag/ingest') {
     try {
       const body = req.body || {};
-      const userId = body.userId || 'default_user';
+      const userId = await resolveContextUser(req);
       const topic = body.topic || 'General';
       const subtopic = body.subtopic || 'Main';
       let sourceType = (body.sourceType || body.type || 'TEXT').toUpperCase();
       let filePath = body.filePath || body.url || body.fileUrl;
 
+      // Owner-scoped upload directory
+      const userUploadsDir = path.join(UPLOADS_DIR, userId);
+      await fs.mkdir(userUploadsDir, { recursive: true });
+
+      const rawContentToHash = body.base64Data || body.text || body.url || filePath || '';
+      const contentFingerprint = crypto.createHash('sha256').update(rawContentToHash).digest('hex').slice(0, 16);
+
+      // Idempotency: Check if this user already uploaded this source
+      await ensureResourceSchema();
+      const existingResource = await prisma.resource.findFirst({
+        where: {
+          userId,
+          title: body.title || (body.fileName ? body.fileName : undefined),
+        },
+      });
+
+      if (existingResource && !body.forceReprocess && !body.base64Data) {
+        res.status(200).json({
+          success: true,
+          jobId: `existing_${existingResource.id}`,
+          sourceId: existingResource.id,
+          documentId: existingResource.id,
+          sourceType: existingResource.type,
+          topic,
+          subtopic,
+          chunkCount: 0,
+          isExisting: true,
+          message: 'Source already ingested for this user (idempotent)',
+          previewChunks: [],
+        });
+        return;
+      }
+
       // If binary or base64 file provided
       if (body.base64Data && body.fileName) {
-        await fs.mkdir(UPLOADS_DIR, { recursive: true });
         const ext = path.extname(body.fileName).toLowerCase();
         if (ext === '.pdf') sourceType = 'PDF';
         else if (ext === '.pptx' || ext === '.ppt') sourceType = 'PPTX';
         else if (['.mp4', '.webm', '.mp3', '.wav', '.m4a'].includes(ext)) sourceType = 'VIDEO';
         
-        const tempName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext || '.bin'}`;
-        filePath = path.join(UPLOADS_DIR, tempName);
+        const tempName = `${Date.now()}_${contentFingerprint.slice(0, 8)}${ext || '.bin'}`;
+        filePath = path.join(userUploadsDir, tempName);
         const buffer = Buffer.from(body.base64Data, 'base64');
         await fs.writeFile(filePath, buffer);
       } else if (body.text) {
         // Plain text ingestion
-        await fs.mkdir(UPLOADS_DIR, { recursive: true });
-        const tempName = `text_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.txt`;
-        filePath = path.join(UPLOADS_DIR, tempName);
+        const tempName = `text_${Date.now()}_${contentFingerprint.slice(0, 8)}.txt`;
+        filePath = path.join(userUploadsDir, tempName);
         await fs.writeFile(filePath, body.text, 'utf8');
         sourceType = 'TEXT';
       }
@@ -198,7 +235,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       return;
     }
 
-    const userId = method === 'POST' ? req.body?.userId : req.query?.userId;
+    const userId = await resolveContextUser(req);
     const sourceId = method === 'POST' ? req.body?.sourceId : req.query?.sourceId;
     const topic = method === 'POST' ? req.body?.topic : req.query?.topic;
     const subtopic = method === 'POST' ? req.body?.subtopic : req.query?.subtopic;
@@ -273,7 +310,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       return;
     }
 
-    const userId = method === 'POST' ? (req.body?.userId || req.body?.user_id) : req.query?.userId;
+    const userId = await resolveContextUser(req);
     const topic = method === 'POST' ? req.body?.topic : req.query?.topic;
     const history = method === 'POST' ? (req.body?.conversationHistory || req.body?.history) : undefined;
     let learnerState = method === 'POST' ? (req.body?.learnerState || req.body?.learner_state) : undefined;
@@ -349,7 +386,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       await ensureAssessmentSchema();
       const body = req.body || {};
       const topic = body.topic;
-      const userId = body.userId || body.user_id || 'default_user';
+      const userId = await resolveContextUser(req);
       if (!topic) {
         res.status(400).json({ error: 'Topic is required for assessment generation' });
         return;
@@ -461,7 +498,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
       await ensureAssessmentSchema();
       await ensureLearnerSchema();
       const body = req.body || {};
-      const userId = body.userId || body.user_id || 'default_user';
+      const userId = await resolveContextUser(req);
       const title = body.title || 'Course Assessment';
       const topic = body.topic || 'General';
       const subtopic = body.subtopic;
@@ -530,7 +567,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
   // GET /api/rag/assessment/misconceptions?userId=...
   if (method === 'GET' && pathname === '/api/rag/assessment/misconceptions') {
     try {
-      const userId = req.query?.userId || urlObj.searchParams.get('userId') || 'default_user';
+      const userId = await resolveContextUser(req);
       const topic = req.query?.topic || urlObj.searchParams.get('topic') || undefined;
       const data = await getUserMisconceptions(userId, topic);
       res.status(200).json({ success: true, ...data });
@@ -554,7 +591,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         res.status(400).json({ error: 'attemptId is required' });
         return;
       }
-      const userId = req.query?.userId || urlObj.searchParams.get('userId') || undefined;
+      const userId = await resolveContextUser(req);
       const diagnostic = await getAttemptDiagnostic(attemptId, userId);
       if (!diagnostic) {
         res.status(404).json({ error: 'Assessment diagnostic not found' });
@@ -573,7 +610,7 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
   if (method === 'GET' && pathname === '/api/rag/assessment/history') {
     try {
       await ensureAssessmentSchema();
-      const userId = req.query?.userId || 'default_user';
+      const userId = await resolveContextUser(req);
       const rows: any[] = await prisma.$queryRawUnsafe(
         'SELECT * FROM assessment_attempts WHERE userId = ? ORDER BY completedAt DESC LIMIT 20',
         userId

@@ -1,14 +1,14 @@
 {
-  "evaluationTimestamp": "2026-10-02T10:09:27.452Z",
+  "evaluationTimestamp": "2026-10-08T14:28:21.074Z",
   "datasetSize": 70,
   "ragMetrics": {
-    "faithfulness": 0.978,
-    "answerRelevancy": 0.85,
-    "contextPrecision": 0.974,
-    "contextRecall": 0.841
+    "faithfulness": 0.957,
+    "answerRelevancy": 0.855,
+    "contextPrecision": 0.714,
+    "contextRecall": 0.862
   },
   "groundingMetrics": {
-    "groundingAccuracy": 1,
+    "groundingAccuracy": 0.971,
     "coordinateAccuracy": 1,
     "refusalAccuracy": 1,
     "userIsolationPreserved": true
@@ -59,21 +59,24 @@
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
             "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
-            "priorMastery": 0.2
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.5764705882352941
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Operating Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.5764705882352941
+            "priorMastery": 0.5764705882352941,
+            "posteriorMastery": 0.8736842105263158
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 50 related questions.",
-            "priorMastery": 0.8736842105263158
+            "priorMastery": 0.8736842105263158,
+            "posteriorMastery": 0.9719844357976654
           }
         ]
       },
@@ -107,21 +110,24 @@
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
-            "priorMastery": 0.4
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Computer Networks (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
-            "priorMastery": 0.9454545454545454
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -154,14 +160,16 @@
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 50 related questions.",
-            "priorMastery": 0.8
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 50 related questions.",
-            "priorMastery": 0.9526315789473684
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -196,21 +204,24 @@
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
-            "priorMastery": 0.4
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_ASSESSMENT",
             "reason": "Exam is in 2 days; active retrieval practice solidifies memory retention.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
-            "priorMastery": 0.9454545454545454
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -244,21 +255,24 @@
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
-            "priorMastery": 0.4
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Algorithms & Data Structures (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
-            "priorMastery": 0.9454545454545454
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -292,21 +306,24 @@
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
             "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
-            "priorMastery": 0.2
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.1272727272727273
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Operating Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.1272727272727273
+            "priorMastery": 0.1272727272727273,
+            "posteriorMastery": 0.11611253196930947
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
             "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 50 related questions.",
-            "priorMastery": 0.1161125319693095
+            "priorMastery": 0.1161125319693095,
+            "posteriorMastery": 0.4343698854337153
           }
         ]
       },
@@ -339,14 +356,16 @@
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 50 related questions.",
-            "priorMastery": 0.8
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
             "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 50 related questions.",
-            "priorMastery": 0.9526315789473684
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -379,22 +398,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.5764705882352941
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Database Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.5764705882352941
+            "priorMastery": 0.5764705882352941,
+            "posteriorMastery": 0.8736842105263158
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.8736842105263158
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.8736842105263158,
+            "posteriorMastery": 0.9719844357976654
           }
         ]
       },
@@ -427,22 +449,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Concurrency & Synchronization (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -474,15 +499,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -516,22 +543,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_ASSESSMENT",
             "reason": "Exam is in 2 days; active retrieval practice solidifies memory retention.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -564,22 +594,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Computer Networks (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -612,22 +645,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.1272727272727273
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Database Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.1272727272727273
+            "priorMastery": 0.1272727272727273,
+            "posteriorMastery": 0.11611253196930947
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.1161125319693095
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.1161125319693095,
+            "posteriorMastery": 0.4343698854337153
           }
         ]
       },
@@ -659,15 +695,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -700,22 +738,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.5764705882352941
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Algorithms & Data Structures (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.5764705882352941
+            "priorMastery": 0.5764705882352941,
+            "posteriorMastery": 0.8736842105263158
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.8736842105263158
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.8736842105263158,
+            "posteriorMastery": 0.9719844357976654
           }
         ]
       },
@@ -747,15 +788,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.6
+            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.6,
+            "posteriorMastery": 0.8838709677419354
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.8838709677419354
+            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.8838709677419354,
+            "posteriorMastery": 0.974468085106383
           }
         ]
       },
@@ -787,15 +830,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -829,22 +874,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_ASSESSMENT",
             "reason": "Exam is in 2 days; active retrieval practice solidifies memory retention.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -877,22 +925,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Concurrency & Synchronization (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -925,22 +976,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.1272727272727273
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Algorithms & Data Structures (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.1272727272727273
+            "priorMastery": 0.1272727272727273,
+            "posteriorMastery": 0.11611253196930947
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.1161125319693095
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.1161125319693095,
+            "posteriorMastery": 0.4343698854337153
           }
         ]
       },
@@ -972,15 +1026,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -1013,22 +1069,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.5764705882352941
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Computer Networks (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.5764705882352941
+            "priorMastery": 0.5764705882352941,
+            "posteriorMastery": 0.8736842105263158
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.8736842105263158
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.8736842105263158,
+            "posteriorMastery": 0.9719844357976654
           }
         ]
       },
@@ -1061,22 +1120,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Database Systems (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1108,15 +1170,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -1150,22 +1214,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_ASSESSMENT",
             "reason": "Exam is in 2 days; active retrieval practice solidifies memory retention.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1198,22 +1265,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Operating Systems (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1246,22 +1316,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.1272727272727273
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Computer Networks (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.1272727272727273
+            "priorMastery": 0.1272727272727273,
+            "posteriorMastery": 0.11611253196930947
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.1161125319693095
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.1161125319693095,
+            "posteriorMastery": 0.4343698854337153
           }
         ]
       },
@@ -1293,15 +1366,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -1334,22 +1409,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.5764705882352941
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Concurrency & Synchronization (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.5764705882352941
+            "priorMastery": 0.5764705882352941,
+            "posteriorMastery": 0.8736842105263158
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.8736842105263158
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.8736842105263158,
+            "posteriorMastery": 0.9719844357976654
           }
         ]
       },
@@ -1382,22 +1460,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Algorithms & Data Structures (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1429,15 +1510,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -1471,22 +1554,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_ASSESSMENT",
             "reason": "Exam is in 2 days; active retrieval practice solidifies memory retention.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1519,22 +1605,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Database Systems (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1567,22 +1656,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.1272727272727273
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Concurrency & Synchronization (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.1272727272727273
+            "priorMastery": 0.1272727272727273,
+            "posteriorMastery": 0.11611253196930947
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.1161125319693095
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.1161125319693095,
+            "posteriorMastery": 0.4343698854337153
           }
         ]
       },
@@ -1614,15 +1706,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -1655,22 +1749,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.5764705882352941
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Operating Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.5764705882352941
+            "priorMastery": 0.5764705882352941,
+            "posteriorMastery": 0.8736842105263158
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.8736842105263158
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.8736842105263158,
+            "posteriorMastery": 0.9719844357976654
           }
         ]
       },
@@ -1703,22 +1800,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Computer Networks (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1750,15 +1850,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -1792,22 +1894,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_ASSESSMENT",
             "reason": "Exam is in 2 days; active retrieval practice solidifies memory retention.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1840,22 +1945,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Algorithms & Data Structures (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -1888,22 +1996,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.1272727272727273
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Operating Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.1272727272727273
+            "priorMastery": 0.1272727272727273,
+            "posteriorMastery": 0.11611253196930947
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.1161125319693095
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.1161125319693095,
+            "posteriorMastery": 0.4343698854337153
           }
         ]
       },
@@ -1935,15 +2046,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -1976,22 +2089,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.5764705882352941
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Database Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.5764705882352941
+            "priorMastery": 0.5764705882352941,
+            "posteriorMastery": 0.8736842105263158
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.8736842105263158
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.8736842105263158,
+            "posteriorMastery": 0.9719844357976654
           }
         ]
       },
@@ -2023,15 +2139,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.6
+            "reason": "Mastery is 60% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.6,
+            "posteriorMastery": 0.8838709677419354
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.8838709677419354
+            "reason": "Mastery is 88% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.8838709677419354,
+            "posteriorMastery": 0.974468085106383
           }
         ]
       },
@@ -2063,15 +2181,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -2105,22 +2225,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_ASSESSMENT",
             "reason": "Exam is in 2 days; active retrieval practice solidifies memory retention.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Operating Systems",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -2153,22 +2276,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.4
+            "reason": "Mastery is 40% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.4,
+            "posteriorMastery": 0.775
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Computer Networks",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Computer Networks (40%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.775
+            "priorMastery": 0.775,
+            "posteriorMastery": 0.9454545454545454
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Computer Networks",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.9454545454545454
+            "reason": "Mastery is 95% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.9454545454545454,
+            "posteriorMastery": 0.9886075949367089
           }
         ]
       },
@@ -2201,22 +2327,25 @@
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.1272727272727273
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Database Systems",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Database Systems (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.1272727272727273
+            "priorMastery": 0.1272727272727273,
+            "posteriorMastery": 0.11611253196930947
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Database Systems",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.1161125319693095
+            "reason": "Mastery is 12% (developing), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.1161125319693095,
+            "posteriorMastery": 0.4343698854337153
           }
         ]
       },
@@ -2248,15 +2377,17 @@
             "sessionIndex": 1,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 31 related questions.",
-            "priorMastery": 0.8
+            "reason": "Mastery is 80% (proficient), confidence is 71%, and you recently missed 46 related questions.",
+            "priorMastery": 0.8,
+            "posteriorMastery": 0.9526315789473684
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Concurrency & Synchronization",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 33 related questions.",
-            "priorMastery": 0.9526315789473684
+            "reason": "Mastery is 95% (mastered), confidence is 75%, and you recently missed 48 related questions.",
+            "priorMastery": 0.9526315789473684,
+            "posteriorMastery": 0.99
           }
         ]
       },
@@ -2289,32 +2420,35 @@
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "REVIEW_SOURCE",
-            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 43 related questions.",
-            "priorMastery": 0.2
+            "reason": "Mastery is 20% (developing), confidence is 71%, and you recently missed 50 related questions.",
+            "priorMastery": 0.2,
+            "posteriorMastery": 0.5764705882352941
           },
           {
             "sessionIndex": 1,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "ASK_TUTOR",
             "reason": "Your lowest mastery topic is Algorithms & Data Structures (20%). Direct tutor dialogue resolves conceptual blockers.",
-            "priorMastery": 0.5764705882352941
+            "priorMastery": 0.5764705882352941,
+            "posteriorMastery": 0.8736842105263158
           },
           {
             "sessionIndex": 2,
             "recommendedTopic": "Algorithms & Data Structures",
             "activityType": "PRACTICE_WEAK_CONCEPTS",
-            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 47 related questions.",
-            "priorMastery": 0.8736842105263158
+            "reason": "Mastery is 87% (mastered), confidence is 78%, and you recently missed 50 related questions.",
+            "priorMastery": 0.8736842105263158,
+            "posteriorMastery": 0.9719844357976654
           }
         ]
       }
     ]
   },
   "noveltyMetrics": {
-    "totalQuestionsAnalyzed": 45,
+    "totalQuestionsAnalyzed": 55,
     "exactDuplicatesCount": 0,
     "semanticDuplicatesCount": 0,
-    "uniqueQuestionsCount": 45,
+    "uniqueQuestionsCount": 55,
     "exactDuplicateRate": 0,
     "semanticDuplicateRate": 0,
     "uniqueQuestionPercentage": 1
@@ -2339,7 +2473,7 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.846,
       "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -2350,13 +2484,13 @@
       "question": "How does the Banker's algorithm determine whether a resource allocation state is safe?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_ad8692700e78",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.889,
+      "faithfulness": 0.923,
       "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -2367,7 +2501,7 @@
       "question": "What information is contained inside a Process Control Block (PCB) in an operating system?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 1,
       "groundingMatched": true,
@@ -2384,15 +2518,15 @@
       "question": "What are the common CPU scheduling algorithms in operating systems?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 3,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 2,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.933,
+      "faithfulness": 1,
       "answerRelevancy": 1,
-      "contextPrecision": 0.833,
+      "contextPrecision": 1,
       "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What are the common CPU scheduling algorithms in operating systems**\n\nAccording to your course materials on **Oper"
     },
@@ -2401,13 +2535,13 @@
       "question": "How many layers are defined in the OSI reference model versus the TCP/IP protocol suite?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 3,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.938,
+      "faithfulness": 0.688,
       "answerRelevancy": 0.974,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -2418,7 +2552,7 @@
       "question": "How does TCP establish a connection between client and server?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -2426,7 +2560,7 @@
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.9,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How does TCP establish a connection between client and server**\n\nAccording to your course materials on **Computer "
     },
@@ -2435,7 +2569,7 @@
       "question": "What is the primary role of a foreign key in a relational database?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -2452,7 +2586,7 @@
       "question": "What are the four ACID properties required for database transactions?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -2511,7 +2645,7 @@
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.83,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What is the primary difference between deadlock prevention and deadlock avoidance**\n\nAccording to your course mate"
     },
@@ -2520,15 +2654,15 @@
       "question": "What is a context switch and what overhead does it impose on operating system performance?",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 1,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.909,
+      "faithfulness": 0.933,
       "answerRelevancy": 0.764,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What is a context switch and what overhead does it impose on operating system performance**\n\nAccording to your cou"
     },
@@ -2554,14 +2688,14 @@
       "question": "Explain the fundamental mechanism of paging and how it eliminates contiguous physical memory allocation.",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 3,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
-      "answerRelevancy": 0.852,
+      "faithfulness": 0.875,
+      "answerRelevancy": 0.882,
       "contextPrecision": 1,
       "contextRecall": 0.8,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Explain the fundamental mechanism of paging and how it eliminates contiguous physical memory allocation**\n\nAccordi"
@@ -2571,7 +2705,7 @@
       "question": "How does virtual memory allow execution of processes that exceed physical memory frames?",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 4,
       "groundingMatched": true,
@@ -2588,7 +2722,7 @@
       "question": "Explain the core differences between TCP and UDP at the transport layer.",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -2611,7 +2745,7 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.588,
       "answerRelevancy": 0.946,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -2622,13 +2756,13 @@
       "question": "How does TCP Slow Start differ from Congestion Avoidance in regulating congestion window size?",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.938,
       "answerRelevancy": 0.938,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -2645,7 +2779,7 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.875,
+      "faithfulness": 1,
       "answerRelevancy": 0.911,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -2656,13 +2790,13 @@
       "question": "Why are B+ Trees preferred over regular binary search trees for disk-based relational storage engines?",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.929,
       "answerRelevancy": 0.74,
       "contextPrecision": 1,
       "contextRecall": 0.8,
@@ -2673,13 +2807,13 @@
       "question": "If circular wait is prevented by imposing a strict global ordering on resource requests, can a deadlock still occur?",
       "questionType": "reasoning",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_ad8692700e78",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.889,
+      "faithfulness": 1,
       "answerRelevancy": 0.885,
       "contextPrecision": 1,
       "contextRecall": 0.75,
@@ -2690,13 +2824,13 @@
       "question": "Why does the Optimal Page Replacement algorithm have the lowest page fault rate, and why cannot it be implemented in general-purpose OS?",
       "questionType": "reasoning",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 4,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.917,
       "answerRelevancy": 0.773,
       "contextPrecision": 1,
       "contextRecall": 0.667,
@@ -2707,15 +2841,15 @@
       "question": "Why does TCP trigger Fast Retransmit after receiving three duplicate acknowledgments rather than waiting for a timeout?",
       "questionType": "reasoning",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
-      "answerRelevancy": 0.598,
-      "contextPrecision": 1,
+      "faithfulness": 0.938,
+      "answerRelevancy": 0.66,
+      "contextPrecision": 0,
       "contextRecall": 0.667,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does TCP trigger Fast Retransmit after receiving three duplicate acknowledgments rather than waiting for a tim"
     },
@@ -2724,7 +2858,7 @@
       "question": "Why does Strict 2PL hold exclusive locks until commit or abort instead of releasing them during the shrinking phase?",
       "questionType": "reasoning",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -2749,7 +2883,7 @@
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.555,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 0.5,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **If an array is unsorted, why cannot binary search be executed directly in O(log n) time**\n\nAccording to your cours"
     },
@@ -2758,15 +2892,15 @@
       "question": "In a resource allocation graph, does every cycle imply a deadlock when resources have multiple instances?",
       "questionType": "reasoning",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_ad8692700e78",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.889,
-      "answerRelevancy": 0.675,
-      "contextPrecision": 1,
+      "faithfulness": 0.923,
+      "answerRelevancy": 0.621,
+      "contextPrecision": 0,
       "contextRecall": 0.5,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **In a resource allocation graph, does every cycle imply a deadlock when resources have multiple instances**\n\nAccord"
     },
@@ -2775,15 +2909,15 @@
       "question": "Why does Shortest Job First (SJF) scheduling provide the minimum average waiting time for a set of processes?",
       "questionType": "reasoning",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 2,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
-      "answerRelevancy": 0.474,
-      "contextPrecision": 1,
+      "answerRelevancy": 0.505,
+      "contextPrecision": 0,
       "contextRecall": 0.25,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does Shortest Job First (SJF) scheduling provide the minimum average waiting time for a set of processes**\n\nAc"
     },
@@ -2792,13 +2926,13 @@
       "question": "Why does the leaf node doubly linked list in a B+ Tree drastically speed up range queries compared to tree traversals?",
       "questionType": "reasoning",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.9,
       "answerRelevancy": 0.675,
       "contextPrecision": 1,
       "contextRecall": 0.8,
@@ -2809,14 +2943,14 @@
       "question": "How do resource allocation graphs represent hold-and-wait versus circular wait in concurrency management?",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_ad8692700e78",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.889,
-      "answerRelevancy": 0.729,
+      "faithfulness": 0.929,
+      "answerRelevancy": 0.783,
       "contextPrecision": 1,
       "contextRecall": 0.75,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How do resource allocation graphs represent hold-and-wait versus circular wait in concurrency management**\n\nAccord"
@@ -2826,15 +2960,15 @@
       "question": "How do process scheduling states in OS relate to transaction states in database concurrency control?",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 4,
-      "topSourceId": "src_os_pdf",
-      "topPageNumber": 1,
-      "groundingMatched": true,
+      "retrievedChunkCount": 5,
+      "topSourceId": "src_dbms_video",
+      "topPageNumber": null,
+      "groundingMatched": false,
       "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 0.923,
       "answerRelevancy": 0.661,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 0.8,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How do process scheduling states in OS relate to transaction states in database concurrency control**\n\nAccording t"
     },
@@ -2843,15 +2977,15 @@
       "question": "Compare the role of caches in operating systems (TLB) and networks (sliding window buffer) in mitigating latency bottlenecks.",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 3,
-      "topSourceId": "src_os_pdf",
-      "topPageNumber": 3,
-      "groundingMatched": true,
+      "retrievedChunkCount": 5,
+      "topSourceId": "src_net_slides",
+      "topPageNumber": null,
+      "groundingMatched": false,
       "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 0.947,
       "answerRelevancy": 0.729,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Compare the role of caches in operating systems (TLB) and networks (sliding window buffer) in mitigating latency b"
     },
@@ -2860,16 +2994,16 @@
       "question": "How does deadlock handling in operating systems compare to Two-Phase Locking deadlock detection in DBMS?",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_ad8692700e78",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.889,
-      "answerRelevancy": 0.756,
+      "faithfulness": 0.923,
+      "answerRelevancy": 0.81,
       "contextPrecision": 1,
-      "contextRecall": 0.5,
+      "contextRecall": 0.75,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **How does deadlock handling in operating systems compare to Two-Phase Locking deadlock detection in DBMS**\n\nAccordi"
     },
     {
@@ -2877,13 +3011,13 @@
       "question": "How do divide-and-conquer algorithms like Merge Sort relate to parallel process execution across multiple CPU cores?",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_algo_text",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.933,
       "answerRelevancy": 0.658,
       "contextPrecision": 1,
       "contextRecall": 0.5,
@@ -2894,15 +3028,15 @@
       "question": "Compare flow control at the transport layer with page replacement in virtual memory under resource exhaustion.",
       "questionType": "multi-source",
       "offMaterial": false,
-      "retrievedChunkCount": 3,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.933,
-      "answerRelevancy": 0.74,
-      "contextPrecision": 0.333,
+      "faithfulness": 0.929,
+      "answerRelevancy": 0.708,
+      "contextPrecision": 0,
       "contextRecall": 0.8,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Compare flow control at the transport layer with page replacement in virtual memory under resource exhaustion**\n\nA"
     },
@@ -2919,7 +3053,7 @@
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.823,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Given a page size of 4KB and logical address 12500, calculate the page number and page offset**\n\nAccording to your"
     },
@@ -2928,15 +3062,15 @@
       "question": "If a system uses Round Robin scheduling with a time quantum of 20ms and a process requires 55ms of CPU burst, how many context switches occur?",
       "questionType": "numerical",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 2,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
-      "answerRelevancy": 0.675,
-      "contextPrecision": 1,
+      "answerRelevancy": 0.721,
+      "contextPrecision": 0,
       "contextRecall": 0.25,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **If a system uses Round Robin scheduling with a time quantum of 20ms and a process requires 55ms of CPU burst, how "
     },
@@ -2945,13 +3079,13 @@
       "question": "If a B+ Tree has an order of 4, what is the maximum number of child pointers and search keys an internal node can hold?",
       "questionType": "numerical",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.929,
       "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -2962,7 +3096,7 @@
       "question": "During TCP Slow Start, if cwnd starts at 1 MSS, what will be the value of cwnd after 4 successful round-trip times (RTT) assuming no packet loss?",
       "questionType": "numerical",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -2970,7 +3104,7 @@
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.814,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 0.5,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **During TCP Slow Start, if cwnd starts at 1 MSS, what will be the value of cwnd after 4 successful round-trip times"
     },
@@ -2979,15 +3113,15 @@
       "question": "In a system with 3 resource types and 5 processes running the Banker's algorithm, what is the maximum number of iterations required to verify a safe sequence?",
       "questionType": "numerical",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_ad8692700e78",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.923,
       "answerRelevancy": 0.661,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 0.5,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **In a system with 3 resource types and 5 processes running the Banker's algorithm, what is the maximum number of it"
     },
@@ -3004,7 +3138,7 @@
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.729,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 0.25,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Calculate the number of comparisons required by binary search in the worst case for a sorted array of 1024 element"
     },
@@ -3115,7 +3249,7 @@
       "question": "According to Page 1 of the Operating Systems textbook PDF, what component contains the program counter and CPU registers?",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 1,
       "groundingMatched": true,
@@ -3123,7 +3257,7 @@
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 1,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **According to Page 1 of the Operating Systems textbook PDF, what component contains the program counter and CPU reg"
     },
@@ -3132,7 +3266,7 @@
       "question": "According to Page 3 of the Operating Systems textbook PDF, what hardware cache accelerates logical to physical address translation?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 3,
       "groundingMatched": true,
@@ -3149,7 +3283,7 @@
       "question": "According to Slide 1 of the Computer Networks slides, what are the five layers of the Internet TCP/IP protocol suite?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3166,7 +3300,7 @@
       "question": "According to Slide 4 of the Computer Networks slides, what event triggers TCP Fast Retransmit without waiting for timeout?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3183,7 +3317,7 @@
       "question": "According to the Database Systems lecture video at timestamp 2:30 (150s), what mechanism guarantees the Atomicity property of transactions?",
       "questionType": "factual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3200,13 +3334,13 @@
       "question": "According to the Database Systems lecture video at timestamp 8:00 (480s), where are data records and pointers stored in a B+ Tree structure?",
       "questionType": "conceptual",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.929,
       "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -3217,13 +3351,13 @@
       "question": "Explain how physical memory paging relates to page fault traps in virtual memory, and which replacement policy evicts the page unused for the longest time.",
       "questionType": "multi-hop",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 4,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.917,
+      "faithfulness": 0.941,
       "answerRelevancy": 0.978,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -3234,7 +3368,7 @@
       "question": "Compare how the Banker algorithm avoids deadlocks in Operating Systems with how Two-Phase Locking ensures serializability in Database Systems.",
       "questionType": "cross-source",
       "offMaterial": false,
-      "retrievedChunkCount": 3,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_ad8692700e78",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3251,7 +3385,7 @@
       "question": "Compare connection establishment using TCP 3-way handshake in Computer Networks with transaction atomicity guarantees in Database Systems.",
       "questionType": "cross-source",
       "offMaterial": false,
-      "retrievedChunkCount": 3,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3268,7 +3402,7 @@
       "question": "In Computer Networks, how does the receiver advertise flow control capacity, and what triggers TCP Fast Retransmit during congestion control?",
       "questionType": "multi-hop",
       "offMaterial": false,
-      "retrievedChunkCount": 3,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3302,13 +3436,13 @@
       "question": "As a student building initial mastery of CPU scheduling, how does the CPU scheduler select processes, and what are FCFS and Shortest Job First?",
       "questionType": "personalized",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 3,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 2,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.933,
       "answerRelevancy": 1,
       "contextPrecision": 1,
       "contextRecall": 1,
@@ -3319,7 +3453,7 @@
       "question": "Compare the divide-and-conquer strategy in Merge sort with paging memory management frames and pages in Operating Systems.",
       "questionType": "cross-source",
       "offMaterial": false,
-      "retrievedChunkCount": 3,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_algo_text",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3353,7 +3487,7 @@
       "question": "What is the key conceptual difference between Deadlock Avoidance and Deadlock Prevention?",
       "questionType": "misconception-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_ad8692700e78",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3376,7 +3510,7 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 0.941,
+      "faithfulness": 0.875,
       "answerRelevancy": 0.865,
       "contextPrecision": 0.5,
       "contextRecall": 1,
@@ -3387,7 +3521,7 @@
       "question": "Why does Least Recently Used (LRU) page replacement perform differently from First-In First-Out (FIFO)?",
       "questionType": "misconception-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 4,
       "groundingMatched": true,
@@ -3395,7 +3529,7 @@
       "refusalMatched": true,
       "faithfulness": 1,
       "answerRelevancy": 0.711,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 0.6,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why does Least Recently Used (LRU) page replacement perform differently from First-In First-Out (FIFO)**\n\nAccordin"
     },
@@ -3404,16 +3538,16 @@
       "question": "Explain the difference between TCP flow control and TCP congestion control.",
       "questionType": "misconception-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 2,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
-      "answerRelevancy": 0.687,
+      "answerRelevancy": 0.783,
       "contextPrecision": 1,
-      "contextRecall": 0.4,
+      "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Explain the difference between TCP flow control and TCP congestion control**\n\nAccording to your course materials o"
     },
     {
@@ -3421,14 +3555,14 @@
       "question": "Why is TCP considered a reliable byte-stream protocol while UDP is considered unreliable and message-oriented?",
       "questionType": "misconception-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 4,
       "topSourceId": "src_net_slides",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
-      "answerRelevancy": 0.532,
+      "answerRelevancy": 0.584,
       "contextPrecision": 1,
       "contextRecall": 0.8,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Why is TCP considered a reliable byte-stream protocol while UDP is considered unreliable and message-oriented**\n\nA"
@@ -3438,7 +3572,7 @@
       "question": "In ACID transactions, how does Atomicity differ from Isolation?",
       "questionType": "misconception-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3447,7 +3581,7 @@
       "faithfulness": 1,
       "answerRelevancy": 0.675,
       "contextPrecision": 1,
-      "contextRecall": 0.6,
+      "contextRecall": 1,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **In ACID transactions, how does Atomicity differ from Isolation**\n\nAccording to your course materials on **Database"
     },
     {
@@ -3455,13 +3589,13 @@
       "question": "Where are actual data records or record pointers stored in a B+ Tree index, and what do internal nodes contain?",
       "questionType": "misconception-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 5,
       "topSourceId": "src_dbms_video",
       "topPageNumber": null,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.923,
       "answerRelevancy": 0.88,
       "contextPrecision": 1,
       "contextRecall": 0.8,
@@ -3472,7 +3606,7 @@
       "question": "What distinguishes dynamic programming from divide-and-conquer algorithm design?",
       "questionType": "misconception-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_algo_text",
       "topPageNumber": null,
       "groundingMatched": true,
@@ -3481,7 +3615,7 @@
       "faithfulness": 1,
       "answerRelevancy": 0.689,
       "contextPrecision": 1,
-      "contextRecall": 0.6,
+      "contextRecall": 0.8,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **What distinguishes dynamic programming from divide-and-conquer algorithm design**\n\nAccording to your course materi"
     },
     {
@@ -3489,15 +3623,15 @@
       "question": "If main memory access time is 100 ns and page fault service time is 10,000,000 ns, what is the effective memory access time when the page fault rate is 0.001?",
       "questionType": "numerical-assessment",
       "offMaterial": false,
-      "retrievedChunkCount": 1,
+      "retrievedChunkCount": 2,
       "topSourceId": "src_os_pdf",
       "topPageNumber": 4,
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
       "faithfulness": 1,
-      "answerRelevancy": 0.814,
-      "contextPrecision": 1,
+      "answerRelevancy": 0.851,
+      "contextPrecision": 0,
       "contextRecall": 0.25,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **If main memory access time is 100 ns and page fault service time is 10,000,000 ns, what is the effective memory ac"
     },
@@ -3512,9 +3646,9 @@
       "groundingMatched": true,
       "coordinatesMatched": true,
       "refusalMatched": true,
-      "faithfulness": 1,
+      "faithfulness": 0.909,
       "answerRelevancy": 0.576,
-      "contextPrecision": 1,
+      "contextPrecision": 0,
       "contextRecall": 0.5,
       "generatedAnswerPreview": "### 📚 Course Material Evidence\n\nRegarding: **Calculate the Bandwidth-Delay Product (BDP) for a link with 1 Gbps bandwidth and 50 ms Round-Trip Time (RTT)**\n\nAc"
     }
@@ -3525,8 +3659,8 @@
       "metric": "Context Recall",
       "phase6Value": 0.65,
       "phase7Value": 0.458,
-      "phase8Value": 0.841,
-      "delta": 0.383,
+      "phase8Value": 0.862,
+      "delta": 0.404,
       "improved": true,
       "targetBenchmark": ">= 0.80"
     },
@@ -3534,8 +3668,8 @@
       "metric": "Answer Relevancy",
       "phase6Value": 0.702,
       "phase7Value": 0.713,
-      "phase8Value": 0.85,
-      "delta": 0.137,
+      "phase8Value": 0.855,
+      "delta": 0.142,
       "improved": true,
       "targetBenchmark": ">= 0.80"
     },
@@ -3543,17 +3677,17 @@
       "metric": "Context Precision",
       "phase6Value": 0.375,
       "phase7Value": 0.942,
-      "phase8Value": 0.974,
-      "delta": 0.032,
-      "improved": true,
+      "phase8Value": 0.714,
+      "delta": -0.228,
+      "improved": false,
       "targetBenchmark": ">= 0.80"
     },
     {
       "metric": "Faithfulness",
       "phase6Value": 0.796,
       "phase7Value": 0.418,
-      "phase8Value": 0.978,
-      "delta": 0.56,
+      "phase8Value": 0.957,
+      "delta": 0.539,
       "improved": true,
       "targetBenchmark": ">= 0.85"
     },
@@ -3561,8 +3695,8 @@
       "metric": "Grounding Accuracy",
       "phase6Value": 1,
       "phase7Value": 0.942,
-      "phase8Value": 1,
-      "delta": 0.058,
+      "phase8Value": 0.971,
+      "delta": 0.029,
       "improved": true,
       "targetBenchmark": ">= 0.90"
     },

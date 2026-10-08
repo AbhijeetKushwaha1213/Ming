@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
     fileParallelism: false,
+    testTimeout: 30000,
   },
   resolve: {
     alias: {

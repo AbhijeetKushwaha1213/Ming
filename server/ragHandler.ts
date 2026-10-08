@@ -11,6 +11,10 @@ import { learnerHandler } from './learnerHandler.ts';
 import { studyAgentHandler } from './studyAgentHandler.ts';
 import { evaluationHandler } from './evaluationHandler.ts';
 import { resolveContextUser } from './authMiddleware.ts';
+import { verifyGroundedAnswer, buildCanonicalEvidenceIndex } from './citationVerifier.ts';
+import { verifyNumericalQuestion, normalizeCorrectAnswer, computeNumericalFingerprint } from './numericalVerifier.ts';
+import type { NumericalQuestion } from './assessmentTypes.ts';
+import { DEFAULT_TOLERANCE } from './assessmentTypes.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -412,32 +416,37 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
 
     const chatResponse = await runPythonCli(args);
 
-    // Phase 10: Post-generation citation verifier
-    // Validates every citation against retrieved evidence for source_id + chunk_id + coordinate consistency.
-    // Removes citations that cannot be verified rather than fabricating coordinates.
-    if (chatResponse && Array.isArray(chatResponse.citations) && chatResponse.citations.length > 0) {
-      const verifiedCitations: any[] = [];
-      for (const citation of chatResponse.citations) {
-        const cid = citation.chunk_id;
-        const sid = citation.source_id;
-        // Citation must have a chunk_id and source_id to be verifiable
-        if (!cid || !sid) continue;
-        // Verify coordinate consistency: at least one coordinate type must be present or source_type TEXT
-        const hasPage = citation.page_number !== null && citation.page_number !== undefined;
-        const hasSlide = citation.slide_number !== null && citation.slide_number !== undefined;
-        const hasTime = citation.timestamp_start !== null && citation.timestamp_start !== undefined;
-        const isText = citation.source_type === 'TEXT';
-        const hasValidCoordinate = hasPage || hasSlide || hasTime || isText;
-        if (hasValidCoordinate) {
-          verifiedCitations.push(citation);
+    // Canonical Phase 3 Step 3: Deterministic Citation & Claim Verification Engine
+    // Zero-trust server-side verification: Revalidates claims, coordinates, tenant isolation, and evidence references.
+    if (chatResponse && chatResponse.response) {
+      const retrievedItems = Array.isArray(chatResponse.evidence_index)
+        ? chatResponse.evidence_index
+        : Array.isArray(chatResponse.retrieved_chunks)
+        ? chatResponse.retrieved_chunks
+        : [];
+
+      const evidenceIndex = buildCanonicalEvidenceIndex(retrievedItems, userId || 'system_public');
+      const groundedContract = await verifyGroundedAnswer(
+        {
+          answer: chatResponse.response || '',
+          proposedCitations: Array.isArray(chatResponse.citations) ? chatResponse.citations : [],
+        },
+        {
+          authenticatedUserId: userId || 'system_public',
+          evidenceIndex,
         }
-        // If no coordinate at all and not TEXT, drop the citation (don't fabricate)
-      }
-      chatResponse.citations = verifiedCitations;
+      );
+
+      chatResponse.grounded_contract = groundedContract;
+      chatResponse.claims = groundedContract.claims;
+      chatResponse.citations = groundedContract.citations;
+      chatResponse.unsupported_claims = groundedContract.unsupported_claims;
+      chatResponse.grounded = groundedContract.grounded;
+      chatResponse.coverage_score = groundedContract.coverage_score;
       chatResponse.citation_verification = {
-        totalCited: chatResponse.citations.length,
-        verified: verifiedCitations.length,
-        dropped: (chatResponse.citations.length || 0) - verifiedCitations.length,
+        totalCited: groundedContract.citations.length,
+        verified: groundedContract.citations.filter((c: any) => c.verification_status === 'VERIFIED').length,
+        dropped: groundedContract.citations.filter((c: any) => c.verification_status !== 'VERIFIED').length,
       };
     }
 
@@ -508,8 +517,65 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         return;
       }
 
-      // 3. Persist valid generated questions into assessment_questions table with full deduplication metadata
-      const questions = genResult.questions || [];
+      // 3. Phase 4: Server-side numerical question verification
+      // Reject NUMERICAL questions that cannot be independently verified
+      const rawQuestions = genResult.questions || [];
+      const questions: any[] = [];
+      const rejectedNumerical: any[] = [];
+
+      for (const q of rawQuestions) {
+        if (String(q.type || '').toUpperCase() === 'NUMERICAL') {
+          const normalized = normalizeCorrectAnswer(String(q.correct_answer ?? ''));
+          if (!normalized.valid || normalized.value === null) {
+            rejectedNumerical.push({ question: q, reason: 'Unparseable correct_answer' });
+            continue;
+          }
+
+          const numericalQ: NumericalQuestion = {
+            question_id: q.question_id || `q_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            type: 'NUMERICAL',
+            topic: q.topic || topic,
+            subtopic: q.subtopic || null,
+            difficulty: q.difficulty || difficulty,
+            source_id: q.source_id || null,
+            chunk_id: q.chunk_id || null,
+            page_number: q.page_number ?? null,
+            slide_number: q.slide_number ?? null,
+            timestamp_start: q.timestamp_start ?? null,
+            timestamp_end: q.timestamp_end ?? null,
+            question: q.question,
+            correct_answer: normalized.value,
+            correct_answer_raw: String(q.correct_answer),
+            expected_unit: q.expected_unit || null,
+            tolerance: DEFAULT_TOLERANCE,
+            verifiability: 'PENDING',
+            explanation: q.explanation || '',
+            fingerprint: q.fingerprint,
+            normalized_question: q.normalized_question,
+          };
+
+          const verification = verifyNumericalQuestion(numericalQ);
+          if (verification.verified) {
+            // Verified: update the question with canonical data
+            q.correct_answer = String(normalized.value);
+            q.fingerprint = q.fingerprint || computeNumericalFingerprint(q.question, normalized.value, q.topic || topic);
+            q.verification_status = 'VERIFIED';
+            questions.push(q);
+          } else {
+            rejectedNumerical.push({ question: q, issues: verification.issues });
+          }
+        } else {
+          // Non-numerical questions pass through unchanged
+          questions.push(q);
+        }
+      }
+
+      if (rejectedNumerical.length > 0) {
+        console.warn(`Phase 4: Rejected ${rejectedNumerical.length} unverifiable NUMERICAL question(s):`,
+          rejectedNumerical.map(r => ({ q: r.question?.question?.substring(0, 60), issues: r.issues || r.reason })));
+      }
+
+      // 4. Persist valid generated questions into assessment_questions table with full deduplication metadata
       for (const q of questions) {
         try {
           await prisma.$executeRawUnsafe(

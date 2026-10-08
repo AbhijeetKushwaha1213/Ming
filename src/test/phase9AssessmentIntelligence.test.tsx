@@ -185,8 +185,8 @@ describe('Phase 9: Adaptive Assessment Intelligence & Misconception Detection Te
 
       expect(resClose.classification).toBe('partially_correct');
       expect(resClose.credit).toBe(0.5);
-      expect(resClose.feedback).toContain('Close proximity');
-      expect(resClose.feedback).toContain('±10% margin');
+      expect(resClose.feedback).toContain('±10%');
+      expect(resClose.feedback).toContain('1080');
     });
 
     it('classifies numerical values beyond ±10% margin as incorrect', () => {

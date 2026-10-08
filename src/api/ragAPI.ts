@@ -173,31 +173,8 @@ export async function askGroundedTutor(params: {
     };
   }
 
-  // Format citations from top relevant chunks
-  const citations: CitationData[] = relevant.slice(0, 3).map((c) => {
-    const loc = c.location || { source_type: 'TEXT' };
-    const label = loc.page_number
-      ? `Page ${loc.page_number}`
-      : loc.slide_number
-      ? `Slide ${loc.slide_number}`
-      : loc.timestamp_start !== null && loc.timestamp_start !== undefined
-      ? `${Math.floor(loc.timestamp_start / 60)}m${Math.floor(loc.timestamp_start % 60)}s`
-      : 'Source Excerpt';
-
-    return {
-      chunk_id: c.chunk_id,
-      source_id: c.source_id,
-      document_id: c.document_id,
-      source_type: loc.source_type || 'TEXT',
-      page_number: loc.page_number,
-      slide_number: loc.slide_number,
-      timestamp_start: loc.timestamp_start,
-      timestamp_end: loc.timestamp_end,
-      citation_label: label,
-      snippet: c.text?.slice(0, 180) + (c.text?.length > 180 ? '...' : ''),
-    };
-  });
-
+  // Canonical Phase 3 Step 3: Deterministic single citation for actually synthesized evidence
+  // Do NOT blindly attach top 3 chunks (blind fallback removed)
   const top = relevant[0];
   const loc = top.location || { source_type: 'TEXT' };
   const label = loc.page_number
@@ -208,8 +185,23 @@ export async function askGroundedTutor(params: {
     ? `${Math.floor(loc.timestamp_start / 60)}m${Math.floor(loc.timestamp_start % 60)}s`
     : 'Course Excerpt';
 
+  const citations: CitationData[] = [
+    {
+      chunk_id: top.chunk_id,
+      source_id: top.source_id,
+      document_id: top.document_id,
+      source_type: loc.source_type || 'TEXT',
+      page_number: loc.page_number,
+      slide_number: loc.slide_number,
+      timestamp_start: loc.timestamp_start,
+      timestamp_end: loc.timestamp_end,
+      citation_label: label,
+      snippet: top.text?.slice(0, 180) + (top.text?.length > 180 ? '...' : ''),
+    },
+  ];
+
   return {
-    response: `### 📚 Course Material Evidence\n\nAccording to your course materials on **${top.topic || 'Topic'}** (${label}):\n${top.text} [${top.chunk_id}]`,
+    response: `### 📚 Course Material Evidence\n\nAccording to your course materials on **${top.topic || 'Topic'}** (${label}):\n${top.text} [EVIDENCE_1]`,
     citations,
     grounded: true,
     insufficient_evidence: false,

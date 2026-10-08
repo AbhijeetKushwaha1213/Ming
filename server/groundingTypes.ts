@@ -38,12 +38,19 @@ export interface CanonicalEvidence {
 }
 
 /**
- * Support status classification for factual claims in generated answers
+ * Support status classification for factual claims in generated answers.
+ * Incorporates canonical Phase 3 Step 3 deterministic verification outcomes.
  */
 export type ClaimSupportStatus =
   | 'SUPPORTED'
   | 'PARTIALLY_SUPPORTED'
-  | 'UNSUPPORTED';
+  | 'UNSUPPORTED'
+  | 'VERIFIED'
+  | 'PARTIALLY_VERIFIED'
+  | 'UNVERIFIED'
+  | 'SOURCE_UNAVAILABLE'
+  | 'CROSS_TENANT_REJECTED'
+  | 'COORDINATE_MISMATCH';
 
 /**
  * Grounded Claim Object
@@ -53,8 +60,11 @@ export type ClaimSupportStatus =
 export interface GroundedClaim {
   claim_id: string;
   text: string;
+  claim?: string; // Canonical alias for claim text
   evidence_ids: string[];
   support_status: ClaimSupportStatus;
+  supportStatus?: ClaimSupportStatus; // Canonical alias for support_status
+  citations?: VerifiedCitation[];
 }
 
 /**

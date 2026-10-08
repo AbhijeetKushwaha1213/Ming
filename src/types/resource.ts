@@ -87,9 +87,12 @@ export interface RagJobStatus {
 }
 
 export interface CitationData {
+  citation_id?: string;
   chunk_id: string;
   source_id?: string;
   document_id?: string;
+  resource_id?: string;
+  source_title?: string;
   source_type: string;
   page_number?: number | null;
   slide_number?: number | null;
@@ -99,6 +102,9 @@ export interface CitationData {
   diagram_caption?: string;
   citation_label: string;
   snippet?: string;
+  excerpt?: string;
+  verification_status?: CitationVerificationStatus | string;
+  location?: SourceLocation;
 }
 
 export interface GroundedChatResponse {

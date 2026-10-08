@@ -1,5 +1,8 @@
 import { prisma, ensureAssessmentSchema, ensureLearnerSchema } from './prisma.ts';
 import { updateMasteryFromEvidence, getTopicLearnerMastery, type BKTParameters } from './bktService.ts';
+import { gradeNumericalAnswer, parseStudentAnswer } from './numericalVerifier.ts';
+import type { NumericalQuestion, NumericalAnswerSubmission } from './assessmentTypes.ts';
+import { DEFAULT_TOLERANCE } from './assessmentTypes.ts';
 
 export type AnswerClassification = 'correct' | 'partially_correct' | 'incorrect';
 
@@ -178,34 +181,48 @@ export function evaluateSingleAnswer(input: AnswerEvaluationInput): EvaluatedAns
       feedback = `Incorrect. You answered "${userRaw}". Verified answer in ${coordLabel} is "${correctRaw}".`;
     }
   } else if (qType === 'NUMERICAL') {
-    const userVal = parseFloat(userRaw.replace(/[^\d.-]/g, ''));
-    const correctVal = parseFloat(correctRaw.replace(/[^\d.-]/g, ''));
-
-    if (isNaN(userVal) || isNaN(correctVal)) {
+    // Phase 4: Delegate to the canonical deterministic numerical verifier
+    const correctVal = parseFloat(correctRaw.replace(/[^\d.\-]/g, ''));
+    if (isNaN(correctVal)) {
       classification = 'incorrect';
       credit = 0.0;
-      feedback = `Invalid numerical format. Expected numerical value near ${correctVal}.`;
+      feedback = `Invalid numerical format for correct answer. Expected numerical value.`;
     } else {
-      const absDiff = Math.abs(userVal - correctVal);
-      const standardTol = Math.max(Math.abs(correctVal) * 0.03, 0.01);
-      const partialTol = Math.max(Math.abs(correctVal) * 0.10, 0.05);
+      const numericalQuestion: NumericalQuestion = {
+        question_id: input.questionId,
+        type: 'NUMERICAL',
+        topic: input.topic || 'General',
+        subtopic: input.subtopic,
+        difficulty: (input.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
+        source_id: input.sourceId,
+        chunk_id: input.chunkId,
+        page_number: input.pageNumber,
+        slide_number: input.slideNumber,
+        timestamp_start: input.timestampStart,
+        timestamp_end: input.timestampEnd,
+        question: input.question,
+        correct_answer: correctVal,
+        correct_answer_raw: correctRaw,
+        tolerance: DEFAULT_TOLERANCE,
+        verifiability: 'VERIFIED',
+        explanation: input.explanation || '',
+      };
 
-      if (absDiff <= 1e-6 || absDiff <= standardTol) {
-        classification = 'correct';
-        credit = 1.0;
-        feedback = `Correct! Numeric value ${userVal} matches expected ${correctVal} (within ±3% tolerance, verified in ${coordLabel}).`;
-      } else if (absDiff <= partialTol || Math.abs(userVal + correctVal) <= standardTol) {
-        classification = 'partially_correct';
-        credit = 0.5;
-        const isSignErr = Math.abs(userVal + correctVal) <= standardTol;
-        feedback = isSignErr
-          ? `Partially correct (Sign error): You answered ${userVal}, but expected ${correctVal}. Magnitude is correct.`
-          : `Partially correct (Close proximity): You answered ${userVal}, expected ${correctVal} (within ±10% margin). Check rounding or precision at ${coordLabel}.`;
-      } else {
+      const numericalSubmission: NumericalAnswerSubmission = {
+        question_id: input.questionId,
+        raw_answer: userRaw,
+      };
+
+      const gradingResult = gradeNumericalAnswer(numericalSubmission, numericalQuestion);
+
+      if (gradingResult.classification === 'invalid_format') {
         classification = 'incorrect';
         credit = 0.0;
-        feedback = `Incorrect. You calculated ${userVal}, but the verified solution in ${coordLabel} is ${correctVal}.`;
+      } else {
+        classification = gradingResult.classification as AnswerClassification;
+        credit = gradingResult.credit;
       }
+      feedback = gradingResult.feedback;
     }
   } else {
     // SHORT_ANSWER

@@ -156,3 +156,94 @@ export async function createPdfSignedUrl(storagePath: string) {
 export function getResourceFileUrl(resourceId: string): string {
   return `/api/resources/${encodeURIComponent(resourceId)}/file`;
 }
+
+export class ResourceAccessError extends Error {
+  statusCode: number;
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = 'ResourceAccessError';
+    this.statusCode = statusCode;
+  }
+}
+
+export class ResourceAuthError extends ResourceAccessError {
+  constructor(message = 'Authentication required to access resource') {
+    super(message, 401);
+    this.name = 'ResourceAuthError';
+  }
+}
+
+export class ResourceForbiddenError extends ResourceAccessError {
+  constructor(message = 'Access denied: Resource belongs to another private tenant') {
+    super(message, 403);
+    this.name = 'ResourceForbiddenError';
+  }
+}
+
+export class ResourceNotFoundError extends ResourceAccessError {
+  constructor(message = 'Source unavailable: Resource not found or has been deleted') {
+    super(message, 404);
+    this.name = 'ResourceNotFoundError';
+  }
+}
+
+/**
+ * Safely fetches resource file bytes with authentication headers.
+ * Resolves into a local Blob URL for media players and document viewers.
+ */
+export async function fetchResourceFile(
+  resourceId: string
+): Promise<{ blob: Blob; contentType: string; url: string; size: number }> {
+  if (!resourceId) {
+    throw new ResourceNotFoundError('Resource ID is required');
+  }
+
+  let token: string | null = null;
+  try {
+    token = await getAccessToken();
+  } catch {
+    if (typeof window !== 'undefined') {
+      token = localStorage.getItem('ming_auth_token') || localStorage.getItem('x-ming-test-key') || null;
+    }
+  }
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (typeof window !== 'undefined') {
+    const testKey = localStorage.getItem('x-ming-test-key');
+    if (testKey) headers['x-ming-test-key'] = testKey;
+    const testUser = localStorage.getItem('x-ming-user-id');
+    if (testUser) headers['x-ming-user-id'] = testUser;
+  }
+
+  const res = await fetch(getResourceFileUrl(resourceId), {
+    method: 'GET',
+    headers,
+  });
+
+  if (res.status === 401) {
+    throw new ResourceAuthError('Authentication required to access this course material.');
+  }
+  if (res.status === 403) {
+    throw new ResourceForbiddenError('Access denied: You do not have permission to view this resource.');
+  }
+  if (res.status === 404) {
+    throw new ResourceNotFoundError('Source unavailable: The requested course material was deleted or moved.');
+  }
+  if (!res.ok) {
+    throw new ResourceAccessError(`Failed to stream resource (${res.status}): ${res.statusText}`, res.status);
+  }
+
+  const blob = await res.blob();
+  const contentType = res.headers.get('content-type') || blob.type || 'application/octet-stream';
+  const url = URL.createObjectURL(blob);
+
+  return {
+    blob,
+    contentType,
+    url,
+    size: blob.size,
+  };
+}

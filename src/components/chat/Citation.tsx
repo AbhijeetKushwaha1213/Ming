@@ -25,10 +25,12 @@ import {
 import type { CitationData } from '@/types/resource';
 import { getSourceLocation } from '@/api/ragAPI';
 import { useToast } from '@/hooks/use-toast';
+import { SourceViewer } from '../viewer/SourceViewer';
 
 interface CitationProps {
   citation: CitationData;
   inline?: boolean;
+  directOpen?: boolean;
   onOpenSource?: (location: any) => void;
   className?: string;
 }
@@ -36,11 +38,13 @@ interface CitationProps {
 export const Citation: React.FC<CitationProps> = ({
   citation,
   inline = false,
+  directOpen = false,
   onOpenSource,
   className = '',
 }) => {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [isSourceViewerOpen, setIsSourceViewerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [locationDetails, setLocationDetails] = useState<any>(citation);
   const [copied, setCopied] = useState(false);
@@ -110,6 +114,15 @@ export const Citation: React.FC<CitationProps> = ({
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    if (directOpen) {
+      setIsSourceViewerOpen(true);
+      if (onOpenSource) {
+        onOpenSource(citation);
+      }
+      return;
+    }
+
     setIsOpen(true);
 
     try {
@@ -213,11 +226,9 @@ export const Citation: React.FC<CitationProps> = ({
                     variant="outline"
                     className="h-7 text-xs gap-1 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                     onClick={() => {
-                      toast({
-                        title: `Opened Page ${locationDetails.page_number}`,
-                        description: 'Simulating document viewport navigation to cited page.',
-                      });
+                      setIsSourceViewerOpen(true);
                     }}
+                    data-testid="jump-to-page-btn"
                   >
                     <ExternalLink className="w-3 h-3" /> Jump to Page {locationDetails.page_number}
                   </Button>
@@ -232,11 +243,9 @@ export const Citation: React.FC<CitationProps> = ({
                     variant="outline"
                     className="h-7 text-xs gap-1 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40"
                     onClick={() => {
-                      toast({
-                        title: `Opened Slide ${locationDetails.slide_number}`,
-                        description: 'Simulating presentation deck navigation to cited slide.',
-                      });
+                      setIsSourceViewerOpen(true);
                     }}
+                    data-testid="view-slide-btn"
                   >
                     <Layers className="w-3 h-3" /> View Slide {locationDetails.slide_number}
                   </Button>
@@ -253,16 +262,15 @@ export const Citation: React.FC<CitationProps> = ({
                     variant="outline"
                     className="h-7 text-xs gap-1 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                     onClick={() => {
-                      toast({
-                        title: `Seek to ${formatTime(locationDetails.timestamp_start)}`,
-                        description: 'Simulating lecture video player seek to timestamp.',
-                      });
+                      setIsSourceViewerOpen(true);
                     }}
+                    data-testid="seek-timestamp-btn"
                   >
                     <Play className="w-3 h-3 fill-current" /> Seek to {formatTime(locationDetails.timestamp_start)}
                   </Button>
                 </div>
               )}
+
               {/* Multimodal Diagram Banner */}
               {isDiagram && (
                 <div className="pt-2 flex items-center justify-between text-xs text-primary bg-secondary/70 p-2 rounded-md border border-primary/20">
@@ -270,9 +278,14 @@ export const Citation: React.FC<CitationProps> = ({
                     <ImageIcon className="w-3.5 h-3.5 text-primary" />
                     {locationDetails.diagram_caption || citation.diagram_caption || 'Visual Schema / Figure'}
                   </span>
-                  <Badge variant="outline" className="text-[10px] bg-secondary text-primary border-primary/30">
-                    Figure Element
-                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[10px] bg-secondary text-primary border-primary/30"
+                    onClick={() => setIsSourceViewerOpen(true)}
+                  >
+                    View Figure
+                  </Button>
                 </div>
               )}
             </div>
@@ -332,12 +345,30 @@ export const Citation: React.FC<CitationProps> = ({
                 {linkCopied ? 'Link Copied' : 'Copy Deep Link'}
               </Button>
             </div>
-            <Button size="sm" onClick={() => setIsOpen(false)}>
-              Done
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setIsSourceViewerOpen(true)}
+                className="text-xs gap-1.5"
+                data-testid="open-source-viewer-button"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open Source Viewer
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setIsOpen(false)}>
+                Done
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Real Full Source Viewer */}
+      <SourceViewer
+        isOpen={isSourceViewerOpen}
+        onClose={() => setIsSourceViewerOpen(false)}
+        citation={locationDetails || citation}
+      />
     </>
   );
 };

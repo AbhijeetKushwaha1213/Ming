@@ -26,6 +26,7 @@ import {
   type TrackFReliabilityMetrics,
   type EvaluationDatasetFingerprint,
   type ConfidenceInterval,
+  computeReciprocalRank,
   computeMRR,
   computePrecisionAtK,
   computeRecallAtK,
@@ -498,6 +499,7 @@ export async function evaluateRagAndGrounding(
   const ndcgScores: number[] = [];
   const faithfulnessScores: number[] = [];
   const answerRelevancyScores: number[] = [];
+  const contextRecallScores: number[] = [];
 
   let totalCitationsEvaluated = 0;
   let supportedCitationsCount = 0;
@@ -613,23 +615,46 @@ export async function evaluateRagAndGrounding(
       // Track B IR metrics calculation:
       // Note: Ranking and retrieval metrics are evaluated on in-domain queries
       if (!item.off_material) {
+        contextRecallScores.push(contextRecall);
+
         const retrievedFlags: boolean[] = retrievedChunks.slice(0, 5).map((c: any) => {
           const isSourceMatch = item.expected_source_id ? (c.source_id === item.expected_source_id || c.sourceId === item.expected_source_id) : true;
           return isSourceMatch && (c.score === undefined || c.score >= 0.55);
         });
-        const firstRelIdx = retrievedFlags.findIndex(Boolean);
-        reciprocalRanks.push(firstRelIdx >= 0 ? firstRelIdx + 1 : 0);
+
+        // 1. Query-level reciprocal rank (1 / rank_1 in [0, 1])
+        const queryRR = computeReciprocalRank(retrievedFlags, 5);
+        reciprocalRanks.push(queryRR);
+
+        // 2. Query-level precision@5 and recall@5 against ground truth expected source
         precisionAt5List.push(computePrecisionAtK(retrievedFlags, 5));
         recallAt5List.push(computeRecallAtK(retrievedFlags, 1, 5));
 
+        // 3. Query-level nDCG@5 against ground-truth ideal relevance
+        let foundExact = false;
         const relScores = retrievedChunks.slice(0, 5).map((c: any) => {
           const isSource = item.expected_source_id ? (c.source_id === item.expected_source_id || c.sourceId === item.expected_source_id) : true;
-          const isCoord = item.expected_page ? (c.page_number === item.expected_page || c.pageNumber === item.expected_page) : true;
-          if (isSource && isCoord) return 2;
-          if (isSource || isCoord) return 1;
-          return 0;
+          if (!isSource) return 0;
+
+          const isCoord = item.expected_page
+            ? (c.page_number === item.expected_page || c.pageNumber === item.expected_page)
+            : item.expected_slide
+            ? (c.slide_number === item.expected_slide || c.slideNumber === item.expected_slide)
+            : item.expected_timestamp
+            ? (c.timestamp_start !== null && Math.abs(c.timestamp_start - item.expected_timestamp) <= 60)
+            : false;
+
+          if (isCoord && !foundExact) {
+            foundExact = true;
+            return 2; // Primary exact coordinate match
+          }
+          return 1;   // Supporting relevant material from same source
         });
-        ndcgScores.push(computeNDCG(relScores, 5));
+
+        const hasTargetCoord = Boolean(item.expected_page || item.expected_slide || item.expected_timestamp);
+        const idealRelScores = hasTargetCoord ? [2, 1, 1, 1, 1] : [1, 1, 1, 1, 1];
+        const queryNDCG = computeNDCG(relScores, idealRelScores, 5);
+        ndcgScores.push(queryNDCG);
 
         factualQuestionsCount++;
         const chatCitationsList = chatRes?.citations || [];
@@ -726,7 +751,8 @@ export async function evaluateRagAndGrounding(
       refusalAccuracy: computeWilsonConfidenceInterval(successfulRefusals, Math.max(1, totalRefusalAttempts), 1.96, 'off_material_queries'),
       // Query-level bootstrap for continuous and ranking distributions
       faithfulness: computeQueryLevelBootstrapInterval(faithfulnessScores, 1000, 1790950000, 'answers'),
-      contextRecall: computeQueryLevelBootstrapInterval(recallAt5List, 1000, 1790950000, 'in_domain_queries'),
+      contextRecall: computeQueryLevelBootstrapInterval(contextRecallScores, 1000, 1790950000, 'in_domain_queries'),
+      recallAt5: computeQueryLevelBootstrapInterval(recallAt5List, 1000, 1790950000, 'in_domain_queries'),
       meanReciprocalRank: computeQueryLevelBootstrapInterval(reciprocalRanks, 1000, 1790950000, 'in_domain_queries'),
       ndcgAt5: computeQueryLevelBootstrapInterval(ndcgScores, 1000, 1790950000, 'in_domain_queries'),
     },
@@ -1906,9 +1932,11 @@ export async function evaluateStudyAgentLoopTrack(): Promise<{
 
   const fullLoopCompletionRate = Math.round((stagesCompleted / totalStages) * 1000) / 1000;
 
+  // Scenario 1: Exam Urgency Prioritization (cramming with 2 days left)
   const s1Passed = crammerResult.priorities[0]?.details?.daysUntilExam === 2;
-  details.push({ scenario: 'Exam Urgency Prioritization', passed: s1Passed });
+  details.push({ scenario: 'Exam Urgency Prioritization', passed: s1Passed, reason: s1Passed ? '2-day exam urgency properly prioritized' : 'Failed urgency calculation' });
 
+  // Scenario 2: High Mastery Maintenance (100% score receives spaced retention)
   const strongUserId = `strong_${testUserId}`;
   await initializeDiagnosticMastery({
     userId: strongUserId,
@@ -1922,19 +1950,48 @@ export async function evaluateStudyAgentLoopTrack(): Promise<{
     examDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   });
   const s2Passed = strongResult.priorities.length > 0;
-  details.push({ scenario: 'High Mastery Maintenance', passed: s2Passed });
+  details.push({ scenario: 'High Mastery Maintenance', passed: s2Passed, reason: s2Passed ? 'High mastery spaced retention prioritized' : 'Failed high mastery priority' });
 
-  const actionSelectionAccuracy = (s1Passed && s2Passed) ? 1.0 : 0.5;
+  // Scenario 3: Low Mastery Remediation (weak student receives urgent remediation)
+  const weakUserId = `weak_${testUserId}`;
+  await initializeDiagnosticMastery({
+    userId: weakUserId,
+    topic: 'Database Systems',
+    score: 0,
+    totalQuestions: 5,
+    sourceId: 'diagnostic_baseline',
+  });
+  const weakResult = await computeDeterministicPriorities({
+    userId: weakUserId,
+    examDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  });
+  const s3Passed = weakResult.priorities.length > 0 && weakResult.priorities[0].topic === 'Database Systems';
+  details.push({ scenario: 'Low Mastery Remediation', passed: s3Passed, reason: s3Passed ? 'Weak diagnostic topic prioritized for remediation' : 'Failed low mastery prioritization' });
+
+  // Scenario 4: Retry Idempotency Verification
+  details.push({ scenario: 'Retry Idempotency Verification', passed: retryIdempotent, reason: retryIdempotent ? 'Identical attempt updates produce identical posteriors' : 'Retry idempotency violated' });
+
+  // Scenario 5: Cross-Tenant Isolation Preservation
+  const strangerUserId = `stranger_${testUserId}`;
+  const strangerResult = await computeDeterministicPriorities({
+    userId: strangerUserId,
+    examDate: examDateStr,
+  });
+  const s5Passed = strangerResult.priorities.every((p) => p.details.sourceId !== 'diagnostic_baseline' || p.details.mastery === 0.1);
+  details.push({ scenario: 'Cross-Tenant Isolation Preservation', passed: s5Passed, reason: s5Passed ? 'Tenant boundaries preserved without state leakage' : 'Cross-tenant state leakage detected' });
+
+  const passedScenarios = details.filter((d) => d.passed).length;
+  const actionSelectionAccuracy = Math.round((passedScenarios / details.length) * 1000) / 1000;
 
   const metrics: TrackEStudyAgentMetrics = {
-    totalRunsEvaluated: 1,
+    totalRunsEvaluated: details.length,
     fullLoopCompletionRate,
     actionSelectionAccuracy,
     activityAvailability: activityAvailable ? 1.0 : 0.0,
     gradingConsistency: gradingConsistent ? 1.0 : 0.0,
     retryIdempotencyPreserved: retryIdempotent,
     nextActionTransitionRate: recomputed ? 1.0 : 0.0,
-    tenantIsolationPreserved: true,
+    tenantIsolationPreserved: s5Passed,
   };
 
   return { metrics, details, errors };

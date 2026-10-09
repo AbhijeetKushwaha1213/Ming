@@ -3,14 +3,14 @@ Track A: Ingestion,Processing Success Rate,1,>= 0.95
 Track A: Ingestion,Extraction Accuracy,1,>= 0.95
 Track A: Ingestion,Provenance Accuracy,1,>= 0.95
 Track A: Ingestion,Malformed Rejection Rate,1,1.00
-Track B: RAG,MRR,0,>= 0.85
-Track B: RAG,Recall@5,0,>= 0.80
-Track B: RAG,Precision@5,0,>= 0.70
-Track B: RAG,nDCG@5,1,>= 0.80
-Track B: RAG,Faithfulness,0,>= 0.85
-Track B: RAG,Answer Relevancy,0.037,>= 0.80
-Track B: RAG,Grounding Accuracy,0.514,>= 0.90
-Track B: RAG,Refusal Accuracy,0,1.00
+Track B: RAG,MRR,0.703,>= 0.85
+Track B: RAG,Recall@5,0.703,>= 0.80
+Track B: RAG,Precision@5,0.172,>= 0.70
+Track B: RAG,nDCG@5,0.703,>= 0.80
+Track B: RAG,Faithfulness,0.96,>= 0.85
+Track B: RAG,Answer Relevancy,0.851,>= 0.80
+Track B: RAG,Grounding Accuracy,1,>= 0.90
+Track B: RAG,Refusal Accuracy,1,1.00
 Track C: Assessment,Numerical Verification Accuracy,1,>= 0.95
 Track C: Assessment,Tolerance Handling Accuracy,1,>= 0.95
 Track C: Assessment,MCQ Grading Accuracy,1,1.00
@@ -21,5 +21,5 @@ Track D: Learner,Recommendation Determinism,1,1.00
 Track E: Study Agent,Full Loop Completion Rate,1,1.00
 Track E: Study Agent,Action Selection Accuracy,1,>= 0.90
 Track E: Study Agent,Retry Idempotency Preserved,YES,YES
-Track F: Reliability,p95 Latency (ms),1,<= 100ms
+Track F: Reliability,p95 Latency (ms),1788,<= 100ms
 Track F: Reliability,Cache Hit Ratio,0.942,>= 0.80

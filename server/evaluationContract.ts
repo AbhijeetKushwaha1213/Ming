@@ -80,8 +80,10 @@ export interface TrackBRetrievalGroundingMetrics {
   userIsolationPreserved: boolean;
   confidenceIntervals: {
     groundingAccuracy: ConfidenceInterval;   // Wilson score on discrete binary matches
+    coordinateAccuracy?: ConfidenceInterval; // Wilson score on coordinate matches
     faithfulness: ConfidenceInterval;        // Query-level bootstrap on continuous scores
-    contextRecall: ConfidenceInterval;       // Query-level bootstrap on recall scores
+    contextRecall: ConfidenceInterval;       // Query-level bootstrap on RAGAS key-phrase recall scores
+    recallAt5?: ConfidenceInterval;          // Query-level bootstrap on top-5 retrieval recall
     meanReciprocalRank: ConfidenceInterval;  // Query-level bootstrap on reciprocal ranks
     ndcgAt5: ConfidenceInterval;             // Query-level bootstrap on nDCG scores
     refusalAccuracy: ConfidenceInterval;     // Wilson score on off-material refusals
@@ -222,19 +224,38 @@ export interface EvaluationRunContract {
 // =========================================================================
 
 /**
- * Computes Mean Reciprocal Rank (MRR):
- * MRR = (1 / |Q|) * sum_{q in Q} (1 / rank_first_relevant_chunk)
- * If no relevant chunk was retrieved, rank is considered infinity (1/rank = 0).
+ * Computes reciprocal rank for a single query:
+ * If a relevant document appears at rank r (1-indexed, 1 <= r <= k), returns 1 / r.
+ * If no relevant document is retrieved within top k, returns 0.0.
  */
-export function computeMRR(ranks: number[]): number {
-  if (!ranks || ranks.length === 0) return 0.0;
-  const reciprocalSum = ranks.reduce((sum, r) => sum + (r > 0 ? 1 / r : 0), 0);
-  return Math.round((reciprocalSum / ranks.length) * 1000) / 1000;
+export function computeReciprocalRank(retrievedFlags: boolean[], k = 5): number {
+  if (!retrievedFlags || retrievedFlags.length === 0 || k <= 0) return 0.0;
+  const topK = retrievedFlags.slice(0, k);
+  const firstIndex = topK.findIndex(Boolean);
+  if (firstIndex < 0) return 0.0;
+  return Math.round((1 / (firstIndex + 1)) * 1000) / 1000;
+}
+
+/**
+ * Computes Mean Reciprocal Rank (MRR):
+ * MRR = (1 / |Q|) * sum_{q in Q} RR(q)
+ * If no relevant chunk was retrieved, rank is considered infinity (1/rank = 0).
+ * Accepts either reciprocal ranks in [0, 1] or 1-based rank integers.
+ */
+export function computeMRR(ranksOrScores: number[]): number {
+  if (!ranksOrScores || ranksOrScores.length === 0) return 0.0;
+  const reciprocalSum = ranksOrScores.reduce((sum, r) => {
+    if (r <= 0 || isNaN(r)) return sum;
+    if (r <= 1.0) return sum + r; // already reciprocal rank in [0, 1]
+    return sum + 1 / r;           // 1-based rank integer r -> 1/r
+  }, 0);
+  return Math.round((reciprocalSum / ranksOrScores.length) * 1000) / 1000;
 }
 
 /**
  * Computes Precision@k:
  * Precision@k = (number of relevant items in top k) / k
+ * Missing result slots are treated as non-relevant (denominator is strictly fixed to k).
  */
 export function computePrecisionAtK(retrievedFlags: boolean[], k = 5): number {
   if (k <= 0 || !retrievedFlags || retrievedFlags.length === 0) return 0.0;
@@ -246,9 +267,12 @@ export function computePrecisionAtK(retrievedFlags: boolean[], k = 5): number {
 /**
  * Computes Recall@k:
  * Recall@k = (number of relevant items in top k) / totalExpectedRelevant
+ * 
+ * Principled policy for queries with no relevant documents in ground truth:
+ * If totalExpectedRelevant <= 0, returns 0.0 (cannot recall from an empty set).
  */
 export function computeRecallAtK(retrievedFlags: boolean[], totalExpected = 1, k = 5): number {
-  if (totalExpected <= 0) return 1.0;
+  if (totalExpected <= 0) return 0.0;
   if (!retrievedFlags || retrievedFlags.length === 0 || k <= 0) return 0.0;
   const topK = retrievedFlags.slice(0, k);
   const relevantInTopK = topK.filter(Boolean).length;
@@ -258,28 +282,67 @@ export function computeRecallAtK(retrievedFlags: boolean[], totalExpected = 1, k
 /**
  * Computes Normalized Discounted Cumulative Gain at rank k (nDCG@k):
  * DCG@k = sum_{i=1}^k (2^{rel_i} - 1) / log2(i + 1)
- * IDCG@k = sum_{i=1}^{min(k, |rel|)} (2^{ideal_rel_i} - 1) / log2(i + 1)
+ * IDCG@k = sum_{i=1}^{min(k, |ideal|)} (2^{ideal_rel_i} - 1) / log2(i + 1)
  * nDCG@k = DCG@k / IDCG@k
+ * 
+ * Principled policy for queries with no relevant documents in ground truth:
+ * When IDCG@k === 0 (meaning ground truth contains 0 relevant documents):
+ * - If ground truth has no relevant documents, ranking relevance is undefined.
+ * - Such queries are excluded from ranking evaluation (and reported separately under refusal accuracy).
+ * - If evaluated directly, returns 0.0, NEVER 1.0 (retrieval failure is never rewarded).
+ * 
+ * @param retrievedRelevance Graded relevance scores of retrieved items in retrieval order.
+ * @param idealRelevance Ground-truth relevance scores of known relevant items, OR fallback sorted retrieved if ideal is omitted.
+ * @param k Cutoff rank (default 5).
  */
-export function computeNDCG(relevanceScores: number[], k = 5): number {
-  if (!relevanceScores || relevanceScores.length === 0 || k <= 0) return 0.0;
+export function computeNDCG(
+  retrievedRelevance: number[],
+  idealRelevance?: number[],
+  k = 5
+): number {
+  if (k <= 0) return 0.0;
+  if (!retrievedRelevance || retrievedRelevance.length === 0) return 0.0;
 
-  const actualSlice = relevanceScores.slice(0, k);
+  // Clean and clamp relevance scores (missing or invalid labels clamped to 0)
+  const cleanRetrieved = retrievedRelevance.slice(0, k).map((r) => (typeof r === 'number' && !isNaN(r) && r > 0 ? r : 0));
+
   let dcg = 0;
-  for (let i = 0; i < actualSlice.length; i++) {
-    const rel = actualSlice[i];
-    dcg += (Math.pow(2, rel) - 1) / Math.log2(i + 2);
+  for (let i = 0; i < cleanRetrieved.length; i++) {
+    const rel = cleanRetrieved[i];
+    if (rel > 0) {
+      dcg += (Math.pow(2, rel) - 1) / Math.log2(i + 2);
+    }
   }
 
-  const idealSlice = [...relevanceScores].sort((a, b) => b - a).slice(0, k);
+  // Determine ideal relevance from ground-truth judgments
+  let idealScores: number[];
+  if (idealRelevance && idealRelevance.length > 0) {
+    idealScores = idealRelevance
+      .map((r) => (typeof r === 'number' && !isNaN(r) && r > 0 ? r : 0))
+      .filter((r) => r > 0)
+      .sort((a, b) => b - a)
+      .slice(0, k);
+  } else if (idealRelevance !== undefined) {
+    // Ground truth was explicitly provided as empty or all zeros -> IDCG is 0
+    idealScores = [];
+  } else {
+    // Fallback if ideal is omitted: sort retrieved
+    idealScores = [...cleanRetrieved].filter((r) => r > 0).sort((a, b) => b - a);
+  }
+
   let idcg = 0;
-  for (let i = 0; i < idealSlice.length; i++) {
-    const rel = idealSlice[i];
+  for (let i = 0; i < idealScores.length; i++) {
+    const rel = idealScores[i];
     idcg += (Math.pow(2, rel) - 1) / Math.log2(i + 2);
   }
 
-  if (idcg === 0) return 1.0;
-  return Math.round((dcg / idcg) * 1000) / 1000;
+  // If no relevant documents in ground truth (IDCG == 0):
+  // Principled policy: Return 0.0 (do not reward retrieval failure with 1.0)
+  if (idcg === 0) {
+    return 0.0;
+  }
+
+  return Math.min(1.0, Math.round((dcg / idcg) * 1000) / 1000);
 }
 
 /**

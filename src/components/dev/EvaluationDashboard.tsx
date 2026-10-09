@@ -332,7 +332,11 @@ export const EvaluationDashboard: React.FC = () => {
                                 {row.delta >= 0 ? `+${(row.delta * 100).toFixed(1)}%` : `${(row.delta * 100).toFixed(1)}%`}
                               </td>
                               <td className="px-4 py-3">
-                                {row.improved ? (
+                                {(row.status === 'NOT_COMPARABLE' || row.comparabilityStatus === 'NOT_COMPARABLE' || row.status === 'UNVERIFIED') ? (
+                                  <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px]">
+                                    UNVERIFIED ⚠️
+                                  </Badge>
+                                ) : row.improved ? (
                                   <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-300 text-[10px]">
                                     PASSED ✓
                                   </Badge>

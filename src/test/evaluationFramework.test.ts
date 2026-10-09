@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import {
   computeMRR,
+  computeReciprocalRank,
   computePrecisionAtK,
   computeRecallAtK,
   computeNDCG,
@@ -71,9 +72,18 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
   // 2. Mathematical Metric Formulations & Pure Logic
   // =========================================================================
   describe('2. Mathematical Metric Formulations & Statistical Computations', () => {
-    it('computes Mean Reciprocal Rank (MRR) accurately across varied rank configurations', () => {
-      // Example: ranks = [1, 2, 4, 0 (not found)] -> (1/1 + 1/2 + 1/4 + 0) / 4 = 1.75 / 4 = 0.4375 -> 0.438
+    it('computes Reciprocal Rank and Mean Reciprocal Rank (MRR) accurately across varied rank configurations', () => {
+      // Reciprocal rank helper for single query
+      expect(computeReciprocalRank([true, false, false, false, false], 5)).toBe(1.0);
+      expect(computeReciprocalRank([false, true, false, false, false], 5)).toBe(0.5);
+      expect(computeReciprocalRank([false, false, false, false, true], 5)).toBe(0.2);
+      expect(computeReciprocalRank([false, false, false, false, false], 5)).toBe(0.0);
+      expect(computeReciprocalRank([], 5)).toBe(0.0);
+
+      // MRR across queries: ranks = [1, 2, 4, 0 (not found)] -> (1/1 + 1/2 + 1/4 + 0) / 4 = 1.75 / 4 = 0.4375 -> 0.438
       expect(computeMRR([1, 2, 4, 0])).toBe(0.438);
+      // Reciprocal scores directly: [1.0, 0.5, 0.25, 0.0] -> 1.75 / 4 = 0.438
+      expect(computeMRR([1.0, 0.5, 0.25, 0.0])).toBe(0.438);
       // Perfect first rank retrieval
       expect(computeMRR([1, 1, 1])).toBe(1.0);
       // No relevant items found
@@ -82,32 +92,102 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
       expect(computeMRR([])).toBe(0.0);
     });
 
-    it('computes Precision@k and Recall@k with correct denominators', () => {
+    it('computes Precision@k with fixed k denominator and documented missing-slot treatment', () => {
       const retrieved = [true, false, true, false, false];
       // 2 relevant items in top 5 -> 2/5 = 0.4
       expect(computePrecisionAtK(retrieved, 5)).toBe(0.4);
-      // 2 relevant retrieved out of 2 total expected -> 2/2 = 1.0
-      expect(computeRecallAtK(retrieved, 2, 5)).toBe(1.0);
-      // 2 relevant retrieved out of 4 total expected -> 2/4 = 0.5
-      expect(computeRecallAtK(retrieved, 4, 5)).toBe(0.5);
-
-      // Edge cases
+      // Truncated list (only 1 retrieved item, 1 relevant): missing slots treated as non-relevant -> 1/5 = 0.2
+      expect(computePrecisionAtK([true], 5)).toBe(0.2);
+      // Empty retrieval list
       expect(computePrecisionAtK([], 5)).toBe(0.0);
-      expect(computeRecallAtK([], 2, 5)).toBe(0.0);
-      expect(computeRecallAtK(retrieved, 0, 5)).toBe(1.0); // 0 expected -> 1.0
+      // Invalid k
+      expect(computePrecisionAtK(retrieved, 0)).toBe(0.0);
     });
 
-    it('computes Normalized Discounted Cumulative Gain (nDCG@k)', () => {
-      // Ideal ordering has highest relevance first -> nDCG = 1.0
-      expect(computeNDCG([3, 2, 1, 0], 4)).toBe(1.0);
-      // Suboptimal ordering: lower than 1.0
-      const subNDCG = computeNDCG([0, 1, 2, 3], 4);
-      expect(subNDCG).toBeLessThan(1.0);
-      expect(subNDCG).toBeGreaterThan(0.0);
+    it('verifies MRR and Recall@k independently and proves they can differ', () => {
+      // Fixture 1: First relevant result at rank 1, 1 expected item
+      const f1 = [true, false, false, false, false];
+      expect(computeReciprocalRank(f1, 5)).toBe(1.0);
+      expect(computeRecallAtK(f1, 1, 5)).toBe(1.0);
 
-      // Edge cases
-      expect(computeNDCG([], 5)).toBe(0.0);
-      expect(computeNDCG([0, 0, 0], 3)).toBe(1.0);
+      // Fixture 2: First relevant result at rank 2, 1 expected item
+      // PROOF of divergence: RR is 0.5, while Recall@5 is 1.0!
+      const f2 = [false, true, false, false, false];
+      expect(computeReciprocalRank(f2, 5)).toBe(0.5);
+      expect(computeRecallAtK(f2, 1, 5)).toBe(1.0);
+      expect(computeReciprocalRank(f2, 5)).not.toBe(computeRecallAtK(f2, 1, 5));
+
+      // Fixture 3: First relevant result at rank 5, 1 expected item
+      // PROOF of divergence: RR is 0.2, while Recall@5 is 1.0!
+      const f3 = [false, false, false, false, true];
+      expect(computeReciprocalRank(f3, 5)).toBe(0.2);
+      expect(computeRecallAtK(f3, 1, 5)).toBe(1.0);
+      expect(computeReciprocalRank(f3, 5)).not.toBe(computeRecallAtK(f3, 1, 5));
+
+      // Fixture 4: Relevant documents exist but none appear in top k
+      const f4 = [false, false, false, false, false];
+      expect(computeReciprocalRank(f4, 5)).toBe(0.0);
+      expect(computeRecallAtK(f4, 2, 5)).toBe(0.0);
+
+      // Fixture 5: Several relevant documents exist (3 expected) and only some are retrieved (1 at rank 1)
+      // PROOF of divergence: RR is 1.0, while Recall@5 is 1/3 = 0.333!
+      const f5 = [true, false, false, false, false];
+      expect(computeReciprocalRank(f5, 5)).toBe(1.0);
+      expect(computeRecallAtK(f5, 3, 5)).toBe(0.333);
+      expect(computeReciprocalRank(f5, 5)).not.toBe(computeRecallAtK(f5, 3, 5));
+
+      // Fixture 6: Ground truth contains no relevant documents (totalExpected = 0)
+      // Principled policy: cannot recall from empty set -> 0.0
+      const f6 = [false, false, false, false, false];
+      expect(computeReciprocalRank(f6, 5)).toBe(0.0);
+      expect(computeRecallAtK(f6, 0, 5)).toBe(0.0);
+    });
+
+    it('computes Normalized Discounted Cumulative Gain (nDCG@k) with ground-truth IDCG and audits edge cases', () => {
+      // 1. Relevant document at rank 1: nDCG = 1.0
+      expect(computeNDCG([1, 0, 0, 0, 0], [1], 5)).toBe(1.0);
+
+      // 2. Relevant document at rank 2: nDCG = (2^1 - 1)/log2(3) / 1.0 = 0.631
+      expect(computeNDCG([0, 1, 0, 0, 0], [1], 5)).toBe(0.631);
+
+      // 3. Relevant document at rank k (rank 5): nDCG = (2^1 - 1)/log2(6) / 1.0 = 0.387
+      expect(computeNDCG([0, 0, 0, 0, 1], [1], 5)).toBe(0.387);
+
+      // 4. Relevant documents present in ground truth but COMPLETELY missed by retrieval:
+      // MUST NOT receive nDCG = 1.0; MUST be 0.0
+      expect(computeNDCG([0, 0, 0, 0, 0], [1], 5)).toBe(0.0);
+      expect(computeNDCG([0, 0, 0, 0, 0], [2, 1], 5)).toBe(0.0);
+      expect(computeNDCG([0, 0, 0, 0, 0], [1], 5)).not.toBe(1.0);
+
+      // 5. Multiple relevance grades:
+      // Retrieved [1, 2, 0, 0, 0] vs ideal [2, 1]
+      // DCG = 1/log2(2) + 3/log2(3) = 1 + 1.8928 = 2.8928
+      // IDCG = 3/log2(2) + 1/log2(3) = 3 + 0.6309 = 3.6309
+      // nDCG = 2.8928 / 3.6309 = 0.7967 -> 0.797
+      expect(computeNDCG([1, 2, 0, 0, 0], [2, 1], 5)).toBe(0.797);
+
+      // Perfect ordering with multiple grades:
+      expect(computeNDCG([2, 1, 0, 0, 0], [2, 1], 5)).toBe(1.0);
+
+      // 6. No relevant documents in ground truth:
+      // Principled policy: Excluded / returns 0.0 (never rewards retrieval failure)
+      expect(computeNDCG([0, 0, 0], [], 3)).toBe(0.0);
+      expect(computeNDCG([0, 0, 0], [0], 3)).toBe(0.0);
+
+      // 7. Empty retrieved results:
+      expect(computeNDCG([], [1], 5)).toBe(0.0);
+      expect(computeNDCG([], [], 5)).toBe(0.0);
+
+      // 8. Missing or invalid relevance labels (NaN, negative, null, undefined):
+      // Cleaned and clamped: only value 2 at rank 4 contributes to DCG
+      // DCG = (2^2 - 1)/log2(5) = 3 / 2.3219 = 1.2920
+      // IDCG = (2^2 - 1)/log2(2) = 3 / 1 = 3.0
+      // nDCG = 1.2920 / 3.0 = 0.4307 -> 0.431
+      const dirtyLabels = [NaN, -1, null as any, 2, undefined as any];
+      expect(computeNDCG(dirtyLabels, [2], 5)).toBe(0.431);
+
+      // Cutoff enforcement (k <= 0)
+      expect(computeNDCG([1, 2], [2, 1], 0)).toBe(0.0);
     });
 
     it('computes Brier Score for probabilistic binary predictions', () => {
@@ -276,9 +356,10 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
   // 6. Track E: AI Study Agent Closed Loop
   // =========================================================================
   describe('6. Track E: End-to-End AI Study Agent Closed Loop Evaluation', () => {
-    it('completes the 6-stage lifecycle and verifies retry idempotency', async () => {
+    it('completes the 6-stage lifecycle and verifies retry idempotency across 5 distinct scenarios', async () => {
       const res = await evaluateStudyAgentLoopTrack();
       expect(res.metrics).toBeDefined();
+      expect(res.metrics.totalRunsEvaluated).toBe(5);
       expect(res.metrics.fullLoopCompletionRate).toBe(1.0);
       expect(res.metrics.actionSelectionAccuracy).toBe(1.0);
       expect(res.metrics.activityAvailability).toBe(1.0);
@@ -364,8 +445,8 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
       expect(contract.baselineComparison.comparisons.every((c) => c.status === 'NOT_COMPARABLE')).toBe(true);
       expect(fullReport.phaseComparison.every((c) => c.status === 'NOT_COMPARABLE')).toBe(true);
 
-      // Summary counts
-      expect(contract.summaryCounts.totalEvaluated).toBeGreaterThan(100);
+      // Summary counts: 12 (Ingestion) + 70 (RAG) + 20 (Assess) + 40 (Learner) + 5 (Study Agent) = 147
+      expect(contract.summaryCounts.totalEvaluated).toBe(147);
       expect(contract.summaryCounts.totalPassed).toBeGreaterThan(80);
       expect(contract.summaryCounts.totalPassed).toBeLessThanOrEqual(contract.summaryCounts.totalEvaluated);
 

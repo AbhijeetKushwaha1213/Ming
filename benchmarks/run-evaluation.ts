@@ -60,8 +60,10 @@ async function main() {
 
   console.log('\n🔍 4. TRACK B: RETRIEVAL, GROUNDING & INFORMATION RETRIEVAL:');
   console.log('----------------------------------------------------------------');
+  const recallCI = tracks.trackB_retrievalGrounding.confidenceIntervals.recallAt5 || tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall;
   console.log(`   • Mean Reciprocal Rank (MRR): ${(tracks.trackB_retrievalGrounding.meanReciprocalRank * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.meanReciprocalRank.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.meanReciprocalRank.upper * 100).toFixed(1)}%]`);
-  console.log(`   • Recall@5:                   ${(tracks.trackB_retrievalGrounding.recallAt5 * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall.upper * 100).toFixed(1)}%]`);
+  console.log(`   • Recall@5:                   ${(tracks.trackB_retrievalGrounding.recallAt5 * 100).toFixed(1)}% [95% CI: ${(recallCI.lower * 100).toFixed(1)}% - ${(recallCI.upper * 100).toFixed(1)}%]`);
+  console.log(`   • Context Recall (RAGAS):     ${(tracks.trackB_retrievalGrounding.contextRecall * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall.upper * 100).toFixed(1)}%]`);
   console.log(`   • Precision@5:                ${(tracks.trackB_retrievalGrounding.precisionAt5 * 100).toFixed(1)}%`);
   console.log(`   • nDCG@5:                     ${(tracks.trackB_retrievalGrounding.ndcgAt5 * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.ndcgAt5.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.ndcgAt5.upper * 100).toFixed(1)}%]`);
   console.log(`   • Faithfulness:               ${(tracks.trackB_retrievalGrounding.faithfulness * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.faithfulness.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.faithfulness.upper * 100).toFixed(1)}%]`);

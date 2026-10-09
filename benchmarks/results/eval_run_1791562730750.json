@@ -1,0 +1,1611 @@
+{
+  "runId": "eval_run_1791562730750",
+  "evaluationTimestamp": "2026-10-09T16:18:50.749Z",
+  "gitCommitSha": "f00b2d0a8246f514d1dd9153d24ac9ee19e376e4",
+  "workingTreeClean": false,
+  "randomSeed": 1790950000,
+  "runtime": {
+    "nodeVersion": "v24.11.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "pid": 49542
+  },
+  "datasetFingerprints": [
+    {
+      "name": "Canonical RAG & Grounded Retrieval Evaluation Dataset",
+      "filePath": "/Users/abhijeetkushwaha/Hackathon/StudyMate-Multimodal-AI-Hackathon-2026/benchmarks/data/rag_eval_dataset.json",
+      "version": "1.0.0",
+      "itemCount": 70,
+      "sha256": "1152512659dc5730587073089bb2dd5b3d12536de070aa01d90073659e5425ed",
+      "sourceType": "ground_truth_curated",
+      "isSynthetic": false,
+      "limitations": "Fixed 70-item curriculum dataset covering OS, Networks, Databases, Algorithms and out-of-scope queries."
+    },
+    {
+      "name": "Multimodal Ingestion & Robustness Benchmark Dataset",
+      "filePath": "/Users/abhijeetkushwaha/Hackathon/StudyMate-Multimodal-AI-Hackathon-2026/benchmarks/data/multimodal_ingestion_dataset.json",
+      "version": "1.0.0",
+      "itemCount": 12,
+      "sha256": "5fb5033887ba8f63bad14e3bfe8e167e67bb2986a19fb3682da9d80b58212044",
+      "sourceType": "ground_truth_curated",
+      "isSynthetic": false,
+      "limitations": "12 test items including PDF, PPTX, PNG, JPEG, WEBP, MP3, WAV, TEXT, plus corrupted, empty, spoofed, and oversized files."
+    },
+    {
+      "name": "Authoritative Assessment Verifier & Quality Dataset",
+      "filePath": "/Users/abhijeetkushwaha/Hackathon/StudyMate-Multimodal-AI-Hackathon-2026/benchmarks/data/assessment_eval_dataset.json",
+      "version": "1.0.0",
+      "itemCount": 20,
+      "sha256": "8b8d33385d679aa98d1139fcaab2198bd4cbb4bb3af84987f660d2d5d9477375",
+      "sourceType": "verified_rubric",
+      "isSynthetic": false,
+      "limitations": "20 items spanning numerical answers with tolerance/units/scientific notation/boundary cases, MCQ options, invalid quarantined items, and misconceptions."
+    },
+    {
+      "name": "Chronological Synthetic Learner Trace Calibration Dataset",
+      "filePath": "/Users/abhijeetkushwaha/Hackathon/StudyMate-Multimodal-AI-Hackathon-2026/benchmarks/data/learner_traces_eval_dataset.json",
+      "version": "1.0.0",
+      "itemCount": 40,
+      "sha256": "3eb6dd2058ca9b904178d73c16bb37446aaf30cd2eeaa60fd12ceac90730ced9",
+      "sourceType": "synthetic_benchmark",
+      "isSynthetic": true,
+      "limitations": "CRITICAL: 40 synthetic learner interaction traces across 8 simulated learners. Strictly synthetic; does NOT represent real classroom outcomes."
+    }
+  ],
+  "summaryCounts": {
+    "totalEvaluated": 147,
+    "totalPassed": 147,
+    "totalFailed": 0,
+    "totalSkipped": 0,
+    "totalInvalid": 0
+  },
+  "tracks": {
+    "trackA_multimodalIngestion": {
+      "totalItemsEvaluated": 12,
+      "validItemsPassed": 8,
+      "malformedItemsRejected": 4,
+      "processingSuccessRate": 1,
+      "extractionAccuracy": 1,
+      "provenanceAccuracy": 1,
+      "formatSupportRates": {
+        "PDF": 1,
+        "PPTX": 1,
+        "PNG": 1,
+        "JPEG": 1,
+        "WEBP": 1,
+        "MP3": 1,
+        "WAV": 1,
+        "TEXT": 1,
+        "EXE_SPOOFED_AS_PDF": 1,
+        "CORRUPTED": 1,
+        "EMPTY": 1,
+        "OVERSIZED": 1
+      },
+      "malformedRejectionRate": 1,
+      "oversizedRejectionRate": 1
+    },
+    "trackB_retrievalGrounding": {
+      "totalQueriesEvaluated": 70,
+      "recallAt5": 0.703,
+      "precisionAt5": 0.172,
+      "meanReciprocalRank": 0.703,
+      "ndcgAt5": 4.254,
+      "contextPrecision": 0.714,
+      "contextRecall": 0.825,
+      "faithfulness": 0.96,
+      "answerRelevancy": 0.851,
+      "groundingAccuracy": 1,
+      "coordinateAccuracy": 1,
+      "citationPrecision": 1,
+      "citationCoverage": 1,
+      "refusalAccuracy": 1,
+      "userIsolationPreserved": true,
+      "confidenceIntervals": {
+        "groundingAccuracy": {
+          "estimate": 1,
+          "lower": 0.948,
+          "upper": 1,
+          "confidenceLevel": 0.95,
+          "method": "wilson_score",
+          "sampleSize": 70,
+          "numerator": 70,
+          "denominator": 70,
+          "unitOfAnalysis": "queries"
+        },
+        "coordinateAccuracy": {
+          "estimate": 1,
+          "lower": 0.948,
+          "upper": 1,
+          "confidenceLevel": 0.95,
+          "method": "wilson_score",
+          "sampleSize": 70,
+          "numerator": 70,
+          "denominator": 70,
+          "unitOfAnalysis": "queries"
+        },
+        "refusalAccuracy": {
+          "estimate": 1,
+          "lower": 0.61,
+          "upper": 1,
+          "confidenceLevel": 0.95,
+          "method": "wilson_score",
+          "sampleSize": 6,
+          "numerator": 6,
+          "denominator": 6,
+          "unitOfAnalysis": "off_material_queries"
+        },
+        "faithfulness": {
+          "estimate": 0.96,
+          "lower": 0.94,
+          "upper": 0.974,
+          "confidenceLevel": 0.95,
+          "method": "query_level_bootstrap",
+          "sampleSize": 70,
+          "resamples": 1000,
+          "unitOfAnalysis": "answers"
+        },
+        "contextRecall": {
+          "estimate": 0.809,
+          "lower": 0.745,
+          "upper": 0.864,
+          "confidenceLevel": 0.95,
+          "method": "query_level_bootstrap",
+          "sampleSize": 64,
+          "resamples": 1000,
+          "unitOfAnalysis": "in_domain_queries"
+        },
+        "recallAt5": {
+          "estimate": 0.703,
+          "lower": 0.594,
+          "upper": 0.813,
+          "confidenceLevel": 0.95,
+          "method": "query_level_bootstrap",
+          "sampleSize": 64,
+          "resamples": 1000,
+          "unitOfAnalysis": "in_domain_queries"
+        },
+        "meanReciprocalRank": {
+          "estimate": 0.703,
+          "lower": 0.594,
+          "upper": 0.813,
+          "confidenceLevel": 0.95,
+          "method": "query_level_bootstrap",
+          "sampleSize": 64,
+          "resamples": 1000,
+          "unitOfAnalysis": "in_domain_queries"
+        },
+        "ndcgAt5": {
+          "estimate": 4.254,
+          "lower": 3.639,
+          "upper": 1,
+          "confidenceLevel": 0.95,
+          "method": "query_level_bootstrap",
+          "sampleSize": 64,
+          "resamples": 1000,
+          "unitOfAnalysis": "in_domain_queries"
+        }
+      }
+    },
+    "trackC_assessmentQuality": {
+      "totalQuestionsEvaluated": 20,
+      "numericalVerificationAccuracy": 1,
+      "toleranceHandlingAccuracy": 1,
+      "unitConversionAccuracy": 1,
+      "mcqGradingAccuracy": 1,
+      "invalidQuestionRejectionRate": 1,
+      "duplicateDetectionRate": 1,
+      "misconceptionClassificationAccuracy": 1,
+      "confidenceIntervals": {
+        "numericalAccuracy": {
+          "estimate": 1,
+          "lower": 0.722,
+          "upper": 1,
+          "confidenceLevel": 0.95,
+          "method": "wilson_score",
+          "sampleSize": 10,
+          "numerator": 10,
+          "denominator": 10,
+          "unitOfAnalysis": "numerical_questions"
+        },
+        "mcqAccuracy": {
+          "estimate": 1,
+          "lower": 0.51,
+          "upper": 1,
+          "confidenceLevel": 0.95,
+          "method": "wilson_score",
+          "sampleSize": 4,
+          "numerator": 4,
+          "denominator": 4,
+          "unitOfAnalysis": "mcq_questions"
+        },
+        "invalidQuestionRejection": {
+          "estimate": 1,
+          "lower": 0.51,
+          "upper": 1,
+          "confidenceLevel": 0.95,
+          "method": "wilson_score",
+          "sampleSize": 4,
+          "numerator": 4,
+          "denominator": 4,
+          "unitOfAnalysis": "invalid_questions"
+        }
+      }
+    },
+    "trackD_learnerCalibration": {
+      "totalTracesEvaluated": 40,
+      "brierScore": 0.277,
+      "logLoss": 0.799,
+      "expectedCalibrationError": 0.316,
+      "calibrationBins": [
+        {
+          "binIndex": 1,
+          "binRange": [
+            0,
+            0.1
+          ],
+          "itemCount": 0,
+          "avgConfidence": 0.05,
+          "avgAccuracy": 0,
+          "calibrationError": 0
+        },
+        {
+          "binIndex": 2,
+          "binRange": [
+            0.1,
+            0.2
+          ],
+          "itemCount": 7,
+          "avgConfidence": 0.131,
+          "avgAccuracy": 0.429,
+          "calibrationError": 0.297
+        },
+        {
+          "binIndex": 3,
+          "binRange": [
+            0.2,
+            0.3
+          ],
+          "itemCount": 4,
+          "avgConfidence": 0.238,
+          "avgAccuracy": 0.75,
+          "calibrationError": 0.513
+        },
+        {
+          "binIndex": 4,
+          "binRange": [
+            0.3,
+            0.4
+          ],
+          "itemCount": 4,
+          "avgConfidence": 0.37,
+          "avgAccuracy": 1,
+          "calibrationError": 0.63
+        },
+        {
+          "binIndex": 5,
+          "binRange": [
+            0.4,
+            0.5
+          ],
+          "itemCount": 2,
+          "avgConfidence": 0.425,
+          "avgAccuracy": 1,
+          "calibrationError": 0.575
+        },
+        {
+          "binIndex": 6,
+          "binRange": [
+            0.5,
+            0.6
+          ],
+          "itemCount": 4,
+          "avgConfidence": 0.543,
+          "avgAccuracy": 0.75,
+          "calibrationError": 0.208
+        },
+        {
+          "binIndex": 7,
+          "binRange": [
+            0.6,
+            0.7
+          ],
+          "itemCount": 6,
+          "avgConfidence": 0.66,
+          "avgAccuracy": 1,
+          "calibrationError": 0.34
+        },
+        {
+          "binIndex": 8,
+          "binRange": [
+            0.7,
+            0.8
+          ],
+          "itemCount": 3,
+          "avgConfidence": 0.747,
+          "avgAccuracy": 0.667,
+          "calibrationError": 0.08
+        },
+        {
+          "binIndex": 9,
+          "binRange": [
+            0.8,
+            0.9
+          ],
+          "itemCount": 7,
+          "avgConfidence": 0.85,
+          "avgAccuracy": 0.714,
+          "calibrationError": 0.136
+        },
+        {
+          "binIndex": 10,
+          "binRange": [
+            0.9,
+            1
+          ],
+          "itemCount": 3,
+          "avgConfidence": 0.927,
+          "avgAccuracy": 0.667,
+          "calibrationError": 0.26
+        }
+      ],
+      "predictionCoverage": 1,
+      "recommendationDeterminism": 1,
+      "coldStartPriorApplied": true,
+      "positiveEvidenceIncreasesMastery": true,
+      "negativeEvidenceDecreasesMastery": true,
+      "tenantIsolationPreserved": true,
+      "syntheticDataNotice": "CRITICAL DATA RESTRICTION: Evaluated strictly against synthetic learner simulation traces. No empirical claims are made regarding real-world classroom learning outcomes. BKT parameters remain fixed without synthetic overfitting."
+    },
+    "trackE_studyAgentLoop": {
+      "totalRunsEvaluated": 5,
+      "fullLoopCompletionRate": 1,
+      "actionSelectionAccuracy": 1,
+      "activityAvailability": 1,
+      "gradingConsistency": 1,
+      "retryIdempotencyPreserved": true,
+      "nextActionTransitionRate": 1,
+      "tenantIsolationPreserved": true
+    },
+    "trackF_reliabilityPerformance": {
+      "p50LatencyMs": 1599,
+      "p90LatencyMs": 1762,
+      "p95LatencyMs": 1874,
+      "p99LatencyMs": 1993,
+      "measuredSampleCount": 70,
+      "latencyMeasurementSource": "Live query durations measured during evaluation run across 70 RAG search & chat executions",
+      "concurrencyThroughputReqPerSec": 1250,
+      "concurrencyErrorRate": 0,
+      "processLimiterEnforced": true,
+      "cacheHitRatio": 0.942,
+      "configuredLimits": {
+        "maxConcurrentProcesses": 8,
+        "maxQueueSize": 64,
+        "rateLimitBuckets": {
+          "ingest": 20,
+          "rag": 60,
+          "ai": 30,
+          "general": 120
+        }
+      },
+      "referenceLoadTestResults": {
+        "source": "scripts/run-load-benchmark.ts",
+        "concurrencyTiersTested": [
+          1,
+          5,
+          10,
+          25,
+          50
+        ],
+        "maxThroughputRps": 1250,
+        "environmentNotice": "Reference load figures are from Phase 7 standalone load harness (50 simulated concurrent learners on local development architecture)."
+      }
+    }
+  },
+  "perExampleClassifications": [
+    {
+      "exampleId": "eval_q_01",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - What are the four Coffman conditions required for  | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.846
+    },
+    {
+      "exampleId": "eval_q_02",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - How does the Banker's algorithm determine whether  | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.929
+    },
+    {
+      "exampleId": "eval_q_03",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - What information is contained inside a Process Con | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_04",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - What are the common CPU scheduling algorithms in o | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_05",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - How many layers are defined in the OSI reference m | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.688
+    },
+    {
+      "exampleId": "eval_q_06",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - How does TCP establish a connection between client | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_07",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - What is the primary role of a foreign key in a rel | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_08",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - What are the four ACID properties required for dat | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_09",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - What is the time complexity of binary search on a  | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_10",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - What are the two core technical characteristics of | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_11",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - What is the primary difference between deadlock pr | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_12",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - What is a context switch and what overhead does it | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.933
+    },
+    {
+      "exampleId": "eval_q_13",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - Why does Round Robin scheduling degrade into proce | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_14",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - Explain the fundamental mechanism of paging and ho | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.875
+    },
+    {
+      "exampleId": "eval_q_15",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - How does virtual memory allow execution of process | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_16",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - Explain the core differences between TCP and UDP a | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_17",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - What is the difference between Go-Back-N and Selec | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.588
+    },
+    {
+      "exampleId": "eval_q_18",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - How does TCP Slow Start differ from Congestion Avo | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.938
+    },
+    {
+      "exampleId": "eval_q_19",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - Explain how Two-Phase Locking (2PL) ensures serial | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_20",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - Why are B+ Trees preferred over regular binary sea | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.923
+    },
+    {
+      "exampleId": "eval_q_21",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "reasoning - If circular wait is prevented by imposing a strict | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_22",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "reasoning - Why does the Optimal Page Replacement algorithm ha | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.917
+    },
+    {
+      "exampleId": "eval_q_23",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "reasoning - Why does TCP trigger Fast Retransmit after receivi | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.938
+    },
+    {
+      "exampleId": "eval_q_24",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "reasoning - Why does Strict 2PL hold exclusive locks until com | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_25",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "reasoning - If an array is unsorted, why cannot binary search  | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_26",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "reasoning - In a resource allocation graph, does every cycle i | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.929
+    },
+    {
+      "exampleId": "eval_q_27",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "reasoning - Why does Shortest Job First (SJF) scheduling provi | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_28",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "reasoning - Why does the leaf node doubly linked list in a B+  | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_29",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "multi-source - How do resource allocation graphs represent hold-a | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.929
+    },
+    {
+      "exampleId": "eval_q_30",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "multi-source - How do process scheduling states in OS relate to t | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.933
+    },
+    {
+      "exampleId": "eval_q_31",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "multi-source - Compare the role of caches in operating systems (T | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.938
+    },
+    {
+      "exampleId": "eval_q_32",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "multi-source - How does deadlock handling in operating systems co | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.929
+    },
+    {
+      "exampleId": "eval_q_33",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "multi-source - How do divide-and-conquer algorithms like Merge So | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.889
+    },
+    {
+      "exampleId": "eval_q_34",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "multi-source - Compare flow control at the transport layer with p | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.929
+    },
+    {
+      "exampleId": "eval_q_35",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "numerical - Given a page size of 4KB and logical address 12500 | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_36",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "numerical - If a system uses Round Robin scheduling with a tim | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_37",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "numerical - If a B+ Tree has an order of 4, what is the maximu | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.929
+    },
+    {
+      "exampleId": "eval_q_38",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "numerical - During TCP Slow Start, if cwnd starts at 1 MSS, wh | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_39",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "numerical - In a system with 3 resource types and 5 processes  | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.929
+    },
+    {
+      "exampleId": "eval_q_40",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "numerical - Calculate the number of comparisons required by bi | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_41",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "off-material - Explain Shor's algorithm for quantum polynomial-ti | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_42",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "off-material - What is the authentic recipe for preparing traditi | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_43",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "off-material - Describe the chemical light-independent Calvin cyc | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_44",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "off-material - What are the official fielding position rules and  | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_45",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "off-material - Explain the quantitative easing and interest rate  | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_46",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "off-material - How do you repair a leaky carburettor gasket on a  | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_47",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - According to Page 1 of the Operating Systems textb | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_48",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - According to Page 3 of the Operating Systems textb | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_49",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - According to Slide 1 of the Computer Networks slid | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_50",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - According to Slide 4 of the Computer Networks slid | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_51",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "factual - According to the Database Systems lecture video at | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_52",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "conceptual - According to the Database Systems lecture video at | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.923
+    },
+    {
+      "exampleId": "eval_q_53",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "multi-hop - Explain how physical memory paging relates to page | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.941
+    },
+    {
+      "exampleId": "eval_q_54",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "cross-source - Compare how the Banker algorithm avoids deadlocks  | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.929
+    },
+    {
+      "exampleId": "eval_q_55",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "cross-source - Compare connection establishment using TCP 3-way h | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.938
+    },
+    {
+      "exampleId": "eval_q_56",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "multi-hop - In Computer Networks, how does the receiver advert | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_57",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "partial-evidence - What are the four Coffman conditions required for  | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.889
+    },
+    {
+      "exampleId": "eval_q_58",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "personalized - As a student building initial mastery of CPU sched | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.933
+    },
+    {
+      "exampleId": "eval_q_59",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "cross-source - Compare the divide-and-conquer strategy in Merge s | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_60",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "personalized - For an advanced learner analyzing dynamic programm | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_61",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "misconception-assessment - What is the key conceptual difference between Dead | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_62",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "misconception-assessment - How does memory paging differ from CPU process sch | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.875
+    },
+    {
+      "exampleId": "eval_q_63",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "misconception-assessment - Why does Least Recently Used (LRU) page replacemen | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_64",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "misconception-assessment - Explain the difference between TCP flow control an | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_65",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "misconception-assessment - Why is TCP considered a reliable byte-stream proto | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_66",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "misconception-assessment - In ACID transactions, how does Atomicity differ fr | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_67",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "misconception-assessment - Where are actual data records or record pointers s | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.923
+    },
+    {
+      "exampleId": "eval_q_68",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "misconception-assessment - What distinguishes dynamic programming from divide | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_69",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "numerical-assessment - If main memory access time is 100 ns and page faul | Grounded: true | Coord: true | Refusal: true",
+      "score": 1
+    },
+    {
+      "exampleId": "eval_q_70",
+      "track": "Track B: Retrieval & Grounding",
+      "status": "pass",
+      "details": "numerical-assessment - Calculate the Bandwidth-Delay Product (BDP) for a  | Grounded: true | Coord: true | Refusal: true",
+      "score": 0.909
+    },
+    {
+      "exampleId": "ingest_case_01",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Operating Systems Syllabus (PDF) (PDF) - OK"
+    },
+    {
+      "exampleId": "ingest_case_02",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Computer Networks Lecture Slides (PPTX) (PPTX) - OK"
+    },
+    {
+      "exampleId": "ingest_case_03",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Memory Architecture Diagram (PNG) (PNG) - OK"
+    },
+    {
+      "exampleId": "ingest_case_04",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Database ER Schema Diagram (JPEG) (JPEG) - OK"
+    },
+    {
+      "exampleId": "ingest_case_05",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Cache Hierarchy Infographic (WEBP) (WEBP) - OK"
+    },
+    {
+      "exampleId": "ingest_case_06",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Deadlock Lecture Recording (MP3 Audio) (MP3) - OK"
+    },
+    {
+      "exampleId": "ingest_case_07",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Concurrency Seminar Excerpt (WAV Audio) (WAV) - OK"
+    },
+    {
+      "exampleId": "ingest_case_08",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Algorithms Cheatsheet (Plain Text) (TEXT) - OK"
+    },
+    {
+      "exampleId": "ingest_case_09",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Spoofed PDF with Executable Payload (Malformed Magic) (EXE_SPOOFED_AS_PDF) - OK"
+    },
+    {
+      "exampleId": "ingest_case_10",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Truncated Corrupted Header (CORRUPTED) - OK"
+    },
+    {
+      "exampleId": "ingest_case_11",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Zero-byte Empty Upload (EMPTY) - OK"
+    },
+    {
+      "exampleId": "ingest_case_12",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Oversized File Simulation (OVERSIZED) - Oversized file correctly caught by size limit"
+    },
+    {
+      "exampleId": "assess_eval_num_01",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_02",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_03",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - incorrect"
+    },
+    {
+      "exampleId": "assess_eval_num_04",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_05",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_06",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - partially_correct"
+    },
+    {
+      "exampleId": "assess_eval_num_07",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_08",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - incorrect"
+    },
+    {
+      "exampleId": "assess_eval_num_09",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_10",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - partially_correct"
+    },
+    {
+      "exampleId": "assess_eval_mcq_01",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MULTIPLE_CHOICE - OK"
+    },
+    {
+      "exampleId": "assess_eval_mcq_02",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MULTIPLE_CHOICE - OK"
+    },
+    {
+      "exampleId": "assess_eval_mcq_03",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MULTIPLE_CHOICE - OK"
+    },
+    {
+      "exampleId": "assess_eval_mcq_04",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MULTIPLE_CHOICE - OK"
+    },
+    {
+      "exampleId": "assess_eval_invalid_01",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "INVALID_QUESTION - Question stem cannot be empty; Unsupported question type: \"MULTIPLE_CHOICE\". Supported: NUMERICAL, MCQ, SHORT_ANSWER, TRUE_FALSE, MULTI_SELECT"
+    },
+    {
+      "exampleId": "assess_eval_invalid_02",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "INVALID_QUESTION - Unsupported question type: \"MULTIPLE_CHOICE\". Supported: NUMERICAL, MCQ, SHORT_ANSWER, TRUE_FALSE, MULTI_SELECT; Duplicate option text \"Domain resolution\" at index 1"
+    },
+    {
+      "exampleId": "assess_eval_invalid_03",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "INVALID_QUESTION - Unsupported question type: \"MULTIPLE_CHOICE\". Supported: NUMERICAL, MCQ, SHORT_ANSWER, TRUE_FALSE, MULTI_SELECT"
+    },
+    {
+      "exampleId": "assess_eval_invalid_04",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "INVALID_QUESTION - Unsupported question type: \"MULTIPLE_CHOICE\". Supported: NUMERICAL, MCQ, SHORT_ANSWER, TRUE_FALSE, MULTI_SELECT; Options array must contain at least 2 distinct choices"
+    },
+    {
+      "exampleId": "assess_eval_misc_01",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MISCONCEPTION - OK"
+    },
+    {
+      "exampleId": "assess_eval_misc_02",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MISCONCEPTION - OK"
+    },
+    {
+      "exampleId": "tr_01",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.2 outcome=1",
+      "score": 0.2
+    },
+    {
+      "exampleId": "tr_02",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.45 outcome=1",
+      "score": 0.45
+    },
+    {
+      "exampleId": "tr_03",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.72 outcome=0",
+      "score": 0.72
+    },
+    {
+      "exampleId": "tr_04",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.58 outcome=1",
+      "score": 0.58
+    },
+    {
+      "exampleId": "tr_05",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.81 outcome=1",
+      "score": 0.81
+    },
+    {
+      "exampleId": "tr_06",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.15 outcome=0",
+      "score": 0.15
+    },
+    {
+      "exampleId": "tr_07",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.12 outcome=0",
+      "score": 0.12
+    },
+    {
+      "exampleId": "tr_08",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.1 outcome=1",
+      "score": 0.1
+    },
+    {
+      "exampleId": "tr_09",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.35 outcome=1",
+      "score": 0.35
+    },
+    {
+      "exampleId": "tr_10",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.62 outcome=1",
+      "score": 0.62
+    },
+    {
+      "exampleId": "tr_11",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.5 outcome=1",
+      "score": 0.5
+    },
+    {
+      "exampleId": "tr_12",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.75 outcome=1",
+      "score": 0.75
+    },
+    {
+      "exampleId": "tr_13",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.91 outcome=1",
+      "score": 0.91
+    },
+    {
+      "exampleId": "tr_14",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.96 outcome=0",
+      "score": 0.96
+    },
+    {
+      "exampleId": "tr_15",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.88 outcome=1",
+      "score": 0.88
+    },
+    {
+      "exampleId": "tr_16",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.25 outcome=1",
+      "score": 0.25
+    },
+    {
+      "exampleId": "tr_17",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.52 outcome=0",
+      "score": 0.52
+    },
+    {
+      "exampleId": "tr_18",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.38 outcome=1",
+      "score": 0.38
+    },
+    {
+      "exampleId": "tr_19",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.66 outcome=1",
+      "score": 0.66
+    },
+    {
+      "exampleId": "tr_20",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.86 outcome=1",
+      "score": 0.86
+    },
+    {
+      "exampleId": "tr_21",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.3 outcome=1",
+      "score": 0.3
+    },
+    {
+      "exampleId": "tr_22",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.57 outcome=1",
+      "score": 0.57
+    },
+    {
+      "exampleId": "tr_23",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.8 outcome=0",
+      "score": 0.8
+    },
+    {
+      "exampleId": "tr_24",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.68 outcome=1",
+      "score": 0.68
+    },
+    {
+      "exampleId": "tr_25",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.87 outcome=1",
+      "score": 0.87
+    },
+    {
+      "exampleId": "tr_26",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.15 outcome=0",
+      "score": 0.15
+    },
+    {
+      "exampleId": "tr_27",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.12 outcome=1",
+      "score": 0.12
+    },
+    {
+      "exampleId": "tr_28",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.36 outcome=1",
+      "score": 0.36
+    },
+    {
+      "exampleId": "tr_29",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.64 outcome=1",
+      "score": 0.64
+    },
+    {
+      "exampleId": "tr_30",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.85 outcome=1",
+      "score": 0.85
+    },
+    {
+      "exampleId": "tr_31",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.4 outcome=1",
+      "score": 0.4
+    },
+    {
+      "exampleId": "tr_32",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.68 outcome=1",
+      "score": 0.68
+    },
+    {
+      "exampleId": "tr_33",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.88 outcome=0",
+      "score": 0.88
+    },
+    {
+      "exampleId": "tr_34",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.77 outcome=1",
+      "score": 0.77
+    },
+    {
+      "exampleId": "tr_35",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.91 outcome=1",
+      "score": 0.91
+    },
+    {
+      "exampleId": "tr_36",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.2 outcome=0",
+      "score": 0.2
+    },
+    {
+      "exampleId": "tr_37",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.15 outcome=0",
+      "score": 0.15
+    },
+    {
+      "exampleId": "tr_38",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.13 outcome=1",
+      "score": 0.13
+    },
+    {
+      "exampleId": "tr_39",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.39 outcome=1",
+      "score": 0.39
+    },
+    {
+      "exampleId": "tr_40",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.68 outcome=1",
+      "score": 0.68
+    },
+    {
+      "exampleId": "Exam Urgency Prioritization",
+      "track": "Track E: AI Study Agent Loop",
+      "status": "pass",
+      "details": "2-day exam urgency properly prioritized"
+    },
+    {
+      "exampleId": "High Mastery Maintenance",
+      "track": "Track E: AI Study Agent Loop",
+      "status": "pass",
+      "details": "High mastery spaced retention prioritized"
+    },
+    {
+      "exampleId": "Low Mastery Remediation",
+      "track": "Track E: AI Study Agent Loop",
+      "status": "pass",
+      "details": "Weak diagnostic topic prioritized for remediation"
+    },
+    {
+      "exampleId": "Retry Idempotency Verification",
+      "track": "Track E: AI Study Agent Loop",
+      "status": "pass",
+      "details": "Identical attempt updates produce identical posteriors"
+    },
+    {
+      "exampleId": "Cross-Tenant Isolation Preservation",
+      "track": "Track E: AI Study Agent Loop",
+      "status": "pass",
+      "details": "Tenant boundaries preserved without state leakage"
+    }
+  ],
+  "dataLimitations": [
+    "Track D evaluated strictly against synthetic learner simulation traces; no empirical claim of real classroom learning gains.",
+    "Track F reports both live query latencies measured during this benchmark run and configured process limiter limits.",
+    "Phase 7 comparison is labeled NOT_COMPARABLE due to dataset size differences (52 vs 70 items) and unverified historical artifacts."
+  ],
+  "failuresAndErrors": [],
+  "baselineComparison": {
+    "baselineRunId": "PHASE_7_HISTORICAL_RECORDED",
+    "comparabilityStatus": "NOT_COMPARABLE",
+    "comparabilityNotice": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item canonical curriculum dataset. Deltas are not verified empirical improvements.",
+    "deltas": {
+      "Context Recall": {
+        "baseline": 0.458,
+        "current": 0.825,
+        "delta": 0.367,
+        "status": "UNVERIFIED"
+      },
+      "Answer Relevancy": {
+        "baseline": 0.713,
+        "current": 0.851,
+        "delta": 0.138,
+        "status": "UNVERIFIED"
+      },
+      "Context Precision": {
+        "baseline": 0.942,
+        "current": 0.714,
+        "delta": -0.228,
+        "status": "UNVERIFIED"
+      },
+      "Faithfulness": {
+        "baseline": 0.418,
+        "current": 0.96,
+        "delta": 0.542,
+        "status": "UNVERIFIED"
+      },
+      "Grounding Accuracy": {
+        "baseline": 0.942,
+        "current": 1,
+        "delta": 0.058,
+        "status": "UNVERIFIED"
+      },
+      "Coordinate Match": {
+        "baseline": 0.962,
+        "current": 1,
+        "delta": 0.038,
+        "status": "UNVERIFIED"
+      },
+      "Refusal Accuracy": {
+        "baseline": 1,
+        "current": 1,
+        "delta": 0,
+        "status": "UNVERIFIED"
+      },
+      "Exact Duplicate Rate": {
+        "baseline": 0,
+        "current": 0,
+        "delta": 0,
+        "status": "UNVERIFIED"
+      },
+      "Semantic Duplicate Rate": {
+        "baseline": 0,
+        "current": 0,
+        "delta": 0,
+        "status": "UNVERIFIED"
+      },
+      "Unique Question Rate": {
+        "baseline": 1,
+        "current": 1,
+        "delta": 0,
+        "status": "UNVERIFIED"
+      },
+      "Average Mastery Delta": {
+        "baseline": 0.448,
+        "current": 0.419,
+        "delta": -0.029,
+        "status": "UNVERIFIED"
+      }
+    },
+    "comparisons": [
+      {
+        "metric": "Context Recall",
+        "phase6Value": 0.65,
+        "phase7Value": 0.458,
+        "phase8Value": 0.825,
+        "delta": 0.367,
+        "improved": true,
+        "targetBenchmark": ">= 0.80",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Answer Relevancy",
+        "phase6Value": 0.702,
+        "phase7Value": 0.713,
+        "phase8Value": 0.851,
+        "delta": 0.138,
+        "improved": true,
+        "targetBenchmark": ">= 0.80",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Context Precision",
+        "phase6Value": 0.375,
+        "phase7Value": 0.942,
+        "phase8Value": 0.714,
+        "delta": -0.228,
+        "improved": false,
+        "targetBenchmark": ">= 0.80",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Faithfulness",
+        "phase6Value": 0.796,
+        "phase7Value": 0.418,
+        "phase8Value": 0.96,
+        "delta": 0.542,
+        "improved": true,
+        "targetBenchmark": ">= 0.85",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Grounding Accuracy",
+        "phase6Value": 1,
+        "phase7Value": 0.942,
+        "phase8Value": 1,
+        "delta": 0.058,
+        "improved": true,
+        "targetBenchmark": ">= 0.90",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Coordinate Match",
+        "phase6Value": 0.875,
+        "phase7Value": 0.962,
+        "phase8Value": 1,
+        "delta": 0.038,
+        "improved": true,
+        "targetBenchmark": ">= 0.95",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Refusal Accuracy",
+        "phase6Value": 1,
+        "phase7Value": 1,
+        "phase8Value": 1,
+        "delta": 0,
+        "improved": true,
+        "targetBenchmark": "1.00",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Exact Duplicate Rate",
+        "phase6Value": 0.8,
+        "phase7Value": 0,
+        "phase8Value": 0,
+        "delta": 0,
+        "improved": true,
+        "targetBenchmark": "<= 0.05",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Semantic Duplicate Rate",
+        "phase6Value": 0,
+        "phase7Value": 0,
+        "phase8Value": 0,
+        "delta": 0,
+        "improved": true,
+        "targetBenchmark": "<= 0.05",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Unique Question Rate",
+        "phase6Value": 0.2,
+        "phase7Value": 1,
+        "phase8Value": 1,
+        "delta": 0,
+        "improved": true,
+        "targetBenchmark": ">= 0.90",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      },
+      {
+        "metric": "Average Mastery Delta",
+        "phase6Value": 0.501,
+        "phase7Value": 0.448,
+        "phase8Value": 0.419,
+        "delta": -0.029,
+        "improved": true,
+        "targetBenchmark": "> 0.00",
+        "comparabilityStatus": "NOT_COMPARABLE",
+        "comparabilityNote": "Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.",
+        "status": "NOT_COMPARABLE"
+      }
+    ]
+  }
+}

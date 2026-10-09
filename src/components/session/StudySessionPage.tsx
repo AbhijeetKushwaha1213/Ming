@@ -98,6 +98,8 @@ export const StudySessionPage = ({
   const { user } = useAuth();
   const userId = user?.user_id || user?.id || 'default_user';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const focusLoggedRef = useRef(false);
+  const focusSessionIdRef = useRef<string>(`focus_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
   
   // Timer states
   const [isRunning, setIsRunning] = useState(false);
@@ -159,18 +161,22 @@ export const StudySessionPage = ({
           description: "Time to get back to studying!",
         });
       } else {
-        setSessionsCompleted(prev => prev + 1);
-        setTopicsCovered(prev => prev + 1);
+        if (!focusLoggedRef.current) {
+          focusLoggedRef.current = true;
+          setSessionsCompleted(prev => prev + 1);
+          setTopicsCovered(prev => prev + 1);
 
-        const durationMins = Math.max(1, Math.round(totalTime / 60));
-        void logStudySession({
-          userId,
-          sessionType: 'focus_session',
-          durationMinutes: durationMins,
-          topicsCovered: [subject, topic].filter(Boolean),
-        }).catch(err => console.warn('Could not log study session:', err));
+          const durationMins = Math.max(1, Math.min(Math.round(totalTime / 60), 480));
+          void logStudySession({
+            id: focusSessionIdRef.current,
+            userId,
+            sessionType: 'focus_session',
+            durationMinutes: durationMins,
+            topicsCovered: [subject, topic].filter(Boolean),
+          }).catch(err => console.warn('Could not log study session:', err));
 
-        void trackStudySessionCompleted('focus_session', durationMins, [subject, topic].filter(Boolean)).catch(() => {});
+          void trackStudySessionCompleted('focus_session', durationMins, [subject, topic].filter(Boolean)).catch(() => {});
+        }
 
         if (autoMode) {
           setIsBreak(true);
@@ -208,6 +214,8 @@ export const StudySessionPage = ({
 
   const handleStart = () => {
     setIsRunning(true);
+    focusLoggedRef.current = false;
+    focusSessionIdRef.current = `focus_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     if (!isBreak) {
       void trackStudySessionStarted('focus_session', topic).catch(() => {});
     }
@@ -227,6 +235,8 @@ export const StudySessionPage = ({
 
   const handleReset = () => {
     setIsRunning(false);
+    focusLoggedRef.current = false;
+    focusSessionIdRef.current = `focus_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     setTimeLeft(isBreak ? breakTime * 60 : totalTime);
     toast({
       title: "Timer Reset 🔄",
@@ -240,9 +250,11 @@ export const StudySessionPage = ({
     setIsBreak(false);
     setTimeLeft(totalTime);
 
-    if (elapsedSeconds >= 60) {
-      const durationMins = Math.max(1, Math.round(elapsedSeconds / 60));
+    if (elapsedSeconds >= 60 && !focusLoggedRef.current) {
+      focusLoggedRef.current = true;
+      const durationMins = Math.max(1, Math.min(Math.round(elapsedSeconds / 60), 480));
       void logStudySession({
+        id: focusSessionIdRef.current,
         userId,
         sessionType: 'focus_session',
         durationMinutes: durationMins,

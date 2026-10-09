@@ -650,27 +650,46 @@ export async function updateIngestionStatus(
 let analyticsSchemaPromise: Promise<void> | null = null;
 
 async function createAnalyticsSchema() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS analytics_events (
-      id TEXT PRIMARY KEY NOT NULL,
-      userId TEXT NOT NULL,
-      eventType TEXT NOT NULL,
-      eventPropertiesJson TEXT,
-      timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  const isPg = isPostgresDatabase();
+  const createSql = isPg
+    ? `CREATE TABLE IF NOT EXISTS analytics_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        event_properties_json TEXT,
+        timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`
+    : `CREATE TABLE IF NOT EXISTS analytics_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        userId TEXT NOT NULL,
+        eventType TEXT NOT NULL,
+        eventPropertiesJson TEXT,
+        timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`;
 
-  await prisma.$executeRawUnsafe(
-    'CREATE INDEX IF NOT EXISTS analytics_events_user_time_idx ON analytics_events(userId, timestamp)',
-  );
-  await prisma.$executeRawUnsafe(
-    'CREATE INDEX IF NOT EXISTS analytics_events_user_type_idx ON analytics_events(userId, eventType)',
-  );
+  await prisma.$executeRawUnsafe(createSql);
+
+  const idxUserTime = isPg
+    ? 'CREATE INDEX IF NOT EXISTS analytics_events_user_time_idx ON analytics_events(user_id, timestamp)'
+    : 'CREATE INDEX IF NOT EXISTS analytics_events_user_time_idx ON analytics_events(userId, timestamp)';
+
+  const idxUserType = isPg
+    ? 'CREATE INDEX IF NOT EXISTS analytics_events_user_type_idx ON analytics_events(user_id, event_type)'
+    : 'CREATE INDEX IF NOT EXISTS analytics_events_user_type_idx ON analytics_events(userId, eventType)';
+
+  await prisma.$executeRawUnsafe(idxUserTime);
+  await prisma.$executeRawUnsafe(idxUserType);
 }
 
-export async function ensureAnalyticsSchema() {
+export async function ensureAnalyticsSchema(): Promise<void> {
   if (!analyticsSchemaPromise) {
-    analyticsSchemaPromise = createAnalyticsSchema();
+    analyticsSchemaPromise = createAnalyticsSchema().catch((err: any) => {
+      analyticsSchemaPromise = null;
+      if (err?.message?.includes('already exists')) {
+        return;
+      }
+      throw err;
+    });
   }
 
   return analyticsSchemaPromise;

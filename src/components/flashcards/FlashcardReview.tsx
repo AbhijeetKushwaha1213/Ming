@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,8 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
   const [incorrectCount, setIncorrectCount] = useState(0);
   const [startTime, setStartTime] = useState(() => Date.now());
   const [isCompleted, setIsCompleted] = useState(false);
+  const sessionLoggedRef = useRef(false);
+  const sessionIdRef = useRef<string>(`fc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
 
   if (flashcards.length === 0) {
     return (
@@ -80,22 +82,26 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
 
     // Check if deck review is now complete
     if (newReviewed.size >= flashcards.length) {
-      const durationMins = Math.max(1, Math.round((Date.now() - startTime) / 60000));
-      void logStudySession({
-        userId,
-        sessionType: 'flashcards',
-        durationMinutes: durationMins,
-        topicsCovered: [topic],
-        flashcardsReviewed: flashcards.length,
-        correctAnswers: updatedCorrect,
-      }).catch(err => console.warn('Could not log study session:', err));
+      if (!sessionLoggedRef.current) {
+        sessionLoggedRef.current = true;
+        const durationMins = Math.max(1, Math.min(Math.round((Date.now() - startTime) / 60000), 240));
+        void logStudySession({
+          id: sessionIdRef.current,
+          userId,
+          sessionType: 'flashcards',
+          durationMinutes: durationMins,
+          topicsCovered: [topic],
+          flashcardsReviewed: flashcards.length,
+          correctAnswers: updatedCorrect,
+        }).catch(err => console.warn('Could not log study session:', err));
 
-      void trackReviewSessionCompleted({
-        topic,
-        cardsReviewed: flashcards.length,
-        correctCount: updatedCorrect,
-        accuracyPercentage: (updatedCorrect / flashcards.length) * 100,
-      }).catch(err => console.warn('Could not track review analytics:', err));
+        void trackReviewSessionCompleted({
+          topic,
+          cardsReviewed: flashcards.length,
+          correctCount: updatedCorrect,
+          accuracyPercentage: (updatedCorrect / flashcards.length) * 100,
+        }).catch(err => console.warn('Could not track review analytics:', err));
+      }
 
       setTimeout(() => {
         setIsCompleted(true);
@@ -107,6 +113,8 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
   };
 
   const handleShuffle = () => {
+    sessionLoggedRef.current = false;
+    sessionIdRef.current = `fc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     setIsCompleted(false);
     setReviewedCards(new Set());
     setCorrectCount(0);
@@ -117,6 +125,8 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
   };
 
   const handleReset = () => {
+    sessionLoggedRef.current = false;
+    sessionIdRef.current = `fc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     setIsCompleted(false);
     setCurrentIndex(0);
     setShowAnswer(false);

@@ -126,7 +126,14 @@ export async function getReadinessStatus(): Promise<{ ready: boolean; statusCode
 
   if (lastDbErr) {
     ready = false;
-    checks.database = `failed: ${lastDbErr.message || 'unreachable'}`;
+    const msg = (lastDbErr.message || '').toLowerCase();
+    if (msg.includes('no such table') || msg.includes('does not exist') || msg.includes('relation') || msg.includes('table')) {
+      checks.database = 'failed: schema uninitialized (table missing)';
+    } else if (msg.includes('connect') || msg.includes('refused') || msg.includes('timeout') || msg.includes('econnrefused')) {
+      checks.database = 'failed: database connection unreachable';
+    } else {
+      checks.database = 'failed: database query failed';
+    }
   }
 
   // 2. Check Vector Store Provider

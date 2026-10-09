@@ -7,7 +7,7 @@
  */
 
 import crypto from 'node:crypto';
-import { prisma, ensureAnalyticsSchema } from './prisma.ts';
+import { prisma, ensureAnalyticsSchema, isPostgresDatabase } from './prisma.ts';
 import { logStructured, safeUserId, scrubSensitiveData } from './observability.ts';
 
 export const CANONICAL_ANALYTICS_EVENTS = [
@@ -60,24 +60,38 @@ export async function recordProductEvent(
   }
 
   const normalizedEventType = eventType.trim().toUpperCase();
+  if (!CANONICAL_ANALYTICS_EVENTS.includes(normalizedEventType as any)) {
+    throw new Error(`Invalid analytics eventType: "${normalizedEventType}". Must be one of canonical events.`);
+  }
+
   await ensureAnalyticsSchema();
 
   // Strip any accidental sensitive data, raw text blobs, or long prompts
   const cleanProperties: Record<string, any> = {};
   const scrubbed = scrubSensitiveData(properties);
 
+  let keyCount = 0;
   for (const [key, val] of Object.entries(scrubbed)) {
+    if (keyCount >= 25) break;
+
+    // Disallow overriding or spoofing user identity in properties
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === 'userid' || lowerKey === 'user_id') {
+      continue;
+    }
+
     // Exclude large raw contents or prompts to preserve privacy and storage efficiency
     if (
-      key.toLowerCase().includes('prompt') ||
-      key.toLowerCase().includes('documenttext') ||
-      key.toLowerCase().includes('rawcontent') ||
-      key.toLowerCase().includes('base64') ||
-      key.toLowerCase().includes('fulltext')
+      lowerKey.includes('prompt') ||
+      lowerKey.includes('documenttext') ||
+      lowerKey.includes('rawcontent') ||
+      lowerKey.includes('base64') ||
+      lowerKey.includes('fulltext')
     ) {
       continue;
     }
 
+    keyCount++;
     if (typeof val === 'string' && val.length > 500) {
       cleanProperties[key] = val.slice(0, 500) + '...[TRUNCATED]';
     } else {
@@ -89,9 +103,15 @@ export async function recordProductEvent(
   const timestamp = new Date().toISOString();
   const propertiesJson = JSON.stringify(cleanProperties);
 
+  const isPg = isPostgresDatabase();
+  const insertSql = isPg
+    ? `INSERT INTO analytics_events (id, user_id, event_type, event_properties_json, timestamp)
+       VALUES (?, ?, ?, ?, ?)`
+    : `INSERT INTO analytics_events (id, userId, eventType, eventPropertiesJson, timestamp)
+       VALUES (?, ?, ?, ?, ?)`;
+
   await prisma.$executeRawUnsafe(
-    `INSERT INTO analytics_events (id, userId, eventType, eventPropertiesJson, timestamp)
-     VALUES (?, ?, ?, ?, ?)`,
+    insertSql,
     eventId,
     userId,
     normalizedEventType,
@@ -129,8 +149,13 @@ export async function getUserAnalyticsSummary(userId: string): Promise<Analytics
 
   await ensureAnalyticsSchema();
 
+  const isPg = isPostgresDatabase();
+  const querySql = isPg
+    ? `SELECT event_type AS eventType, event_properties_json AS eventPropertiesJson FROM analytics_events WHERE user_id = ?`
+    : `SELECT eventType, eventPropertiesJson FROM analytics_events WHERE userId = ?`;
+
   const rows = (await prisma.$queryRawUnsafe(
-    `SELECT eventType, eventPropertiesJson FROM analytics_events WHERE userId = ?`,
+    querySql,
     userId,
   )) as Array<{ eventType: string; eventPropertiesJson: string | null }>;
 
@@ -202,12 +227,21 @@ export async function getUserRecentEvents(userId: string, limit = 50): Promise<A
   await ensureAnalyticsSchema();
   const boundedLimit = Math.max(1, Math.min(limit, 200));
 
+  const isPg = isPostgresDatabase();
+  const querySql = isPg
+    ? `SELECT id, user_id AS userId, event_type AS eventType, event_properties_json AS eventPropertiesJson, timestamp
+       FROM analytics_events
+       WHERE user_id = ?
+       ORDER BY timestamp DESC
+       LIMIT ?`
+    : `SELECT id, userId, eventType, eventPropertiesJson, timestamp
+       FROM analytics_events
+       WHERE userId = ?
+       ORDER BY timestamp DESC
+       LIMIT ?`;
+
   const rows = (await prisma.$queryRawUnsafe(
-    `SELECT id, userId, eventType, eventPropertiesJson, timestamp
-     FROM analytics_events
-     WHERE userId = ?
-     ORDER BY timestamp DESC
-     LIMIT ?`,
+    querySql,
     userId,
     boundedLimit,
   )) as Array<{

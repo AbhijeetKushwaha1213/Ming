@@ -109,43 +109,62 @@ export async function fetchUserStudySessions(userId: string): Promise<StudySessi
  * Log a new study session in real time
  */
 export async function logStudySession(params: {
+  id?: string;
   userId: string;
   durationMinutes: number;
   sessionType?: string;
   topic?: string;
+  topicsCovered?: string[];
   flashcardsReviewed?: number;
   correctAnswers?: number;
 }): Promise<StudySessionRecord> {
   const {
+    id: explicitId,
     userId = 'default_user',
     durationMinutes = 15,
     sessionType = 'active_learning',
     topic,
+    topicsCovered,
     flashcardsReviewed = 0,
     correctAnswers = 0,
   } = params;
 
+  // 1. Guard against session duration inflation attacks (bound between 1 min and 8 hours)
+  const safeMinutes = Math.max(1, Math.min(Math.round(durationMinutes), 480));
+
+  // 2. Check for existing session by id for strict idempotency
+  const currentLocal = getLocalStudySessions(userId);
+  if (explicitId) {
+    const existing = currentLocal.find((s) => s.id === explicitId);
+    if (existing) {
+      return existing;
+    }
+  }
+
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const newId = explicitId || `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  const resolvedTopics = topicsCovered && topicsCovered.length > 0
+    ? topicsCovered
+    : (topic ? [topic] : ['General Study']);
 
   const newSession: StudySessionRecord = {
     id: newId,
     user_id: userId,
     session_type: sessionType,
-    duration_minutes: Math.max(1, Math.round(durationMinutes)),
-    topics_covered: topic ? [topic] : ['General Study'],
+    duration_minutes: safeMinutes,
+    topics_covered: resolvedTopics,
     flashcards_reviewed: flashcardsReviewed,
     correct_answers: correctAnswers,
     session_date: today,
     created_at: new Date().toISOString(),
   };
 
-  // 1. Save to local storage
-  const currentLocal = getLocalStudySessions(userId);
+  // 3. Save to local storage
   const updatedLocal = [newSession, ...currentLocal];
   saveLocalStudySessions(userId, updatedLocal);
 
-  // 2. Push to Supabase if authenticated
+  // 4. Push to Supabase if authenticated
   if (userId && userId !== 'default_user' && userId !== 'local-dev-user-id') {
     try {
       if (supabase && typeof supabase.from === 'function') {
@@ -164,7 +183,7 @@ export async function logStudySession(params: {
         }
 
         // Increment user total study hours
-        const addedHours = +(durationMinutes / 60).toFixed(2);
+        const addedHours = +(safeMinutes / 60).toFixed(2);
         const profileTable = supabase.from('user_profiles');
         if (profileTable && typeof profileTable.select === 'function') {
           const profileQuery = profileTable.select('total_study_hours, study_streak');

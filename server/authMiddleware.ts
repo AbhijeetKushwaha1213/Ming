@@ -181,15 +181,20 @@ export async function resolveContextUser(
   const isDevOrTest = process.env.NODE_ENV !== 'production';
   const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
 
-  if (isDevOrTest && (allowDevBypass || allowAnonymousDev)) {
-    return (
-      (req.headers?.['x-dev-user-id'] as string) ||
-      (req.headers?.['x-ming-user-id'] as string) ||
-      req.query?.userId ||
-      req.body?.userId ||
-      req.body?.user_id ||
-      'default_user'
-    );
+  if (isDevOrTest) {
+    const devHeaderUser = (req.headers?.['x-dev-user-id'] as string) || (req.headers?.['x-ming-user-id'] as string);
+    if (devHeaderUser) {
+      return devHeaderUser;
+    }
+
+    if (allowDevBypass || allowAnonymousDev) {
+      return (
+        req.query?.userId ||
+        req.body?.userId ||
+        req.body?.user_id ||
+        'default_user'
+      );
+    }
   }
 
   throw new AuthError('Authentication required. Missing Bearer token.', 401);

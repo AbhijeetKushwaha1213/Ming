@@ -29,7 +29,7 @@ Based on direct inspection of the codebase, automated test suites (985 passing t
    - Automated prompt injection defense and malicious question quarantining.
 4. **Bayesian Knowledge Tracing (BKT) Cognitive Engine:**
    - Dual-state architecture: Authoritative server computations (`server/bktService.ts`) and optimistic client projections (`src/utils/bkt.ts`).
-   - Hidden Markov Model tracking latent mastery $P(L_t)$ with slip ($P(S)=0.10$) and guess ($P(G)=0.20$) parameters.
+   - Hidden Markov Model tracking latent mastery $P(L_t)$ with parameters $P(L_0)=0.15, P(T)=0.10, P(G)=0.20, P(S)=0.10$.
    - Real-time Mastery Radar visualization across granular Knowledge Components.
 5. **Autonomous AI Study Agent:**
    - Multi-stage lifecycle: Observe learner mastery $\to$ Detect learning gaps $\to$ Recommend targeted intervention drills $\to$ Update BKT state.
@@ -77,13 +77,13 @@ The demonstration follows one coherent 7-step learner journey:
 
 ### Deterministic Step-by-Step Sequence & Fail-Safe Contingencies
 
-| Step | User Action | Observable Result | Recovery / Fallback Path |
+| Step | User Action | Observable Result | Computation Type & Recovery Path |
 | :---: | :--- | :--- | :--- |
-| **1 & 2** | Learner uploads `raft_consensus_notes.md` | Ingestion indicator illuminates; 14 chunks indexed with green badge. | If upload stalls, select pre-indexed "Raft Consensus Lecture" from workspace table. |
-| **3** | Learner asks: *"How does Raft prevent split-brain during a leader election?"* | Streamed answer cites quorum ($N/2 + 1$) with clickable badge `[Source: raft_consensus_notes.md § 3.2]`. Clicking badge opens source drawer. | If LLM API latency >3s, rely on client cached response for this prompt. |
-| **4 & 5** | Learner starts practice drill on Raft Candidate step-down conditions. | Flashcard flips to reveal rubric; user rates "Good"; MCQ on quorum is answered correctly with instant diagnostic feedback. | Card animations can be controlled via keyboard shortcuts (`Space` / `3`). |
-| **6** | Learner views Mastery Radar. | `Leader Election` shows 88% mastery; `Log Replication Quorum` shows 42%; AI Study Agent recommends a 3-question targeted drill. | If radar does not animate, click "Recalculate BKT" button. |
-| **7** | Learner completes session. | Completion modal animates (+14% recall gain, Day 5 streak badge); network toggle shows offline telemetry queued and synced. | LocalStorage/IndexedDB acts as offline backing store. |
+| **1 & 2** | Learner uploads `raft_consensus_notes.md` | Ingestion indicator illuminates; 14 chunks indexed with green badge. | **Live Compute**: Text extraction, semantic chunking, local embeddings. If upload stalls, select seeded pre-indexed Raft lecture. |
+| **3** | Learner asks: *"How does Raft prevent split-brain during a leader election?"* | Streamed answer cites quorum ($N/2 + 1$) with clickable badge `[Source: raft_consensus_notes.md § 3.2]`. Clicking badge opens source drawer. | **Live Inference**: Gemini `gemini-2.5-flash` model generation. If API latency >3s, rely on cached demo response (disclosed as fallback). |
+| **4 & 5** | Learner starts practice drill on Raft Candidate step-down conditions. | Flashcard flips to reveal rubric; user rates "Good"; MCQ on quorum is answered correctly with instant diagnostic feedback. | **Live Compute**: SuperMemo SM-2 interval scheduling & numerical tolerance verification. |
+| **6** | Learner views Mastery Radar. | `Leader Election` shows 88% mastery; `Log Replication Quorum` shows 42%; AI Study Agent recommends a 3-question targeted drill. | **Live Compute & State**: BKT updates ($L_0=0.15, T=0.10, G=0.20, S=0.10$). Agent computes 5-factor priority score. |
+| **7** | Learner completes session. | Completion modal displays genuine metrics (12/12 cards, 92% accuracy, streak incremented to Day 5); network toggle shows offline queue sync. | **Live Compute & Persistence**: Saved to SQLite/PostgreSQL. Seeded demo baseline: prior streak days. |
 
 ---
 
@@ -99,29 +99,29 @@ The pitch deck was developed in two formats:
 - **Slide 2: The Core Problem:** The Student's Dilemma (Information overload, hallucinating generalist LLMs, disconnected rote tools).
 - **Slide 3: The Solution:** Transforming Raw Syllabi into Verifiable Mastery.
 - **Slide 4: End-to-End Demo Journey:** 7-Step workflow from ingestion to streak persistence.
-- **Slide 5: Technical Architecture:** Multi-tier topology (React 18 SPA + Node.js API Gateway + PostgreSQL/pgvector + Gemini 1.5 Flash).
-- **Slide 6: Architectural Differentiation:** Grounded Retrieval, Zero-Trust RLS, BKT Cognitive Modeling, and Autonomous Study Agent.
-- **Slide 7: Empirical Evaluation:** Track A–E metrics ($N=147$, 100% gate pass, 96% Faithfulness, 100% OOD Refusal, 0.943 BKT AUC).
+- **Slide 5: Technical Architecture:** Multi-tier topology (React 18 SPA + Node.js API Gateway + PostgreSQL/pgvector + Gemini 2.5 Flash).
+- **Slide 6: Architectural Differentiation:** Grounded Retrieval, Zero-Trust RLS, BKT Cognitive Modeling ($L_0=0.15, T=0.10$), and Autonomous Study Agent.
+- **Slide 7: Empirical Evaluation:** Track A–E metrics ($N=147$, 100% gate pass, 96% Faithfulness, 100% OOD Refusal on 6/6 queries, Brier Score 0.277).
 - **Slide 8: Scientific Integrity & Security:** Bootstrap uncertainty explanations, synthetic trace caveats, and zero tenant leakage.
 - **Slide 9: Product Roadmap:** Near-term enhancements (OCR, LMS LTI 1.3 sync, Whisper transcription).
-- **Slide 10: Conclusion & Call to Action:** Grounded AI, mathematical mastery, zero hallucinations.
+- **Slide 10: Conclusion & Call to Action:** Grounded AI, mathematical mastery, verifiable citations.
 
 ---
 
 ## 4. Demo Video Script and Recording Checklist
 
 Detailed in `docs/demo/DEMO_SCRIPT.md`:
-- **Planned Target Duration:** 4 minutes 30 seconds (270 seconds).
+- **Planned Target Duration:** Exactly 4 minutes 30 seconds (270 seconds).
 - **Domain Scenario:** MIT 6.824 / Raft Distributed Consensus.
-- **Script Breakdown:**
-  - `00:00 - 00:35`: Scene 1 — The Problem & Opening Hook (35s)
-  - `00:35 - 01:15`: Scene 2 — Multimodal Ingestion & Document Processing (40s)
-  - `01:15 - 02:00`: Scene 3 — Grounded Retrieval & Source Citation (45s)
-  - `02:00 - 02:50`: Scene 4 — Adaptive Practice & Diagnostic Feedback (50s)
-  - `02:50 - 03:35`: Scene 5 — Bayesian Knowledge Tracing & AI Study Agent (45s)
-  - `03:35 - 04:10`: Scene 6 — Session Retention & Persisted Analytics (35s)
-  - `04:10 - 04:40`: Scene 7 — Architectural Integrity & Hackathon Closing (30s)
-- **Word-for-Word Voiceover Script:** Fully authored for each scene.
+- **Script Breakdown (reconciled exact sum: 270 seconds):**
+  - `00:00 - 00:30`: Scene 1 — The Problem & Opening Hook (30s)
+  - `00:30 - 01:10`: Scene 2 — Multimodal Ingestion & Document Processing (40s)
+  - `01:10 - 01:55`: Scene 3 — Grounded Retrieval & Source Citation (45s)
+  - `01:55 - 02:40`: Scene 4 — Adaptive Practice & Diagnostic Feedback (45s)
+  - `02:40 - 03:25`: Scene 5 — Bayesian Knowledge Tracing & AI Study Agent (45s)
+  - `03:25 - 04:00`: Scene 6 — Session Retention & Persisted Analytics (35s)
+  - `04:00 - 04:30`: Scene 7 — Architectural Integrity & Hackathon Closing (30s)
+- **Word-for-Word Voiceover Script:** Fully authored for each scene with explicit computation type tags.
 - **Production Checklist:** 1080p 60fps recording specs, USB microphone gain settings, DevTools clean cache, and offline mock fail-safes.
 
 ---
@@ -134,10 +134,10 @@ Detailed in `docs/demo/DEMO_SCRIPT.md`:
 - **Demo Seed Materials:** `docs/demo/sample_materials/raft_consensus_notes.md`
 - **Canonical Evaluation Artifact:** `benchmarks/results/eval_run_1791563164571.json` ($N=147$)
 - **Canonical Datasets:**
-  - `benchmarks/data/rag_eval_dataset.json` (SHA-256 `1152512659dc5730...`, $N=70$)
+  - `benchmarks/data/rag_eval_dataset.json` (SHA-256 `1152512659dc5730...`, $N=70$: 64 in-domain, 6 OOD)
   - `benchmarks/data/multimodal_ingestion_dataset.json` (SHA-256 `5fb5033887ba8f63...`, $N=12$)
   - `benchmarks/data/assessment_eval_dataset.json` (SHA-256 `8b8d33385d679aa9...`, $N=20$)
-  - `benchmarks/data/learner_traces_eval_dataset.json` (SHA-256 `3eb6dd2058ca9b90...`, $N=40$)
+  - `benchmarks/data/learner_traces_eval_dataset.json` (SHA-256 `3eb6dd2058ca9b90...`, $N=40$ synthetic traces)
 
 ---
 
@@ -148,6 +148,7 @@ To maintain scientific and ethical integrity:
 2. **Omitted:** Claims of commercial adoption, paying user counts, or revenue metrics. *Reason:* Unverified and non-applicable to hackathon prototype.
 3. **Omitted:** Comparing Phase 8 ranking metrics against Phase 7 historical numbers as "improvements". *Reason:* Historical Phase 7 baseline used divergent denominators and unrecorded seeds; classified strictly as `NOT_COMPARABLE / UNVERIFIED`.
 4. **Omitted:** Claiming full real-time speech transcription. *Reason:* Audio ingestion is currently in roadmap; Whisper integration is planned for subsequent release.
+5. **Omitted:** Unverified numerical claims such as "+14% recall gain" or "0.943 BKT AUC". *Reason:* Replaced with genuinely computed session statistics (cards completed, accuracy, streaks) and canonical evaluation metrics (Brier score: 0.277, Log Loss: 0.799).
 
 ---
 
@@ -164,15 +165,15 @@ All automated gates passed cleanly:
    ```bash
    npm run build
    # Exit code: 0
-   # dist/index.html: 3.32 kB
-   # dist/assets/index.js: 1,563.84 kB (gzip: 418.52 kB) [Optimized chunk splitting]
+   # dist/index.html: 2.57 kB (gzip: 0.96 kB)
+   # dist/assets/index.js: 1,563.08 kB (gzip: 418.50 kB) [Optimized chunk splitting]
    ```
 3. **Comprehensive Vitest Suite:**
    ```bash
    npx vitest run
    # Test Files: 60 passed (60)
    # Tests:      985 passed (985)
-   # Duration:   28.18s
+   # Duration:   69.43s
    ```
 
 ---
@@ -196,7 +197,7 @@ All automated gates passed cleanly:
 
 1. **AI API Rate Limits:** Real-time demonstration with Google Gemini requires valid API key and active quota; local mock mode (`VITE_USE_MOCK_AI=true`) is available for offline fail-safe execution.
 2. **In-Memory Analytics in SQLite Dev Mode:** Relational SQLite dev setup stores transient state locally; full multi-tenant RLS requires staging against PostgreSQL (`pgvector`).
-3. **Synthetic Calibration:** Latent mastery updates follow standard BKT parameters ($P(L_0)=0.10, P(T)=0.20, P(G)=0.20, P(S)=0.10$); empirical Bayesian parameter fitting against live student populations remains future academic work.
+3. **Synthetic Calibration:** Latent mastery updates follow standard BKT parameters ($P(L_0)=0.15, P(T)=0.10, P(G)=0.20, P(S)=0.10$); empirical Bayesian parameter fitting against live student populations remains future academic work.
 
 ---
 

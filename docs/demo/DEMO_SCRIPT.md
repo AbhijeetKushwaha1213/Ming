@@ -16,31 +16,35 @@ Before beginning recording or presenting live:
 | **Backend Server** | Running on port 3001 | `curl -f http://localhost:3001/api/health` |
 | **Frontend Dev Client** | Running on port 5173 | Browser navigated to `http://localhost:5173` |
 | **Seed Test User** | Authenticated as Demo User | Clean demo profile: `demo@ming.internal` (Workspace: `Personal Workspace`) |
-| **Seed Documents** | Pre-staged note | `raft_consensus_notes.md` (Distributed Consensus, Raft Leader Election, Heartbeats) |
-| **Database** | LibSQL / PostgreSQL | All migrations applied; zero corrupted session states |
+| **Seed Documents** | Pre-staged note | `raft_consensus_notes.md` (Distributed Consensus, Raft Leader Election, Heartbeats) | **Database** | LibSQL / PostgreSQL | All migrations applied; zero corrupted session states |
+| **Configured AI Model** | Google Gemini 2.5 Flash | `gemini-2.5-flash` (fallback: `gemini-flash-latest`) |
 | **Display Resolution** | 1920×1080 (16:9), 60 FPS | Browser zoom set to 100%, Dark Theme enabled |
 | **Audio Setup** | Directional USB microphone | Gain calibrated; zero ambient background hum |
 
 ---
 
-## 2. Timed Scene Breakdown
+## 2. Timed Scene Breakdown & Demonstration Steps
+
+Target Duration: **4 minutes 30 seconds (270 seconds)**
 
 ```
-[00:00 - 00:35] Scene 1: The Problem & Opening Hook (35s)
-[00:35 - 01:15] Scene 2: Multimodal Ingestion & Document Processing (40s)
-[00:15 - 02:00] Scene 3: Grounded Retrieval & Source Citation (45s)
-[00:00 - 02:50] Scene 4: Adaptive Practice & Diagnostic Feedback (50s)
-[02:50 - 03:35] Scene 5: Bayesian Knowledge Tracing & AI Study Agent (45s)
-[03:35 - 04:10] Scene 6: Session Retention & Persisted Analytics (35s)
-[04:10 - 04:40] Scene 7: Architectural Integrity & Hackathon Closing (30s)
+[00:00 - 00:30] Scene 1: The Problem & Opening Hook (30s)
+[00:30 - 01:10] Scene 2: Multimodal Ingestion & Document Processing (40s)
+[01:10 - 01:55] Scene 3: Grounded Retrieval & Source Citation (45s)
+[01:55 - 02:40] Scene 4: Adaptive Practice & Diagnostic Feedback (45s)
+[02:40 - 03:25] Scene 5: Bayesian Knowledge Tracing & AI Study Agent (45s)
+[03:25 - 04:00] Scene 6: Session Retention & Persisted Analytics (35s)
+[04:00 - 04:30] Scene 7: Architectural Integrity & Hackathon Closing (30s)
+Total: 30s + 40s + 45s + 45s + 45s + 35s + 30s = 270s (4m 30s)
 ```
 
 ---
 
-### Scene 1: The Problem & Opening Hook (0:00 – 0:35)
+### Scene 1: The Problem & Opening Hook (0:00 – 0:30)
 
-- **Duration:** 35 seconds
+- **Duration:** 30 seconds
 - **Starting Screen:** Ming Landing Page / Dashboard with clear dark-mode aesthetics.
+- **Computation Type:** **Live Application Rendering** (React 18 SPA, client-side dashboard state).
 - **Visual Action:**
   - Mouse hovers over the dashboard navigation bar.
   - Camera zooms slightly into the headline: "Transform dense coursework into verifiable mastery."
@@ -54,10 +58,11 @@ Before beginning recording or presenting live:
 
 ---
 
-### Scene 2: Multimodal Ingestion & Document Processing (0:35 – 1:15)
+### Scene 2: Multimodal Ingestion & Document Processing (0:30 – 1:10)
 
 - **Duration:** 40 seconds
 - **Starting Screen:** Documents / Ingestion view (`/documents` or Knowledge Base tab).
+- **Computation Type:** **Live Application Compute** (Text extraction, 600-token semantic chunking, and local `all-MiniLM-L6-v2` 384-d vector embeddings).
 - **Visual Action:**
   1. Click **"Upload Study Material"** or select the pre-loaded file: `raft_consensus_notes.md`.
   2. Drag and drop the lecture note or click **"Ingest Document"**.
@@ -69,14 +74,15 @@ Before beginning recording or presenting live:
 - **Observable Result:**
   - Document status updates to `Processed` with chunk count (14 chunks) and topic tags: `#DistributedSystems #Raft #LeaderElection`.
 - **Fail-safe / Recovery:**
-  - *Slow embedding service fallback:* Pre-ingested demo document is already cached in database. If upload times out (>5s), click directly on the pre-processed "Raft Consensus Lecture" document already listed in the table.
+  - *Slow embedding service fallback:* Pre-ingested demo document is already cached in database. If upload times out (>5s), click directly on the pre-processed "Raft Consensus Lecture" document already listed in the table. (Seeded demonstration data).
 
 ---
 
-### Scene 3: Grounded Retrieval & Source Citation (1:15 – 2:00)
+### Scene 3: Grounded Retrieval & Source Citation (1:10 – 1:55)
 
 - **Duration:** 45 seconds
 - **Starting Screen:** Ming Study Assistant / Grounded Q&A Interface.
+- **Computation Type:** **Live Application & Model Inference** (PostgreSQL/Chroma vector retrieval + Google Gemini `gemini-2.5-flash` model generation with citation grounding).
 - **Visual Action:**
   1. In the prompt input box, enter:
      `"How does Raft prevent split-brain during a leader election, and what role do randomized election timeouts play?"`
@@ -87,18 +93,19 @@ Before beginning recording or presenting live:
 - **Voiceover Script:**
   > *"Now, let's ask a nuanced technical question: How does Raft avoid split-brain elections, and what role do randomized timeouts play?*  
   > *Notice the response: Ming doesn't give a vague summary. It specifically explains the majority quorum mechanism (N/2 + 1) and randomized timeouts between 150 and 300 milliseconds. More importantly, every claim is accompanied by an interactive citation badge.*  
-  > *Clicking the badge opens the exact source paragraph from our notes. In our rigorous evaluation benchmarks across 147 test scenarios, Ming achieved a 96% Faithfulness rate and 100% Out-Of-Domain hallucination refusal."*
+  > *Clicking the badge opens the exact source paragraph from our notes. In our rigorous evaluation benchmarks across 147 test scenarios, Ming achieved a 96% Faithfulness rate and 100% Out-Of-Domain refusal across all 6 off-curriculum test queries."*
 - **Observable Result:**
   - Grounded answer displayed with markdown headings and inline citation pills. Side panel highlights exact matching text chunk.
 - **Fail-safe / Recovery:**
-  - If LLM API provider experiences network latency >3s, rely on client cached response for this exact demo prompt stored in test runner state.
+  - If LLM API provider experiences network latency >3s, rely on client cached response for this exact demo prompt stored in test runner state. (Clearly disclose as cached fallback if triggered).
 
 ---
 
-### Scene 4: Adaptive Practice & Diagnostic Feedback (2:00 – 2:50)
+### Scene 4: Adaptive Practice & Diagnostic Feedback (1:55 – 2:40)
 
-- **Duration:** 50 seconds
+- **Duration:** 45 seconds
 - **Starting Screen:** Practice Hub / Flashcards (`/flashcards/review` or Assessment view).
+- **Computation Type:** **Live Application Compute** (SuperMemo SM-2 interval scheduling, numerical tolerance verification, rubric grading).
 - **Visual Action:**
   1. Click **"Start Practice Session"** generated from the active Raft module.
   2. Card 1 appears:
@@ -120,10 +127,11 @@ Before beginning recording or presenting live:
 
 ---
 
-### Scene 5: Bayesian Knowledge Tracing & AI Study Agent (2:50 – 3:35)
+### Scene 5: Bayesian Knowledge Tracing & AI Study Agent (2:40 – 3:25)
 
 - **Duration:** 45 seconds
 - **Starting Screen:** Mastery Radar & AI Study Agent Dashboard (`/agent` or `/dashboard`).
+- **Computation Type:** **Live Application Compute** (Bayesian Knowledge Tracing with $L_0=0.15, T=0.10, G=0.20, S=0.10$; Study Agent 5-factor priority calculation).
 - **Visual Action:**
   1. Navigate to the **Mastery Analytics** tab.
   2. The Knowledge Component radar graph shows:
@@ -143,41 +151,42 @@ Before beginning recording or presenting live:
 
 ---
 
-### Scene 6: Session Retention & Persisted Analytics (3:35 – 4:10)
+### Scene 6: Session Retention & Persisted Analytics (3:25 – 4:00)
 
 - **Duration:** 35 seconds
 - **Starting Screen:** Session Summary & Profile Analytics (`/analytics` or Profile View).
+- **Computation Type:** **Live Application Compute & Persisted Telemetry** (Computed review count: 12/12, session accuracy: 92%, persisted SQLite/PostgreSQL activity log, and live offline queue sync). Prior streak days (Day 4) represent seeded demonstration account baseline.
 - **Visual Action:**
   1. Click **"Complete Study Session"**.
-  2. Session completion modal animates with:
-     - Study Time: **18 minutes**
-     - Questions Completed: **12 / 12**
-     - Retention Gain: **+14% Estimated Long-Term Recall**
-     - Daily Streak: **Day 5 Flame Badge active**
+  2. Session completion modal displays genuine application metrics:
+     - Cards Reviewed: **12 / 12**
+     - Session Accuracy: **92% (11/12 correct)**
+     - Activity Logged: **Session persisted & streak incremented to Day 5**
   3. Toggle browser DevTools Network tab briefly to demonstrate offline resilience: offline event sync queue successfully flushes queued analytics events to the server.
 - **Voiceover Script:**
-  > *"When the session finishes, Ming persists every study activity and analytics event to our secure database with tenant isolation and row-level security. Even if a student loses connectivity mid-study, our client-side offline queue holds the telemetry and automatically synchronizes when reconnected.*  
-  > *Your study habits, mastery trajectories, and spaced-repetition schedules are permanently preserved and visualized on your learning dashboard."*
+  > *"When the session finishes, Ming persists the study session and analytics events to our secure database with tenant isolation and row-level security. Even if a student loses connectivity mid-study, our client-side offline queue holds the telemetry and automatically synchronizes when reconnected.*  
+  > *Your session statistics, mastery trajectories, and spaced-repetition schedules are permanently preserved and visualized on your learning dashboard."*
 - **Observable Result:**
-  - Confetti micro-interaction or completion badge renders; streak counter increments; session history log displays the new entry.
+  - Completion modal displays exact session stats (12 cards, 92% accuracy); streak counter increments; offline queue status badge indicates synchronized state.
 - **Fail-safe / Recovery:**
   - Modal can be dismissed with `Esc` or the close icon if needed; session data is backed by local IndexedDB/localStorage fallback.
 
 ---
 
-### Scene 7: Architectural Integrity & Hackathon Closing (4:10 – 4:40)
+### Scene 7: Architectural Integrity & Hackathon Closing (4:00 – 4:30)
 
 - **Duration:** 30 seconds
 - **Starting Screen:** Architecture slide / Evaluation summary dashboard (`/evaluation` or Pitch Deck slide 5).
+- **Computation Type:** **Static Architecture & Verified Benchmark Review** (Live test run artifacts).
 - **Visual Action:**
   1. Screen switches to Architecture / Evaluation Overview showing:
      - 60 Vitest Suites / 985 Automated Tests Passing
      - Multi-Tier Architecture Diagram (React 18 SPA + Node.js API Gateway + PostgreSQL/LibSQL Vector Store)
-     - Clean Benchmark Metrics: 96% Faithfulness, 100% OOD Refusal, 0.943 BKT AUC.
+     - Clean Benchmark Metrics: 96% Faithfulness, 100% OOD Refusal on tested cases, BKT Brier Score 0.277.
   2. Final slide displays Ming logo, GitHub repository link, and team credits.
 - **Voiceover Script:**
   > *"Ming is not a superficial AI wrapper. It is an end-to-end, enterprise-grade learning system backed by 985 passing unit and integration tests, strict tenant isolation, and scientifically calibrated cognitive models.*  
-  > *Grounded AI. Mathematical mastery tracking. Zero hallucinations. This is the future of intelligent education.*  
+  > *Grounded AI. Mathematical mastery tracking. Verifiable source citations. This is the future of intelligent education.*  
   > *Thank you, and welcome to Ming."*
 - **Observable Result:**
   - Crisp, professional closing slide with project links and documentation QR/URL.

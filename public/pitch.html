@@ -537,10 +537,11 @@
         <div class="card">
           <div class="card-title">🧠 Calibrated Bayesian Knowledge Tracing</div>
           <div class="card-body">
-            Standard cognitive science implementation:
+            Standard cognitive science implementation across client and server:
             <br/>
-            <code>P(L₀) = 0.10</code> (Prior), <code>P(T) = 0.15</code> (Learn rate)<br/>
-            <code>P(S) = 0.10</code> (Slip rate), <code>P(G) = 0.20</code> (Guess rate)<br/><br/>
+            <code>P(L₀) = 0.15</code> (Initial Prior), <code>P(T) = 0.10</code> (Transition rate)<br/>
+            <code>P(S) = 0.10</code> (Slip rate), <code>P(G) = 0.20</code> (Guess rate)<br/>
+            <small style="color: #94a3b8;">Difficulty scaling: Easy (G=0.25, S=0.05), Hard (G=0.10, S=0.20)</small><br/><br/>
             Calculates whether an answer was a lucky guess ($G=0.20$) or a slip ($S=0.10$), updating probabilistic mastery state:
             $$P(L_{t+1}) = P(L_t \mid O_t) + (1 - P(L_t \mid O_t))P(T)$$
           </div>
@@ -586,7 +587,7 @@
             • PostgreSQL + pgvector with HNSW cosine index<br/>
             • SQLite LibSQL fallback for zero-config dev<br/>
             • Row-Level Security (RLS) policies per user<br/>
-            • Google Gemini 1.5 Flash + all-MiniLM-L6-v2 embeddings
+            • Google Gemini 2.5 Flash (fallback: flash-latest) + all-MiniLM-L6-v2 embeddings
           </div>
         </div>
       </div>
@@ -667,9 +668,16 @@
           </tr>
           <tr>
             <td><strong>Track D: Calibration</strong></td>
-            <td>BKT Prediction AUC</td>
-            <td><span class="badge-val">0.943</span></td>
-            <td>Fixed cognitive priors</td>
+            <td>Brier Score</td>
+            <td><span class="badge-val">0.277</span></td>
+            <td>Target bound: &le; 0.300</td>
+            <td>40 synthetic learner traces</td>
+          </tr>
+          <tr>
+            <td><strong>Track D: Calibration</strong></td>
+            <td>Expected Calibration Error (ECE)</td>
+            <td><span class="badge-val">0.316</span></td>
+            <td>Target bound: &le; 0.400</td>
             <td>40 synthetic learner traces</td>
           </tr>
           <tr>

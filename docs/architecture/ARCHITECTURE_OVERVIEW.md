@@ -29,7 +29,7 @@ graph TD
     end
 
     subgraph AI Gateway ["AI Gateway & Provider Proxy"]
-        GeminiProxy[Gemini 1.5 Flash Proxy]
+        GeminiProxy[Gemini 2.5 Flash Proxy]
         PromptDefense[Input Sanitizer & Prompt Defense]
         RAGEngine[Hybrid RAG & Grounding Engine]
     end
@@ -65,14 +65,14 @@ graph TD
 
 | Layer | Technologies & Libraries | Role & Responsibilities |
 | :--- | :--- | :--- |
-| **Presentation Tier** | React 18, Vite 5, TypeScript 5.3, Tailwind CSS, Lucide Icons, Radix UI, Recharts, KaTeX | Responsive responsive user interface, real-time mastery visualization, interactive flashcards, grounded Q&A drawer, and evaluation dashboards. |
+| **Presentation Tier** | React 18, Vite 5, TypeScript 5.3, Tailwind CSS, Lucide Icons, Radix UI, Recharts, KaTeX | Responsive user interface, real-time mastery visualization, interactive flashcards, grounded Q&A drawer, and evaluation dashboards. |
 | **Client Reliability** | Custom `OfflineQueue` (IndexedDB / LocalStorage backing) | Buffers learner activity telemetry and study events during network interruptions; automatically deduplicates and flushes upon reconnection. |
 | **API Gateway Tier** | Node.js, Express, TypeScript, Helmet, CORS, Token-bucket Rate Limiter | Secure REST endpoints, request authentication, user context resolution, rate limiting (120 req/min), tenant scoping, and Prometheus-compatible metrics (`/metrics`). |
-| **Cognitive Modeling** | Bayesian Knowledge Tracing (`server/bktService.ts`, `src/utils/bkt.ts`), SuperMemo SM-2 | Authoritative latent mastery estimation, slip ($P(S)$) and guess ($P(G)$) parameter updates, and spaced-repetition scheduling. |
+| **Cognitive Modeling** | Bayesian Knowledge Tracing (`server/bktService.ts`, `src/utils/bkt.ts`), SuperMemo SM-2 | Authoritative latent mastery estimation ($pL_0=0.15, pT=0.10, pG=0.20, pS=0.10$), difficulty scaling, and spaced-repetition scheduling. |
 | **Autonomous Agent** | Autonomous Study Agent (`server/studyAgentService.ts`, `src/services/agentActionEngine.ts`) | Analyzes multi-skill mastery states, detects learning gaps, and generates targeted study interventions. |
 | **RAG & Vector Retrieval** | Python 3.11, `sentence-transformers` (`all-MiniLM-L6-v2`), `server/rag_engine.py` | Semantic paragraph chunking, 384-dimensional dense embeddings, cosine nearest-neighbor search, and inline citation resolution. |
 | **Persistence Tier** | PostgreSQL 15+ with `pgvector` / SQLite LibSQL (Development) | ACID relational persistence across 11 domain models, Row-Level Security (RLS) enforcement, and vector indexing via HNSW. |
-| **AI Inference** | Google Gemini 1.5 Flash via controlled server proxy | Context-bounded question answering, diagnostic assessment generation, and rubric-based open response evaluation. |
+| **AI Inference** | Google Gemini 2.5 Flash (`gemini-2.5-flash`, fallback: `gemini-flash-latest`) via server proxy | Context-bounded question answering, diagnostic assessment generation, and rubric-based open response evaluation. |
 
 ---
 
@@ -100,10 +100,15 @@ Ming replaces superficial flashcard repetitions with standard **Bayesian Knowled
 ### Mathematical Formulation
 For each student $u$ and Knowledge Component (KC) $k$, Ming models latent mastery $P(L_t)$ as a Hidden Markov Model:
 
-$$P(L_0) = 0.10 \quad \text{(Prior Knowledge)}$$
-$$P(T) = 0.20 \quad \text{(Transition Probability)}$$
+$$P(L_0) = 0.15 \quad \text{(Initial Mastery Prior)}$$
+$$P(T) = 0.10 \quad \text{(Transition Probability)}$$
 $$P(G) = 0.20 \quad \text{(Guess Probability)}$$
 $$P(S) = 0.10 \quad \text{(Slip Probability)}$$
+
+Difficulty-adjusted parameters:
+- **Easy:** $P(G) = 0.25, P(S) = 0.05$
+- **Medium (Default):** $P(G) = 0.20, P(S) = 0.10$
+- **Hard:** $P(G) = 0.10, P(S) = 0.20$
 
 Upon observing an assessment response $O_t \in \{0, 1\}$ at opportunity $t$:
 
@@ -115,9 +120,9 @@ $$P(L_t \mid O_t = 0) = \frac{P(L_{t-1}) \cdot P(S)}{P(L_{t-1}) \cdot P(S) + (1 
 **2. Learning Update (Knowledge Transition):**
 $$P(L_t) = P(L_t \mid O_t) + (1 - P(L_t \mid O_t)) \cdot P(T)$$
 
-### Dual-State Synchrony
-- **Server Authority (`server/bktService.ts`):** Authoritative state is computed server-side and persisted with student learning records.
-- **Client Mirror (`src/utils/bkt.ts`):** Client computes real-time predictions for immediate visual updates on the Mastery Radar chart, then reconciles with server response.
+### Dual-State Synchrony & Parity
+- **Server Authority (`server/bktService.ts`):** Authoritative state is computed server-side with identical default parameters ($pL_0=0.15, pT=0.10, pG=0.20, pS=0.10$) and persisted with student learning records.
+- **Client Mirror (`src/utils/bkt.ts`):** Client computes real-time predictions with identical parameters for immediate visual updates on the Mastery Radar chart, then reconciles with server response.
 
 ---
 
@@ -167,10 +172,10 @@ To ensure absolute transparency and scientific integrity, capabilities are class
 | **Local Vector Search (Chroma)** | Implemented & Tested | `server/vector_store_chroma.py` | Default for offline development and local tests. |
 | **Cloud Vector Search (pgvector)** | Implemented & Tested | `server/vector_store_pgvector.py`, RLS migration | HNSW cosine similarity on Supabase/Postgres. |
 | **Grounded Q&A with Citations** | Implemented & Tested | Track B Evaluation ($N=64$), 96% Faithfulness | Citations rendered as interactive source badges. |
-| **OOD Refusal Gate** | Implemented & Tested | Track C Evaluation ($N=6$), 100% Refusal | Cosine thresholding rejects off-topic queries. |
-| **Bayesian Knowledge Tracing (BKT)** | Implemented & Tested | Track D Evaluation ($N=40$ traces, AUC 0.943) | Implemented both in Node.js server and React frontend. |
+| **OOD Refusal Gate** | Implemented & Tested | Track B Evaluation ($N=6$), 100% Refusal | Cosine thresholding rejects off-topic queries ($n=6$). |
+| **Bayesian Knowledge Tracing (BKT)** | Implemented & Tested | Track D Evaluation ($N=40$ synthetic traces, Brier 0.277) | Implemented both in Node.js server and React frontend ($L_0=0.15, T=0.10$). |
 | **SM-2 Spaced Repetition** | Implemented & Tested | `src/components/flashcards/FlashcardReview.tsx` | Calculates ease factor, interval, and next due date. |
-| **Autonomous Study Agent** | Implemented & Tested | Track E Evaluation ($N=10$, 100% completion) | Generates targeted diagnostic study actions. |
+| **Autonomous Study Agent** | Implemented & Tested | Track E Evaluation ($N=5$ scenarios, 100% completion) | Generates targeted diagnostic study actions. |
 | **Study Session Persistence** | Implemented & Tested | `server/analyticsService.ts`, Vitest suite | Persists duration, cards reviewed, and daily streaks. |
 | **Offline Telemetry Queue** | Implemented & Tested | `src/lib/offlineQueue.ts`, Phase 9 Vitest suite | Auto-buffers and syncs telemetry on reconnection. |
 | **Prometheus Observability** | Implemented & Tested | `server/observability.ts`, `/metrics` endpoint | Tracks request rates, errors, and latency percentiles. |

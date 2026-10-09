@@ -88,7 +88,7 @@ Evaluates Bayesian Knowledge Tracing (BKT) probabilistic prediction error across
 | **Log Loss (Cross-Entropy)** | 40 | **0.799** | $\le 0.850$ | Penalizes confident incorrect predictions ($\epsilon = 10^{-15}$). |
 | **Expected Calibration Error (ECE)** | 40 | **0.316** | $\le 0.400$ | Calibration disparity across 10 equal-width bins. |
 | **Recommendation Determinism** | 40 | **100.0%** | $100.0\%$ | Identical learner states yield identical next actions. |
-| **Cold-Start Prior Preservation** | 40 | **PASSED** | $P(L_0) = 0.10$ | Unattempted skills remain at $0.10$ baseline prior. |
+| **Cold-Start Prior Preservation** | 40 | **PASSED** | $P(L_0) = 0.15$ | Unattempted skills remain at $0.15$ baseline prior. |
 | **Directional Monotonicity** | 40 | **PASSED** | $\Delta > 0$ on success | Correct answers increase mastery; incorrect answers decrease mastery. |
 
 ---
@@ -134,5 +134,5 @@ Early drafts containing references to "$n=10$" were unverified historical placeh
 ## 5. Scope & Limitations Summary
 
 1. **Benchmark is Offline:** Results reflect batch execution against static academic corpora. Live multi-user latency and concurrent token limits may differ.
-2. **Synthetic Learner Caveat:** Bayesian Knowledge Tracing AUC and calibration reflect synthetic student trace simulations, not human student retention over months.
+2. **Synthetic Learner Caveat:** Bayesian Knowledge Tracing calibration metrics (Brier Score, Log Loss, ECE) reflect synthetic student trace simulations, not human student retention over months.
 3. **Curriculum Scope:** Current academic evaluations are restricted to 4 core computer science domains (Operating Systems, Computer Networks, Database Systems, Algorithms & Data Structures). Performance on qualitative, humanities, or open-ended creative tasks has not been evaluated.

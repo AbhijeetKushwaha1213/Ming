@@ -173,8 +173,9 @@ If external network connectivity degrades during judging:
 1. **Google Gemini LLM Rate Limits / Outages:**
    - In `.env`, set `VITE_USE_MOCK_AI="true"`.
    - Restart the server. Ming will use the local deterministic response simulator for Raft Q&A and diagnostic assessment generation without making external WAN requests.
+   - **Evaluation Transparency**: Always disclose to judges if the mock simulator is active; do not present simulated/cached outputs as live model inferences.
 2. **Slow Embedding Processing:**
-   - The sample note `raft_consensus_notes.md` is pre-chunked in the demo seed. If vectorization takes longer than 3 seconds on constrained hardware, select the pre-indexed Raft card already present in the workspace.
+   - The sample note `raft_consensus_notes.md` is pre-chunked in the demo seed. If vectorization takes longer than 3 seconds on constrained hardware, select the pre-indexed Raft card already present in the workspace (seeded demonstration data).
 3. **Backup Visual Artifacts:**
    - Interactive Pitch Deck is self-contained and operates completely offline at `public/pitch.html`.
    - Pre-rendered slide deck is also available as markdown at `docs/pitch/PITCH_DECK.md`.

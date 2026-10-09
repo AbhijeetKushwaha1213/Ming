@@ -33,7 +33,7 @@
 
 <!-- Video Walkthrough & Presentation Links -->
 <h3>Ming — Multimodal AI-Powered Adaptive Learning Platform</h3>
-<p><i>Mathematically grounded mastery, Bayesian Knowledge Tracing, and zero hallucination learning companion.</i></p>
+<p><i>Mathematically grounded mastery, Bayesian Knowledge Tracing, and evidence-grounded source citations.</i></p>
 
 <sub>
   📊 <a href="public/pitch.html" target="_blank"><b>Open Interactive Pitch Deck (HTML)</b></a> &nbsp;•&nbsp;

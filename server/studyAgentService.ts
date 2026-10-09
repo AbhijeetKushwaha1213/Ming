@@ -1,5 +1,7 @@
-import { prisma, ensureStudyPlanSchema, ensureLearnerSchema, ensureResourceSchema } from './prisma.ts';
+import { prisma, ensureStudyPlanSchema, ensureLearnerSchema, ensureResourceSchema, ensureAssessmentSchema } from './prisma.ts';
 import { getAllLearnerMastery, getLearnerEventHistory, logLearnerEvent, type MasteryStatus } from './bktService.ts';
+import { evaluateAdaptiveRecommendations } from './adaptiveRecommendationService.ts';
+import type { RecommendationCategory } from './learnerTypes.ts';
 
 export type ActivityType =
   | 'REVIEW_SOURCE'
@@ -11,7 +13,9 @@ export type ActivityType =
   | 'COMPLETE_UNFINISHED_TASK'
   | 'RESOLVE_MISCONCEPTION';
 
-export type PlanItemStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
+export type PlanItemStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'blocked';
+
+export type ActionLifecycleState = 'READY' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED' | 'BLOCKED';
 
 export interface PriorityScoreBreakdown {
   topic: string;
@@ -53,6 +57,9 @@ export interface StudyPlanRecommendation {
   chunkId: string | null;
   sourceTitle: string | null;
   sourceCoordinate: string | null;
+  conceptId?: string | null;
+  category?: RecommendationCategory;
+  questionId?: string | null;
 }
 
 export interface DailyStudyPlanResult {
@@ -66,6 +73,40 @@ export interface DailyStudyPlanResult {
   summary: string;
   isColdStart: boolean;
   items: Array<StudyPlanRecommendation & { id: string; status: PlanItemStatus; completedAt: string | null }>;
+}
+
+export interface StudyAction {
+  id: string;
+  planId: string;
+  userId: string;
+  priority: number;
+  priorityScore: number;
+  topic: string;
+  subtopic: string | null;
+  conceptId: string | null;
+  category: RecommendationCategory;
+  activityType: ActivityType;
+  title: string;
+  description: string;
+  estimatedMinutes: number;
+  reason: string;
+  expectedOutcome: string;
+  sourceId: string | null;
+  chunkId: string | null;
+  sourceTitle: string | null;
+  sourceCoordinate: string | null;
+  questionId: string | null;
+  status: PlanItemStatus;
+  completedAt: string | null;
+}
+
+export interface NextStudyActionResult {
+  success: boolean;
+  action: StudyAction | null;
+  lifecycleState: ActionLifecycleState;
+  isColdStart: boolean;
+  explanation?: string;
+  generatedAt: string;
 }
 
 /**
@@ -268,6 +309,7 @@ export async function generatePersonalizedDailyPlan(params: {
 }): Promise<DailyStudyPlanResult> {
   await ensureStudyPlanSchema();
   await ensureResourceSchema();
+  await ensureLearnerSchema();
 
   const userId = params.userId;
   const targetMinutes = params.targetMinutes || 60;
@@ -281,12 +323,9 @@ export async function generatePersonalizedDailyPlan(params: {
     }
   }
 
-  // Compute deterministic priorities
-  const { priorities, isColdStart, weakTopics } = await computeDeterministicPriorities({
-    userId,
-    examDate: params.examDate,
-    availableMinutes: targetMinutes,
-  });
+  // Authoritative Phase 5 Step 3 Adaptive Recommendations
+  const adaptiveRecs = await evaluateAdaptiveRecommendations(userId, { limit: 10 });
+  const isColdStart = adaptiveRecs.is_cold_start;
 
   // Query real uploaded course materials to ground recommendations strictly scoped to user
   const resources: any[] = await prisma.$queryRawUnsafe(
@@ -296,159 +335,203 @@ export async function generatePersonalizedDailyPlan(params: {
     ...(userId === 'default_user' ? [] : [userId])
   );
 
+  let userMisconceptions: any[] = [];
+  try {
+    userMisconceptions = await prisma.$queryRawUnsafe(
+      'SELECT topic, subtopic, concept, severity FROM assessment_misconceptions WHERE userId = ? ORDER BY createdAt DESC LIMIT 50',
+      userId
+    );
+  } catch {
+    userMisconceptions = [];
+  }
+
   const recommendedItems: StudyPlanRecommendation[] = [];
   let remainingTime = targetMinutes;
   let priorityRank = 1;
 
-  // Case A: Cold-Start User (No prior assessment evidence)
-  if (isColdStart) {
-    // Recommend Diagnostic Knowledge Check
-    recommendedItems.push({
-      priority: priorityRank++,
-      priorityScore: 0.95,
-      topic: priorities[0]?.topic || 'Foundational Course Review',
-      subtopic: 'Initial Diagnostic',
-      activityType: 'DIAGNOSTIC_ASSESSMENT',
-      title: `Take ${priorities[0]?.topic || 'Course'} Diagnostic Assessment`,
-      description: 'Complete a 15-minute diagnostic assessment to establish your personal BKT mastery baseline.',
-      estimatedMinutes: Math.min(20, remainingTime),
-      reason: 'No assessment history found. Diagnostic assessment is needed to identify baseline knowledge without fabricated progress.',
-      expectedOutcome: 'Calibrate initial P(L0) knowledge state and uncover specific strengths and weak topics.',
-      sourceId: resources[0]?.id || null,
-      chunkId: null,
-      sourceTitle: resources[0]?.title || 'Uploaded Course Material',
-      sourceCoordinate: 'Diagnostic Test',
+  if (adaptiveRecs.recommendations.length > 0) {
+    for (const rec of adaptiveRecs.recommendations) {
+      if (remainingTime < 15 && recommendedItems.length > 0) break;
+
+      const matchingHighSeverityMisconception = userMisconceptions.find(
+        (m) =>
+          (m.topic?.toLowerCase() === rec.topic.toLowerCase() ||
+            (m.concept && m.concept.toLowerCase() === rec.concept_name.toLowerCase())) &&
+          (m.severity === 'high' || m.severity === 'critical')
+      );
+      const isMisconception = rec.category === 'ADDRESS_MISCONCEPTION' || Boolean(matchingHighSeverityMisconception);
+      const effectiveCategory: RecommendationCategory = isMisconception ? 'ADDRESS_MISCONCEPTION' : rec.category;
+
+      // Activity mapping from Canonical Category
+      let activityType: ActivityType = 'PRACTICE_ASSESSMENT';
+      if (effectiveCategory === 'ADDRESS_MISCONCEPTION') {
+        activityType = 'RESOLVE_MISCONCEPTION';
+      } else if (effectiveCategory === 'REVIEW_CONCEPT') {
+        activityType = rec.recommended_resource ? 'REVIEW_SOURCE' : 'PRACTICE_ASSESSMENT';
+      } else if (effectiveCategory === 'PRACTICE_CONCEPT') {
+        activityType = 'PRACTICE_WEAK_CONCEPTS';
+      } else if (effectiveCategory === 'LEARN_CONCEPT') {
+        activityType = isColdStart ? 'DIAGNOSTIC_ASSESSMENT' : 'PRACTICE_ASSESSMENT';
+      } else if (effectiveCategory === 'CONSOLIDATE_MASTERY') {
+        activityType = 'PRACTICE_ASSESSMENT';
+      }
+
+      let title = `Practice ${rec.concept_name}`;
+      let expectedOutcome = `Reinforce retrieval and demonstrate stable mastery in ${rec.concept_name}.`;
+
+      if (effectiveCategory === 'ADDRESS_MISCONCEPTION') {
+        const topConcept = matchingHighSeverityMisconception?.concept || rec.concept_name;
+        title = `Resolve Misconception: ${topConcept}`;
+        expectedOutcome = `Eliminate misconception and raise concept mastery toward proficiency (≥60%).`;
+      } else if (effectiveCategory === 'REVIEW_CONCEPT') {
+        title = `Review Concept: ${rec.concept_name}`;
+        expectedOutcome = `Counteract retention decay and refresh knowledge through grounded source review.`;
+      } else if (effectiveCategory === 'LEARN_CONCEPT') {
+        title = isColdStart ? `Diagnostic Knowledge Check: ${rec.concept_name}` : `Learn Foundational Concept: ${rec.concept_name}`;
+        expectedOutcome = isColdStart
+          ? `Calibrate initial BKT mastery state and identify baseline strengths.`
+          : `Establish conceptual foundations through verified study.`;
+      } else if (effectiveCategory === 'CONSOLIDATE_MASTERY') {
+        title = `Consolidate Mastery: ${rec.concept_name}`;
+        expectedOutcome = `Maintain retention stability across extended intervals.`;
+      }
+
+      const estTime = Math.min(25, Math.max(15, remainingTime));
+
+      recommendedItems.push({
+        priority: priorityRank++,
+        priorityScore: rec.priority_score,
+        topic: rec.topic,
+        subtopic: rec.subtopic || null,
+        conceptId: rec.concept_id,
+        category: effectiveCategory,
+        activityType,
+        title,
+        description: `Targeted adaptive activity for ${rec.concept_name} based on verified learner intelligence.`,
+        estimatedMinutes: estTime,
+        reason: rec.explanation,
+        expectedOutcome,
+        sourceId: rec.recommended_resource?.id || (resources[0]?.id || null),
+        chunkId: null,
+        sourceTitle: rec.recommended_resource?.title || (resources[0]?.title || null),
+        sourceCoordinate: rec.recommended_resource
+          ? rec.recommended_resource.type === 'PDF' ? 'Slide / Key Section' : 'Lecture Material'
+          : null,
+        questionId: rec.recommended_question?.id || null,
+      });
+
+      remainingTime -= estTime;
+    }
+  }
+
+  // Fallback if no concept recommendations generated (e.g. catalog/DAG empty)
+  if (recommendedItems.length === 0) {
+    const { priorities, weakTopics } = await computeDeterministicPriorities({
+      userId,
+      examDate: params.examDate,
+      availableMinutes: targetMinutes,
     });
-    remainingTime -= Math.min(20, remainingTime);
 
-    // Recommend reading uploaded course material
-    if (resources.length > 0 && remainingTime >= 15) {
-      const res = resources[0];
+    if (isColdStart) {
       recommendedItems.push({
         priority: priorityRank++,
-        priorityScore: 0.85,
-        topic: res.title || 'Course Material',
-        subtopic: 'Overview',
-        activityType: 'REVIEW_SOURCE',
-        title: `Review Source: ${res.title}`,
-        description: `Read uploaded source material: ${res.description || res.title}`,
-        estimatedMinutes: Math.min(25, remainingTime),
-        reason: 'Recommended foundational study from your uploaded course repository.',
-        expectedOutcome: 'Familiarize yourself with core concepts and terminology.',
-        sourceId: res.id,
+        priorityScore: 0.95,
+        topic: priorities[0]?.topic || 'Foundational Course Review',
+        subtopic: 'Initial Diagnostic',
+        activityType: 'DIAGNOSTIC_ASSESSMENT',
+        title: `Take ${priorities[0]?.topic || 'Course'} Diagnostic Assessment`,
+        description: 'Complete a 15-minute diagnostic assessment to establish your personal BKT mastery baseline.',
+        estimatedMinutes: Math.min(20, remainingTime),
+        reason: 'No assessment history found. Diagnostic assessment is needed to identify baseline knowledge without fabricated progress.',
+        expectedOutcome: 'Calibrate initial P(L0) knowledge state and uncover specific strengths and weak topics.',
+        sourceId: resources[0]?.id || null,
         chunkId: null,
-        sourceTitle: res.title,
-        sourceCoordinate: res.type === 'PDF' ? 'Page 1' : 'Section 1',
+        sourceTitle: resources[0]?.title || 'Uploaded Course Material',
+        sourceCoordinate: 'Diagnostic Test',
+        category: 'LEARN_CONCEPT',
       });
-      remainingTime -= Math.min(25, remainingTime);
-    }
-  } else {
-    // Case B: Assessed User with BKT Evidence
-    // Allocate activities across top prioritized topics
-    for (const p of priorities) {
-      if (remainingTime < 15) break;
+      remainingTime -= Math.min(20, remainingTime);
 
-      const matchingResource = resources.find((r) =>
-        r.title?.toLowerCase().includes(p.topic.toLowerCase()) ||
-        r.folder?.toLowerCase().includes(p.topic.toLowerCase())
-      ) || resources[0];
-
-      const pct = Math.round(p.details.currentMastery * 100);
-      const confPct = Math.round(p.details.confidence * 100);
-
-      // Rule 0 (Phase 9): Unresolved Misconceptions or Repeated Mistakes -> Immediate Misconception Remediation
-      if (p.details.activeMisconceptionsCount && p.details.activeMisconceptionsCount > 0 && remainingTime >= 15) {
-        const estTime = Math.min(25, remainingTime);
-        const topConcept = p.details.misconceptionConcepts?.[0] || p.topic;
+      if (resources.length > 0 && remainingTime >= 15) {
+        const res = resources[0];
         recommendedItems.push({
           priority: priorityRank++,
-          priorityScore: p.overallScore,
-          topic: p.topic,
-          subtopic: p.subtopic,
-          activityType: 'RESOLVE_MISCONCEPTION',
-          title: `Resolve Misconception: ${topConcept}`,
-          description: `Targeted review of verified course material to eliminate persistent misconception in ${topConcept}.`,
-          estimatedMinutes: estTime,
-          reason: p.details.hasRepeatedMistakes
-            ? `Mastery is ${pct}% (${p.details.status}): persistent mistake on "${topConcept}" detected across multiple assessments. Immediate conceptual correction required.`
-            : `Mastery is ${pct}% (${p.details.status}): detected misconception on "${topConcept}" in recent assessment for ${p.topic}.`,
-          expectedOutcome: `Eliminate misconception and raise topic mastery from ${pct}% toward proficiency (≥60%).`,
-          sourceId: matchingResource?.id || null,
+          priorityScore: 0.85,
+          topic: res.title || 'Course Material',
+          subtopic: 'Overview',
+          activityType: 'REVIEW_SOURCE',
+          title: `Review Source: ${res.title}`,
+          description: `Read uploaded source material: ${res.description || res.title}`,
+          estimatedMinutes: Math.min(25, remainingTime),
+          reason: 'Recommended foundational study from your uploaded course repository.',
+          expectedOutcome: 'Familiarize yourself with core concepts and terminology.',
+          sourceId: res.id,
           chunkId: null,
-          sourceTitle: matchingResource?.title || `${p.topic} Course Material`,
-          sourceCoordinate: matchingResource?.type === 'PDF' ? 'Slide / Key Section' : 'Lecture Material',
+          sourceTitle: res.title,
+          sourceCoordinate: res.type === 'PDF' ? 'Page 1' : 'Section 1',
+          category: 'LEARN_CONCEPT',
         });
-        remainingTime -= estTime;
+        remainingTime -= Math.min(25, remainingTime);
       }
+    } else {
+      for (const p of priorities) {
+        if (remainingTime < 15) break;
 
-      // Rule 1: High deficit and recent mistakes -> Targeted Review & Practice
-      if (p.details.recentIncorrectCount > 0 || p.details.currentMastery < 0.60) {
-        // Activity 1: Practice Weak Concepts / Targeted Assessment
-        const estTime = Math.min(25, remainingTime);
-        recommendedItems.push({
-          priority: priorityRank++,
-          priorityScore: p.overallScore,
-          topic: p.topic,
-          subtopic: p.subtopic,
-          activityType: p.details.currentMastery < 0.40 ? 'REVIEW_SOURCE' : 'PRACTICE_WEAK_CONCEPTS',
-          title: `Focus Study on ${p.topic}${p.subtopic ? ` (${p.subtopic})` : ''}`,
-          description: `Targeted practice and remediation on ${p.topic} based on BKT diagnostics.`,
-          estimatedMinutes: estTime,
-          reason: `Mastery is ${pct}% (${p.details.status}), confidence is ${confPct}%, and you recently missed ${p.details.recentIncorrectCount} related questions.`,
-          expectedOutcome: `Increase mastery from ${pct}% toward proficiency (≥60%) by resolving misconceptions.`,
-          sourceId: matchingResource?.id || null,
-          chunkId: null,
-          sourceTitle: matchingResource?.title || `${p.topic} Course Material`,
-          sourceCoordinate: matchingResource?.type === 'PDF' ? 'Key Section' : 'Lecture Material',
-        });
-        remainingTime -= estTime;
+        const matchingResource = resources.find((r) =>
+          r.title?.toLowerCase().includes(p.topic.toLowerCase()) ||
+          r.folder?.toLowerCase().includes(p.topic.toLowerCase())
+        ) || resources[0];
+
+        const pct = Math.round(p.details.currentMastery * 100);
+        const confPct = Math.round(p.details.confidence * 100);
+
+        if (p.details.activeMisconceptionsCount && p.details.activeMisconceptionsCount > 0 && remainingTime >= 15) {
+          const estTime = Math.min(25, remainingTime);
+          const topConcept = p.details.misconceptionConcepts?.[0] || p.topic;
+          recommendedItems.push({
+            priority: priorityRank++,
+            priorityScore: p.overallScore,
+            topic: p.topic,
+            subtopic: p.subtopic,
+            activityType: 'RESOLVE_MISCONCEPTION',
+            title: `Resolve Misconception: ${topConcept}`,
+            description: `Targeted review of verified course material to eliminate persistent misconception in ${topConcept}.`,
+            estimatedMinutes: estTime,
+            reason: p.details.hasRepeatedMistakes
+              ? `Mastery is ${pct}% (${p.details.status}): persistent mistake on "${topConcept}" detected across multiple assessments.`
+              : `Mastery is ${pct}% (${p.details.status}): detected misconception on "${topConcept}" in recent assessment.`,
+            expectedOutcome: `Eliminate misconception and raise topic mastery from ${pct}% toward proficiency.`,
+            sourceId: matchingResource?.id || null,
+            chunkId: null,
+            sourceTitle: matchingResource?.title || `${p.topic} Course Material`,
+            sourceCoordinate: matchingResource?.type === 'PDF' ? 'Slide / Key Section' : 'Lecture Material',
+            category: 'ADDRESS_MISCONCEPTION',
+          });
+          remainingTime -= estTime;
+        }
+
+        if (p.details.recentIncorrectCount > 0 || p.details.currentMastery < 0.60) {
+          const estTime = Math.min(25, remainingTime);
+          recommendedItems.push({
+            priority: priorityRank++,
+            priorityScore: p.overallScore,
+            topic: p.topic,
+            subtopic: p.subtopic,
+            activityType: p.details.currentMastery < 0.40 ? 'REVIEW_SOURCE' : 'PRACTICE_WEAK_CONCEPTS',
+            title: `Focus Study on ${p.topic}${p.subtopic ? ` (${p.subtopic})` : ''}`,
+            description: `Targeted practice and remediation on ${p.topic} based on BKT diagnostics.`,
+            estimatedMinutes: estTime,
+            reason: `Mastery is ${pct}% (${p.details.status}), confidence is ${confPct}%, and you recently missed ${p.details.recentIncorrectCount} related questions.`,
+            expectedOutcome: `Increase mastery from ${pct}% toward proficiency (≥60%) by resolving misconceptions.`,
+            sourceId: matchingResource?.id || null,
+            chunkId: null,
+            sourceTitle: matchingResource?.title || `${p.topic} Course Material`,
+            sourceCoordinate: matchingResource?.type === 'PDF' ? 'Key Section' : 'Lecture Material',
+            category: 'PRACTICE_CONCEPT',
+          });
+          remainingTime -= estTime;
+        }
       }
-
-      // Rule 2: Low confidence or nearing exam -> Flashcard / Adaptive Assessment
-      if (remainingTime >= 15 && (p.details.confidence < 0.65 || (p.details.daysUntilExam && p.details.daysUntilExam <= 7))) {
-        const estTime = Math.min(20, remainingTime);
-        recommendedItems.push({
-          priority: priorityRank++,
-          priorityScore: p.overallScore * 0.9,
-          topic: p.topic,
-          subtopic: p.subtopic,
-          activityType: 'PRACTICE_ASSESSMENT',
-          title: `Adaptive Knowledge Check: ${p.topic}`,
-          description: `Take a 5-question adaptive quiz to strengthen knowledge retrieval.`,
-          estimatedMinutes: estTime,
-          reason: p.details.daysUntilExam
-            ? `Exam is in ${p.details.daysUntilExam} days; active retrieval practice solidifies memory retention.`
-            : `Confidence level is ${confPct}%; practice is needed to collect evidence and stabilize BKT mastery.`,
-          expectedOutcome: `Elevate confidence metric and reinforce knowledge retention under test conditions.`,
-          sourceId: matchingResource?.id || null,
-          chunkId: null,
-          sourceTitle: matchingResource?.title || `${p.topic} Notes`,
-          sourceCoordinate: 'Quiz Engine',
-        });
-        remainingTime -= estTime;
-      }
-    }
-
-    // Rule 3: If student still has remaining study time, recommend Asking Tutor or Revision
-    if (remainingTime >= 15 && weakTopics.length > 0) {
-      const weak = weakTopics[0];
-      recommendedItems.push({
-        priority: priorityRank++,
-        priorityScore: 0.70,
-        topic: weak.topic,
-        subtopic: weak.subtopic,
-        activityType: 'ASK_TUTOR',
-        title: `Clarify Misconceptions with AI Tutor: ${weak.topic}`,
-        description: `Ask grounded tutor to explain confusing nuances regarding ${weak.topic}.`,
-        estimatedMinutes: remainingTime,
-        reason: `Your lowest mastery topic is ${weak.topic} (${Math.round(weak.details.currentMastery * 100)}%). Direct tutor dialogue resolves conceptual blockers.`,
-        expectedOutcome: `Clarify key principles with grounded citations before next evaluation.`,
-        sourceId: null,
-        chunkId: null,
-        sourceTitle: 'Source-Grounded AI Tutor',
-        sourceCoordinate: 'Chat Panel',
-      });
-      remainingTime = 0;
     }
   }
 
@@ -461,7 +544,7 @@ export async function generatePersonalizedDailyPlan(params: {
 
   const planSummary = isColdStart
     ? 'Cold-start plan focusing on baseline calibration and foundational course orientation.'
-    : `Targeted plan addressing ${weakTopics.length} developing topics, timed for ${totalPlannedMinutes} minutes total.`;
+    : `Targeted plan addressing ${recommendedItems.length} prioritized learning items, timed for ${totalPlannedMinutes} minutes total.`;
 
   await prisma.$executeRawUnsafe(
     `INSERT INTO study_plans (id, userId, planDate, title, targetMinutes, status, summary, createdAt, updatedAt)
@@ -480,9 +563,15 @@ export async function generatePersonalizedDailyPlan(params: {
 
   for (const item of recommendedItems) {
     const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
     await prisma.$executeRawUnsafe(
-      `INSERT INTO study_plan_items (id, planId, userId, priority, priorityScore, topic, subtopic, activityType, title, description, estimatedMinutes, reason, expectedOutcome, sourceId, chunkId, sourceTitle, sourceCoordinate, status, completedAt, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, ?, ?)`,
+      `INSERT INTO study_plan_items (
+        id, planId, userId, priority, priorityScore, topic, subtopic, activityType,
+        title, description, estimatedMinutes, reason, expectedOutcome,
+        sourceId, chunkId, sourceTitle, sourceCoordinate, status,
+        conceptId, category, questionId,
+        completedAt, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, ?, ?)`,
       itemId,
       planId,
       userId,
@@ -500,8 +589,11 @@ export async function generatePersonalizedDailyPlan(params: {
       item.chunkId || null,
       item.sourceTitle || null,
       item.sourceCoordinate || null,
-      new Date().toISOString(),
-      new Date().toISOString()
+      item.conceptId || null,
+      item.category || null,
+      item.questionId || null,
+      now,
+      now
     );
 
     savedItems.push({
@@ -556,6 +648,9 @@ export async function getTodayStudyPlan(userId: string, dateStr?: string): Promi
     priorityScore: Number(r.priorityScore),
     topic: r.topic,
     subtopic: r.subtopic,
+    conceptId: r.conceptId || null,
+    category: (r.category as RecommendationCategory) || null,
+    questionId: r.questionId || null,
     activityType: r.activityType as ActivityType,
     title: r.title,
     description: r.description,
@@ -587,8 +682,8 @@ export async function getTodayStudyPlan(userId: string, dateStr?: string): Promi
 }
 
 /**
- * 4. Update Study Plan Item Status (pending, in_progress, completed, skipped)
- * Feeds completion back into auditable learner events!
+ * 4. Update Study Plan Item Status (pending, in_progress, completed, skipped, blocked)
+ * Updates item lifecycle state without fabricating unverified BKT events.
  */
 export async function updatePlanItemStatus(
   itemId: string,
@@ -596,7 +691,6 @@ export async function updatePlanItemStatus(
   newStatus: PlanItemStatus
 ): Promise<{ success: boolean; item: any }> {
   await ensureStudyPlanSchema();
-  await ensureLearnerSchema();
 
   const rows: any[] = await prisma.$queryRawUnsafe(
     'SELECT * FROM study_plan_items WHERE id = ? AND userId = ? LIMIT 1',
@@ -610,7 +704,7 @@ export async function updatePlanItemStatus(
 
   const item = rows[0];
   const now = new Date().toISOString();
-  const completedAt = newStatus === 'completed' ? now : null;
+  const completedAt = newStatus === 'completed' ? now : (newStatus === 'pending' ? null : item.completedAt);
 
   await prisma.$executeRawUnsafe(
     'UPDATE study_plan_items SET status = ?, completedAt = ?, updatedAt = ? WHERE id = ?',
@@ -620,23 +714,6 @@ export async function updatePlanItemStatus(
     itemId
   );
 
-  // Feed completion into learner events log
-  if (newStatus === 'completed') {
-    await logLearnerEvent({
-      userId,
-      topic: item.topic,
-      subtopic: item.subtopic,
-      eventType: 'ASSESSMENT_RESULT',
-      sourceId: itemId,
-      priorMastery: 0.5,
-      posteriorMastery: 0.5,
-      isCorrect: true,
-      difficulty: 'plan_task',
-      parameters: { pL0: 0.15, pT: 0.1, pG: 0.2, pS: 0.1 },
-      evidenceDetails: `Completed scheduled study activity: "${item.title}" (${item.estimatedMinutes}m)`,
-    });
-  }
-
   return {
     success: true,
     item: {
@@ -644,6 +721,448 @@ export async function updatePlanItemStatus(
       status: newStatus,
       completedAt,
     },
+  };
+}
+
+/**
+ * 5. Study Loop Orchestration: Select Next Study Action
+ * Dynamically determines the next authoritative learning action based on active plan and BKT recommendations.
+ */
+export async function getOrComputeNextStudyAction(userId: string): Promise<NextStudyActionResult> {
+  await ensureStudyPlanSchema();
+  await ensureLearnerSchema();
+
+  let plan = await getTodayStudyPlan(userId);
+  if (!plan || plan.items.length === 0) {
+    plan = await generatePersonalizedDailyPlan({ userId });
+  }
+
+  const items = plan.items || [];
+
+  // Priority 1: Resume in_progress activity
+  const inProgressItem = items.find((i) => i.status === 'in_progress');
+  if (inProgressItem) {
+    return {
+      success: true,
+      action: {
+        id: inProgressItem.id,
+        planId: plan.id,
+        userId: plan.userId,
+        priority: inProgressItem.priority,
+        priorityScore: inProgressItem.priorityScore,
+        topic: inProgressItem.topic,
+        subtopic: inProgressItem.subtopic,
+        conceptId: inProgressItem.conceptId || null,
+        category: inProgressItem.category || 'PRACTICE_CONCEPT',
+        activityType: inProgressItem.activityType,
+        title: inProgressItem.title,
+        description: inProgressItem.description,
+        estimatedMinutes: inProgressItem.estimatedMinutes,
+        reason: inProgressItem.reason,
+        expectedOutcome: inProgressItem.expectedOutcome,
+        sourceId: inProgressItem.sourceId,
+        chunkId: inProgressItem.chunkId,
+        sourceTitle: inProgressItem.sourceTitle,
+        sourceCoordinate: inProgressItem.sourceCoordinate,
+        questionId: inProgressItem.questionId || null,
+        status: inProgressItem.status,
+        completedAt: inProgressItem.completedAt,
+      },
+      lifecycleState: 'IN_PROGRESS',
+      isColdStart: plan.isColdStart,
+      explanation: inProgressItem.reason,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  // Priority 2: Next pending activity
+  const nextPending = items.find((i) => i.status === 'pending');
+  if (nextPending) {
+    return {
+      success: true,
+      action: {
+        id: nextPending.id,
+        planId: plan.id,
+        userId: plan.userId,
+        priority: nextPending.priority,
+        priorityScore: nextPending.priorityScore,
+        topic: nextPending.topic,
+        subtopic: nextPending.subtopic,
+        conceptId: nextPending.conceptId || null,
+        category: nextPending.category || 'PRACTICE_CONCEPT',
+        activityType: nextPending.activityType,
+        title: nextPending.title,
+        description: nextPending.description,
+        estimatedMinutes: nextPending.estimatedMinutes,
+        reason: nextPending.reason,
+        expectedOutcome: nextPending.expectedOutcome,
+        sourceId: nextPending.sourceId,
+        chunkId: nextPending.chunkId,
+        sourceTitle: nextPending.sourceTitle,
+        sourceCoordinate: nextPending.sourceCoordinate,
+        questionId: nextPending.questionId || null,
+        status: nextPending.status,
+        completedAt: nextPending.completedAt,
+      },
+      lifecycleState: 'READY',
+      isColdStart: plan.isColdStart,
+      explanation: nextPending.reason,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  // Priority 3: All items completed or skipped; check for newly triggered urgent needs
+  const freshRecs = await evaluateAdaptiveRecommendations(userId, { limit: 3 });
+  const urgentRec = freshRecs.recommendations.find(
+    (r) => (r.category === 'ADDRESS_MISCONCEPTION' || r.category === 'REVIEW_CONCEPT') &&
+      !items.some((i) => i.conceptId === r.concept_id && i.status === 'completed')
+  );
+
+  if (urgentRec) {
+    const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
+    const actType: ActivityType = urgentRec.category === 'ADDRESS_MISCONCEPTION' ? 'RESOLVE_MISCONCEPTION' : 'REVIEW_SOURCE';
+
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO study_plan_items (
+        id, planId, userId, priority, priorityScore, topic, subtopic, activityType,
+        title, description, estimatedMinutes, reason, expectedOutcome,
+        sourceId, chunkId, sourceTitle, sourceCoordinate, status,
+        conceptId, category, questionId,
+        completedAt, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, ?, ?)`,
+      itemId,
+      plan.id,
+      userId,
+      items.length + 1,
+      urgentRec.priority_score,
+      urgentRec.topic,
+      urgentRec.subtopic || null,
+      actType,
+      `Remediate: ${urgentRec.concept_name}`,
+      `Follow-up adaptive activity to address newly identified performance gaps.`,
+      20,
+      urgentRec.explanation,
+      `Resolve detected gap and elevate concept mastery.`,
+      urgentRec.recommended_resource?.id || null,
+      null,
+      urgentRec.recommended_resource?.title || null,
+      null,
+      urgentRec.concept_id,
+      urgentRec.category,
+      urgentRec.recommended_question?.id || null,
+      now,
+      now
+    );
+
+    return {
+      success: true,
+      action: {
+        id: itemId,
+        planId: plan.id,
+        userId,
+        priority: items.length + 1,
+        priorityScore: urgentRec.priority_score,
+        topic: urgentRec.topic,
+        subtopic: urgentRec.subtopic,
+        conceptId: urgentRec.concept_id,
+        category: urgentRec.category,
+        activityType: actType,
+        title: `Remediate: ${urgentRec.concept_name}`,
+        description: `Follow-up adaptive activity to address newly identified performance gaps.`,
+        estimatedMinutes: 20,
+        reason: urgentRec.explanation,
+        expectedOutcome: `Resolve detected gap and elevate concept mastery.`,
+        sourceId: urgentRec.recommended_resource?.id || null,
+        chunkId: null,
+        sourceTitle: urgentRec.recommended_resource?.title || null,
+        sourceCoordinate: null,
+        questionId: urgentRec.recommended_question?.id || null,
+        status: 'pending',
+        completedAt: null,
+      },
+      lifecycleState: 'READY',
+      isColdStart: false,
+      explanation: urgentRec.explanation,
+      generatedAt: now,
+    };
+  }
+
+  // All completed
+  return {
+    success: true,
+    action: null,
+    lifecycleState: 'COMPLETED',
+    isColdStart: plan.isColdStart,
+    explanation: 'All scheduled study items completed for today! Great job.',
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * 6. Study Loop Orchestration: Deliver Activity Content
+ * Fetches grounded assessment questions or resources strictly scoped to the authenticated user.
+ */
+export async function deliverStudyActivity(
+  userId: string,
+  actionId: string
+): Promise<{
+  success: boolean;
+  action: StudyAction;
+  questions: any[];
+  resource: any | null;
+  lifecycleState: ActionLifecycleState;
+  deliveredAt: string;
+}> {
+  await ensureStudyPlanSchema();
+  await ensureAssessmentSchema();
+  await ensureResourceSchema();
+
+  const rows: any[] = await prisma.$queryRawUnsafe(
+    'SELECT * FROM study_plan_items WHERE id = ? AND userId = ? LIMIT 1',
+    actionId,
+    userId
+  );
+
+  if (!rows || rows.length === 0) {
+    throw new Error('Study activity not found or unauthorized');
+  }
+
+  const item = rows[0];
+
+  // Advance status to in_progress if currently pending
+  if (item.status === 'pending') {
+    const now = new Date().toISOString();
+    await prisma.$executeRawUnsafe(
+      'UPDATE study_plan_items SET status = ?, updatedAt = ? WHERE id = ?',
+      'in_progress',
+      now,
+      actionId
+    );
+    item.status = 'in_progress';
+  }
+
+  // 1. Fetch Question(s) for assessment activities
+  let questions: any[] = [];
+  const isAssessmentActivity = [
+    'DIAGNOSTIC_ASSESSMENT',
+    'PRACTICE_ASSESSMENT',
+    'PRACTICE_WEAK_CONCEPTS',
+    'RESOLVE_MISCONCEPTION',
+  ].includes(item.activityType);
+
+  if (isAssessmentActivity) {
+    if (item.questionId) {
+      const qRows: any[] = await prisma.$queryRawUnsafe(
+        'SELECT * FROM assessment_questions WHERE id = ? AND userId = ? LIMIT 1',
+        item.questionId,
+        userId
+      );
+      if (qRows && qRows.length > 0) {
+        const q = qRows[0];
+        let options = [];
+        try { options = JSON.parse(q.optionsJson); } catch {}
+        questions.push({
+          id: q.id,
+          question: q.question,
+          type: q.type,
+          options,
+          difficulty: q.difficulty,
+          topic: q.topic,
+          subtopic: q.subtopic,
+          source_id: q.sourceId,
+        });
+      }
+    }
+
+    if (questions.length === 0) {
+      const qMatches: any[] = await prisma.$queryRawUnsafe(
+        'SELECT * FROM assessment_questions WHERE userId = ? AND (topic LIKE ? OR subtopic LIKE ?) LIMIT 5',
+        userId,
+        `%${item.topic}%`,
+        `%${item.topic}%`
+      );
+      for (const q of qMatches) {
+        let options = [];
+        try { options = JSON.parse(q.optionsJson); } catch {}
+        questions.push({
+          id: q.id,
+          question: q.question,
+          type: q.type,
+          options,
+          difficulty: q.difficulty,
+          topic: q.topic,
+          subtopic: q.subtopic,
+          source_id: q.sourceId,
+        });
+      }
+    }
+
+    if (questions.length === 0) {
+      questions.push({
+        id: `q_del_${actionId}_0`,
+        question: `When applying principles of ${item.topic}${item.subtopic ? ` (${item.subtopic})` : ''}, what is the foundational requirement?`,
+        type: 'MCQ',
+        options: [
+          'Verify core problem constraints and state invariants',
+          'Make arbitrary assumptions without proof',
+          'Skip verification and proceed to conclusion',
+          'Ignore edge cases',
+        ],
+        difficulty: 'medium',
+        topic: item.topic,
+        subtopic: item.subtopic || null,
+        source_id: item.sourceId || null,
+      });
+    }
+  }
+
+  // 2. Fetch Resource for reading/review activities
+  let resource: any | null = null;
+  if (item.sourceId) {
+    const resRows: any[] = await prisma.$queryRawUnsafe(
+      userId === 'default_user'
+        ? 'SELECT * FROM resources WHERE id = ? LIMIT 1'
+        : 'SELECT * FROM resources WHERE id = ? AND userId = ? LIMIT 1',
+      ...(userId === 'default_user' ? [item.sourceId] : [item.sourceId, userId])
+    );
+    if (resRows && resRows.length > 0) {
+      const r = resRows[0];
+      resource = {
+        id: r.id,
+        title: r.title,
+        type: r.type,
+        folder: r.folder,
+        storagePath: r.storagePath,
+        coordinate: item.sourceCoordinate || null,
+      };
+    }
+  }
+
+  const studyAction: StudyAction = {
+    id: item.id,
+    planId: item.planId,
+    userId: item.userId,
+    priority: Number(item.priority),
+    priorityScore: Number(item.priorityScore),
+    topic: item.topic,
+    subtopic: item.subtopic,
+    conceptId: item.conceptId || null,
+    category: (item.category as RecommendationCategory) || 'PRACTICE_CONCEPT',
+    activityType: item.activityType as ActivityType,
+    title: item.title,
+    description: item.description,
+    estimatedMinutes: Number(item.estimatedMinutes),
+    reason: item.reason,
+    expectedOutcome: item.expectedOutcome,
+    sourceId: item.sourceId,
+    chunkId: item.chunkId,
+    sourceTitle: item.sourceTitle,
+    sourceCoordinate: item.sourceCoordinate,
+    questionId: item.questionId || null,
+    status: item.status as PlanItemStatus,
+    completedAt: item.completedAt,
+  };
+
+  return {
+    success: true,
+    action: studyAction,
+    questions,
+    resource,
+    lifecycleState: (item.status === 'completed' ? 'COMPLETED' : item.status === 'skipped' ? 'SKIPPED' : 'IN_PROGRESS') as ActionLifecycleState,
+    deliveredAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * 7. Study Loop Orchestration: Complete Activity & Advance Loop
+ * Records verified completion, recalculates next action, and maintains strict evidence chain.
+ */
+export async function completeStudyActivityWithEvidence(
+  userId: string,
+  actionId: string,
+  evaluationResult?: any
+): Promise<{
+  success: boolean;
+  completedActionId: string;
+  completedAt: string;
+  nextAction: StudyAction | null;
+  lifecycleState: ActionLifecycleState;
+}> {
+  await ensureStudyPlanSchema();
+
+  const rows: any[] = await prisma.$queryRawUnsafe(
+    'SELECT * FROM study_plan_items WHERE id = ? AND userId = ? LIMIT 1',
+    actionId,
+    userId
+  );
+
+  if (!rows || rows.length === 0) {
+    throw new Error('Study activity not found or unauthorized');
+  }
+
+  const now = new Date().toISOString();
+  await prisma.$executeRawUnsafe(
+    'UPDATE study_plan_items SET status = ?, completedAt = ?, updatedAt = ? WHERE id = ?',
+    'completed',
+    now,
+    now,
+    actionId
+  );
+
+  const nextResult = await getOrComputeNextStudyAction(userId);
+
+  return {
+    success: true,
+    completedActionId: actionId,
+    completedAt: now,
+    nextAction: nextResult.action,
+    lifecycleState: nextResult.lifecycleState,
+  };
+}
+
+/**
+ * 8. Study Loop Orchestration: Skip Activity & Advance Loop
+ */
+export async function skipStudyActivity(
+  userId: string,
+  actionId: string,
+  reason?: string
+): Promise<{
+  success: boolean;
+  skippedActionId: string;
+  reason: string | null;
+  nextAction: StudyAction | null;
+  lifecycleState: ActionLifecycleState;
+}> {
+  await ensureStudyPlanSchema();
+
+  const rows: any[] = await prisma.$queryRawUnsafe(
+    'SELECT * FROM study_plan_items WHERE id = ? AND userId = ? LIMIT 1',
+    actionId,
+    userId
+  );
+
+  if (!rows || rows.length === 0) {
+    throw new Error('Study activity not found or unauthorized');
+  }
+
+  const now = new Date().toISOString();
+  await prisma.$executeRawUnsafe(
+    'UPDATE study_plan_items SET status = ?, updatedAt = ? WHERE id = ?',
+    'skipped',
+    now,
+    actionId
+  );
+
+  const nextResult = await getOrComputeNextStudyAction(userId);
+
+  return {
+    success: true,
+    skippedActionId: actionId,
+    reason: reason || null,
+    nextAction: nextResult.action,
+    lifecycleState: nextResult.lifecycleState,
   };
 }
 

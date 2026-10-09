@@ -393,6 +393,9 @@ async function createStudyPlanSchema() {
       sourceTitle TEXT,
       sourceCoordinate TEXT,
       status TEXT NOT NULL DEFAULT 'pending',
+      conceptId TEXT,
+      category TEXT,
+      questionId TEXT,
       completedAt DATETIME,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -405,6 +408,16 @@ async function createStudyPlanSchema() {
   await prisma.$executeRawUnsafe(
     'CREATE INDEX IF NOT EXISTS study_plan_items_user_status_idx ON study_plan_items(userId, status)',
   );
+
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE study_plan_items ADD COLUMN conceptId TEXT');
+  } catch {}
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE study_plan_items ADD COLUMN category TEXT');
+  } catch {}
+  try {
+    await prisma.$executeRawUnsafe('ALTER TABLE study_plan_items ADD COLUMN questionId TEXT');
+  } catch {}
 }
 
 export async function ensureStudyPlanSchema() {

@@ -38,9 +38,15 @@ import {
   generateDailyStudyPlan,
   updateStudyPlanItem,
   askStudyAgent,
+  getNextStudyAction,
+  deliverStudyActivity,
+  completeStudyActivity,
+  skipStudyActivity,
   DailyStudyPlan,
   StudyPlanItem,
+  StudyAction,
   PlanItemStatus,
+  ActionLifecycleState,
   ActivityType,
 } from '@/api/studyAgentAPI';
 import { generateAssessment, AssessmentQuestion, DiagnosticReport } from '@/api/assessmentAPI';
@@ -86,6 +92,11 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedReasons, setExpandedReasons] = useState<Record<string, boolean>>({});
 
+  // Adaptive study loop state (Phase 6)
+  const [nextAction, setNextAction] = useState<StudyAction | null>(null);
+  const [actionLifecycle, setActionLifecycle] = useState<ActionLifecycleState | null>(null);
+  const [isSkippingAction, setIsSkippingAction] = useState(false);
+
   // Interactive in-panel Assessment & Task execution state
   const [activeQuizItem, setActiveQuizItem] = useState<StudyPlanItem | null>(null);
   const [activeQuizQuestions, setActiveQuizQuestions] = useState<AssessmentQuestion[] | null>(null);
@@ -116,12 +127,43 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
           setPlan(genRes.plan);
         }
       }
+
+      // Query active study loop action
+      try {
+        const actionRes = await getNextStudyAction(userId);
+        if (actionRes.success) {
+          setNextAction(actionRes.action);
+          setActionLifecycle(actionRes.lifecycleState);
+        }
+      } catch (actionErr) {
+        console.warn('Could not load next study action:', actionErr);
+      }
     } catch (err) {
       console.error('Failed to load study plan:', err);
     } finally {
       setIsLoading(false);
     }
   }, [userId, examDate]);
+
+  const handleSkipNextAction = async (actionId: string) => {
+    setIsSkippingAction(true);
+    try {
+      const res = await skipStudyActivity(actionId, 'Skipped by learner in study loop', userId);
+      if (res.success) {
+        setNextAction(res.nextAction);
+        setActionLifecycle(res.lifecycleState);
+        toast({
+          title: "Activity Skipped",
+          description: "Advanced to next recommended study activity.",
+        });
+        loadPlan();
+      }
+    } catch (err) {
+      console.error('Failed to skip activity:', err);
+    } finally {
+      setIsSkippingAction(false);
+    }
+  };
 
   useEffect(() => {
     loadPlan();
@@ -176,8 +218,18 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
       case 'DIAGNOSTIC_ASSESSMENT':
       case 'PRACTICE_ASSESSMENT':
       case 'PRACTICE_WEAK_CONCEPTS':
+      case 'RESOLVE_MISCONCEPTION':
         setIsLaunchingQuiz(item.id);
         try {
+          try {
+            const delRes = await deliverStudyActivity(item.id, userId);
+            if (delRes.success && delRes.questions && delRes.questions.length > 0) {
+              setActiveQuizQuestions(delRes.questions as AssessmentQuestion[]);
+              setActiveQuizItem(item);
+              break;
+            }
+          } catch {}
+
           const res = await generateAssessment({
             userId,
             topic: item.topic || 'General Course Material',
@@ -293,19 +345,23 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
   };
 
   const handleQuizComplete = async (report: DiagnosticReport, item: StudyPlanItem) => {
-    // 1. Mark task completed
-    await handleToggleItemStatus(item);
+    // 1. Advance study loop with authoritative evidence
+    try {
+      await completeStudyActivity(item.id, report, userId);
+    } catch {
+      await handleToggleItemStatus(item);
+    }
 
     // 2. Toast success
     toast({
-      title: "Diagnostic Assessment Completed! 🎉",
-      description: `Scored ${report.percentage}% (${report.correctCount}/${report.totalQuestions}). Your BKT knowledge state has been updated.`,
+      title: "Assessment Completed! 🎉",
+      description: `Scored ${report.percentage}% (${report.correctCount}/${report.totalQuestions}). Verified evidence recorded in BKT mastery.`,
     });
 
     // 3. Dispatch mastery refresh event so LearnerMasteryCard reloads
     window.dispatchEvent(new CustomEvent('studymate-bkt-refresh'));
 
-    // 4. Reload study plan
+    // 4. Reload study plan and next action
     loadPlan();
   };
 
@@ -440,6 +496,13 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
             Diagnostic Baseline
           </Badge>
         );
+      case 'RESOLVE_MISCONCEPTION':
+        return (
+          <Badge className="bg-red-500/10 text-red-700 dark:text-red-300 border-red-300 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3 text-red-600" />
+            Resolve Misconception
+          </Badge>
+        );
       default:
         return (
           <Badge variant="outline" className="flex items-center gap-1">
@@ -447,6 +510,43 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
             Task
           </Badge>
         );
+    }
+  };
+
+  const getCategoryBadge = (category?: string | null) => {
+    switch (category) {
+      case 'ADDRESS_MISCONCEPTION':
+        return (
+          <Badge className="bg-red-500/10 text-red-700 dark:text-red-300 border-red-300 font-mono text-[10px]">
+            ADDRESS_MISCONCEPTION
+          </Badge>
+        );
+      case 'REVIEW_CONCEPT':
+        return (
+          <Badge className="bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300 font-mono text-[10px]">
+            REVIEW_CONCEPT
+          </Badge>
+        );
+      case 'PRACTICE_CONCEPT':
+        return (
+          <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 font-mono text-[10px]">
+            PRACTICE_CONCEPT
+          </Badge>
+        );
+      case 'LEARN_CONCEPT':
+        return (
+          <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-300 font-mono text-[10px]">
+            LEARN_CONCEPT
+          </Badge>
+        );
+      case 'CONSOLIDATE_MASTERY':
+        return (
+          <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 font-mono text-[10px]">
+            CONSOLIDATE_MASTERY
+          </Badge>
+        );
+      default:
+        return null;
     }
   };
 
@@ -578,6 +678,81 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
         </div>
       )}
 
+      {/* Adaptive Study Loop Next Action Card */}
+      {nextAction && actionLifecycle !== 'COMPLETED' && (
+        <div className="p-4 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-xs space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-primary text-primary-foreground font-semibold flex items-center gap-1 text-xs">
+                <Sparkles className="w-3 h-3" />
+                Adaptive Next Action
+              </Badge>
+              {getCategoryBadge(nextAction.category)}
+              <Badge variant="outline" className="text-xs">
+                {actionLifecycle === 'IN_PROGRESS' ? 'In Progress' : 'Ready'}
+              </Badge>
+            </div>
+            <span className="text-xs font-mono text-muted-foreground">
+              Score: {Math.round(nextAction.priorityScore * 100)}%
+            </span>
+          </div>
+
+          <div>
+            <h4 className="text-base font-bold text-foreground">
+              {nextAction.title}
+            </h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {nextAction.description}
+            </p>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-background/80 border border-border/60 text-xs space-y-1">
+            <div className="font-medium text-primary flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5" />
+              Grounded Rationale:
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {nextAction.reason}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-primary" />
+                {nextAction.estimatedMinutes} mins
+              </span>
+              {nextAction.sourceTitle && (
+                <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-muted">
+                  <FileText className="w-3 h-3 text-sky-600" />
+                  {nextAction.sourceTitle}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSkipNextAction(nextAction.id)}
+                disabled={isSkippingAction}
+                className="text-xs h-8"
+              >
+                Skip
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleStartTask(nextAction as any)}
+                className="text-xs h-8 gap-1.5 shadow-xs"
+              >
+                <Play className="w-3 h-3" />
+                Start Activity
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Plan Items List */}
       {isLoading ? (
         <div className="py-8 text-center text-muted-foreground">
@@ -637,6 +812,7 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
                             #{item.priority}
                           </span>
                           {getActivityBadge(item.activityType)}
+                          {getCategoryBadge(item.category)}
                           <span
                             className={`text-sm font-bold ${
                               isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'

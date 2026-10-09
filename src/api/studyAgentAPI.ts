@@ -5,9 +5,12 @@ export type ActivityType =
   | 'PRACTICE_WEAK_CONCEPTS'
   | 'ASK_TUTOR'
   | 'DIAGNOSTIC_ASSESSMENT'
-  | 'COMPLETE_UNFINISHED_TASK';
+  | 'COMPLETE_UNFINISHED_TASK'
+  | 'RESOLVE_MISCONCEPTION';
 
-export type PlanItemStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
+export type PlanItemStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'blocked';
+
+export type ActionLifecycleState = 'READY' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED' | 'BLOCKED';
 
 export interface PriorityScoreBreakdown {
   topic: string;
@@ -47,6 +50,9 @@ export interface StudyPlanItem {
   chunkId: string | null;
   sourceTitle: string | null;
   sourceCoordinate: string | null;
+  conceptId?: string | null;
+  category?: string | null;
+  questionId?: string | null;
   status: PlanItemStatus;
   completedAt: string | null;
 }
@@ -62,6 +68,76 @@ export interface DailyStudyPlan {
   summary: string;
   isColdStart: boolean;
   items: StudyPlanItem[];
+}
+
+export interface StudyAction {
+  id: string;
+  planId: string;
+  userId: string;
+  priority: number;
+  priorityScore: number;
+  topic: string;
+  subtopic: string | null;
+  conceptId: string | null;
+  category: string;
+  activityType: ActivityType;
+  title: string;
+  description: string;
+  estimatedMinutes: number;
+  reason: string;
+  expectedOutcome: string;
+  sourceId: string | null;
+  chunkId: string | null;
+  sourceTitle: string | null;
+  sourceCoordinate: string | null;
+  questionId: string | null;
+  status: PlanItemStatus;
+  completedAt: string | null;
+}
+
+export interface NextStudyActionResponse {
+  success: boolean;
+  action: StudyAction | null;
+  lifecycleState: ActionLifecycleState;
+  isColdStart: boolean;
+  explanation?: string;
+  generatedAt: string;
+  error?: string;
+}
+
+export interface DeliverStudyActivityResponse {
+  success: boolean;
+  action: StudyAction;
+  questions: any[];
+  resource: {
+    id: string;
+    title: string;
+    type: string;
+    folder?: string | null;
+    storagePath?: string | null;
+    coordinate?: string | null;
+  } | null;
+  lifecycleState: ActionLifecycleState;
+  deliveredAt: string;
+  error?: string;
+}
+
+export interface CompleteStudyActivityResponse {
+  success: boolean;
+  completedActionId: string;
+  completedAt: string;
+  nextAction: StudyAction | null;
+  lifecycleState: ActionLifecycleState;
+  error?: string;
+}
+
+export interface SkipStudyActivityResponse {
+  success: boolean;
+  skippedActionId: string;
+  reason: string | null;
+  nextAction: StudyAction | null;
+  lifecycleState: ActionLifecycleState;
+  error?: string;
 }
 
 export interface StudyPrioritiesResponse {
@@ -142,8 +218,7 @@ export async function generateDailyStudyPlan(params: {
 }
 
 /**
- * Update plan item status (pending, in_progress, completed, skipped).
- * Completed items are automatically logged to the learner events history.
+ * Update plan item status (pending, in_progress, completed, skipped, blocked).
  */
 export async function updateStudyPlanItem(
   itemId: string,
@@ -157,6 +232,72 @@ export async function updateStudyPlanItem(
   });
   if (!res.ok) {
     throw new Error(`Failed to update study plan item (${res.status})`);
+  }
+  return res.json();
+}
+
+/**
+ * Fetch the next authoritative study action in the learner study loop.
+ */
+export async function getNextStudyAction(userId?: string): Promise<NextStudyActionResponse> {
+  const query = new URLSearchParams();
+  if (userId) query.set('userId', userId);
+  const qStr = query.toString() ? `?${query.toString()}` : '';
+  const res = await fetch(`/api/agent/next-action${qStr}`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch next study action (${res.status})`);
+  }
+  return res.json();
+}
+
+/**
+ * Deliver content (questions, source coordinates) for a specific study action.
+ */
+export async function deliverStudyActivity(actionId: string, userId?: string): Promise<DeliverStudyActivityResponse> {
+  const query = new URLSearchParams();
+  if (userId) query.set('userId', userId);
+  const qStr = query.toString() ? `?${query.toString()}` : '';
+  const res = await fetch(`/api/agent/activity/${encodeURIComponent(actionId)}${qStr}`);
+  if (!res.ok) {
+    throw new Error(`Failed to deliver study activity (${res.status})`);
+  }
+  return res.json();
+}
+
+/**
+ * Complete a study activity with evidence and advance the study loop.
+ */
+export async function completeStudyActivity(
+  actionId: string,
+  evaluationResult?: any,
+  userId?: string
+): Promise<CompleteStudyActivityResponse> {
+  const res = await fetch(`/api/agent/activity/${encodeURIComponent(actionId)}/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evaluationResult, userId }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to complete study activity (${res.status})`);
+  }
+  return res.json();
+}
+
+/**
+ * Skip a study activity and advance to the next recommended action.
+ */
+export async function skipStudyActivity(
+  actionId: string,
+  reason?: string,
+  userId?: string
+): Promise<SkipStudyActivityResponse> {
+  const res = await fetch(`/api/agent/activity/${encodeURIComponent(actionId)}/skip`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason, userId }),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to skip study activity (${res.status})`);
   }
   return res.json();
 }

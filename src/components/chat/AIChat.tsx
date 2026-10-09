@@ -403,6 +403,21 @@ export const AIChat = ({
     const safetyTimer = setTimeout(() => {
       setIsLoading(false);
       setIsUploadingFile(false);
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.sender === 'user') {
+          return [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              text: "The AI took a bit too long to respond. Please try sending your message again!",
+              sender: 'ai',
+              timestamp: new Date(),
+            }
+          ];
+        }
+        return prev;
+      });
     }, 15000);
 
     try {
@@ -432,8 +447,11 @@ export const AIChat = ({
         content: m.text
       }));
 
-      // Gather real-time workspace context & action prompt
-      const catalog = await getWorkspaceCatalog();
+      // Gather real-time workspace context & action prompt with timeout race
+      const catalog = await Promise.race([
+        getWorkspaceCatalog(),
+        new Promise<any>(r => setTimeout(() => r({ pages: [], pagesCatalog: [], vaultCatalog: [] }), 1200))
+      ]);
       const workspacePrompt = getAgentWorkspacePrompt(catalog, `Current topic/context: ${sanitizedTopic || context}`);
 
       const isActionQuery = /(delete|remove|edit|modify|update|rename|create|folder|organize|move|copy\s+vault|vault\s+to\s+resource|add\s+notes\s+to|append|clean\s+up)/i.test(userMsgText);
@@ -460,7 +478,7 @@ export const AIChat = ({
 
           const aiMessage: Message = {
             id: (Date.now() + 1).toString(),
-            text: cleanText || "I've processed your workspace request.",
+            text: cleanText || directRes.response || "I've processed your workspace request.",
             sender: 'ai',
             timestamp: new Date(),
             citations: [],
@@ -501,7 +519,7 @@ export const AIChat = ({
 
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: cleanText,
+          text: cleanText || tutorResult.response,
           sender: 'ai',
           timestamp: new Date(),
           citations: tutorResult.citations || [],
@@ -537,9 +555,11 @@ export const AIChat = ({
             });
           }
 
+          const responseText = cleanText?.trim() || directRes.response?.trim() || "Here is what I found.";
+
           const aiMessage: Message = {
             id: (Date.now() + 1).toString(),
-            text: cleanText,
+            text: responseText,
             sender: 'ai',
             timestamp: new Date(),
             citations: [],

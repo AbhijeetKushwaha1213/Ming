@@ -5,13 +5,21 @@ const RESOURCE_STORAGE_BUCKET = 'resource-files';
 const MAX_PDF_SIZE = 10 * 1024 * 1024;
 
 async function getAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
+  try {
+    const sessionPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise<{ data: { session: null }; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: { session: null }, error: new Error('Session timeout') }), 800)
+    );
+    const { data, error } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
 
-  if (error || !data.session?.access_token) {
-    throw new Error('User not authenticated');
+    if (error || !data?.session?.access_token) {
+      throw new Error('User not authenticated');
+    }
+
+    return data.session.access_token;
+  } catch (err: any) {
+    throw new Error(err.message || 'User not authenticated');
   }
-
-  return data.session.access_token;
 }
 
 async function authorizedFetch<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {

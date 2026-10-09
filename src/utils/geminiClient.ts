@@ -320,12 +320,16 @@ Rules:
       };
 
       try {
-        const { data } = await supabase.auth.getSession();
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 600)
+        );
+        const { data } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
         if (data?.session?.access_token) {
           headers['Authorization'] = `Bearer ${data.session.access_token}`;
         }
       } catch {
-        // Fallback for non-browser or test execution
+        // Fallback for non-browser, offline, or test execution
       }
 
       if (customLocalKey) {

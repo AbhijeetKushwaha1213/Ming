@@ -310,13 +310,20 @@ export async function askStudyAgent(params: {
   query: string;
   examDate?: string | null;
 }): Promise<StudyAgentChatResponse> {
-  const res = await fetch('/api/agent/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to consult study agent (${res.status})`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch('/api/agent/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to consult study agent (${res.status})`);
+    }
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }

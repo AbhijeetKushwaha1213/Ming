@@ -225,7 +225,8 @@ export async function studyAgentHandler(req: SimpleRequest, res: SimpleResponse)
       return;
     } catch (err: any) {
       console.error('Error in study agent chat:', err);
-      res.status(500).json({ error: 'Failed to process study agent question', details: err.message });
+      const status = typeof err?.statusCode === 'number' ? err.statusCode : 500;
+      res.status(status).json({ error: 'Failed to process study agent question', details: err.message });
       return;
     }
   }

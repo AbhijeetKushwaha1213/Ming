@@ -70,14 +70,27 @@ export const FloatingStudyAgentBar: React.FC<FloatingStudyAgentBarProps> = ({
   const handleAskAgent = async (queryText: string) => {
     if (!queryText.trim()) return;
     setIsChatLoading(true);
+
+    const safetyTimer = setTimeout(() => {
+      setIsChatLoading(false);
+      setAgentAnswer(prev => prev || {
+        reply: "I am ready to help organize your study plan, diagnose mastery gaps, or navigate course materials. Try asking 'What should I study today?'",
+        suggestedAction: "View Today's Plan",
+      });
+    }, 8000);
+
     try {
-      const isActionQuery = /(delete|remove|edit|modify|update|rename|create|folder|organize|move|copy\s+vault|vault\s+to\s+resource|add\s+notes\s+to|append|clean\s+up)/i.test(queryText);
+      const trimmed = queryText.trim();
+      const isActionQuery = /(delete|remove|edit|modify|update|rename|create|folder|organize|move|copy\s+vault|vault\s+to\s+resource|add\s+notes\s+to|append|clean\s+up)/i.test(trimmed);
 
       if (isActionQuery) {
-        const catalog = await getWorkspaceCatalog();
+        const catalog = await Promise.race([
+          getWorkspaceCatalog(),
+          new Promise<any>((r) => setTimeout(() => r({ pages: [], pagesCatalog: [], vaultCatalog: [] }), 1200))
+        ]);
         const workspacePrompt = getAgentWorkspacePrompt(catalog, "Dashboard Study Assistant");
         const directRes = await geminiClient.generateContent({
-          message: queryText.trim(),
+          message: trimmed,
           systemPrompt: workspacePrompt,
         });
 
@@ -102,50 +115,72 @@ export const FloatingStudyAgentBar: React.FC<FloatingStudyAgentBarProps> = ({
         }
       }
 
+      // If the student is asking a direct academic concept question (e.g. "what is formula of water", "explain binary search", "how does photosynthesis work")
+      const isConceptualQuery = /^(what|how|why|explain|define|tell\s+me|formula|can\s+you|who|where|when)\b/i.test(trimmed) &&
+        !/(study|today|weak|exam|plan|priority|diagnos|assessment|mastery)/i.test(trimmed);
+
+      if (isConceptualQuery) {
+        const directRes = await geminiClient.generateContent({
+          message: trimmed,
+          systemPrompt: "You are Ming AI, an expert academic study assistant. Provide clear, direct, and concise explanations with formulas, key facts, and examples where relevant.",
+        });
+
+        if (directRes && directRes.response && !directRes.error) {
+          const { cleanText } = parseAgentActions(directRes.response);
+          setAgentAnswer({
+            reply: cleanText || directRes.response,
+            suggestedAction: "Ask More in AI Chat",
+            actionType: 'quiz',
+          });
+          return;
+        }
+      }
+
       const res = await askStudyAgent({
         userId,
-        query: queryText.trim(),
+        query: trimmed,
         examDate,
       });
 
-      if (res.success) {
+      if (res && res.reply) {
         const { cleanText, actions } = parseAgentActions(res.reply);
         let executed: string[] = [];
-        if (actions.length > 0) {
+        if (actions && actions.length > 0) {
           executed = await executeAgentActions(actions, queryClient);
         }
 
         setAgentAnswer({
-          reply: cleanText,
+          reply: cleanText || res.reply,
           recommendedTopic: res.recommendedTopic,
           suggestedAction: res.suggestedAction,
           actionType: 'quiz',
           actionsExecuted: executed.length > 0 ? executed : undefined,
         });
+      } else {
+        setAgentAnswer({
+          reply: "I analyzed your learner profile. Let's focus on your diagnostic baseline and high-priority study topics for today!",
+          suggestedAction: "Take Diagnostic Assessment",
+          actionType: 'quiz',
+        });
       }
     } catch (err) {
       console.error('Failed to ask agent:', err);
       try {
-        const catalog = await getWorkspaceCatalog();
-        const workspacePrompt = getAgentWorkspacePrompt(catalog, "Dashboard Study Assistant");
         const directRes = await geminiClient.generateContent({
           message: queryText.trim(),
-          systemPrompt: workspacePrompt,
+          systemPrompt: "You are an expert study assistant. Provide a clear, concise answer.",
         });
         if (directRes?.response) {
-          const { cleanText, actions } = parseAgentActions(directRes.response);
-          const executed = await executeAgentActions(actions, queryClient);
+          const { cleanText } = parseAgentActions(directRes.response);
           setAgentAnswer({
-            reply: cleanText,
-            actionsExecuted: executed.length > 0 ? executed : undefined,
-            suggestedAction: executed.length > 0 ? "Review Resources" : undefined,
-            actionType: 'resources',
+            reply: cleanText || directRes.response,
+            suggestedAction: "Continue Study",
+            actionType: 'quiz',
           });
         } else {
           setAgentAnswer({
-            reply: "I analyzed your learner profile. Let's focus on your diagnostic baseline and high-priority study topics for today!",
-            suggestedAction: "Take Diagnostic Assessment",
-            actionType: 'quiz',
+            reply: "I am ready to help organize your study plan, diagnose mastery gaps, or navigate course materials. Try asking 'What should I study today?'",
+            suggestedAction: "View Today's Plan",
           });
         }
       } catch {
@@ -155,6 +190,7 @@ export const FloatingStudyAgentBar: React.FC<FloatingStudyAgentBarProps> = ({
         });
       }
     } finally {
+      clearTimeout(safetyTimer);
       setIsChatLoading(false);
     }
   };
@@ -205,6 +241,13 @@ export const FloatingStudyAgentBar: React.FC<FloatingStudyAgentBarProps> = ({
             <div className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
               <RefreshCw className="w-4 h-4 animate-spin text-primary" />
               <span>Analyzing your Bayesian mastery and study records...</span>
+              <button
+                type="button"
+                onClick={() => setIsChatLoading(false)}
+                className="ml-2 text-xs text-muted-foreground hover:text-foreground underline cursor-pointer"
+              >
+                Cancel
+              </button>
             </div>
           ) : agentAnswer ? (
             <div className="space-y-3">

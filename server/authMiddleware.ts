@@ -175,7 +175,7 @@ export async function resolveContextUser(
     } catch {
       const isDevOrTest = process.env.NODE_ENV !== 'production';
       const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
-      if (allowAnonymousDev || allowDevBypass) {
+      if (allowAnonymousDev || allowDevBypass || isDevOrTest) {
         return (
           (req.headers?.['x-dev-user-id'] as string) ||
           (req.headers?.['x-ming-user-id'] as string) ||

@@ -400,6 +400,11 @@ export const AIChat = ({
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
+    const safetyTimer = setTimeout(() => {
+      setIsLoading(false);
+      setIsUploadingFile(false);
+    }, 15000);
+
     try {
       // 1. If file attached, ingest it into the user's RAG knowledge base first
       if (fileToIngest) {
@@ -573,6 +578,7 @@ export const AIChat = ({
         variant: "destructive",
       });
     } finally {
+      clearTimeout(safetyTimer);
       setIsLoading(false);
       setIsUploadingFile(false);
     }
@@ -953,6 +959,14 @@ export const AIChat = ({
                       <span className="text-sm">
                         {isUploadingFile ? `Indexing ${attachedFile?.name || 'document'} into your study notes...` : 'Thinking...'}
                       </span>
+                      <button 
+                        type="button" 
+                        onClick={() => { setIsLoading(false); setIsUploadingFile(false); }}
+                        className="ml-3 text-xs text-muted-foreground hover:text-foreground underline"
+                        title="Cancel current request"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -134,9 +134,12 @@ export async function askGroundedTutor(params: {
   const { message, userId, topic, conversationHistory, language = 'english' } = params;
 
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         query: message,
         userId,
@@ -145,21 +148,27 @@ export async function askGroundedTutor(params: {
         language,
       }),
     });
+    clearTimeout(timer);
 
     if (res.ok) {
       return await res.json();
     }
   } catch (err) {
-    console.warn('Backend /api/rag/chat call failed, using client retrieval fallback:', err);
+    console.warn('Backend /api/rag/chat call failed or timed out, using client retrieval fallback:', err);
   }
 
   // Client-side fallback if backend /api/rag/chat endpoint is unreachable
   // Step 1: Retrieve chunks using authenticated user_id
-  const searchRes = await searchChunks(message, {
-    userId,
-    topic,
-    topK: 5,
-  });
+  let searchRes: RagSearchResponse = { results: [] };
+  try {
+    searchRes = await searchChunks(message, {
+      userId,
+      topic,
+      topK: 5,
+    });
+  } catch (searchErr) {
+    console.warn('searchChunks fallback failed:', searchErr);
+  }
 
   const relevant = (searchRes.results || []).filter((r) => r.score >= 0.28);
   if (!relevant.length) {

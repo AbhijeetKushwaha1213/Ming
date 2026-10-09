@@ -244,11 +244,14 @@ Rules:
       for (const model of candidateModels) {
         try {
           const directEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${directKey}`;
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 12000);
           const directRes = await fetch(directEndpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
+            signal: controller.signal,
             body: JSON.stringify({
               contents: [{ parts: promptParts }],
               generationConfig: {
@@ -261,6 +264,7 @@ Rules:
               },
             }),
           });
+          clearTimeout(timer);
 
           if (!directRes.ok) {
             lastErrorStatus = directRes.status;
@@ -331,9 +335,12 @@ Rules:
       let backendErrorResponse: GeminiResponse | null = null;
 
       try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
         const response = await fetch(apiEndpoint, {
           method: 'POST',
           headers,
+          signal: controller.signal,
           body: JSON.stringify({
             message,
             context,
@@ -349,6 +356,7 @@ Rules:
             sourceTitle: req.sourceTitle,
           }),
         });
+        clearTimeout(timer);
 
         if (response.ok) {
           const data = await response.json();

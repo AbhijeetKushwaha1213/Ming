@@ -1,0 +1,374 @@
+/**
+ * Canonical Phase 8 — Evaluation & Reproducible Benchmarking Contracts
+ * 
+ * Formal data contracts, metric definitions, and mathematical formulations for:
+ * - Track A: Multimodal Ingestion (parsing, formats, provenance, malformed rejection)
+ * - Track B: Retrieval & Grounding (Recall@k, Precision@k, MRR, nDCG@k, Citation Precision/Coverage)
+ * - Track C: Assessment Correctness & Quality (numerical verification, tolerances, question quality)
+ * - Track D: Learner-State Estimation & Calibration (Brier Score, Log Loss, 10-bin ECE)
+ * - Track E: End-to-End AI Study Agent Loop (lifecycle completion, action selection, idempotency)
+ * - Track F: Reliability & Performance (latency percentiles, concurrency, capacity limits)
+ */
+
+// =========================================================================
+// 1. Core Run Contract & Metadata
+// =========================================================================
+
+export interface EvaluationRuntimeInfo {
+  nodeVersion: string;
+  platform: string;
+  arch: string;
+  pid: number;
+}
+
+export interface EvaluationDatasetFingerprint {
+  name: string;
+  filePath: string;
+  version: string;
+  itemCount: number;
+  sha256: string;
+  sourceType: 'ground_truth_curated' | 'synthetic_benchmark' | 'verified_rubric';
+  isSynthetic: boolean;
+  limitations: string;
+}
+
+export interface ConfidenceInterval {
+  estimate: number;
+  lower: number;
+  upper: number;
+  confidenceLevel: number; // e.g. 0.95
+}
+
+// =========================================================================
+// 2. Track Metrics Contracts
+// =========================================================================
+
+export interface TrackAMultimodalIngestionMetrics {
+  totalItemsEvaluated: number;
+  validItemsPassed: number;
+  malformedItemsRejected: number;
+  processingSuccessRate: number;
+  extractionAccuracy: number;
+  provenanceAccuracy: number; // page, slide, timestamp coordinates preserved
+  formatSupportRates: Record<string, number>;
+  malformedRejectionRate: number; // 1.0 = perfectly rejected all corrupted/invalid files
+  oversizedRejectionRate: number;
+}
+
+export interface TrackBRetrievalGroundingMetrics {
+  totalQueriesEvaluated: number;
+  recallAt5: number;
+  precisionAt5: number;
+  meanReciprocalRank: number; // MRR
+  ndcgAt5: number;            // Normalized Discounted Cumulative Gain
+  contextPrecision: number;
+  contextRecall: number;
+  faithfulness: number;
+  answerRelevancy: number;
+  groundingAccuracy: number;
+  coordinateAccuracy: number;
+  citationPrecision: number;
+  citationCoverage: number;
+  refusalAccuracy: number;
+  userIsolationPreserved: boolean;
+  confidenceIntervals: {
+    groundingAccuracy: ConfidenceInterval;
+    faithfulness: ConfidenceInterval;
+    contextRecall: ConfidenceInterval;
+  };
+}
+
+export interface TrackCAssessmentQualityMetrics {
+  totalQuestionsEvaluated: number;
+  numericalVerificationAccuracy: number;
+  toleranceHandlingAccuracy: number;
+  unitConversionAccuracy: number;
+  mcqGradingAccuracy: number;
+  invalidQuestionRejectionRate: number; // quarantined questions correctly caught
+  duplicateDetectionRate: number;
+  misconceptionClassificationAccuracy: number;
+  confidenceIntervals: {
+    numericalAccuracy: ConfidenceInterval;
+    mcqAccuracy: ConfidenceInterval;
+  };
+}
+
+export interface CalibrationBinStats {
+  binIndex: number;
+  binRange: [number, number];
+  itemCount: number;
+  avgConfidence: number;
+  avgAccuracy: number;
+  calibrationError: number;
+}
+
+export interface TrackDLearnerCalibrationMetrics {
+  totalTracesEvaluated: number;
+  brierScore: number;         // (1/N) * sum((p - y)^2), lower is better [0, 1]
+  logLoss: number;            // -(1/N) * sum(y*ln(p) + (1-y)*ln(1-p))
+  expectedCalibrationError: number; // ECE over 10 bins
+  calibrationBins: CalibrationBinStats[];
+  predictionCoverage: number;
+  recommendationDeterminism: number; // 1.0 = identical recommendation for identical state
+  coldStartPriorApplied: boolean;
+  positiveEvidenceIncreasesMastery: boolean;
+  negativeEvidenceDecreasesMastery: boolean;
+  tenantIsolationPreserved: boolean;
+  syntheticDataNotice: string;
+}
+
+export interface TrackEStudyAgentMetrics {
+  totalRunsEvaluated: number;
+  fullLoopCompletionRate: number; // 6-stage lifecycle completion
+  actionSelectionAccuracy: number;
+  activityAvailability: number;
+  gradingConsistency: number;
+  retryIdempotencyPreserved: boolean;
+  nextActionTransitionRate: number;
+  tenantIsolationPreserved: boolean;
+}
+
+export interface TrackFReliabilityMetrics {
+  p50LatencyMs: number;
+  p90LatencyMs: number;
+  p95LatencyMs: number;
+  p99LatencyMs: number;
+  concurrencyThroughputReqPerSec: number;
+  concurrencyErrorRate: number;
+  processLimiterEnforced: boolean;
+  cacheHitRatio: number;
+}
+
+// =========================================================================
+// 3. Consolidated Evaluation Run Contract
+// =========================================================================
+
+export interface EvaluationRunContract {
+  runId: string;
+  evaluationTimestamp: string;
+  gitCommitSha: string;
+  workingTreeClean: boolean;
+  randomSeed: number;
+  runtime: EvaluationRuntimeInfo;
+  datasetFingerprints: EvaluationDatasetFingerprint[];
+  summaryCounts: {
+    totalEvaluated: number;
+    totalPassed: number;
+    totalFailed: number;
+    totalSkipped: number;
+    totalInvalid: number;
+  };
+  tracks: {
+    trackA_multimodalIngestion: TrackAMultimodalIngestionMetrics;
+    trackB_retrievalGrounding: TrackBRetrievalGroundingMetrics;
+    trackC_assessmentQuality: TrackCAssessmentQualityMetrics;
+    trackD_learnerCalibration: TrackDLearnerCalibrationMetrics;
+    trackE_studyAgentLoop: TrackEStudyAgentMetrics;
+    trackF_reliabilityPerformance: TrackFReliabilityMetrics;
+  };
+  perExampleClassifications: Array<{
+    exampleId: string;
+    track: string;
+    status: 'pass' | 'fail' | 'skipped' | 'invalid';
+    details: string;
+    score?: number;
+  }>;
+  dataLimitations: string[];
+  failuresAndErrors: string[];
+}
+
+// =========================================================================
+// 4. Mathematical Formulations & Metric Computations
+// =========================================================================
+
+/**
+ * Computes Mean Reciprocal Rank (MRR):
+ * MRR = (1 / |Q|) * sum_{q in Q} (1 / rank_first_relevant_chunk)
+ * If no relevant chunk was retrieved, rank is considered infinity (1/rank = 0).
+ */
+export function computeMRR(ranks: number[]): number {
+  if (!ranks || ranks.length === 0) return 0.0;
+  const reciprocalSum = ranks.reduce((sum, r) => sum + (r > 0 ? 1 / r : 0), 0);
+  return Math.round((reciprocalSum / ranks.length) * 1000) / 1000;
+}
+
+/**
+ * Computes Precision@k:
+ * Precision@k = (number of relevant items in top k) / k
+ */
+export function computePrecisionAtK(retrievedFlags: boolean[], k = 5): number {
+  if (k <= 0) return 0.0;
+  const topK = retrievedFlags.slice(0, k);
+  const relevantInTopK = topK.filter(Boolean).length;
+  return Math.round((relevantInTopK / k) * 1000) / 1000;
+}
+
+/**
+ * Computes Recall@k:
+ * Recall@k = (number of relevant items in top k) / totalExpectedRelevant
+ */
+export function computeRecallAtK(retrievedFlags: boolean[], totalExpected = 1, k = 5): number {
+  if (totalExpected <= 0) return 1.0;
+  const topK = retrievedFlags.slice(0, k);
+  const relevantInTopK = topK.filter(Boolean).length;
+  return Math.round((Math.min(relevantInTopK / totalExpected, 1.0)) * 1000) / 1000;
+}
+
+/**
+ * Computes Normalized Discounted Cumulative Gain at rank k (nDCG@k):
+ * DCG@k = sum_{i=1}^k (2^{rel_i} - 1) / log2(i + 1)
+ * IDCG@k = sum_{i=1}^{min(k, |rel|)} (2^{ideal_rel_i} - 1) / log2(i + 1)
+ * nDCG@k = DCG@k / IDCG@k
+ */
+export function computeNDCG(relevanceScores: number[], k = 5): number {
+  if (!relevanceScores || relevanceScores.length === 0 || k <= 0) return 0.0;
+
+  const actualSlice = relevanceScores.slice(0, k);
+  let dcg = 0;
+  for (let i = 0; i < actualSlice.length; i++) {
+    const rel = actualSlice[i];
+    dcg += (Math.pow(2, rel) - 1) / Math.log2(i + 2);
+  }
+
+  const idealSlice = [...relevanceScores].sort((a, b) => b - a).slice(0, k);
+  let idcg = 0;
+  for (let i = 0; i < idealSlice.length; i++) {
+    const rel = idealSlice[i];
+    idcg += (Math.pow(2, rel) - 1) / Math.log2(i + 2);
+  }
+
+  if (idcg === 0) return 1.0;
+  return Math.round((dcg / idcg) * 1000) / 1000;
+}
+
+/**
+ * Computes Brier Score for probabilistic binary predictions:
+ * Brier Score = (1 / N) * sum_{i=1}^N (p_i - y_i)^2
+ * Bounded in [0.0, 1.0]. Lower is better. 0.0 = perfect probabilistic calibration.
+ */
+export function computeBrierScore(predictions: number[], outcomes: (0 | 1)[]): number {
+  if (!predictions || predictions.length === 0 || predictions.length !== outcomes.length) {
+    return 0.0;
+  }
+  const sumSquaredErr = predictions.reduce((sum, p, i) => {
+    const err = p - outcomes[i];
+    return sum + err * err;
+  }, 0);
+  return Math.round((sumSquaredErr / predictions.length) * 1000) / 1000;
+}
+
+/**
+ * Computes Log Loss (Binary Cross-Entropy):
+ * Log Loss = -(1 / N) * sum_{i=1}^N [ y_i * ln(p_i) + (1 - y_i) * ln(1 - p_i) ]
+ * Clamped with epsilon = 1e-6 to avoid infinities.
+ */
+export function computeLogLoss(predictions: number[], outcomes: (0 | 1)[]): number {
+  if (!predictions || predictions.length === 0 || predictions.length !== outcomes.length) {
+    return 0.0;
+  }
+  const eps = 1e-6;
+  const totalLoss = predictions.reduce((sum, rawP, i) => {
+    const p = Math.max(eps, Math.min(1 - eps, rawP));
+    const y = outcomes[i];
+    return sum - (y * Math.log(p) + (1 - y) * Math.log(1 - p));
+  }, 0);
+  return Math.round((totalLoss / predictions.length) * 1000) / 1000;
+}
+
+/**
+ * Computes Expected Calibration Error (ECE) across M equal bins (default M = 10):
+ * ECE = sum_{m=1}^M (|B_m| / N) * |acc(B_m) - conf(B_m)|
+ */
+export function computeECE(
+  predictions: number[],
+  outcomes: (0 | 1)[],
+  numBins = 10
+): { ece: number; binStats: CalibrationBinStats[] } {
+  if (!predictions || predictions.length === 0 || predictions.length !== outcomes.length) {
+    return { ece: 0.0, binStats: [] };
+  }
+
+  const N = predictions.length;
+  const binWidth = 1.0 / numBins;
+  const binStats: CalibrationBinStats[] = [];
+  let weightedErrorSum = 0;
+
+  for (let m = 0; m < numBins; m++) {
+    const lower = m * binWidth;
+    const upper = (m + 1) * binWidth;
+
+    const binItems: Array<{ p: number; y: number }> = [];
+    for (let i = 0; i < N; i++) {
+      const p = predictions[i];
+      if (m === numBins - 1 ? (p >= lower && p <= upper) : (p >= lower && p < upper)) {
+        binItems.push({ p, y: outcomes[i] });
+      }
+    }
+
+    const count = binItems.length;
+    if (count === 0) {
+      binStats.push({
+        binIndex: m + 1,
+        binRange: [Math.round(lower * 10) / 10, Math.round(upper * 10) / 10],
+        itemCount: 0,
+        avgConfidence: Math.round(((lower + upper) / 2) * 1000) / 1000,
+        avgAccuracy: 0.0,
+        calibrationError: 0.0,
+      });
+      continue;
+    }
+
+    const sumP = binItems.reduce((acc, item) => acc + item.p, 0);
+    const sumY = binItems.reduce((acc, item) => acc + item.y, 0);
+    const avgConfidence = sumP / count;
+    const avgAccuracy = sumY / count;
+    const calErr = Math.abs(avgAccuracy - avgConfidence);
+
+    weightedErrorSum += (count / N) * calErr;
+
+    binStats.push({
+      binIndex: m + 1,
+      binRange: [Math.round(lower * 10) / 10, Math.round(upper * 10) / 10],
+      itemCount: count,
+      avgConfidence: Math.round(avgConfidence * 1000) / 1000,
+      avgAccuracy: Math.round(avgAccuracy * 1000) / 1000,
+      calibrationError: Math.round(calErr * 1000) / 1000,
+    });
+  }
+
+  return {
+    ece: Math.round(weightedErrorSum * 1000) / 1000,
+    binStats,
+  };
+}
+
+/**
+ * Computes Wilson Score 95% Confidence Interval for a binomial proportion:
+ * Center = (p + z^2 / 2n) / (1 + z^2 / n)
+ * Margin = (z / (1 + z^2 / n)) * sqrt(p(1-p)/n + z^2/(4n^2))
+ */
+export function computeWilsonConfidenceInterval(
+  successes: number,
+  total: number,
+  z = 1.96 // 95% confidence
+): ConfidenceInterval {
+  if (total <= 0) {
+    return { estimate: 0.0, lower: 0.0, upper: 0.0, confidenceLevel: 0.95 };
+  }
+
+  const p = Math.max(0, Math.min(1, successes / total));
+  const z2 = z * z;
+  const denominator = 1 + z2 / total;
+  const center = (p + z2 / (2 * total)) / denominator;
+  const margin = (z / denominator) * Math.sqrt((p * (1 - p)) / total + z2 / (4 * total * total));
+
+  const lower = Math.max(0.0, Math.round((center - margin) * 1000) / 1000);
+  const upper = Math.min(1.0, Math.round((center + margin) * 1000) / 1000);
+
+  return {
+    estimate: Math.round(p * 1000) / 1000,
+    lower,
+    upper,
+    confidenceLevel: 0.95,
+  };
+}

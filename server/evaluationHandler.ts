@@ -2,6 +2,7 @@ import {
   runFullEvaluationSuite,
   getLatestEvaluationReport,
   loadEvaluationDataset,
+  getCanonicalDatasetFingerprints,
   type FullEvaluationReport,
 } from './evaluationEngine.ts';
 import { runPythonCli } from './ragHandler.ts';
@@ -52,6 +53,18 @@ export async function evaluationHandler(req: SimpleRequest, res: SimpleResponse)
     }
   }
 
+  // 1b. GET /api/evaluation/datasets
+  if (method === 'GET' && pathname === '/api/evaluation/datasets') {
+    try {
+      const fingerprints = await getCanonicalDatasetFingerprints();
+      res.status(200).json({ success: true, count: fingerprints.length, datasets: fingerprints });
+      return;
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to load dataset fingerprints', details: err.message });
+      return;
+    }
+  }
+
   // 2. GET /api/evaluation/latest
   if (method === 'GET' && pathname === '/api/evaluation/latest') {
     try {
@@ -60,7 +73,7 @@ export async function evaluationHandler(req: SimpleRequest, res: SimpleResponse)
         // Run full evaluation suite on demand if no previous run exists
         report = await runFullEvaluationSuite(searchAdapter, chatAdapter);
       }
-      res.status(200).json({ success: true, report });
+      res.status(200).json({ success: true, report, contract: report.contract });
       return;
     } catch (err: any) {
       console.error('Error fetching latest evaluation report:', err);
@@ -74,7 +87,7 @@ export async function evaluationHandler(req: SimpleRequest, res: SimpleResponse)
     try {
       console.log('🚀 Running full Ming Evaluation Suite on isolated test data...');
       const report = await runFullEvaluationSuite(searchAdapter, chatAdapter);
-      res.status(200).json({ success: true, report });
+      res.status(200).json({ success: true, report, contract: report.contract });
       return;
     } catch (err: any) {
       console.error('Error running evaluation suite:', err);

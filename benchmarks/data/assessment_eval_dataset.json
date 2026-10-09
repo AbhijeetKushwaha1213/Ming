@@ -1,0 +1,132 @@
+[
+  {
+    "id": "assess_eval_num_01",
+    "type": "NUMERICAL",
+    "prompt": "Calculate the page offset in bytes for a system with 4 KB page sizes.",
+    "correctAnswer": "4096",
+    "studentAnswer": "4096 bytes",
+    "unit": "bytes",
+    "expectedClassification": "CORRECT",
+    "expectedCredit": 1.0,
+    "tolerance": { "mode": "relative", "value": 0.02 }
+  },
+  {
+    "id": "assess_eval_num_02",
+    "type": "NUMERICAL",
+    "prompt": "Calculate the average waiting time in milliseconds.",
+    "correctAnswer": "12.5",
+    "studentAnswer": "12.6 ms",
+    "unit": "ms",
+    "expectedClassification": "CORRECT",
+    "expectedCredit": 1.0,
+    "tolerance": { "mode": "relative", "value": 0.02 }
+  },
+  {
+    "id": "assess_eval_num_03",
+    "type": "NUMERICAL",
+    "prompt": "Compute the network round-trip time in milliseconds.",
+    "correctAnswer": "50",
+    "studentAnswer": "75 ms",
+    "unit": "ms",
+    "expectedClassification": "INCORRECT",
+    "expectedCredit": 0.0,
+    "tolerance": { "mode": "relative", "value": 0.02 }
+  },
+  {
+    "id": "assess_eval_num_04",
+    "type": "NUMERICAL",
+    "prompt": "Convert 5 kilometers to meters.",
+    "correctAnswer": "5000",
+    "studentAnswer": "5000 m",
+    "unit": "m",
+    "expectedClassification": "CORRECT",
+    "expectedCredit": 1.0,
+    "tolerance": { "mode": "relative", "value": 0.01 }
+  },
+  {
+    "id": "assess_eval_num_05",
+    "type": "NUMERICAL",
+    "prompt": "Evaluate resistance using scientific notation: 1.5e3 ohms.",
+    "correctAnswer": "1500",
+    "studentAnswer": "1.5e3 ohms",
+    "unit": "ohms",
+    "expectedClassification": "CORRECT",
+    "expectedCredit": 1.0,
+    "tolerance": { "mode": "relative", "value": 0.01 }
+  },
+  {
+    "id": "assess_eval_num_06",
+    "type": "NUMERICAL",
+    "prompt": "Calculate memory overhead fraction.",
+    "correctAnswer": "0.125",
+    "studentAnswer": "-0.125",
+    "expectedClassification": "PARTIALLY_CORRECT",
+    "expectedCredit": 0.5,
+    "tolerance": { "mode": "relative", "value": 0.02 }
+  },
+  {
+    "id": "assess_eval_mcq_01",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which Coffman condition can be prevented by imposing a total ordering on resources?",
+    "options": ["Mutual exclusion", "Hold and wait", "No preemption", "Circular wait"],
+    "correctAnswer": "Circular wait",
+    "studentAnswer": "Circular wait",
+    "expectedClassification": "CORRECT",
+    "expectedCredit": 1.0
+  },
+  {
+    "id": "assess_eval_mcq_02",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which layer in the OSI model handles end-to-end reliability and flow control?",
+    "options": ["Network Layer", "Transport Layer", "Data Link Layer", "Session Layer"],
+    "correctAnswer": "Transport Layer",
+    "studentAnswer": "Network Layer",
+    "expectedClassification": "INCORRECT",
+    "expectedCredit": 0.0
+  },
+  {
+    "id": "assess_eval_invalid_01",
+    "type": "INVALID_QUESTION",
+    "prompt": "",
+    "options": ["A", "B"],
+    "correctAnswer": "A",
+    "expectedRejection": true,
+    "rejectionReason": "EMPTY_PROMPT"
+  },
+  {
+    "id": "assess_eval_invalid_02",
+    "type": "INVALID_QUESTION",
+    "prompt": "What is the primary function of DNS?",
+    "options": ["Domain resolution", "Domain resolution", "Routing", "Encryption"],
+    "correctAnswer": "Domain resolution",
+    "expectedRejection": true,
+    "rejectionReason": "DUPLICATE_CHOICES"
+  },
+  {
+    "id": "assess_eval_invalid_03",
+    "type": "INVALID_QUESTION",
+    "prompt": "Which scheduling algorithm is strictly non-preemptive?",
+    "options": ["Round Robin", "SRTF"],
+    "correctAnswer": "FCFS",
+    "expectedRejection": true,
+    "rejectionReason": "ANSWER_NOT_IN_CHOICES"
+  },
+  {
+    "id": "assess_eval_misc_01",
+    "type": "MISCONCEPTION",
+    "prompt": "Explain the difference between Deadlock Avoidance and Deadlock Prevention.",
+    "studentAnswer": "Deadlock avoidance statically eliminates Coffman conditions before execution.",
+    "expectedMisconception": "CONCEPT_CONFUSION",
+    "expectedTargetConcept": "Deadlock Avoidance vs Prevention",
+    "expectedSeverity": "high"
+  },
+  {
+    "id": "assess_eval_misc_02",
+    "type": "MISCONCEPTION",
+    "prompt": "Why can Round Robin lead to higher turnaround times?",
+    "studentAnswer": "Because Round Robin always prioritizes short jobs first regardless of arrival.",
+    "expectedMisconception": "CONCEPT_CONFUSION",
+    "expectedTargetConcept": "CPU Scheduling Mechanisms",
+    "expectedSeverity": "medium"
+  }
+]

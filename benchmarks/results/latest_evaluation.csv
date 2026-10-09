@@ -1,22 +1,25 @@
-Metric Category,Metric Name,Phase 6 Baseline,Phase 7 Baseline,Phase 8 Actual,Delta (P8-P7),Improved,Target Benchmark
-Comparison,Context Recall,0.65,0.458,0.825,+0.367,YES,>= 0.80
-Comparison,Answer Relevancy,0.702,0.713,0.851,+0.138,YES,>= 0.80
-Comparison,Context Precision,0.375,0.942,0.714,-0.228,NO,>= 0.80
-Comparison,Faithfulness,0.796,0.418,0.96,+0.542,YES,>= 0.85
-Comparison,Grounding Accuracy,1,0.942,1,+0.058,YES,>= 0.90
-Comparison,Coordinate Match,0.875,0.962,1,+0.038,YES,>= 0.95
-Comparison,Refusal Accuracy,1,1,1,+0,YES,1.00
-Comparison,Exact Duplicate Rate,0.8,0,0,+0,YES,<= 0.05
-Comparison,Semantic Duplicate Rate,0,0,0,+0,YES,<= 0.05
-Comparison,Unique Question Rate,0.2,1,1,+0,YES,>= 0.90
-Comparison,Average Mastery Delta,0.501,0.448,0.448,+0,YES,> 0.00
-Personalization,Cohort Size,3,50,50,+47,YES,>= 50
-Personalization,Average Completion Rate,-,1.0,1,-,YES,>= 0.90
-Personalization,Recommendation Relevance,-,1.0,1,-,YES,>= 0.85
-Grounding,User Isolation Preserved,-,YES,YES,-,YES,YES
-Dataset,Total Evaluated Questions,8,52,70,+18,YES,>= 50
-Assessment,Assessment Correctness,-,-,1,-,YES,>= 0.90
-Assessment,Feedback Grounding,-,-,0.909,-,YES,>= 0.95
-Assessment,Misconception Precision,-,-,1,-,YES,>= 0.90
-Assessment,Repeated Mistake Detection,-,-,1,-,YES,1.00
-Assessment,BKT Update Consistency,-,-,1,-,YES,1.00
+Track,Metric Name,Value,Target Benchmark
+Track A: Ingestion,Processing Success Rate,1,>= 0.95
+Track A: Ingestion,Extraction Accuracy,1,>= 0.95
+Track A: Ingestion,Provenance Accuracy,1,>= 0.95
+Track A: Ingestion,Malformed Rejection Rate,1,1.00
+Track B: RAG,MRR,0,>= 0.85
+Track B: RAG,Recall@5,0,>= 0.80
+Track B: RAG,Precision@5,0,>= 0.70
+Track B: RAG,nDCG@5,1,>= 0.80
+Track B: RAG,Faithfulness,0,>= 0.85
+Track B: RAG,Answer Relevancy,0.037,>= 0.80
+Track B: RAG,Grounding Accuracy,0.514,>= 0.90
+Track B: RAG,Refusal Accuracy,0,1.00
+Track C: Assessment,Numerical Verification Accuracy,1,>= 0.95
+Track C: Assessment,Tolerance Handling Accuracy,1,>= 0.95
+Track C: Assessment,MCQ Grading Accuracy,1,1.00
+Track C: Assessment,Invalid Question Rejection Rate,1,1.00
+Track D: Learner,Brier Score (Lower is better),0.277,<= 0.25
+Track D: Learner,Expected Calibration Error (10 bins),0.316,<= 0.15
+Track D: Learner,Recommendation Determinism,1,1.00
+Track E: Study Agent,Full Loop Completion Rate,1,1.00
+Track E: Study Agent,Action Selection Accuracy,1,>= 0.90
+Track E: Study Agent,Retry Idempotency Preserved,YES,YES
+Track F: Reliability,p95 Latency (ms),38,<= 100ms
+Track F: Reliability,Cache Hit Ratio,0.942,>= 0.80

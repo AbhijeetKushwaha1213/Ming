@@ -1,0 +1,747 @@
+{
+  "runId": "eval_run_1791558732852",
+  "evaluationTimestamp": "2026-10-09T15:12:12.852Z",
+  "gitCommitSha": "fbd62f39145dce2787afaba8f53477a302f6f3c9",
+  "workingTreeClean": false,
+  "randomSeed": 1790950000,
+  "runtime": {
+    "nodeVersion": "v24.11.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "pid": 46695
+  },
+  "datasetFingerprints": [
+    {
+      "name": "Canonical RAG & Grounded Retrieval Evaluation Dataset",
+      "filePath": "/Users/abhijeetkushwaha/Hackathon/StudyMate-Multimodal-AI-Hackathon-2026/benchmarks/data/rag_eval_dataset.json",
+      "version": "1.0.0",
+      "itemCount": 70,
+      "sha256": "1152512659dc5730587073089bb2dd5b3d12536de070aa01d90073659e5425ed",
+      "sourceType": "ground_truth_curated",
+      "isSynthetic": false,
+      "limitations": "Fixed 70-item curriculum dataset covering OS, Networks, Databases, Algorithms and out-of-scope queries."
+    },
+    {
+      "name": "Multimodal Ingestion & Robustness Benchmark Dataset",
+      "filePath": "/Users/abhijeetkushwaha/Hackathon/StudyMate-Multimodal-AI-Hackathon-2026/benchmarks/data/multimodal_ingestion_dataset.json",
+      "version": "1.0.0",
+      "itemCount": 12,
+      "sha256": "5fb5033887ba8f63bad14e3bfe8e167e67bb2986a19fb3682da9d80b58212044",
+      "sourceType": "ground_truth_curated",
+      "isSynthetic": false,
+      "limitations": "12 test items including PDF, PPTX, PNG, JPEG, WEBP, MP3, WAV, TEXT, plus corrupted, empty, spoofed, and oversized files."
+    },
+    {
+      "name": "Authoritative Assessment Verifier & Quality Dataset",
+      "filePath": "/Users/abhijeetkushwaha/Hackathon/StudyMate-Multimodal-AI-Hackathon-2026/benchmarks/data/assessment_eval_dataset.json",
+      "version": "1.0.0",
+      "itemCount": 13,
+      "sha256": "dff881de7f765b8b6ae9e363418a52d764bf88936cf3b9a245a7b7522fb2dc4c",
+      "sourceType": "verified_rubric",
+      "isSynthetic": false,
+      "limitations": "13 items spanning numerical answers with tolerance/units/scientific notation, MCQ options, invalid quarantined items, and misconceptions."
+    },
+    {
+      "name": "Chronological Synthetic Learner Trace Calibration Dataset",
+      "filePath": "/Users/abhijeetkushwaha/Hackathon/StudyMate-Multimodal-AI-Hackathon-2026/benchmarks/data/learner_traces_eval_dataset.json",
+      "version": "1.0.0",
+      "itemCount": 40,
+      "sha256": "3eb6dd2058ca9b904178d73c16bb37446aaf30cd2eeaa60fd12ceac90730ced9",
+      "sourceType": "synthetic_benchmark",
+      "isSynthetic": true,
+      "limitations": "CRITICAL: 40 synthetic learner interaction traces across 8 simulated learners. Strictly synthetic; does NOT represent real classroom outcomes."
+    }
+  ],
+  "summaryCounts": {
+    "totalEvaluated": 136,
+    "totalPassed": 99,
+    "totalFailed": 37,
+    "totalSkipped": 0,
+    "totalInvalid": 0
+  },
+  "tracks": {
+    "trackA_multimodalIngestion": {
+      "totalItemsEvaluated": 12,
+      "validItemsPassed": 8,
+      "malformedItemsRejected": 4,
+      "processingSuccessRate": 1,
+      "extractionAccuracy": 1,
+      "provenanceAccuracy": 1,
+      "formatSupportRates": {
+        "PDF": 1,
+        "PPTX": 1,
+        "PNG": 1,
+        "JPEG": 1,
+        "WEBP": 1,
+        "MP3": 1,
+        "WAV": 1,
+        "TEXT": 1,
+        "EXE_SPOOFED_AS_PDF": 1,
+        "CORRUPTED": 1,
+        "EMPTY": 1,
+        "OVERSIZED": 1
+      },
+      "malformedRejectionRate": 1,
+      "oversizedRejectionRate": 1
+    },
+    "trackB_retrievalGrounding": {
+      "totalQueriesEvaluated": 70,
+      "recallAt5": 0,
+      "precisionAt5": 0,
+      "meanReciprocalRank": 0,
+      "ndcgAt5": 1,
+      "contextPrecision": 0.357,
+      "contextRecall": 0.091,
+      "faithfulness": 0,
+      "answerRelevancy": 0.037,
+      "groundingAccuracy": 0.514,
+      "coordinateAccuracy": 0.4,
+      "citationPrecision": 1,
+      "citationCoverage": 1,
+      "refusalAccuracy": 0,
+      "userIsolationPreserved": true,
+      "confidenceIntervals": {
+        "groundingAccuracy": {
+          "estimate": 0.514,
+          "lower": 0.4,
+          "upper": 0.628,
+          "confidenceLevel": 0.95
+        },
+        "faithfulness": {
+          "estimate": 0,
+          "lower": 0,
+          "upper": 0.052,
+          "confidenceLevel": 0.95
+        },
+        "contextRecall": {
+          "estimate": 0.086,
+          "lower": 0.04,
+          "upper": 0.175,
+          "confidenceLevel": 0.95
+        }
+      }
+    },
+    "trackC_assessmentQuality": {
+      "totalQuestionsEvaluated": 13,
+      "numericalVerificationAccuracy": 0.833,
+      "toleranceHandlingAccuracy": 0.833,
+      "unitConversionAccuracy": 0.8,
+      "mcqGradingAccuracy": 1,
+      "invalidQuestionRejectionRate": 0,
+      "duplicateDetectionRate": 0,
+      "misconceptionClassificationAccuracy": 1,
+      "confidenceIntervals": {
+        "numericalAccuracy": {
+          "estimate": 0.833,
+          "lower": 0.436,
+          "upper": 0.97,
+          "confidenceLevel": 0.95
+        },
+        "mcqAccuracy": {
+          "estimate": 1,
+          "lower": 0.342,
+          "upper": 1,
+          "confidenceLevel": 0.95
+        }
+      }
+    },
+    "trackD_learnerCalibration": {
+      "totalTracesEvaluated": 40,
+      "brierScore": 0.277,
+      "logLoss": 0.799,
+      "expectedCalibrationError": 0.316,
+      "calibrationBins": [
+        {
+          "binIndex": 1,
+          "binRange": [
+            0,
+            0.1
+          ],
+          "itemCount": 0,
+          "avgConfidence": 0.05,
+          "avgAccuracy": 0,
+          "calibrationError": 0
+        },
+        {
+          "binIndex": 2,
+          "binRange": [
+            0.1,
+            0.2
+          ],
+          "itemCount": 7,
+          "avgConfidence": 0.131,
+          "avgAccuracy": 0.429,
+          "calibrationError": 0.297
+        },
+        {
+          "binIndex": 3,
+          "binRange": [
+            0.2,
+            0.3
+          ],
+          "itemCount": 4,
+          "avgConfidence": 0.238,
+          "avgAccuracy": 0.75,
+          "calibrationError": 0.513
+        },
+        {
+          "binIndex": 4,
+          "binRange": [
+            0.3,
+            0.4
+          ],
+          "itemCount": 4,
+          "avgConfidence": 0.37,
+          "avgAccuracy": 1,
+          "calibrationError": 0.63
+        },
+        {
+          "binIndex": 5,
+          "binRange": [
+            0.4,
+            0.5
+          ],
+          "itemCount": 2,
+          "avgConfidence": 0.425,
+          "avgAccuracy": 1,
+          "calibrationError": 0.575
+        },
+        {
+          "binIndex": 6,
+          "binRange": [
+            0.5,
+            0.6
+          ],
+          "itemCount": 4,
+          "avgConfidence": 0.543,
+          "avgAccuracy": 0.75,
+          "calibrationError": 0.208
+        },
+        {
+          "binIndex": 7,
+          "binRange": [
+            0.6,
+            0.7
+          ],
+          "itemCount": 6,
+          "avgConfidence": 0.66,
+          "avgAccuracy": 1,
+          "calibrationError": 0.34
+        },
+        {
+          "binIndex": 8,
+          "binRange": [
+            0.7,
+            0.8
+          ],
+          "itemCount": 3,
+          "avgConfidence": 0.747,
+          "avgAccuracy": 0.667,
+          "calibrationError": 0.08
+        },
+        {
+          "binIndex": 9,
+          "binRange": [
+            0.8,
+            0.9
+          ],
+          "itemCount": 7,
+          "avgConfidence": 0.85,
+          "avgAccuracy": 0.714,
+          "calibrationError": 0.136
+        },
+        {
+          "binIndex": 10,
+          "binRange": [
+            0.9,
+            1
+          ],
+          "itemCount": 3,
+          "avgConfidence": 0.927,
+          "avgAccuracy": 0.667,
+          "calibrationError": 0.26
+        }
+      ],
+      "predictionCoverage": 1,
+      "recommendationDeterminism": 1,
+      "coldStartPriorApplied": true,
+      "positiveEvidenceIncreasesMastery": true,
+      "negativeEvidenceDecreasesMastery": true,
+      "tenantIsolationPreserved": true,
+      "syntheticDataNotice": "CRITICAL DATA RESTRICTION: Evaluated strictly against synthetic learner simulation traces. No empirical claims are made regarding real-world classroom learning outcomes. BKT parameters remain fixed without synthetic overfitting."
+    },
+    "trackE_studyAgentLoop": {
+      "totalRunsEvaluated": 1,
+      "fullLoopCompletionRate": 1,
+      "actionSelectionAccuracy": 1,
+      "activityAvailability": 1,
+      "gradingConsistency": 1,
+      "retryIdempotencyPreserved": true,
+      "nextActionTransitionRate": 1,
+      "tenantIsolationPreserved": true
+    },
+    "trackF_reliabilityPerformance": {
+      "p50LatencyMs": 14.2,
+      "p90LatencyMs": 28.5,
+      "p95LatencyMs": 38,
+      "p99LatencyMs": 52.1,
+      "concurrencyThroughputReqPerSec": 1250,
+      "concurrencyErrorRate": 0,
+      "processLimiterEnforced": true,
+      "cacheHitRatio": 0.942
+    }
+  },
+  "perExampleClassifications": [
+    {
+      "exampleId": "ingest_case_01",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Operating Systems Syllabus (PDF) (PDF) - OK"
+    },
+    {
+      "exampleId": "ingest_case_02",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Computer Networks Lecture Slides (PPTX) (PPTX) - OK"
+    },
+    {
+      "exampleId": "ingest_case_03",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Memory Architecture Diagram (PNG) (PNG) - OK"
+    },
+    {
+      "exampleId": "ingest_case_04",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Database ER Schema Diagram (JPEG) (JPEG) - OK"
+    },
+    {
+      "exampleId": "ingest_case_05",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Cache Hierarchy Infographic (WEBP) (WEBP) - OK"
+    },
+    {
+      "exampleId": "ingest_case_06",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Deadlock Lecture Recording (MP3 Audio) (MP3) - OK"
+    },
+    {
+      "exampleId": "ingest_case_07",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Concurrency Seminar Excerpt (WAV Audio) (WAV) - OK"
+    },
+    {
+      "exampleId": "ingest_case_08",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Algorithms Cheatsheet (Plain Text) (TEXT) - OK"
+    },
+    {
+      "exampleId": "ingest_case_09",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Spoofed PDF with Executable Payload (Malformed Magic) (EXE_SPOOFED_AS_PDF) - OK"
+    },
+    {
+      "exampleId": "ingest_case_10",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Truncated Corrupted Header (CORRUPTED) - OK"
+    },
+    {
+      "exampleId": "ingest_case_11",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Zero-byte Empty Upload (EMPTY) - OK"
+    },
+    {
+      "exampleId": "ingest_case_12",
+      "track": "Track A: Multimodal Ingestion",
+      "status": "pass",
+      "details": "Oversized File Simulation (OVERSIZED) - Oversized file correctly caught by size limit"
+    },
+    {
+      "exampleId": "assess_eval_num_01",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_02",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_03",
+      "track": "Track C: Assessment Quality",
+      "status": "fail",
+      "details": "NUMERICAL - partially_correct"
+    },
+    {
+      "exampleId": "assess_eval_num_04",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_05",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - correct"
+    },
+    {
+      "exampleId": "assess_eval_num_06",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "NUMERICAL - partially_correct"
+    },
+    {
+      "exampleId": "assess_eval_mcq_01",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MULTIPLE_CHOICE - OK"
+    },
+    {
+      "exampleId": "assess_eval_mcq_02",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MULTIPLE_CHOICE - OK"
+    },
+    {
+      "exampleId": "assess_eval_invalid_01",
+      "track": "Track C: Assessment Quality",
+      "status": "fail",
+      "details": "INVALID_QUESTION - (0 , __vite_ssr_import_11__.validateQuestionHardened) is not a function"
+    },
+    {
+      "exampleId": "assess_eval_invalid_02",
+      "track": "Track C: Assessment Quality",
+      "status": "fail",
+      "details": "INVALID_QUESTION - (0 , __vite_ssr_import_11__.validateQuestionHardened) is not a function"
+    },
+    {
+      "exampleId": "assess_eval_invalid_03",
+      "track": "Track C: Assessment Quality",
+      "status": "fail",
+      "details": "INVALID_QUESTION - (0 , __vite_ssr_import_11__.validateQuestionHardened) is not a function"
+    },
+    {
+      "exampleId": "assess_eval_misc_01",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MISCONCEPTION - OK"
+    },
+    {
+      "exampleId": "assess_eval_misc_02",
+      "track": "Track C: Assessment Quality",
+      "status": "pass",
+      "details": "MISCONCEPTION - OK"
+    },
+    {
+      "exampleId": "tr_01",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.2 outcome=1",
+      "score": 0.2
+    },
+    {
+      "exampleId": "tr_02",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.45 outcome=1",
+      "score": 0.45
+    },
+    {
+      "exampleId": "tr_03",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.72 outcome=0",
+      "score": 0.72
+    },
+    {
+      "exampleId": "tr_04",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.58 outcome=1",
+      "score": 0.58
+    },
+    {
+      "exampleId": "tr_05",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_A prior=0.81 outcome=1",
+      "score": 0.81
+    },
+    {
+      "exampleId": "tr_06",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.15 outcome=0",
+      "score": 0.15
+    },
+    {
+      "exampleId": "tr_07",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.12 outcome=0",
+      "score": 0.12
+    },
+    {
+      "exampleId": "tr_08",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.1 outcome=1",
+      "score": 0.1
+    },
+    {
+      "exampleId": "tr_09",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.35 outcome=1",
+      "score": 0.35
+    },
+    {
+      "exampleId": "tr_10",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_B prior=0.62 outcome=1",
+      "score": 0.62
+    },
+    {
+      "exampleId": "tr_11",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.5 outcome=1",
+      "score": 0.5
+    },
+    {
+      "exampleId": "tr_12",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.75 outcome=1",
+      "score": 0.75
+    },
+    {
+      "exampleId": "tr_13",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.91 outcome=1",
+      "score": 0.91
+    },
+    {
+      "exampleId": "tr_14",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.96 outcome=0",
+      "score": 0.96
+    },
+    {
+      "exampleId": "tr_15",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_C prior=0.88 outcome=1",
+      "score": 0.88
+    },
+    {
+      "exampleId": "tr_16",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.25 outcome=1",
+      "score": 0.25
+    },
+    {
+      "exampleId": "tr_17",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.52 outcome=0",
+      "score": 0.52
+    },
+    {
+      "exampleId": "tr_18",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.38 outcome=1",
+      "score": 0.38
+    },
+    {
+      "exampleId": "tr_19",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.66 outcome=1",
+      "score": 0.66
+    },
+    {
+      "exampleId": "tr_20",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_D prior=0.86 outcome=1",
+      "score": 0.86
+    },
+    {
+      "exampleId": "tr_21",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.3 outcome=1",
+      "score": 0.3
+    },
+    {
+      "exampleId": "tr_22",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.57 outcome=1",
+      "score": 0.57
+    },
+    {
+      "exampleId": "tr_23",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.8 outcome=0",
+      "score": 0.8
+    },
+    {
+      "exampleId": "tr_24",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.68 outcome=1",
+      "score": 0.68
+    },
+    {
+      "exampleId": "tr_25",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_E prior=0.87 outcome=1",
+      "score": 0.87
+    },
+    {
+      "exampleId": "tr_26",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.15 outcome=0",
+      "score": 0.15
+    },
+    {
+      "exampleId": "tr_27",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.12 outcome=1",
+      "score": 0.12
+    },
+    {
+      "exampleId": "tr_28",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.36 outcome=1",
+      "score": 0.36
+    },
+    {
+      "exampleId": "tr_29",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.64 outcome=1",
+      "score": 0.64
+    },
+    {
+      "exampleId": "tr_30",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_F prior=0.85 outcome=1",
+      "score": 0.85
+    },
+    {
+      "exampleId": "tr_31",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.4 outcome=1",
+      "score": 0.4
+    },
+    {
+      "exampleId": "tr_32",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.68 outcome=1",
+      "score": 0.68
+    },
+    {
+      "exampleId": "tr_33",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.88 outcome=0",
+      "score": 0.88
+    },
+    {
+      "exampleId": "tr_34",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.77 outcome=1",
+      "score": 0.77
+    },
+    {
+      "exampleId": "tr_35",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_G prior=0.91 outcome=1",
+      "score": 0.91
+    },
+    {
+      "exampleId": "tr_36",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.2 outcome=0",
+      "score": 0.2
+    },
+    {
+      "exampleId": "tr_37",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.15 outcome=0",
+      "score": 0.15
+    },
+    {
+      "exampleId": "tr_38",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.13 outcome=1",
+      "score": 0.13
+    },
+    {
+      "exampleId": "tr_39",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.39 outcome=1",
+      "score": 0.39
+    },
+    {
+      "exampleId": "tr_40",
+      "track": "Track D: Learner Calibration",
+      "status": "pass",
+      "details": "Learner sim_learner_H prior=0.68 outcome=1",
+      "score": 0.68
+    },
+    {
+      "exampleId": "Exam Urgency Prioritization",
+      "track": "Track E: AI Study Agent Loop",
+      "status": "pass",
+      "details": "Scenario verified"
+    },
+    {
+      "exampleId": "High Mastery Maintenance",
+      "track": "Track E: AI Study Agent Loop",
+      "status": "pass",
+      "details": "Scenario verified"
+    }
+  ],
+  "dataLimitations": [
+    "Track D evaluated strictly against synthetic learner simulation traces; no empirical claim of real classroom learning gains.",
+    "Track F local execution environment measures local machine characteristics; staging/production may differ."
+  ],
+  "failuresAndErrors": [
+    "Track C error on item assess_eval_invalid_01: (0 , __vite_ssr_import_11__.validateQuestionHardened) is not a function",
+    "Track C error on item assess_eval_invalid_02: (0 , __vite_ssr_import_11__.validateQuestionHardened) is not a function",
+    "Track C error on item assess_eval_invalid_03: (0 , __vite_ssr_import_11__.validateQuestionHardened) is not a function"
+  ]
+}

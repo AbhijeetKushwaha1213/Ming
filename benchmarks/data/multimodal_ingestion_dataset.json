@@ -1,0 +1,134 @@
+[
+  {
+    "id": "ingest_case_01",
+    "name": "Operating Systems Syllabus (PDF)",
+    "format": "PDF",
+    "fileName": "os_syllabus.pdf",
+    "base64Header": "JVBERi0xLjQKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwKL0xpbmVhcml6ZWQgMQovTCAxMjM0NQo+PgplbmRvYmoK",
+    "expectedSourceType": "PDF",
+    "expectedValid": true,
+    "provenanceType": "page_number",
+    "expectedCoordinate": 1
+  },
+  {
+    "id": "ingest_case_02",
+    "name": "Computer Networks Lecture Slides (PPTX)",
+    "format": "PPTX",
+    "fileName": "networks_lecture_01.pptx",
+    "base64Header": "UEsDBBQAAAAIAAAAAAAAAAAAAAAAAAAAAAAQAAAAW0NvbnRlbnRfVHlwZXNdLnhtbA==",
+    "expectedSourceType": "PPTX",
+    "expectedValid": true,
+    "provenanceType": "slide_number",
+    "expectedCoordinate": 1
+  },
+  {
+    "id": "ingest_case_03",
+    "name": "Memory Architecture Diagram (PNG)",
+    "format": "PNG",
+    "fileName": "memory_diagram.png",
+    "base64Header": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "expectedSourceType": "IMAGE",
+    "expectedValid": true,
+    "provenanceType": "image_coordinate",
+    "expectedCoordinate": 1
+  },
+  {
+    "id": "ingest_case_04",
+    "name": "Database ER Schema Diagram (JPEG)",
+    "format": "JPEG",
+    "fileName": "database_schema.jpg",
+    "base64Header": "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+    "expectedSourceType": "IMAGE",
+    "expectedValid": true,
+    "provenanceType": "image_coordinate",
+    "expectedCoordinate": 1
+  },
+  {
+    "id": "ingest_case_05",
+    "name": "Cache Hierarchy Infographic (WEBP)",
+    "format": "WEBP",
+    "fileName": "cache_infographic.webp",
+    "base64Header": "UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==",
+    "expectedSourceType": "IMAGE",
+    "expectedValid": true,
+    "provenanceType": "image_coordinate",
+    "expectedCoordinate": 1
+  },
+  {
+    "id": "ingest_case_06",
+    "name": "Deadlock Lecture Recording (MP3 Audio)",
+    "format": "MP3",
+    "fileName": "deadlock_lecture.mp3",
+    "base64Header": "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAD/+MYxAAAAANIAAAAAExBTUUzLjEwMA==",
+    "expectedSourceType": "AUDIO",
+    "expectedValid": true,
+    "provenanceType": "timestamp_seconds",
+    "expectedCoordinate": 45
+  },
+  {
+    "id": "ingest_case_07",
+    "name": "Concurrency Seminar Excerpt (WAV Audio)",
+    "format": "WAV",
+    "fileName": "concurrency_seminar.wav",
+    "base64Header": "UklGRiQAAABXQVZFRm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=",
+    "expectedSourceType": "AUDIO",
+    "expectedValid": true,
+    "provenanceType": "timestamp_seconds",
+    "expectedCoordinate": 120
+  },
+  {
+    "id": "ingest_case_08",
+    "name": "Algorithms Cheatsheet (Plain Text)",
+    "format": "TEXT",
+    "fileName": "algorithms_notes.txt",
+    "rawText": "Binary Search has logarithmic time complexity O(log n). Merge Sort has time complexity O(n log n). Quick Sort has average O(n log n) and worst-case O(n^2).",
+    "expectedSourceType": "TEXT",
+    "expectedValid": true,
+    "provenanceType": "text_section",
+    "expectedCoordinate": 1
+  },
+  {
+    "id": "ingest_case_09",
+    "name": "Spoofed PDF with Executable Payload (Malformed Magic)",
+    "format": "EXE_SPOOFED_AS_PDF",
+    "fileName": "exploit.pdf",
+    "base64Header": "TVpRRQBBAEAAAAAAAAD//wAALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expectedSourceType": "REJECTED",
+    "expectedValid": false,
+    "expectedErrorCode": "MIME_SPOOFING_DETECTED",
+    "provenanceType": "none"
+  },
+  {
+    "id": "ingest_case_10",
+    "name": "Truncated Corrupted Header",
+    "format": "CORRUPTED",
+    "fileName": "broken.pdf",
+    "base64Header": "JVBC",
+    "expectedSourceType": "REJECTED",
+    "expectedValid": false,
+    "expectedErrorCode": "EMPTY_OR_TRUNCATED",
+    "provenanceType": "none"
+  },
+  {
+    "id": "ingest_case_11",
+    "name": "Zero-byte Empty Upload",
+    "format": "EMPTY",
+    "fileName": "empty.txt",
+    "rawText": "",
+    "expectedSourceType": "REJECTED",
+    "expectedValid": false,
+    "expectedErrorCode": "EMPTY_FILE",
+    "provenanceType": "none"
+  },
+  {
+    "id": "ingest_case_12",
+    "name": "Oversized File Simulation",
+    "format": "OVERSIZED",
+    "fileName": "huge_video.mp4",
+    "simulatedSizeBytes": 55000000,
+    "expectedSourceType": "REJECTED",
+    "expectedValid": false,
+    "expectedErrorCode": "FILE_TOO_LARGE",
+    "provenanceType": "none"
+  }
+]

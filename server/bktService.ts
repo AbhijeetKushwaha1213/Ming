@@ -73,7 +73,10 @@ export function calculateBKTUpdate(
   params: BKTParameters,
   credit?: number
 ): { posterior: number; prior: number; parameters: BKTParameters } {
-  const pL_prev = Math.max(0.01, Math.min(0.99, priorMastery));
+  const safePrior = typeof priorMastery === 'number' && !isNaN(priorMastery) && isFinite(priorMastery)
+    ? priorMastery
+    : (params?.pL0 ?? 0.15);
+  const pL_prev = Math.max(0.01, Math.min(0.99, safePrior));
   const { pT, pG, pS } = params;
 
   // Phase 9: Partial credit calibration

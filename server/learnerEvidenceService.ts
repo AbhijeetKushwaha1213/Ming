@@ -30,6 +30,7 @@ import {
   type BKTParameters,
   type MasteryStatus,
 } from './bktService.ts';
+import { calculateConceptRetention } from './bktCalibrationService.ts';
 
 // =========================================================================
 // 1. Concept Taxonomy Normalization
@@ -317,6 +318,11 @@ export async function recordLearnerEvidence(
     prior_mastery: prior,
     last_evaluated_at: now,
     bkt_parameters: bktParams,
+    retention: calculateConceptRetention({
+      initialMastery: posterior,
+      lastAssessedAt: now,
+      correctCount,
+    }),
   };
 
   return {
@@ -365,6 +371,11 @@ export async function getTopicMasteryState(
       prior_mastery: 0.0,
       last_evaluated_at: null,
       bkt_parameters: DEFAULT_BKT_PARAMS,
+      retention: calculateConceptRetention({
+        initialMastery: 0.0,
+        lastAssessedAt: null,
+        correctCount: 0,
+      }),
     };
   }
 
@@ -374,6 +385,7 @@ export async function getTopicMasteryState(
   const correct = Number(r.correctCount);
   const incorrect = Number(r.incorrectCount);
   const partial = Math.max(0, attempts - correct - incorrect);
+  const lastAssessedAt = r.lastAssessedAt ? new Date(r.lastAssessedAt).toISOString() : null;
 
   return {
     user_id: r.userId,
@@ -388,8 +400,13 @@ export async function getTopicMasteryState(
     partial_count: partial,
     incorrect_count: incorrect,
     prior_mastery: p,
-    last_evaluated_at: r.lastAssessedAt ? new Date(r.lastAssessedAt).toISOString() : null,
+    last_evaluated_at: lastAssessedAt,
     bkt_parameters: DEFAULT_BKT_PARAMS,
+    retention: calculateConceptRetention({
+      initialMastery: p,
+      lastAssessedAt,
+      correctCount: correct,
+    }),
   };
 }
 

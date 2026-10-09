@@ -1,232 +1,236 @@
 # Canonical Phase 5 — Learner Intelligence
-## Step 1: Learner Evidence & Mastery Model Foundation
+## Step 1 & Step 2: Evidence Foundation, BKT Calibration, Retention & Mastery Reliability
 
 **Status:**
 - **Phase 5 Step 1 — Learner Evidence & Mastery Model Foundation:** **COMPLETE**
-- **Phase 5 Step 2+ (BKT Calibration, Forgetting/Retention Curves, Adaptive Recommendations):** **NOT STARTED**
+- **Phase 5 Step 2 — BKT Calibration, Retention & Mastery Reliability:** **COMPLETE**
+- **Phase 5 Step 3+ (Adaptive Recommendations & Sequencing):** **NOT STARTED**
+- **Phase 6 (AI Study Agent & Autonomous Planning):** **NOT STARTED**
 
 ---
 
-## 1. Audit Findings
+## 1. Executive Summary & Canonical Roadmap
 
-Before writing or altering any code, a comprehensive audit was executed across the repository to determine what learner-intelligence functionality already existed.
+The objective of Phase 5 is to establish rigorous, mathematically grounded, and auditable learner intelligence for Ming.
+- **Step 1** established deterministic learner evidence extraction from Phase 4 assessments, idempotency protection, concept taxonomy normalization, and replayable mastery audits.
+- **Step 2** establishes Bayesian Knowledge Tracing (BKT) parameter calibration contracts, mathematical validation metrics (LogLoss, Brier score, ECE), empirical dataset auditing, and an Ebbinghaus exponential forgetting/retention model ($R = e^{-\Delta t / S}$) that separates latent competence from current retrieval probability.
 
-### Audit Questions (A – J)
+---
 
-| Question | Finding |
-|---|---|
-| **A. What learner state already exists?** | SQLite tables `learner_mastery` and `learner_events` defined in `server/prisma.ts`. Records `masteryProbability`, `confidence`, `attempts`, `correctCount`, `incorrectCount`, `status`, and event streams. |
-| **B. What assessment evidence is currently persisted?** | Assessment sessions and attempts persisted in `assessment_sessions` and `assessment_attempts`. Evaluated answers stored in `evaluatedResults` and `learner_events`. |
-| **C. Can an individual response be traced?** | Yes: learner ID, question ID, question type, topic/subtopic, assessment attempt, timestamp, score, correctness, misconception category, and source location (`source_id`, `chunk_id`, citation coordinate) can be linked. |
-| **D. How is mastery currently calculated?** | Via Bayesian Knowledge Tracing formulas in `server/bktService.ts` (`calculateBKTUpdate`) adjusting posterior probability using slip ($pS$) and guess ($pG$) parameters based on difficulty. |
-| **E. Is mastery persisted or computed dynamically?** | Persisted in `learner_mastery` table upon evidence ingestion, and auditable by replaying `learner_events`. |
-| **F. Can current implementation distinguish valid vs. invalid submissions?** | In Phase 4 grading: Yes (`correct`, `partially_correct`, `incorrect`, `invalid_format`, `unverifiable`). However, prior to Phase 5 Step 1, invalid and unverifiable questions were passed into `updateMasteryFromEvidence` and penalized students. |
-| **G. Are repeated attempts represented correctly?** | In Phase 4, attempt counts were incremented. However, there was no idempotency key preventing repeated submissions or network retries from double-counting the same question attempt. |
-| **H. Can stale or duplicate events corrupt learner state?** | Prior to Phase 5 Step 1: Yes, duplicate API calls would re-apply BKT updates and artificially inflate trial count. Fixed with unique idempotency key. |
-| **I. Are there tenant/user isolation concerns?** | `learnerHandler.ts` routes through `resolveContextUser`. Prior API allowed client body payloads to supply `userId` without strict rejection, though auth middleware was present. |
-| **J. What parts of Phase 5 already existed?** | Core BKT mathematical formulas (`calculateBKTUpdate`), difficulty parameter mapping (`getDifficultyBKTParameters`), and confidence formula (`calculateConfidence`). |
+## 2. Phase 5 Step 2 — Systematic Audit Findings
 
-### Audit Classification
+Prior to implementing Step 2, a complete audit of the repository's statistical state and codebase was executed.
 
-| Component | Classification | Notes |
+### Audit Checklist (15 Core Questions)
+
+| # | Question | Finding & Architectural Reality |
 |---|---|---|
-| Core BKT mathematical update formula | `EXISTS_AND_CORRECT` | Kept intact and reused directly from `server/bktService.ts`. |
-| Asymptotic confidence scaling | `EXISTS_AND_CORRECT` | Kept intact from `server/bktService.ts`. |
-| SQLite Schema (`learner_mastery`, `learner_events`) | `EXISTS_BUT_INCOMPLETE` | Required `idempotencyKey` column and unique index to prevent duplicate counting. |
-| Assessment Intelligence pipeline integration | `EXISTS_BUT_UNSAFE` | Was updating mastery on `unverifiable` and `invalid_format` responses without discarding non-learning evidence. |
-| Event Idempotency & Duplicate Protection | `MISSING` | Implemented via `idem_<userId>_<attemptId>_<questionId>`. |
-| Concept Taxonomy Normalization | `MISSING` | Implemented via `computeCanonicalConceptId` to produce stable hashes across questions. |
-| Mastery Audit & Replayability Engine | `MISSING` | Implemented via `getLearnerMasteryAudit` and `replayEvidenceMastery`. |
-| Secure Audit API Endpoint | `MISSING` | Implemented via `GET /api/learner/mastery/audit`. |
+| **1** | **What BKT parameters are currently defined?** | Standard literature presets: $pL_0 = 0.15$, $pT = 0.10$, $pG = 0.20$, $pS = 0.10$ (Corbett & Anderson baseline), with difficulty-dependent parameter scaling in `server/bktService.ts`. |
+| **2** | **Are parameters global, per-topic, per-concept, or per-question?** | Parameters are configured per-difficulty ('easy', 'medium', 'hard'). The new calibration engine in `server/bktCalibrationService.ts` introduces support for concept-specific parameter overrides when statistically warranted. |
+| **3** | **Are current parameters empirical or heuristic defaults?** | They are **literature heuristic defaults**. They were not fitted to real human classroom response traces. |
+| **4** | **Does real student response data exist in the repository?** | **NO.** Inspection of SQLite database (`learner_events`, 13,405 rows) reveals that all existing events were generated by synthetic benchmark simulator agents (`eval_sim_*`) and unit tests. There are zero real human classroom traces. |
+| **5** | **What is the sample size and distribution?** | 0 real human observations. 13,405 synthetic simulator observations. Pursuant to scientific standards, parameter fitting on synthetic test benchmarks is prohibited to prevent circular overfitting. |
+| **6** | **How is difficulty currently mapped into BKT parameters?** | In `server/bktService.ts`: `easy` ($pL_0=0.25, pG=0.25, pS=0.05, pT=0.15$), `medium` ($pL_0=0.15, pG=0.20, pS=0.10, pT=0.10$), `hard` ($pL_0=0.08, pG=0.12, pS=0.15, pT=0.08$). |
+| **7** | **How does cold-start behave for a new learner or concept?** | Unseen concepts initialize at difficulty prior $pL_0$ ($0.15$ for medium). Confidence starts at $C = 0.0$ and scales asymptotically: $C(N) = 1 - e^{-0.14 N}$. |
+| **8** | **How does partial credit update mastery?** | Linear interpolation between full correct update and full incorrect update: $pL_{\text{new}} = pL_{\text{incorrect}} + \text{credit} \times (pL_{\text{correct}} - pL_{\text{incorrect}})$, bounded within $[0.01, 0.99]$. |
+| **9** | **Is there an existing retention or forgetting mechanism?** | **None existed prior to Step 2.** Masteries remained permanently static indefinitely regardless of elapsed time. |
+| **10** | **Are timestamps recorded with sufficient fidelity?** | Yes. All `learner_events` record UTC ISO 8601 timestamps, and `learner_mastery` maintains `updatedAt`. |
+| **11** | **Does the system model time elapsed between reviews?** | Yes, implemented in Step 2 via Ebbinghaus exponential decay: $R(\Delta t) = e^{-\Delta t / S}$. |
+| **12** | **Does retention decay destroy latent mastery or compute current recall probability?** | **Latent competence is NEVER destroyed.** Latent mastery $pL$ remains preserved; current retrieval probability $p_{\text{recall}} = pL \times R(\Delta t)$ is computed as a time-sensitive retrieval estimate. |
+| **13** | **What stability safeguards exist against runaway mastery or collapse?** | Hard bounds $[0.01, 0.99]$ on all posteriors, input sanitization against `NaN` and `Infinity` (`safePrior`), asymptotic confidence scaling, and stability multiplier ceilings. |
+| **14** | **What evaluation metrics exist to evaluate prediction quality?** | Implemented in Step 2: LogLoss (binary cross-entropy), Brier Score (mean squared error), AUC-ROC, and Expected Calibration Error (ECE) across reliability bins. |
+| **15** | **What are the scope boundaries for Step 2?** | Step 2 delivers BKT calibration contracts, retention modeling, and evaluation engines. Adaptive recommendation and autonomous planning are strictly reserved for Phase 5 Step 3+ and Phase 6. |
 
 ---
 
-## 2. Reused Functionality
+## 3. Empirical Calibration Audit Declaration
 
-1. **`calculateBKTUpdate(prior, isCorrect, params, credit)`**:
-   Authoritative Bayesian Knowledge Tracing formula from `server/bktService.ts`. Correctly bounded in $[0.01, 0.99]$ with slip, guess, and transit transitions.
-2. **`getDifficultyBKTParameters(difficulty)`**:
-   Difficulty parameter mapping ('easy', 'medium', 'hard') setting appropriate priors, slip, and guess constants.
-3. **`calculateConfidence(trials)`**:
-   Asymptotic evidence-sufficiency formula $1 - e^{-0.14 \times \text{trials}}$.
-4. **`gradeNumericalAnswer` & `gradeUniversalAnswer`**:
-   Authoritative deterministic Phase 4 grading engines.
+Pursuant to the audit of repository storage (`server/prisma.ts`, SQLite `learner_events` table):
+- **Total historical records:** 13,405 events.
+- **Trace origins:** 100% synthetic agent simulators (`eval_sim_learner_*`, automated test runs).
+- **Real student observational traces:** **0**.
 
----
-
-## 3. Gaps Discovered & Addressed
-
-1. **Unverified Submission Penalties:** `processAssessmentIntelligence` now extracts canonical learner evidence and explicitly discards `invalid_format` and `unverifiable` evaluations, ensuring students are never penalized for unverified or ill-formatted items.
-2. **Double-Counting Vulnerability:** Introduced deterministic idempotency keys (`idem_<userId>_<attemptId>_<questionId>`) on all learner evidence events. Re-submitting or retrying returns the existing state without mutating trial counts or posteriors.
-3. **Concept Taxonomy Drift:** Introduced `computeCanonicalConceptId(topic, subtopic, conceptName)` ensuring questions testing the same concept collapse into identical canonical IDs (`c_<hash>`).
-4. **Opaque Aggregates:** Implemented an end-to-end auditability engine that can replay historical events from initial prior $pL_0$ and prove mathematical reproducibility within $\epsilon \le 0.01$.
+### Authoritative Determination:
+```
+CALIBRATION_NOT_YET_STATISTICALLY_JUSTIFIED
+```
+Fabricating or fitting empirical parameters against synthetic benchmark simulations would introduce circular bias and violate statistical integrity. As specified by the canonical contract, the system:
+1. Formally logs and documents `CALIBRATION_NOT_YET_STATISTICALLY_JUSTIFIED`.
+2. Retains the standard, peer-reviewed literature parameters ($pL_0=0.15, pT=0.10, pG=0.20, pS=0.10$).
+3. Establishes the full calibration training, validation, and evaluation pipeline (`server/bktCalibrationService.ts`), ready to execute parameter fitting as soon as real student response traces become available.
 
 ---
 
-## 4. Canonical Learner Evidence Model
+## 4. BKT Mathematical Model & Prediction Contract
 
-Located in `server/learnerTypes.ts` and `server/learnerEvidenceService.ts`:
+Located in `server/bktService.ts` and `server/bktCalibrationService.ts`:
+
+### 1. Bayesian Posterior Update
+Given prior latent knowledge $p(L_{t-1})$, observation $O_t \in \{0, 1\}$, slip $pS$, and guess $pG$:
+
+$$\text{Posterior if Correct: } p(L_{t-1} \mid O_t = 1) = \frac{p(L_{t-1})(1 - pS)}{p(L_{t-1})(1 - pS) + (1 - p(L_{t-1}))pG}$$
+
+$$\text{Posterior if Incorrect: } p(L_{t-1} \mid O_t = 0) = \frac{p(L_{t-1})pS}{p(L_{t-1})pS + (1 - p(L_{t-1}))(1 - pG)}$$
+
+### 2. Transition (Learning Step)
+Given transit probability $pT$:
+
+$$p(L_t) = p(L_{t-1} \mid O_t) + (1 - p(L_{t-1} \mid O_t)) pT$$
+
+### 3. Partial Credit Smoothing
+For fractional credit $c \in [0.0, 1.0]$:
+
+$$p(L_t, c) = p(L_t, 0) + c \cdot \left( p(L_t, 1) - p(L_t, 0) \right)$$
+
+### 4. Probability of Correct Response
+The standard BKT emission equation predicts the forward probability that a learner answers a question correctly:
+
+$$p(\text{correct} \mid L) = p(L)(1 - pS) + (1 - p(L)) pG$$
+
+---
+
+## 5. Retention & Forgetting Model (Ebbinghaus Decay)
+
+Located in `server/bktCalibrationService.ts`:
+
+### 1. Exponential Retention Formula
+Given elapsed time $\Delta t = t_{\text{current}} - t_{\text{last\_review}}$ in days, and memory stability $S$:
+
+$$R(\Delta t) = \exp\left( - \frac{\Delta t}{S} \right)$$
+
+### 2. Memory Stability Scaling
+Stability $S$ represents the half-life of retrieval in days. It increases with repeated successful reviews and high latent mastery:
+
+$$S = S_0 \cdot \left( 1 + 0.5 \times \min(\text{successes}, 10) \right) \cdot (1 + 1.0 \times pL)$$
+
+- Base stability: $S_0 = 7.0$ days for standard topics (configurable $1.0$ to $30.0$ days).
+- Stability is clamped within $[0.5, 365.0]$ days.
+
+### 3. Separation of Latent Competence vs. Retrieval Probability
+- **Latent Competence ($pL$):** Represents structural comprehension. It is **never destroyed or eroded by time elapsed**.
+- **Current Retrieval Probability ($p_{\text{recall}}$):** Represents transient retrieval availability:
+
+$$p_{\text{recall}} = pL \times R(\Delta t)$$
+
+- **Review Effect:** When a learner reviews and successfully answers a question:
+  - Elapsed time resets ($\Delta t = 0$, $R = 1.0$).
+  - Review count increments, increasing future stability $S$.
+  - Latent mastery $pL$ receives a standard BKT reinforcement update.
+
+---
+
+## 6. Evaluation Metrics & Calibration Engine
+
+Located in `server/bktCalibrationService.ts`:
+
+### 1. LogLoss (Cross-Entropy)
+$$\text{LogLoss} = - \frac{1}{N} \sum_{i=1}^N \left[ y_i \ln(\hat{p}_i) + (1 - y_i) \ln(1 - \hat{p}_i) \right]$$
+Predictions are clipped to $[\epsilon, 1-\epsilon]$ ($\epsilon = 10^{-15}$) to prevent infinite penalties.
+
+### 2. Brier Score (Mean Squared Error)
+$$\text{Brier} = \frac{1}{N} \sum_{i=1}^N (\hat{p}_i - y_i)^2$$
+Brier score is strictly bounded in $[0.0, 1.0]$, where $0.0$ indicates perfect deterministic calibration.
+
+### 3. Expected Calibration Error (ECE) & Reliability Diagrams
+Predictions are partitioned into $M=10$ equal-width bins $B_m \in [0, 1]$:
+
+$$\text{ECE} = \sum_{m=1}^M \frac{|B_m|}{N} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
+
+Where:
+- $\text{acc}(B_m) = \frac{1}{|B_m|} \sum_{i \in B_m} y_i$
+- $\text{conf}(B_m) = \frac{1}{|B_m|} \sum_{i \in B_m} \hat{p}_i$
+
+### 4. Zero Temporal Leakage & GroupKFold Learner Splitting
+To prevent data contamination:
+- **Learner Grouping:** `splitDatasetByLearner(observations, trainRatio, valRatio, testRatio)` assigns all observations for an individual learner exclusively to Train, Validation, OR Test. No learner's future or past events cross split boundaries.
+- **Causal Chronological Simulation:** Within each learner sequence, events are sorted strictly by `timestamp ASC`. At step $t$, the model predicts $p(\text{correct}_t)$ using only knowledge state $pL_{t-1}$ accumulated prior to step $t$.
+
+---
+
+## 7. Data Contracts & Types
+
+Located in `server/learnerTypes.ts`:
 
 ```typescript
-export interface CanonicalLearnerEvidence {
-  evidence_id: string;              // Deterministic SHA-256 derived ID
-  idempotency_key: string;          // idem_<userId>_<attemptId>_<questionId>
-  user_id: string;                  // Server-authoritative learner ID
-  tenant_id: string;                // Multi-tenant boundary
-  attempt_id: string;               // Originating assessment attempt
-  question_id: string;              // Authoritative question ID
-  question_type: string;            // MCQ, NUMERICAL, SHORT_ANSWER, etc.
-  topic: string;                    // Primary subject topic
-  subtopic: string | null;          // Secondary subtopic
-  concept_id: string;               // Canonical taxonomy ID (c_<hash>)
-  concept_name: string;             // Human-readable concept title
-  timestamp: string;                // ISO 8601 UTC timestamp
-  classification: AnswerClassification; // correct, partially_correct, incorrect, invalid_format, unverifiable
-  credit: number;                   // Bounded [0.0, 1.0]
-  is_correct: boolean;              // Boolean correctness flag
-  error_category: string | null;    // Misconception category from Phase 4
-  difficulty: string;               // easy | medium | hard
-  source_id?: string | null;        // Grounding source ID
-  chunk_id?: string | null;         // Grounding chunk ID
-  source_coordinate?: string | null;// Grounding citation coordinate
-  validity: EvidenceValidity;       // VALID_EVIDENCE | DISCARDED_INVALID | DISCARDED_UNVERIFIABLE
+export interface ConceptRetentionState {
+  concept_id: string;
+  topic: string;
+  last_evaluated_at: string;
+  elapsed_days: number;
+  retention_factor: number;          // R(delta_t) in [0.0, 1.0]
+  stability_days: number;            // S in days
+  initial_mastery: number;           // Latent mastery pL
+  current_recall_probability: number;// pL * R(delta_t)
+  review_count: number;
+  decay_model: 'EBBINGHAUS_EXPONENTIAL';
+}
+
+export interface BKTObservation {
+  learner_id: string;
+  concept_id: string;
+  topic: string;
+  timestamp: string;
+  is_correct: boolean;
+  credit: number;
+  difficulty?: string;
+}
+
+export interface BKTModelEvaluation {
+  sample_size: number;
+  log_loss: number;
+  brier_score: number;
+  auc_roc: number;
+  ece: number;
+  reliability_bins: ReliabilityBin[];
+  is_statistically_significant: boolean;
 }
 ```
 
 ---
 
-## 5. Concept & Topic Identity
+## 8. Verification & Test Suite
 
-- **Normalization:** `normalizeConceptString()` converts text to lowercase, strips punctuation, and collapses consecutive whitespace.
-- **Canonical Concept Key:** Combines `topic`, `subtopic`, and `concept_name` into a SHA-256 hash prefix (`c_<hash>`).
-- **Multiple Questions Mapping:** Multiple questions generated across different sessions that test the same underlying concept deterministically map to the same `concept_id`, allowing cumulative evidence aggregation.
+### Dedicated Test Suite: `src/test/bktCalibrationRetention.test.ts`
+- **53 unit and integration tests** verifying:
+  1. Audit of Existing BKT & Historical Trace Data (4 tests)
+  2. BKT Prediction & Forward Probability Contract (4 tests)
+  3. Metric Implementations: LogLoss, Brier Score, ECE (6 tests)
+  4. Chronological Evaluation without Temporal Leakage (4 tests)
+  5. GroupKFold Learner Splitting (4 tests)
+  6. Calibration Contract & Optimization Pipeline (4 tests)
+  7. Ebbinghaus Exponential Retention Model (7 tests)
+  8. Non-Destructive Decay: Latent Competence vs. Recall Separation (5 tests)
+  9. Stability Multiplier & Spaced Repetition Reinforcement (5 tests)
+  10. Partial Credit Smoothing & Bounded Updates (5 tests)
+  11. End-to-End Service Integration & API Contract Verification (5 tests)
+- **Result:** **53 / 53 PASS**.
 
----
-
-## 6. Deterministic Evidence Extraction & Ingestion
-
-1. **Extraction:**
-   `extractLearnerEvidence(evaluation, context)` translates Phase 4 evaluation output into `CanonicalLearnerEvidence`.
-2. **Filtering:**
-   - `classification === 'invalid_format'` $\to$ `validity = 'DISCARDED_INVALID'`
-   - `classification === 'unverifiable'` $\to$ `validity = 'DISCARDED_UNVERIFIABLE'`
-3. **Ingestion:**
-   `recordLearnerEvidence(evidence)`:
-   - If discarded: returns `{ applied: false, discarded: true }`. Mastery is **NOT** modified.
-   - If duplicate idempotency key: returns `{ applied: false, duplicate: true }`. Mastery is **NOT** re-applied.
-   - If valid: executes bounded BKT update, increments trial counts, updates `learner_mastery`, and appends to `learner_events`.
-
----
-
-## 7. Initial Mastery Model & Update Semantics
-
-- **Terminology:** `EVIDENCE_BASED_MASTERY` / `INITIAL_MASTERY_ESTIMATE` (Do NOT claim full BKT calibration until Phase 5 Step 2).
-- **Bounds:** Strictly bounded within $[0.01, 0.99]$.
-- **First Evidence:** Starts from difficulty prior $pL_0$ (0.15 for medium).
-- **Correct Answer:** Increases mastery estimate via standard Bayesian update incorporating slip and transit probabilities.
-- **Partial Credit:** Scaled proportionally between full correct and full incorrect (e.g. 0.5 credit updates with 0.5 observation weight).
-- **Incorrect Answer:** Decreases mastery estimate gracefully without catastrophic collapse.
-- **Determinism:** Identical sequence of evidence events always produces identical posterior mastery.
-
----
-
-## 8. Confidence vs. Mastery Separation
-
-Mastery ($pL$) and Confidence ($C$) are strictly independent dimensions:
-
-$$\text{Confidence}(N) = 1 - e^{-0.14 \times N}$$
-
-| Mastery Level | Evidence / Confidence | Semantic Meaning |
-|---|---|---|
-| High ($pL > 0.80$) | Low ($C < 0.40$) | Likely strong, but insufficient evidence (few trials). |
-| High ($pL > 0.80$) | High ($C > 0.85$) | Mastered with high statistical confidence. |
-| Low ($pL < 0.15$) | High ($C > 0.85$) | Consistently failing; proven struggle with high confidence. |
-| Low ($pL < 0.15$) | Low ($C < 0.40$) | Early struggle; insufficient observations. |
-
----
-
-## 9. Event Idempotency & Duplicate Protection
-
-- Idempotency key format: `idem_${userId}_${attemptId}_${questionId}`
-- Unique constraint: SQLite `learner_events_idempotency_idx` on `(userId, idempotencyKey)`
-- Repeated submissions or retry requests detect the key, skip calculation, and return the current state without double-counting.
-
----
-
-## 10. Zero-Trust Security & Multi-Tenant Isolation
-
-1. **Client Identity:** Identity is strictly derived from server authentication session (`resolveContextUser`). Client cannot override `userId`.
-2. **Mastery Overrides:** Client payloads cannot specify `masteryProbability`, `confidence`, or `credit`. The server computes updates exclusively from verified Phase 4 evaluations.
-3. **Cross-Tenant Access:** Users cannot read or audit another user's mastery. `GET /api/learner/mastery/audit` queries strictly scoped by context user.
-
----
-
-## 11. API Contract
-
-### `GET /api/learner/mastery/audit`
-- **Query Params:** `topic` (required), `subtopic` (optional)
-- **Response:**
-  ```json
-  {
-    "success": true,
-    "audit": {
-      "user_id": "usr_123",
-      "topic": "Thermodynamics",
-      "subtopic": "Carnot Engines",
-      "mastery_estimate": 0.517,
-      "confidence": 0.60,
-      "evidence_count": 3,
-      "reproducible": true,
-      "replayed_posterior": 0.517,
-      "events": [...]
-    }
-  }
-  ```
-
-### `POST /api/learner/update`
-- Authenticated evidence ingestion endpoint with idempotency support and backward compatibility.
-
----
-
-## 12. Test Coverage Summary
-
-- **New Dedicated Test Suite:** `src/test/learnerEvidenceMastery.test.ts`
-  - **43 tests** across 11 functional sections:
-    1. Concept Taxonomy Normalization & Stability (5 tests)
-    2. Deterministic Idempotency Key Generation (5 tests)
-    3. Authoritative Evidence Extraction (5 tests)
-    4. Discarded Evidence Filtering (2 tests)
-    5. Initial Mastery Model & Update Semantics (8 tests)
-    6. Confidence vs. Mastery Separation (4 tests)
-    7. Event Idempotency & Duplicate Protection (3 tests)
-    8. Mastery Auditability & Replayability (2 tests)
-    9. Zero-Trust Security & Multi-Tenant Isolation (4 tests)
-    10. Query & Audit API Contracts (3 tests)
-    11. Integration with Phase 4 Grading Outputs (2 tests)
-  - **Result:** 43 / 43 PASS.
-
-- **Full Regression Baseline:**
+### Full Regression Suite
+- Phase 4 & 5 Assessment and Intelligence:
+  - `src/test/bktCalibrationRetention.test.ts`: 53 / 53 PASS
+  - `src/test/learnerEvidenceMastery.test.ts`: 43 / 43 PASS
   - `src/test/numericalAssessment.test.ts`: 78 / 78 PASS
   - `src/test/answerVerification.test.ts`: 40 / 40 PASS
   - `src/test/questionQualityValidation.test.ts`: 50 / 50 PASS
+- Grounding & Source Tracking:
   - `src/test/groundingVerification.test.ts`: 30 / 30 PASS
   - `src/test/sourceNavigation.test.tsx`: 25 / 25 PASS
+- Security, Isolation & Ingestion:
   - `src/test/productionSecurityAndIsolation.test.ts`: 23 / 23 PASS
   - `src/test/resourceStreaming.test.ts`: 22 / 22 PASS
   - `src/test/multimodalIngestion.test.ts`: 24 / 24 PASS
   - `src/test/productionSmokeIntegration.test.ts`: 17 / 17 PASS
   - `src/test/ragVectorStoreEquivalence.test.ts`: 8 / 8 PASS
   - `src/test/phase9AssessmentIntelligence.test.tsx`: 19 / 19 PASS
-  - `src/test/learnerEvidenceMastery.test.ts`: 43 / 43 PASS
-  - **Total Tests Passing:** **379 / 379 PASS**
-- **TypeScript Check (`tsc --noEmit`):** 0 errors.
-- **Production Build (`vite build`):** SUCCESS.
+- **Total Tests Passing:** **446 / 446 PASS**
+- **TypeScript Typecheck (`tsc --noEmit`):** 0 errors.
+- **Production Bundle (`vite build`):** SUCCESS (exit code 0).
 
 ---
 
-## 13. Known Limitations (Phase 5 Step 1 Scope Boundaries)
+## 9. Scope Boundaries (Canonical Enforcement)
 
-1. **BKT Calibration:** Standard literature priors ($pL_0=0.15, pT=0.10, pG=0.20, pS=0.10$) are used. Empirical student response calibration is reserved for Phase 5 Step 2+.
-2. **Forgetting Curves:** Time-decay / retention curve modeling (Ebbinghaus decay) is not yet active.
-3. **Adaptive Recommendations:** Dynamic selection of next practice topics is reserved for Phase 5 Step 2+ and Phase 6 (AI Study Agent).
-4. **Autonomous Study Planning:** Automated goal-driven revision scheduling is reserved for Phase 6.
+- **Phase 5 Step 1:** Learner Evidence & Mastery Model Foundation — **COMPLETE**
+- **Phase 5 Step 2:** BKT Calibration, Retention & Mastery Reliability — **COMPLETE**
+- **Phase 5 Step 3+:** Adaptive Recommendations, Question Sequencing & Next-Action Policies — **NOT STARTED**
+- **Phase 6:** AI Study Agent, Proactive Check-ins, Autonomous Study Sessions — **NOT STARTED**

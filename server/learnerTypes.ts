@@ -98,6 +98,69 @@ export interface EvidenceBasedMasteryState {
   prior_mastery: number;        // State before most recent update
   last_evaluated_at: string | null;
   bkt_parameters: BKTParameters;
+
+  // Phase 5 Step 2: Temporal Retention & Recall Probability (Ebbinghaus Decay)
+  retention?: ConceptRetentionState;
+}
+
+/**
+ * Exponential retention / recall estimation (Ebbinghaus decay model)
+ * Distinguishes underlying latent mastery from current retrieval probability.
+ */
+export interface ConceptRetentionState {
+  initial_mastery: number;            // Latent knowledge level pL
+  current_recall_probability: number; // p(recall) = pL * e^(-deltaT / stability)
+  retention_factor: number;           // e^(-deltaT / stability) in [0.0, 1.0]
+  stability_days: number;             // Memory half-life / stability factor in days
+  elapsed_days: number;               // Time elapsed since last active evaluation
+  last_evaluated_at: string | null;   // Timestamp of last interaction
+  needs_review: boolean;              // True when recall probability < 0.70 * initial_mastery
+}
+
+/**
+ * Observation record for BKT offline calibration & validation
+ */
+export interface BKTObservation {
+  learner_id: string;
+  concept_id: string;
+  step: number;
+  is_correct: boolean;
+  credit?: number;
+  difficulty?: string;
+  timestamp: string;
+}
+
+/**
+ * Learner-level split dataset for training, validation, and testing
+ */
+export interface BKTDatasetSplit {
+  train: BKTObservation[];
+  validation: BKTObservation[];
+  test: BKTObservation[];
+  learner_counts: {
+    train: number;
+    validation: number;
+    test: number;
+  };
+  total_observations: number;
+}
+
+/**
+ * Model evaluation metrics on held-out observations
+ */
+export interface BKTModelEvaluation {
+  log_loss: number;
+  brier_score: number;
+  accuracy: number;
+  observation_count: number;
+  calibration_error: number; // Expected Calibration Error (ECE)
+  reliability_bins: Array<{
+    bin_min: number;
+    bin_max: number;
+    predicted_probability: number;
+    observed_frequency: number;
+    count: number;
+  }>;
 }
 
 /**
@@ -125,3 +188,4 @@ export interface EvidenceIngestionResult {
   idempotency_key: string;
   updated_state?: EvidenceBasedMasteryState;
 }
+

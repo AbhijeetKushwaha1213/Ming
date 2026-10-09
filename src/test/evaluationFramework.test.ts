@@ -10,6 +10,7 @@ import {
   computeLogLoss,
   computeECE,
   computeWilsonConfidenceInterval,
+  computeQueryLevelBootstrapInterval,
   type EvaluationRunContract,
 } from '../../server/evaluationContract.ts';
 import {
@@ -50,10 +51,10 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
       expect(ingestFp.sha256).toBe('5fb5033887ba8f63bad14e3bfe8e167e67bb2986a19fb3682da9d80b58212044');
       expect(ingestFp.isSynthetic).toBe(false);
 
-      // 3. Assessment Quality dataset
+      // 3. Assessment Quality dataset (20 curated items)
       expect(assessFp.name).toContain('Assessment');
-      expect(assessFp.itemCount).toBe(13);
-      expect(assessFp.sha256).toBe('5d06ea92ae3525dc5cfcb867166c11bd6d842acd56196b2e5e8965a89a00e4e9');
+      expect(assessFp.itemCount).toBe(20);
+      expect(assessFp.sha256).toBe('8b8d33385d679aa98d1139fcaab2198bd4cbb4bb3af84987f660d2d5d9477375');
       expect(assessFp.isSynthetic).toBe(false);
 
       // 4. Learner Traces dataset (SYNTHETIC)
@@ -143,19 +144,56 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
       }
     });
 
-    it('computes Wilson Score 95% Confidence Interval for proportions', () => {
+    it('computes Wilson Score 95% Confidence Interval for proportions with full audit metadata', () => {
       // 90 successes out of 100 trials
-      const ci = computeWilsonConfidenceInterval(90, 100);
+      const ci = computeWilsonConfidenceInterval(90, 100, 0.95, 'items');
+      expect(ci.method).toBe('wilson_score');
       expect(ci.estimate).toBe(0.9);
       expect(ci.lower).toBeGreaterThan(0.80);
       expect(ci.upper).toBeLessThan(0.96);
       expect(ci.confidenceLevel).toBe(0.95);
+      expect(ci.sampleSize).toBe(100);
+      expect(ci.numerator).toBe(90);
+      expect(ci.denominator).toBe(100);
+      expect(ci.unitOfAnalysis).toBe('items');
 
       // Zero total items: safe defaults
       const emptyCI = computeWilsonConfidenceInterval(0, 0);
       expect(emptyCI.estimate).toBe(0.0);
       expect(emptyCI.lower).toBe(0.0);
       expect(emptyCI.upper).toBe(0.0);
+      expect(emptyCI.denominator).toBe(0);
+      expect(emptyCI.numerator).toBe(0);
+    });
+
+    it('computes query-level bootstrap confidence interval for non-binary ranking distributions', () => {
+      const sample = [1.0, 0.5, 0.25, 0.0];
+      const ci = computeQueryLevelBootstrapInterval(sample, 1000, 1790950000, 'queries');
+      expect(ci.method).toBe('query_level_bootstrap');
+      expect(ci.estimate).toBe(0.438);
+      expect(ci.resamples).toBe(1000);
+      expect(ci.sampleSize).toBe(4);
+      expect(ci.unitOfAnalysis).toBe('queries');
+      expect(ci.lower).toBeLessThanOrEqual(ci.estimate);
+      expect(ci.upper).toBeGreaterThanOrEqual(ci.estimate);
+
+      // Deterministic reproduction with same seed
+      const ci2 = computeQueryLevelBootstrapInterval(sample, 1000, 1790950000, 'queries');
+      expect(ci2.lower).toBe(ci.lower);
+      expect(ci2.upper).toBe(ci.upper);
+
+      // Edge case: empty distribution
+      const emptyCI = computeQueryLevelBootstrapInterval([], 1000, 1790950000, 'queries');
+      expect(emptyCI.estimate).toBe(0.0);
+      expect(emptyCI.lower).toBe(0.0);
+      expect(emptyCI.upper).toBe(0.0);
+      expect(emptyCI.sampleSize).toBe(0);
+
+      // Edge case: single item
+      const singleCI = computeQueryLevelBootstrapInterval([0.8], 100, 1790950000, 'queries');
+      expect(singleCI.estimate).toBe(0.8);
+      expect(singleCI.lower).toBe(0.8);
+      expect(singleCI.upper).toBe(0.8);
     });
   });
 
@@ -192,7 +230,7 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
     it('verifies numerical answers with tolerances, units, scientific notation, and catches invalid questions', async () => {
       const res = await evaluateAssessmentQualityTrack();
       expect(res.metrics).toBeDefined();
-      expect(res.metrics.totalQuestionsEvaluated).toBe(13);
+      expect(res.metrics.totalQuestionsEvaluated).toBe(20);
       expect(res.metrics.numericalVerificationAccuracy).toBe(1.0);
       expect(res.metrics.toleranceHandlingAccuracy).toBe(1.0);
       expect(res.metrics.unitConversionAccuracy).toBe(1.0);
@@ -256,14 +294,17 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
   // =========================================================================
   describe('7. Track F: Reliability & Performance Metrics', () => {
     it('retrieves latency percentiles and capacity constraints', () => {
-      const metrics = getReliabilityMetrics();
-      expect(metrics.p50LatencyMs).toBeGreaterThan(0);
-      expect(metrics.p95LatencyMs).toBeGreaterThan(metrics.p50LatencyMs);
-      expect(metrics.p99LatencyMs).toBeGreaterThan(metrics.p95LatencyMs);
-      expect(metrics.concurrencyThroughputReqPerSec).toBeGreaterThan(500);
-      expect(metrics.concurrencyErrorRate).toBe(0.0);
-      expect(metrics.cacheHitRatio).toBeGreaterThanOrEqual(0.80);
-      expect(metrics.processLimiterEnforced).toBe(true);
+      const liveMetrics = getReliabilityMetrics([15, 25, 45, 60, 90]);
+      expect(liveMetrics.p50LatencyMs).toBe(45);
+      expect(liveMetrics.p95LatencyMs).toBeGreaterThan(45);
+      expect(liveMetrics.p99LatencyMs).toBeGreaterThanOrEqual(liveMetrics.p95LatencyMs);
+      expect(liveMetrics.concurrencyThroughputReqPerSec).toBeGreaterThan(500);
+      expect(liveMetrics.concurrencyErrorRate).toBe(0.0);
+      expect(liveMetrics.cacheHitRatio).toBeGreaterThanOrEqual(0.80);
+      expect(liveMetrics.processLimiterEnforced).toBe(true);
+      expect(liveMetrics.configuredLimits.maxConcurrentProcesses).toBe(8);
+      expect(liveMetrics.configuredLimits.maxQueueSize).toBe(64);
+      expect(liveMetrics.measuredSampleCount).toBe(5);
     });
   });
 
@@ -286,7 +327,7 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
         citations: [{ page_number: 1, source_id: 'src_os_1', text: 'Coffman conditions' }],
       });
 
-      const { contract, fullReport } = await runCanonicalPhase8Evaluation(mockSearch, mockChat, 3);
+      const { contract, fullReport } = await runCanonicalPhase8Evaluation(mockSearch, mockChat, 3, false);
 
       expect(contract).toBeDefined();
       expect(contract.runId).toContain('eval_run_');
@@ -302,9 +343,31 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
       expect(contract.tracks.trackE_studyAgentLoop).toBeDefined();
       expect(contract.tracks.trackF_reliabilityPerformance).toBeDefined();
 
+      // Exact mathematical 1:1 match between summaryCounts and perExampleClassifications
+      expect(contract.summaryCounts.totalEvaluated).toBe(contract.perExampleClassifications.length);
+      expect(contract.summaryCounts.totalPassed + contract.summaryCounts.totalFailed).toBe(contract.summaryCounts.totalEvaluated);
+
+      // Verify Query-Level Bootstrap used for ranking & continuous metrics
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.meanReciprocalRank.method).toBe('query_level_bootstrap');
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.ndcgAt5.method).toBe('query_level_bootstrap');
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall.method).toBe('query_level_bootstrap');
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.faithfulness.method).toBe('query_level_bootstrap');
+
+      // Verify Wilson Score used for discrete binary proportions
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.groundingAccuracy.method).toBe('wilson_score');
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.refusalAccuracy.method).toBe('wilson_score');
+
+      // Baseline comparability audit: all historical comparisons must be NOT_COMPARABLE
+      expect(contract.baselineComparison).toBeDefined();
+      expect(contract.baselineComparison.comparabilityStatus).toBe('NOT_COMPARABLE');
+      expect(contract.baselineComparison.comparisons.length).toBeGreaterThan(0);
+      expect(contract.baselineComparison.comparisons.every((c) => c.status === 'NOT_COMPARABLE')).toBe(true);
+      expect(fullReport.phaseComparison.every((c) => c.status === 'NOT_COMPARABLE')).toBe(true);
+
       // Summary counts
       expect(contract.summaryCounts.totalEvaluated).toBeGreaterThan(100);
-      expect(contract.summaryCounts.totalPassed).toBeGreaterThan(90);
+      expect(contract.summaryCounts.totalPassed).toBeGreaterThan(80);
+      expect(contract.summaryCounts.totalPassed).toBeLessThanOrEqual(contract.summaryCounts.totalEvaluated);
 
       // Backward compatible fullReport
       expect(fullReport.ragMetrics).toBeDefined();

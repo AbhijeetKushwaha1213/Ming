@@ -34,6 +34,7 @@ import {
   computeLogLoss,
   computeECE,
   computeWilsonConfidenceInterval,
+  computeQueryLevelBootstrapInterval,
 } from './evaluationContract.ts';
 import { validateUploadedBuffer, ValidationError, MAX_FILE_SIZE_BYTES } from './fileValidator.ts';
 import { gradeNumericalAnswer } from './numericalVerifier.ts';
@@ -108,6 +109,9 @@ export interface MetricComparison {
   delta: number;
   improved: boolean;
   targetBenchmark: string;
+  status?: 'COMPARABLE' | 'NOT_COMPARABLE' | 'UNVERIFIED' | 'PASSED' | 'REGRESSED' | 'ATTENTION';
+  comparabilityStatus?: 'COMPARABLE' | 'NOT_COMPARABLE' | 'UNVERIFIED';
+  comparabilityNote?: string;
 }
 
 export const PHASE_6_BASELINE = {
@@ -468,11 +472,14 @@ export async function evaluateRagAndGrounding(
 ): Promise<{
   ragMetrics: FullEvaluationReport['ragMetrics'];
   groundingMetrics: FullEvaluationReport['groundingMetrics'];
+  trackBMetrics: TrackBRetrievalGroundingMetrics;
   perQuestionResults: RagItemEvaluationResult[];
   errors: string[];
+  queryLatenciesMs: number[];
 }> {
   const perQuestionResults: RagItemEvaluationResult[] = [];
   const errors: string[] = [];
+  const queryLatenciesMs: number[] = [];
 
   let totalFaithfulness = 0;
   let totalRelevancy = 0;
@@ -489,6 +496,9 @@ export async function evaluateRagAndGrounding(
   const recallAt5List: number[] = [];
   const precisionAt5List: number[] = [];
   const ndcgScores: number[] = [];
+  const faithfulnessScores: number[] = [];
+  const answerRelevancyScores: number[] = [];
+
   let totalCitationsEvaluated = 0;
   let supportedCitationsCount = 0;
   let factualQuestionsCount = 0;
@@ -497,6 +507,8 @@ export async function evaluateRagAndGrounding(
   for (const item of dataset) {
     try {
       evaluatedCount++;
+      const queryStartTime = Date.now();
+
       // 1. Search RAG
       const searchRes = await ragSearchFn(item.question, item.topic);
       const retrievedChunks: any[] = searchRes?.results || [];
@@ -505,6 +517,8 @@ export async function evaluateRagAndGrounding(
       const chatRes = await ragChatFn(item.question, item.topic);
       const generatedAnswer = chatRes?.response || chatRes?.text || chatRes?.reply || '';
       const topChunk = retrievedChunks[0];
+
+      queryLatenciesMs.push(Math.max(1, Date.now() - queryStartTime));
 
       // Grounding checks
       const groundingMatched = item.off_material
@@ -515,9 +529,7 @@ export async function evaluateRagAndGrounding(
           (topChunk?.topic && topChunk.topic.toLowerCase().includes(item.topic.toLowerCase()))
         : retrievedChunks.length > 0;
 
-      // Phase 10: Search ALL retrieved chunks AND chat citations for coordinate match,
-      // not just the top chunk. This correctly handles multi-source, multi-hop, and
-      // cross-source queries where the expected coordinate appears in a secondary chunk.
+      // Coordinate matching across all retrieved chunks and citations
       const chatCitations: any[] = chatRes?.citations || [];
       const allEvidenceSources = [
         ...retrievedChunks,
@@ -535,10 +547,8 @@ export async function evaluateRagAndGrounding(
       if (item.off_material) {
         coordinatesMatched = true;
       } else if (!item.expected_page && !item.expected_slide && !item.expected_timestamp) {
-        // No specific coordinate expected — auto-pass
         coordinatesMatched = true;
       } else {
-        // Search across all retrieved evidence sources for a coordinate match
         for (const chunk of allEvidenceSources) {
           const chunkPage = chunk.page_number ?? chunk.pageNumber ?? chunk.location?.page_number ?? null;
           const chunkSlide = chunk.slide_number ?? chunk.slideNumber ?? chunk.location?.slide_number ?? null;
@@ -597,28 +607,30 @@ export async function evaluateRagAndGrounding(
       totalFaithfulness += faithfulness;
       totalRelevancy += answerRelevancy;
 
-      // Track B IR metrics calculation
-      const retrievedFlags: boolean[] = retrievedChunks.slice(0, 5).map((c: any) => {
-        if (item.off_material) return false;
-        const isSourceMatch = item.expected_source_id ? (c.source_id === item.expected_source_id || c.sourceId === item.expected_source_id) : true;
-        return isSourceMatch && (c.score === undefined || c.score >= 0.55);
-      });
-      const firstRelIdx = retrievedFlags.findIndex(Boolean);
-      reciprocalRanks.push(firstRelIdx >= 0 ? firstRelIdx + 1 : 0);
-      precisionAt5List.push(computePrecisionAtK(retrievedFlags, 5));
-      recallAt5List.push(computeRecallAtK(retrievedFlags, 1, 5));
+      faithfulnessScores.push(faithfulness);
+      answerRelevancyScores.push(answerRelevancy);
 
-      const relScores = retrievedChunks.slice(0, 5).map((c: any) => {
-        if (item.off_material) return 0;
-        const isSource = item.expected_source_id ? (c.source_id === item.expected_source_id || c.sourceId === item.expected_source_id) : true;
-        const isCoord = item.expected_page ? (c.page_number === item.expected_page || c.pageNumber === item.expected_page) : true;
-        if (isSource && isCoord) return 2;
-        if (isSource || isCoord) return 1;
-        return 0;
-      });
-      ndcgScores.push(computeNDCG(relScores, 5));
-
+      // Track B IR metrics calculation:
+      // Note: Ranking and retrieval metrics are evaluated on in-domain queries
       if (!item.off_material) {
+        const retrievedFlags: boolean[] = retrievedChunks.slice(0, 5).map((c: any) => {
+          const isSourceMatch = item.expected_source_id ? (c.source_id === item.expected_source_id || c.sourceId === item.expected_source_id) : true;
+          return isSourceMatch && (c.score === undefined || c.score >= 0.55);
+        });
+        const firstRelIdx = retrievedFlags.findIndex(Boolean);
+        reciprocalRanks.push(firstRelIdx >= 0 ? firstRelIdx + 1 : 0);
+        precisionAt5List.push(computePrecisionAtK(retrievedFlags, 5));
+        recallAt5List.push(computeRecallAtK(retrievedFlags, 1, 5));
+
+        const relScores = retrievedChunks.slice(0, 5).map((c: any) => {
+          const isSource = item.expected_source_id ? (c.source_id === item.expected_source_id || c.sourceId === item.expected_source_id) : true;
+          const isCoord = item.expected_page ? (c.page_number === item.expected_page || c.pageNumber === item.expected_page) : true;
+          if (isSource && isCoord) return 2;
+          if (isSource || isCoord) return 1;
+          return 0;
+        });
+        ndcgScores.push(computeNDCG(relScores, 5));
+
         factualQuestionsCount++;
         const chatCitationsList = chatRes?.citations || [];
         if (chatCitationsList.length > 0) {
@@ -708,9 +720,15 @@ export async function evaluateRagAndGrounding(
     refusalAccuracy: groundingMetrics.refusalAccuracy,
     userIsolationPreserved,
     confidenceIntervals: {
-      groundingAccuracy: computeWilsonConfidenceInterval(totalGroundingMatches, divisor),
-      faithfulness: computeWilsonConfidenceInterval(Math.round(totalFaithfulness), divisor),
-      contextRecall: computeWilsonConfidenceInterval(Math.round(totalRecall), divisor),
+      // Wilson score for discrete binary proportions
+      groundingAccuracy: computeWilsonConfidenceInterval(totalGroundingMatches, divisor, 1.96, 'queries'),
+      coordinateAccuracy: computeWilsonConfidenceInterval(totalCoordinateMatches, divisor, 1.96, 'queries'),
+      refusalAccuracy: computeWilsonConfidenceInterval(successfulRefusals, Math.max(1, totalRefusalAttempts), 1.96, 'off_material_queries'),
+      // Query-level bootstrap for continuous and ranking distributions
+      faithfulness: computeQueryLevelBootstrapInterval(faithfulnessScores, 1000, 1790950000, 'answers'),
+      contextRecall: computeQueryLevelBootstrapInterval(recallAt5List, 1000, 1790950000, 'in_domain_queries'),
+      meanReciprocalRank: computeQueryLevelBootstrapInterval(reciprocalRanks, 1000, 1790950000, 'in_domain_queries'),
+      ndcgAt5: computeQueryLevelBootstrapInterval(ndcgScores, 1000, 1790950000, 'in_domain_queries'),
     },
   };
 
@@ -720,6 +738,7 @@ export async function evaluateRagAndGrounding(
     trackBMetrics,
     perQuestionResults,
     errors,
+    queryLatenciesMs,
   };
 }
 
@@ -1190,6 +1209,7 @@ export function computePhaseComparison(
   }
 
   // Phase 8: Empirical Phase 7 baseline vs Phase 8 evaluated actual
+  const compNotice = 'Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item dataset. Deltas are not verified empirical improvements.';
   return [
     {
       metric: 'Context Recall',
@@ -1199,6 +1219,8 @@ export function computePhaseComparison(
       delta: Math.round((rag.contextRecall - p7.contextRecall) * 1000) / 1000,
       improved: rag.contextRecall >= 0.80,
       targetBenchmark: '>= 0.80',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Answer Relevancy',
@@ -1208,6 +1230,8 @@ export function computePhaseComparison(
       delta: Math.round((rag.answerRelevancy - p7.answerRelevancy) * 1000) / 1000,
       improved: rag.answerRelevancy >= 0.80,
       targetBenchmark: '>= 0.80',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Context Precision',
@@ -1217,6 +1241,8 @@ export function computePhaseComparison(
       delta: Math.round((rag.contextPrecision - p7.contextPrecision) * 1000) / 1000,
       improved: rag.contextPrecision >= 0.80,
       targetBenchmark: '>= 0.80',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Faithfulness',
@@ -1226,6 +1252,8 @@ export function computePhaseComparison(
       delta: Math.round((rag.faithfulness - p7.faithfulness) * 1000) / 1000,
       improved: rag.faithfulness >= 0.80,
       targetBenchmark: '>= 0.85',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Grounding Accuracy',
@@ -1235,6 +1263,8 @@ export function computePhaseComparison(
       delta: Math.round((gr.groundingAccuracy - p7.groundingAccuracy) * 1000) / 1000,
       improved: gr.groundingAccuracy >= 0.90,
       targetBenchmark: '>= 0.90',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Coordinate Match',
@@ -1244,6 +1274,8 @@ export function computePhaseComparison(
       delta: Math.round((gr.coordinateAccuracy - p7.coordinateAccuracy) * 1000) / 1000,
       improved: gr.coordinateAccuracy >= 0.95,
       targetBenchmark: '>= 0.95',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Refusal Accuracy',
@@ -1253,6 +1285,8 @@ export function computePhaseComparison(
       delta: Math.round((gr.refusalAccuracy - p7.refusalAccuracy) * 1000) / 1000,
       improved: gr.refusalAccuracy >= 1.0,
       targetBenchmark: '1.00',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Exact Duplicate Rate',
@@ -1262,6 +1296,8 @@ export function computePhaseComparison(
       delta: Math.round((nov.exactDuplicateRate - p7.exactDuplicateRate) * 1000) / 1000,
       improved: nov.exactDuplicateRate <= 0.05,
       targetBenchmark: '<= 0.05',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Semantic Duplicate Rate',
@@ -1271,6 +1307,8 @@ export function computePhaseComparison(
       delta: Math.round((nov.semanticDuplicateRate - p7.semanticDuplicateRate) * 1000) / 1000,
       improved: nov.semanticDuplicateRate <= 0.05,
       targetBenchmark: '<= 0.05',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Unique Question Rate',
@@ -1280,6 +1318,8 @@ export function computePhaseComparison(
       delta: Math.round((nov.uniqueQuestionPercentage - p7.uniqueQuestionRate) * 1000) / 1000,
       improved: nov.uniqueQuestionPercentage >= 0.90,
       targetBenchmark: '>= 0.90',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
     {
       metric: 'Average Mastery Delta',
@@ -1289,8 +1329,10 @@ export function computePhaseComparison(
       delta: Math.round((pers.averageMasteryImprovement - p7.averageMasteryDelta) * 1000) / 1000,
       improved: pers.averageMasteryImprovement > 0,
       targetBenchmark: '> 0.00',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNote: compNotice,
     },
-  ];
+  ].map((r) => ({ ...r, status: 'NOT_COMPARABLE' as const }));
 }
 
 /**
@@ -1673,8 +1715,9 @@ export async function evaluateAssessmentQualityTrack(
     duplicateDetectionRate: Math.round((duplicateDetected / Math.max(1, duplicateCount)) * 1000) / 1000,
     misconceptionClassificationAccuracy: Math.round((miscPassed / Math.max(1, miscCount)) * 1000) / 1000,
     confidenceIntervals: {
-      numericalAccuracy: computeWilsonConfidenceInterval(numericalPassed, Math.max(1, numericalCount)),
-      mcqAccuracy: computeWilsonConfidenceInterval(mcqPassed, Math.max(1, mcqCount)),
+      numericalAccuracy: computeWilsonConfidenceInterval(numericalPassed, Math.max(1, numericalCount), 1.96, 'numerical_questions'),
+      mcqAccuracy: computeWilsonConfidenceInterval(mcqPassed, Math.max(1, mcqCount), 1.96, 'mcq_questions'),
+      invalidQuestionRejection: computeWilsonConfidenceInterval(invalidRejected, Math.max(1, invalidCount), 1.96, 'invalid_questions'),
     },
   };
 
@@ -1900,16 +1943,51 @@ export async function evaluateStudyAgentLoopTrack(): Promise<{
 /**
  * 10. Track F: Reliability, Latency & Capacity Benchmarks
  */
-export function getReliabilityMetrics(): TrackFReliabilityMetrics {
+export function getReliabilityMetrics(measuredQueryLatencies?: number[]): TrackFReliabilityMetrics {
+  let p50 = 14.2;
+  let p90 = 28.5;
+  let p95 = 38.0;
+  let p99 = 52.1;
+  let sampleCount = 0;
+  let measurementSource = 'Phase 7 reference load benchmark configuration (fallback)';
+
+  if (measuredQueryLatencies && measuredQueryLatencies.length > 0) {
+    const sorted = [...measuredQueryLatencies].sort((a, b) => a - b);
+    sampleCount = sorted.length;
+    p50 = sorted[Math.floor(0.50 * (sampleCount - 1))];
+    p90 = sorted[Math.floor(0.90 * (sampleCount - 1))];
+    p95 = sorted[Math.floor(0.95 * (sampleCount - 1))];
+    p99 = sorted[Math.floor(0.99 * (sampleCount - 1))];
+    measurementSource = `Live query durations measured during evaluation run across ${sampleCount} RAG search & chat executions`;
+  }
+
   return {
-    p50LatencyMs: 14.2,
-    p90LatencyMs: 28.5,
-    p95LatencyMs: 38.0,
-    p99LatencyMs: 52.1,
+    p50LatencyMs: Math.round(p50 * 10) / 10,
+    p90LatencyMs: Math.round(p90 * 10) / 10,
+    p95LatencyMs: Math.round(p95 * 10) / 10,
+    p99LatencyMs: Math.round(p99 * 10) / 10,
+    measuredSampleCount: sampleCount,
+    latencyMeasurementSource: measurementSource,
     concurrencyThroughputReqPerSec: 1250,
     concurrencyErrorRate: 0.0,
     processLimiterEnforced: true,
     cacheHitRatio: 0.942,
+    configuredLimits: {
+      maxConcurrentProcesses: 8,
+      maxQueueSize: 64,
+      rateLimitBuckets: {
+        ingest: 20,
+        rag: 60,
+        ai: 30,
+        general: 120,
+      },
+    },
+    referenceLoadTestResults: {
+      source: 'scripts/run-load-benchmark.ts',
+      concurrencyTiersTested: [1, 5, 10, 25, 50],
+      maxThroughputRps: 1250,
+      environmentNotice: 'Reference load figures are from Phase 7 standalone load harness (50 simulated concurrent learners on local development architecture).',
+    },
   };
 }
 
@@ -1959,7 +2037,7 @@ export async function getCanonicalDatasetFingerprints(): Promise<EvaluationDatas
       'Authoritative Assessment Verifier & Quality Dataset',
       'verified_rubric',
       false,
-      '13 items spanning numerical answers with tolerance/units/scientific notation, MCQ options, invalid quarantined items, and misconceptions.'
+      '20 items spanning numerical answers with tolerance/units/scientific notation/boundary cases, MCQ options, invalid quarantined items, and misconceptions.'
     ),
     getDatasetFingerprint(
       LEARNER_TRACES_DATASET_PATH,
@@ -1995,7 +2073,8 @@ export function getGitCommitInfo(): { gitCommitSha: string; workingTreeClean: bo
 export async function runCanonicalPhase8Evaluation(
   ragSearchFn: (query: string, topic?: string, userId?: string) => Promise<any>,
   ragChatFn: (query: string, topic?: string, userId?: string) => Promise<any>,
-  cohortSize: number = 50
+  cohortSize: number = 50,
+  persistToDisk: boolean = true
 ): Promise<{ contract: EvaluationRunContract; fullReport: FullEvaluationReport }> {
   const timestamp = new Date().toISOString();
   const runId = `eval_run_${Date.now()}`;
@@ -2025,7 +2104,7 @@ export async function runCanonicalPhase8Evaluation(
     getCanonicalDatasetFingerprints(),
   ]);
 
-  const reliabilityMetrics = getReliabilityMetrics();
+  const reliabilityMetrics = getReliabilityMetrics(ragResult.queryLatenciesMs);
 
   const allFailures = [
     ...ragResult.errors,
@@ -2036,29 +2115,20 @@ export async function runCanonicalPhase8Evaluation(
     ...simResult.errors,
   ];
 
-  const totalEvaluated =
-    dataset.length +
-    ingestResult.metrics.totalItemsEvaluated +
-    assessTrackResult.metrics.totalQuestionsEvaluated +
-    calibrationResult.metrics.totalTracesEvaluated +
-    agentLoopResult.metrics.totalRunsEvaluated;
-
-  const totalPassed =
-    Math.round(ragResult.groundingMetrics.groundingAccuracy * dataset.length) +
-    ingestResult.metrics.validItemsPassed +
-    ingestResult.metrics.malformedItemsRejected +
-    Math.round(assessTrackResult.metrics.numericalVerificationAccuracy * assessTrackResult.metrics.totalQuestionsEvaluated) +
-    calibrationResult.metrics.totalTracesEvaluated;
-
-  const summaryCounts = {
-    totalEvaluated,
-    totalPassed,
-    totalFailed: Math.max(0, totalEvaluated - totalPassed),
-    totalSkipped: 0,
-    totalInvalid: 0,
-  };
-
   const perExampleClassifications = [
+    ...ragResult.perQuestionResults.map((r) => {
+      const isPassed =
+        (r.groundingMatched || r.offMaterial) &&
+        r.coordinatesMatched &&
+        (r.offMaterial ? r.refusalMatched : true);
+      return {
+        exampleId: r.itemId,
+        track: 'Track B: Retrieval & Grounding',
+        status: (isPassed ? 'pass' : 'fail') as 'pass' | 'fail',
+        details: `${r.questionType} - ${r.question.slice(0, 50)} | Grounded: ${r.groundingMatched} | Coord: ${r.coordinatesMatched} | Refusal: ${r.refusalMatched}`,
+        score: r.faithfulness,
+      };
+    }),
     ...ingestResult.details.map((d) => ({
       exampleId: d.id,
       track: 'Track A: Multimodal Ingestion',
@@ -2086,6 +2156,35 @@ export async function runCanonicalPhase8Evaluation(
     })),
   ];
 
+  const totalEvaluated = perExampleClassifications.length;
+  const totalPassed = perExampleClassifications.filter((e) => e.status === 'pass').length;
+  const totalFailed = perExampleClassifications.filter((e) => e.status === 'fail').length;
+  const totalSkipped = perExampleClassifications.filter((e) => e.status === 'skipped').length;
+  const totalInvalid = perExampleClassifications.filter((e) => e.status === 'invalid').length;
+
+  const summaryCounts = {
+    totalEvaluated,
+    totalPassed,
+    totalFailed,
+    totalSkipped,
+    totalInvalid,
+  };
+
+  const baseReport = {
+    evaluationTimestamp: timestamp,
+    datasetSize: dataset.length,
+    ragMetrics: ragResult.ragMetrics,
+    groundingMetrics: ragResult.groundingMetrics,
+    trackBMetrics: ragResult.trackBMetrics,
+    personalizationMetrics: simResult.personalizationMetrics,
+    noveltyMetrics: noveltyResult,
+    assessmentMetrics: phase9AssessmentMetrics,
+    perQuestionResults: ragResult.perQuestionResults,
+    failuresAndErrors: allFailures,
+  };
+
+  const comparison = computePhaseComparison(baseReport);
+
   const contract: EvaluationRunContract = {
     runId,
     evaluationTimestamp: timestamp,
@@ -2111,25 +2210,28 @@ export async function runCanonicalPhase8Evaluation(
     perExampleClassifications,
     dataLimitations: [
       'Track D evaluated strictly against synthetic learner simulation traces; no empirical claim of real classroom learning gains.',
-      'Track F local execution environment measures local machine characteristics; staging/production may differ.',
+      'Track F reports both live query latencies measured during this benchmark run and configured process limiter limits.',
+      'Phase 7 comparison is labeled NOT_COMPARABLE due to dataset size differences (52 vs 70 items) and unverified historical artifacts.',
     ],
     failuresAndErrors: allFailures,
+    baselineComparison: {
+      baselineRunId: 'PHASE_7_HISTORICAL_RECORDED',
+      comparabilityStatus: 'NOT_COMPARABLE',
+      comparabilityNotice: 'Historical Phase 7 baseline was recorded on an unverified 52-item dataset; canonical Phase 8 evaluates the 70-item canonical curriculum dataset. Deltas are not verified empirical improvements.',
+      deltas: Object.fromEntries(
+        comparison.map((c) => [
+          c.metric,
+          {
+            baseline: c.phase7Value,
+            current: c.phase8Value ?? c.phase7Value,
+            delta: c.delta,
+            status: 'UNVERIFIED',
+          },
+        ])
+      ),
+      comparisons: comparison,
+    },
   };
-
-  const baseReport = {
-    evaluationTimestamp: timestamp,
-    datasetSize: dataset.length,
-    ragMetrics: ragResult.ragMetrics,
-    groundingMetrics: ragResult.groundingMetrics,
-    trackBMetrics: ragResult.trackBMetrics,
-    personalizationMetrics: simResult.personalizationMetrics,
-    noveltyMetrics: noveltyResult,
-    assessmentMetrics: phase9AssessmentMetrics,
-    perQuestionResults: ragResult.perQuestionResults,
-    failuresAndErrors: allFailures,
-  };
-
-  const comparison = computePhaseComparison(baseReport);
 
   const fullReport: FullEvaluationReport = {
     ...baseReport,
@@ -2141,48 +2243,50 @@ export async function runCanonicalPhase8Evaluation(
     phase7Baseline: PHASE_7_BASELINE,
   };
 
-  // Persist machine-readable reports
-  await fs.mkdir(RESULTS_DIR, { recursive: true });
+  if (persistToDisk) {
+    // Persist machine-readable reports
+    await fs.mkdir(RESULTS_DIR, { recursive: true });
 
-  // 1. Versioned immutable run artifact
-  const versionedJsonPath = path.join(RESULTS_DIR, `${runId}.json`);
-  await fs.writeFile(versionedJsonPath, JSON.stringify(contract, null, 2), 'utf8');
+    // 1. Versioned immutable run artifact
+    const versionedJsonPath = path.join(RESULTS_DIR, `${runId}.json`);
+    await fs.writeFile(versionedJsonPath, JSON.stringify(contract, null, 2), 'utf8');
 
-  // 2. Latest evaluation report mirror (backwards compatible)
-  const latestJsonPath = path.join(RESULTS_DIR, 'latest_evaluation.json');
-  await fs.writeFile(latestJsonPath, JSON.stringify(fullReport, null, 2), 'utf8');
+    // 2. Latest evaluation report mirror (backwards compatible)
+    const latestJsonPath = path.join(RESULTS_DIR, 'latest_evaluation.json');
+    await fs.writeFile(latestJsonPath, JSON.stringify(fullReport, null, 2), 'utf8');
 
-  // 3. Latest evaluation CSV export
-  const csvRows: string[] = [
-    'Track,Metric Name,Value,Target Benchmark',
-    `Track A: Ingestion,Processing Success Rate,${ingestResult.metrics.processingSuccessRate},>= 0.95`,
-    `Track A: Ingestion,Extraction Accuracy,${ingestResult.metrics.extractionAccuracy},>= 0.95`,
-    `Track A: Ingestion,Provenance Accuracy,${ingestResult.metrics.provenanceAccuracy},>= 0.95`,
-    `Track A: Ingestion,Malformed Rejection Rate,${ingestResult.metrics.malformedRejectionRate},1.00`,
-    `Track B: RAG,MRR,${ragResult.trackBMetrics!.meanReciprocalRank},>= 0.85`,
-    `Track B: RAG,Recall@5,${ragResult.trackBMetrics!.recallAt5},>= 0.80`,
-    `Track B: RAG,Precision@5,${ragResult.trackBMetrics!.precisionAt5},>= 0.70`,
-    `Track B: RAG,nDCG@5,${ragResult.trackBMetrics!.ndcgAt5},>= 0.80`,
-    `Track B: RAG,Faithfulness,${ragResult.ragMetrics.faithfulness},>= 0.85`,
-    `Track B: RAG,Answer Relevancy,${ragResult.ragMetrics.answerRelevancy},>= 0.80`,
-    `Track B: RAG,Grounding Accuracy,${ragResult.groundingMetrics.groundingAccuracy},>= 0.90`,
-    `Track B: RAG,Refusal Accuracy,${ragResult.groundingMetrics.refusalAccuracy},1.00`,
-    `Track C: Assessment,Numerical Verification Accuracy,${assessTrackResult.metrics.numericalVerificationAccuracy},>= 0.95`,
-    `Track C: Assessment,Tolerance Handling Accuracy,${assessTrackResult.metrics.toleranceHandlingAccuracy},>= 0.95`,
-    `Track C: Assessment,MCQ Grading Accuracy,${assessTrackResult.metrics.mcqGradingAccuracy},1.00`,
-    `Track C: Assessment,Invalid Question Rejection Rate,${assessTrackResult.metrics.invalidQuestionRejectionRate},1.00`,
-    `Track D: Learner,Brier Score (Lower is better),${calibrationResult.metrics.brierScore},<= 0.25`,
-    `Track D: Learner,Expected Calibration Error (10 bins),${calibrationResult.metrics.expectedCalibrationError},<= 0.15`,
-    `Track D: Learner,Recommendation Determinism,${calibrationResult.metrics.recommendationDeterminism},1.00`,
-    `Track E: Study Agent,Full Loop Completion Rate,${agentLoopResult.metrics.fullLoopCompletionRate},1.00`,
-    `Track E: Study Agent,Action Selection Accuracy,${agentLoopResult.metrics.actionSelectionAccuracy},>= 0.90`,
-    `Track E: Study Agent,Retry Idempotency Preserved,${agentLoopResult.metrics.retryIdempotencyPreserved ? 'YES' : 'NO'},YES`,
-    `Track F: Reliability,p95 Latency (ms),${reliabilityMetrics.p95LatencyMs},<= 100ms`,
-    `Track F: Reliability,Cache Hit Ratio,${reliabilityMetrics.cacheHitRatio},>= 0.80`,
-  ];
+    // 3. Latest evaluation CSV export
+    const csvRows: string[] = [
+      'Track,Metric Name,Value,Target Benchmark',
+      `Track A: Ingestion,Processing Success Rate,${ingestResult.metrics.processingSuccessRate},>= 0.95`,
+      `Track A: Ingestion,Extraction Accuracy,${ingestResult.metrics.extractionAccuracy},>= 0.95`,
+      `Track A: Ingestion,Provenance Accuracy,${ingestResult.metrics.provenanceAccuracy},>= 0.95`,
+      `Track A: Ingestion,Malformed Rejection Rate,${ingestResult.metrics.malformedRejectionRate},1.00`,
+      `Track B: RAG,MRR,${ragResult.trackBMetrics!.meanReciprocalRank},>= 0.85`,
+      `Track B: RAG,Recall@5,${ragResult.trackBMetrics!.recallAt5},>= 0.80`,
+      `Track B: RAG,Precision@5,${ragResult.trackBMetrics!.precisionAt5},>= 0.70`,
+      `Track B: RAG,nDCG@5,${ragResult.trackBMetrics!.ndcgAt5},>= 0.80`,
+      `Track B: RAG,Faithfulness,${ragResult.ragMetrics.faithfulness},>= 0.85`,
+      `Track B: RAG,Answer Relevancy,${ragResult.ragMetrics.answerRelevancy},>= 0.80`,
+      `Track B: RAG,Grounding Accuracy,${ragResult.groundingMetrics.groundingAccuracy},>= 0.90`,
+      `Track B: RAG,Refusal Accuracy,${ragResult.groundingMetrics.refusalAccuracy},1.00`,
+      `Track C: Assessment,Numerical Verification Accuracy,${assessTrackResult.metrics.numericalVerificationAccuracy},>= 0.95`,
+      `Track C: Assessment,Tolerance Handling Accuracy,${assessTrackResult.metrics.toleranceHandlingAccuracy},>= 0.95`,
+      `Track C: Assessment,MCQ Grading Accuracy,${assessTrackResult.metrics.mcqGradingAccuracy},1.00`,
+      `Track C: Assessment,Invalid Question Rejection Rate,${assessTrackResult.metrics.invalidQuestionRejectionRate},1.00`,
+      `Track D: Learner,Brier Score (Lower is better),${calibrationResult.metrics.brierScore},<= 0.25`,
+      `Track D: Learner,Expected Calibration Error (10 bins),${calibrationResult.metrics.expectedCalibrationError},<= 0.15`,
+      `Track D: Learner,Recommendation Determinism,${calibrationResult.metrics.recommendationDeterminism},1.00`,
+      `Track E: Study Agent,Full Loop Completion Rate,${agentLoopResult.metrics.fullLoopCompletionRate},1.00`,
+      `Track E: Study Agent,Action Selection Accuracy,${agentLoopResult.metrics.actionSelectionAccuracy},>= 0.90`,
+      `Track E: Study Agent,Retry Idempotency Preserved,${agentLoopResult.metrics.retryIdempotencyPreserved ? 'YES' : 'NO'},YES`,
+      `Track F: Reliability,p95 Latency (ms),${reliabilityMetrics.p95LatencyMs},<= 100ms`,
+      `Track F: Reliability,Cache Hit Ratio,${reliabilityMetrics.cacheHitRatio},>= 0.80`,
+    ];
 
-  const csvPath = path.join(RESULTS_DIR, 'latest_evaluation.csv');
-  await fs.writeFile(csvPath, csvRows.join('\n'), 'utf8');
+    const csvPath = path.join(RESULTS_DIR, 'latest_evaluation.csv');
+    await fs.writeFile(csvPath, csvRows.join('\n'), 'utf8');
+  }
 
   return { contract, fullReport };
 }

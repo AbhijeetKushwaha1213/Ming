@@ -60,15 +60,15 @@ async function main() {
 
   console.log('\n🔍 4. TRACK B: RETRIEVAL, GROUNDING & INFORMATION RETRIEVAL:');
   console.log('----------------------------------------------------------------');
-  console.log(`   • Mean Reciprocal Rank (MRR): ${(tracks.trackB_retrievalGrounding.meanReciprocalRank * 100).toFixed(1)}%`);
-  console.log(`   • Recall@5:                   ${(tracks.trackB_retrievalGrounding.recallAt5 * 100).toFixed(1)}%`);
+  console.log(`   • Mean Reciprocal Rank (MRR): ${(tracks.trackB_retrievalGrounding.meanReciprocalRank * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.meanReciprocalRank.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.meanReciprocalRank.upper * 100).toFixed(1)}%]`);
+  console.log(`   • Recall@5:                   ${(tracks.trackB_retrievalGrounding.recallAt5 * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall.upper * 100).toFixed(1)}%]`);
   console.log(`   • Precision@5:                ${(tracks.trackB_retrievalGrounding.precisionAt5 * 100).toFixed(1)}%`);
-  console.log(`   • nDCG@5:                     ${(tracks.trackB_retrievalGrounding.ndcgAt5 * 100).toFixed(1)}%`);
+  console.log(`   • nDCG@5:                     ${(tracks.trackB_retrievalGrounding.ndcgAt5 * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.ndcgAt5.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.ndcgAt5.upper * 100).toFixed(1)}%]`);
   console.log(`   • Faithfulness:               ${(tracks.trackB_retrievalGrounding.faithfulness * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.faithfulness.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.faithfulness.upper * 100).toFixed(1)}%]`);
   console.log(`   • Answer Relevancy:           ${(tracks.trackB_retrievalGrounding.answerRelevancy * 100).toFixed(1)}%`);
   console.log(`   • Grounding Accuracy:         ${(tracks.trackB_retrievalGrounding.groundingAccuracy * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.groundingAccuracy.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.groundingAccuracy.upper * 100).toFixed(1)}%]`);
-  console.log(`   • Coordinate Match:           ${(tracks.trackB_retrievalGrounding.coordinateAccuracy * 100).toFixed(1)}%`);
-  console.log(`   • Refusal Accuracy:           ${(tracks.trackB_retrievalGrounding.refusalAccuracy * 100).toFixed(1)}%`);
+  console.log(`   • Coordinate Match:           ${(tracks.trackB_retrievalGrounding.coordinateAccuracy * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.coordinateAccuracy.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.coordinateAccuracy.upper * 100).toFixed(1)}%]`);
+  console.log(`   • Refusal Accuracy:           ${(tracks.trackB_retrievalGrounding.refusalAccuracy * 100).toFixed(1)}% [95% CI: ${(tracks.trackB_retrievalGrounding.confidenceIntervals.refusalAccuracy.lower * 100).toFixed(1)}% - ${(tracks.trackB_retrievalGrounding.confidenceIntervals.refusalAccuracy.upper * 100).toFixed(1)}%]`);
   console.log(`   • User Isolation Preserved:   ${tracks.trackB_retrievalGrounding.userIsolationPreserved ? 'PASSED (0 leaks)' : 'FAILED'}`);
 
   console.log('\n📐 5. TRACK C: ASSESSMENT QUALITY & DETERMINISTIC VERIFIERS:');
@@ -77,7 +77,7 @@ async function main() {
   console.log(`   • Tolerance Handling Acc:     ${(tracks.trackC_assessmentQuality.toleranceHandlingAccuracy * 100).toFixed(1)}% (Relative/Absolute bounds)`);
   console.log(`   • Unit Conversion Acc:        ${(tracks.trackC_assessmentQuality.unitConversionAccuracy * 100).toFixed(1)}% (Canonical normalization)`);
   console.log(`   • MCQ Grading Accuracy:       ${(tracks.trackC_assessmentQuality.mcqGradingAccuracy * 100).toFixed(1)}% [95% CI: ${(tracks.trackC_assessmentQuality.confidenceIntervals.mcqAccuracy.lower * 100).toFixed(1)}% - ${(tracks.trackC_assessmentQuality.confidenceIntervals.mcqAccuracy.upper * 100).toFixed(1)}%]`);
-  console.log(`   • Invalid Question Rejection: ${(tracks.trackC_assessmentQuality.invalidQuestionRejectionRate * 100).toFixed(1)}% (Quarantine enforcement)`);
+  console.log(`   • Invalid Question Rejection: ${(tracks.trackC_assessmentQuality.invalidQuestionRejectionRate * 100).toFixed(1)}% [95% CI: ${(tracks.trackC_assessmentQuality.confidenceIntervals.invalidQuestionRejection.lower * 100).toFixed(1)}% - ${(tracks.trackC_assessmentQuality.confidenceIntervals.invalidQuestionRejection.upper * 100).toFixed(1)}%]`);
   console.log(`   • Misconception Precision:    ${(tracks.trackC_assessmentQuality.misconceptionClassificationAccuracy * 100).toFixed(1)}%`);
 
   console.log('\n📊 6. TRACK D: LEARNER CALIBRATION & PROBABILISTIC ACCURACY:');
@@ -102,28 +102,30 @@ async function main() {
   console.log('\n⚡ 8. TRACK F: RELIABILITY & PERFORMANCE:');
   console.log('----------------------------------------------------------------');
   console.log(`   • Latency percentiles:        p50: ${tracks.trackF_reliabilityPerformance.p50LatencyMs}ms | p90: ${tracks.trackF_reliabilityPerformance.p90LatencyMs}ms | p95: ${tracks.trackF_reliabilityPerformance.p95LatencyMs}ms | p99: ${tracks.trackF_reliabilityPerformance.p99LatencyMs}ms`);
+  console.log(`   • Latency Source:             ${tracks.trackF_reliabilityPerformance.latencyMeasurementSource || 'Local benchmark'}`);
   console.log(`   • Concurrency Throughput:     ${tracks.trackF_reliabilityPerformance.concurrencyThroughputReqPerSec} req/sec`);
   console.log(`   • Concurrency Error Rate:     ${tracks.trackF_reliabilityPerformance.concurrencyErrorRate}%`);
   console.log(`   • Cache Hit Ratio:            ${(tracks.trackF_reliabilityPerformance.cacheHitRatio * 100).toFixed(1)}%`);
   console.log(`   • Process Limiter Enforced:   ${tracks.trackF_reliabilityPerformance.processLimiterEnforced ? 'YES' : 'NO'}`);
 
   console.log('\n📈 PHASE 7 vs PHASE 8 COMPARISON MATRIX:');
-  console.log('┌─────────────────────────────┬───────────┬───────────┬──────────┬──────────┬──────────────┐');
-  console.log('│ Metric                      │ Phase 7   │ Phase 8   │ Delta    │ Status   │ Benchmark    │');
-  console.log('├─────────────────────────────┼───────────┼───────────┼──────────┼──────────┼──────────────┤');
+  console.log('┌─────────────────────────────┬───────────┬───────────┬──────────┬──────────────┬──────────────┐');
+  console.log('│ Metric                      │ Phase 7   │ Phase 8   │ Delta    │ Status       │ Benchmark    │');
+  console.log('├─────────────────────────────┼───────────┼───────────┼──────────┼──────────────┼──────────────┤');
 
   for (const row of fullReport.phaseComparison) {
     const p7Str = typeof row.phase7Value === 'number' ? `${(row.phase7Value * 100).toFixed(1)}%` : String(row.phase7Value ?? '-');
     const p8Str = typeof row.phase8Value === 'number' ? `${(row.phase8Value * 100).toFixed(1)}%` : String(row.phase8Value ?? '-');
     const deltaStr = (row.delta >= 0 ? `+${(row.delta * 100).toFixed(1)}%` : `${(row.delta * 100).toFixed(1)}%`);
-    const status = row.improved ? 'PASSED ✅' : 'ATTN ⚠️ ';
+    const status = row.comparabilityStatus === 'NOT_COMPARABLE' ? 'UNVERIFIED ⚠️' : (row.improved ? 'PASSED ✅' : 'ATTN ⚠️ ');
 
     const pad = (str: string, len: number) => (str + ' '.repeat(len)).slice(0, len);
     console.log(
-      `│ ${pad(row.metric, 27)} │ ${pad(p7Str, 9)} │ ${pad(p8Str, 9)} │ ${pad(deltaStr, 8)} │ ${pad(status, 8)} │ ${pad(row.targetBenchmark, 12)} │`
+      `│ ${pad(row.metric, 27)} │ ${pad(p7Str, 9)} │ ${pad(p8Str, 9)} │ ${pad(deltaStr, 8)} │ ${pad(status, 12)} │ ${pad(row.targetBenchmark, 12)} │`
     );
   }
-  console.log('└─────────────────────────────┴───────────┴───────────┴──────────┴──────────┴──────────────┘');
+  console.log('└─────────────────────────────┴───────────┴───────────┴──────────┴──────────────┴──────────────┘');
+  console.log('   ⚠️ Comparability Warning: Historical Phase 7 baseline was recorded on an unverified 52-item dataset with differing retrieval configurations; canonical Phase 8 evaluates the 70-item canonical curriculum dataset. Deltas are not verified empirical improvements.');
 
   if (contract.failuresAndErrors.length > 0) {
     console.log('\n⚠️ Failures and Errors Encountered:');

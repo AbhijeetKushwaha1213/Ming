@@ -37,6 +37,13 @@ export interface ConfidenceInterval {
   lower: number;
   upper: number;
   confidenceLevel: number; // e.g. 0.95
+  method?: 'wilson_score' | 'query_level_bootstrap';
+  sampleSize?: number;
+  numerator?: number;
+  denominator?: number;
+  unitOfAnalysis?: string;
+  resamples?: number;
+  notes?: string;
 }
 
 // =========================================================================
@@ -72,9 +79,12 @@ export interface TrackBRetrievalGroundingMetrics {
   refusalAccuracy: number;
   userIsolationPreserved: boolean;
   confidenceIntervals: {
-    groundingAccuracy: ConfidenceInterval;
-    faithfulness: ConfidenceInterval;
-    contextRecall: ConfidenceInterval;
+    groundingAccuracy: ConfidenceInterval;   // Wilson score on discrete binary matches
+    faithfulness: ConfidenceInterval;        // Query-level bootstrap on continuous scores
+    contextRecall: ConfidenceInterval;       // Query-level bootstrap on recall scores
+    meanReciprocalRank: ConfidenceInterval;  // Query-level bootstrap on reciprocal ranks
+    ndcgAt5: ConfidenceInterval;             // Query-level bootstrap on nDCG scores
+    refusalAccuracy: ConfidenceInterval;     // Wilson score on off-material refusals
   };
 }
 
@@ -88,8 +98,9 @@ export interface TrackCAssessmentQualityMetrics {
   duplicateDetectionRate: number;
   misconceptionClassificationAccuracy: number;
   confidenceIntervals: {
-    numericalAccuracy: ConfidenceInterval;
-    mcqAccuracy: ConfidenceInterval;
+    numericalAccuracy: ConfidenceInterval;         // Wilson score on numerical grading
+    mcqAccuracy: ConfidenceInterval;               // Wilson score on MCQ grading
+    invalidQuestionRejection: ConfidenceInterval; // Wilson score on quarantine rejections
   };
 }
 
@@ -133,10 +144,23 @@ export interface TrackFReliabilityMetrics {
   p90LatencyMs: number;
   p95LatencyMs: number;
   p99LatencyMs: number;
+  measuredSampleCount?: number;
+  latencyMeasurementSource?: string;
   concurrencyThroughputReqPerSec: number;
   concurrencyErrorRate: number;
   processLimiterEnforced: boolean;
   cacheHitRatio: number;
+  configuredLimits?: {
+    maxConcurrentProcesses: number;
+    maxQueueSize: number;
+    rateLimitBuckets: Record<string, number>;
+  };
+  referenceLoadTestResults?: {
+    source: string;
+    concurrencyTiersTested: number[];
+    maxThroughputRps: number;
+    environmentNotice: string;
+  };
 }
 
 // =========================================================================
@@ -175,6 +199,22 @@ export interface EvaluationRunContract {
   }>;
   dataLimitations: string[];
   failuresAndErrors: string[];
+  baselineComparison?: {
+    baselineRunId: string;
+    comparabilityStatus: 'COMPARABLE' | 'NOT_COMPARABLE' | 'UNVERIFIED';
+    comparabilityNotice: string;
+    deltas: Record<string, { baseline: number; current: number; delta: number; status: 'PASSED' | 'REGRESSED' | 'ATTENTION' | 'UNVERIFIED' }>;
+    comparisons?: Array<{
+      track: string;
+      metric: string;
+      phase7Value: number;
+      phase8Value?: number;
+      delta: number;
+      target: string;
+      status: 'PASSED' | 'REGRESSED' | 'ATTENTION' | 'UNVERIFIED' | 'NOT_COMPARABLE';
+      notes?: string;
+    }>;
+  };
 }
 
 // =========================================================================
@@ -197,7 +237,7 @@ export function computeMRR(ranks: number[]): number {
  * Precision@k = (number of relevant items in top k) / k
  */
 export function computePrecisionAtK(retrievedFlags: boolean[], k = 5): number {
-  if (k <= 0) return 0.0;
+  if (k <= 0 || !retrievedFlags || retrievedFlags.length === 0) return 0.0;
   const topK = retrievedFlags.slice(0, k);
   const relevantInTopK = topK.filter(Boolean).length;
   return Math.round((relevantInTopK / k) * 1000) / 1000;
@@ -209,6 +249,7 @@ export function computePrecisionAtK(retrievedFlags: boolean[], k = 5): number {
  */
 export function computeRecallAtK(retrievedFlags: boolean[], totalExpected = 1, k = 5): number {
   if (totalExpected <= 0) return 1.0;
+  if (!retrievedFlags || retrievedFlags.length === 0 || k <= 0) return 0.0;
   const topK = retrievedFlags.slice(0, k);
   const relevantInTopK = topK.filter(Boolean).length;
   return Math.round((Math.min(relevantInTopK / totalExpected, 1.0)) * 1000) / 1000;
@@ -346,14 +387,28 @@ export function computeECE(
  * Computes Wilson Score 95% Confidence Interval for a binomial proportion:
  * Center = (p + z^2 / 2n) / (1 + z^2 / n)
  * Margin = (z / (1 + z^2 / n)) * sqrt(p(1-p)/n + z^2/(4n^2))
+ * 
+ * Strictly used for discrete binary events (successes / trials).
  */
 export function computeWilsonConfidenceInterval(
   successes: number,
   total: number,
-  z = 1.96 // 95% confidence
+  z = 1.96, // 95% confidence
+  unitOfAnalysis = 'trials'
 ): ConfidenceInterval {
   if (total <= 0) {
-    return { estimate: 0.0, lower: 0.0, upper: 0.0, confidenceLevel: 0.95 };
+    return {
+      estimate: 0.0,
+      lower: 0.0,
+      upper: 0.0,
+      confidenceLevel: 0.95,
+      method: 'wilson_score',
+      sampleSize: 0,
+      numerator: 0,
+      denominator: 0,
+      unitOfAnalysis,
+      notes: 'Zero denominator; interval undefined.',
+    };
   }
 
   const p = Math.max(0, Math.min(1, successes / total));
@@ -370,5 +425,101 @@ export function computeWilsonConfidenceInterval(
     lower,
     upper,
     confidenceLevel: 0.95,
+    method: 'wilson_score',
+    sampleSize: total,
+    numerator: successes,
+    denominator: total,
+    unitOfAnalysis,
+  };
+}
+
+/**
+ * Linear Congruential Generator (LCG) for deterministic, reproducible bootstrap sampling.
+ */
+function createSeededRng(seed: number) {
+  let s = (seed ^ 0x12345678) >>> 0;
+  return function nextFloat(): number {
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+/**
+ * Computes a query-level bootstrap confidence interval (default 95% CI) for ranking and continuous metrics.
+ * Preserves each query's metric value without assuming normality or misapplying binary Wilson intervals.
+ * 
+ * @param values Array of query-level scores (e.g. reciprocal ranks, nDCG@k, faithfulness).
+ * @param numResamples Number of bootstrap resamples (default: 1000).
+ * @param seed Random seed for deterministic reproducibility.
+ * @param unitOfAnalysis Description of unit (e.g. 'queries').
+ */
+export function computeQueryLevelBootstrapInterval(
+  values: number[],
+  numResamples = 1000,
+  seed = 1790950000,
+  unitOfAnalysis = 'queries'
+): ConfidenceInterval {
+  if (!values || values.length === 0) {
+    return {
+      estimate: 0.0,
+      lower: 0.0,
+      upper: 0.0,
+      confidenceLevel: 0.95,
+      method: 'query_level_bootstrap',
+      sampleSize: 0,
+      resamples: numResamples,
+      unitOfAnalysis,
+      notes: 'Empty input dataset; interval undefined.',
+    };
+  }
+
+  const N = values.length;
+  const originalMean = values.reduce((sum, v) => sum + v, 0) / N;
+
+  if (N === 1) {
+    const val = Math.round(originalMean * 1000) / 1000;
+    return {
+      estimate: val,
+      lower: val,
+      upper: val,
+      confidenceLevel: 0.95,
+      method: 'query_level_bootstrap',
+      sampleSize: 1,
+      resamples: numResamples,
+      unitOfAnalysis,
+      notes: 'Single-item sample; zero bootstrap variance.',
+    };
+  }
+
+  const rng = createSeededRng(seed);
+  const bootstrapMeans: number[] = new Array(numResamples);
+
+  for (let b = 0; b < numResamples; b++) {
+    let sampleSum = 0;
+    for (let i = 0; i < N; i++) {
+      const idx = Math.floor(rng() * N);
+      sampleSum += values[idx];
+    }
+    bootstrapMeans[b] = sampleSum / N;
+  }
+
+  bootstrapMeans.sort((a, b) => a - b);
+
+  // 95% empirical percentile interval: 2.5th and 97.5th percentiles
+  const lowerIndex = Math.floor(0.025 * (numResamples - 1));
+  const upperIndex = Math.ceil(0.975 * (numResamples - 1));
+
+  const lower = Math.max(0.0, Math.round(bootstrapMeans[lowerIndex] * 1000) / 1000);
+  const upper = Math.min(1.0, Math.round(bootstrapMeans[upperIndex] * 1000) / 1000);
+
+  return {
+    estimate: Math.round(originalMean * 1000) / 1000,
+    lower,
+    upper,
+    confidenceLevel: 0.95,
+    method: 'query_level_bootstrap',
+    sampleSize: N,
+    resamples: numResamples,
+    unitOfAnalysis,
   };
 }

@@ -65,6 +65,50 @@
     "tolerance": { "mode": "relative", "value": 0.02 }
   },
   {
+    "id": "assess_eval_num_07",
+    "type": "NUMERICAL",
+    "prompt": "Compute exact upper tolerance boundary for clock frequency.",
+    "correctAnswer": "100.0",
+    "studentAnswer": "105.0 MHz",
+    "unit": "MHz",
+    "expectedClassification": "CORRECT",
+    "expectedCredit": 1.0,
+    "tolerance": { "mode": "relative", "value": 0.05 }
+  },
+  {
+    "id": "assess_eval_num_08",
+    "type": "NUMERICAL",
+    "prompt": "Compute value outside tolerance boundary.",
+    "correctAnswer": "100.0",
+    "studentAnswer": "125.0 MHz",
+    "unit": "MHz",
+    "expectedClassification": "INCORRECT",
+    "expectedCredit": 0.0,
+    "tolerance": { "mode": "relative", "value": 0.05 }
+  },
+  {
+    "id": "assess_eval_num_09",
+    "type": "NUMERICAL",
+    "prompt": "Evaluate acceleration under absolute tolerance.",
+    "correctAnswer": "9.8",
+    "studentAnswer": "9.95 m/s^2",
+    "unit": "m/s^2",
+    "expectedClassification": "CORRECT",
+    "expectedCredit": 1.0,
+    "tolerance": { "mode": "absolute", "value": 0.20 }
+  },
+  {
+    "id": "assess_eval_num_10",
+    "type": "NUMERICAL",
+    "prompt": "Evaluate cable length with unit mismatch.",
+    "correctAnswer": "1000",
+    "studentAnswer": "1000 s",
+    "unit": "m",
+    "expectedClassification": "PARTIALLY_CORRECT",
+    "expectedCredit": 0.5,
+    "tolerance": { "mode": "relative", "value": 0.02 }
+  },
+  {
     "id": "assess_eval_mcq_01",
     "type": "MULTIPLE_CHOICE",
     "prompt": "Which Coffman condition can be prevented by imposing a total ordering on resources?",
@@ -81,6 +125,26 @@
     "options": ["Network Layer", "Transport Layer", "Data Link Layer", "Session Layer"],
     "correctAnswer": "Transport Layer",
     "studentAnswer": "Network Layer",
+    "expectedClassification": "INCORRECT",
+    "expectedCredit": 0.0
+  },
+  {
+    "id": "assess_eval_mcq_03",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which ACID property guarantees that database transactions are executed in isolation without interference?",
+    "options": ["Atomicity", "Consistency", "Isolation", "Durability"],
+    "correctAnswer": "Isolation",
+    "studentAnswer": "Isolation",
+    "expectedClassification": "CORRECT",
+    "expectedCredit": 1.0
+  },
+  {
+    "id": "assess_eval_mcq_04",
+    "type": "MULTIPLE_CHOICE",
+    "prompt": "Which page replacement algorithm suffers from Belady's anomaly?",
+    "options": ["LRU", "Optimal", "FIFO", "LFU"],
+    "correctAnswer": "FIFO",
+    "studentAnswer": "LRU",
     "expectedClassification": "INCORRECT",
     "expectedCredit": 0.0
   },
@@ -110,6 +174,15 @@
     "correctAnswer": "FCFS",
     "expectedRejection": true,
     "rejectionReason": "ANSWER_NOT_IN_CHOICES"
+  },
+  {
+    "id": "assess_eval_invalid_04",
+    "type": "INVALID_QUESTION",
+    "prompt": "Is paging a memory management scheme?",
+    "options": ["Yes"],
+    "correctAnswer": "Yes",
+    "expectedRejection": true,
+    "rejectionReason": "INSUFFICIENT_CHOICES"
   },
   {
     "id": "assess_eval_misc_01",

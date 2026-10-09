@@ -21,20 +21,27 @@
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
 ![Made with love](https://img.shields.io/badge/made%20with-%E2%9D%A4-red?style=flat-square)
 
-**[Live Demo](#-live-demo) · [Features](#-key-features) · [Screenshots](#-screenshots) · [Getting Started](#-getting-started) · [Roadmap](#-roadmap)**
+**[Interactive Pitch Deck](public/pitch.html) · [Demo Video Plan](docs/demo/DEMO_SCRIPT.md) · [Architecture](docs/architecture/ARCHITECTURE_OVERVIEW.md) · [Evaluation Report](docs/evaluation/EVALUATION_SUMMARY.md) · [Getting Started](docs/setup/DEMO_SETUP_GUIDE.md)**
 
 </div>
 
 ---
 
-## 🎬 Live Demo
+## 🎬 Hackathon Presentation Package & Live Demo
 
 <div align="center">
 
-<!-- 👉 REPLACE: record a 10–15s GIF of the full flow (upload → generate → study) and save to docs/media/demo.gif -->
-<img src="https://placehold.co/1100x620/0f172a/8b5cf6/gif?text=%E2%96%B6+Demo+GIF%0A(docs%2Fmedia%2Fdemo.gif)&font=montserrat" alt="Ming AI demo" width="90%"/>
+<!-- Video Walkthrough & Presentation Links -->
+<h3>Ming — Multimodal AI-Powered Adaptive Learning Platform</h3>
+<p><i>Mathematically grounded mastery, Bayesian Knowledge Tracing, and zero hallucination learning companion.</i></p>
 
-<sub>🔗 <a href="https://study-mate-ai-fawn-gamma.vercel.app" target="_blank">Live Site</a> &nbsp;•&nbsp; 🎥 <a href="#">Watch Video Walkthrough</a> &nbsp;•&nbsp; 📑 <a href="#">Pitch Deck</a></sub>
+<sub>
+  📊 <a href="public/pitch.html" target="_blank"><b>Open Interactive Pitch Deck (HTML)</b></a> &nbsp;•&nbsp;
+  📑 <a href="docs/pitch/PITCH_DECK.md"><b>Pitch Deck Source (MD)</b></a> &nbsp;•&nbsp;
+  🎥 <a href="docs/demo/DEMO_SCRIPT.md"><b>Demo Recording Script & Timeline</b></a> &nbsp;•&nbsp;
+  🏛️ <a href="docs/architecture/ARCHITECTURE_OVERVIEW.md"><b>Architecture Overview</b></a> &nbsp;•&nbsp;
+  📈 <a href="docs/evaluation/EVALUATION_SUMMARY.md"><b>Evaluation Summary ($N=147$)</b></a>
+</sub>
 
 </div>
 
@@ -256,13 +263,15 @@ Open **http://localhost:3000** or **http://localhost:5173** 🎉
 
 - [x] Multimodal AI content generator (8 material types)
 - [x] College & Exam dual dashboards
-- [x] AI tutor chat with markdown, code & formula rendering
-- [x] Pomodoro focus timer & Monaco scratchpad
-- [x] Offline caching with IndexedDB
-- [ ] Voice-based doubt solving
-- [ ] Collaborative study rooms
-- [ ] Spaced-repetition analytics & streaks
-- [ ] Native mobile apps
+- [x] Grounded AI tutor chat with source citation attribution
+- [x] Bayesian Knowledge Tracing (BKT) & SM-2 spaced repetition
+- [x] Autonomous AI Study Agent with proactive interventions
+- [x] Study session persistence, daily streaks & analytics
+- [x] Offline caching & telemetry queue with auto-synchronization
+- [x] Multi-tier production data plane (pgvector / ChromaDB)
+- [ ] Live Classroom LTI 1.3 LMS sync (Canvas / Blackboard)
+- [ ] Speech-to-text audio lecture transcription (Whisper API)
+- [ ] Collaborative peer study rooms
 
 ---
 

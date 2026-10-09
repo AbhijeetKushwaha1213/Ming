@@ -58,10 +58,53 @@ A focused, code-level audit was conducted across evaluation code (`server/evalua
 
 ---
 
-### 1.4 Audit of Uncertainty Calculations
-- **Wilson Score Intervals**: Restricted exclusively to discrete Bernoulli proportions (Grounding Accuracy, Coordinate Match, Refusal Accuracy, MCQ Grading, Format Support).
-- **Query-Level Bootstrap**: Non-parametric bootstrap ($B=1,000$, seed `1790950000`) applied to continuous and ranking distributions (MRR, Recall@5, nDCG@5, Faithfulness, Context Recall), resampling the query unit while preserving relevance judgments.
-- **Deterministic Reproducibility**: Recorded seed, sample size, numerator, denominator, and unit of analysis directly on all confidence intervals.
+### 1.4 Audit of Uncertainty Calculations & Metric Disparity
+
+#### Mathematical Resolution of the nDCG@5 vs. MRR Uncertainty Disparity
+An audit of `eval_run_1791563164571.json` examined why MRR and nDCG@5 share an identical point estimate of `0.703`, yet exhibit substantially different 95% bootstrap confidence intervals:
+- **Mean Reciprocal Rank (MRR)**: `0.703 [0.594, 0.813]` (Interval width: $\mathbf{0.219}$)
+- **nDCG@5**: `0.703 [0.662, 0.745]` (Interval width: $\mathbf{0.083}$)
+
+The audit confirmed that both intervals are mathematically correct and reproducible from their respective per-query score distributions:
+1. **MRR Distribution ($N=64$)**:
+   - The retriever either matched the expected source at rank 1 (45 queries: $1.0$) or missed it completely from top-5 (19 queries: $0.0$).
+   - This represents an **extreme bimodal binary distribution** with mass only at $\{0.0, 1.0\}$.
+   - Sample Variance: $s^2 = \frac{64}{63} (0.703125 \times 0.296875) = \mathbf{0.21205}$
+   - Standard Deviation: $s = \mathbf{0.46049}$
+   - Standard Error of the Mean: $\text{SE} = \frac{0.46049}{\sqrt{64}} = \mathbf{0.05756}$
+   - Bootstrap 95% CI: $\mathbf{[0.594, 0.813]}$ (width: $0.219 \approx 2 \times 1.96 \times 0.0576$).
+
+2. **nDCG@5 Distribution ($N=64$)**:
+   - Evaluates graded relevance ($2$ for exact coordinate match, $1$ for supporting source context, $0$ for irrelevant).
+   - Rather than binary extremes, queries receive graded continuous scores clustered tightly around the mean:
+     - $0.339$: 6 queries
+     - $0.423$: 1 query
+     - $0.553$: 12 queries
+     - $0.606$: 5 queries
+     - $0.707$: 1 query
+     - $0.734$: 10 queries
+     - $0.773$: 3 queries
+     - $0.812$: 5 queries
+     - $0.821$: 3 queries
+     - $0.835$: 7 queries
+     - $0.899$: 1 query
+     - $0.922$: 10 queries
+   - Point Estimate: $\mu = \frac{44.978}{64} = 0.702781 \to \mathbf{0.703}$.
+   - Sample Variance: $s^2 = \mathbf{0.03104}$ ($\mathbf{6.83\times}$ lower variance than MRR).
+   - Standard Deviation: $s = \mathbf{0.17619}$ ($\mathbf{2.61\times}$ lower standard deviation than MRR).
+   - Standard Error of the Mean: $\text{SE} = \frac{0.17619}{\sqrt{64}} = \mathbf{0.02202}$ ($\mathbf{2.61\times}$ lower SE than MRR).
+   - Bootstrap 95% CI: $\mathbf{[0.662, 0.745]}$ (width: $0.083 \approx 2 \times 1.96 \times 0.0220$).
+
+**Conclusion**: The nDCG@5 interval is $\approx 2.62\times$ narrower than the MRR interval strictly because graded ranking metrics produce lower sampling variance than all-or-nothing binary metrics. The bootstrap procedure correctly captures this mathematical property.
+
+---
+
+### 1.5 Reconciliation of the Out-of-Domain (OOD) Refusal Denominator
+- **Dataset Composition**: Canonical dataset `rag_eval_dataset.json` (SHA-256 `1152512659dc5730...`) contains exactly **70 curriculum items**:
+  - **64 In-Domain items** (`eval_q_01`–`eval_q_40`, `eval_q_47`–`eval_q_70`): Covered across Operating Systems (16), Computer Networks (16), Database Systems (16), and Algorithms & Data Structures (16).
+  - **6 Out-of-Domain Refusal items** (`eval_q_41`–`eval_q_46`): Quantum Computing, Culinary Arts, Marine Biology, Sports Science, Macroeconomics, and Automotive Engineering.
+- **Refusal Denominator ($n=6$)**: All 6 off-material queries were evaluated by the refusal harness. All 6 were successfully refused ($100.0\%$, 95% Wilson Score CI: $[61.0\%, 100.0\%]$). Zero OOD queries were excluded.
+- **Historical Text Discrepancy Resolved**: Early drafts of Phase 8 documentation casually mentioned "10 out-of-domain queries" as an unverified round-number placeholder prior to cryptographic dataset fingerprinting. The canonical JSON dataset has contained exactly 6 OOD items since its inception. The dataset hash, contract summary, run artifact, and documentation are now fully reconciled to $n=6$.
 
 ---
 

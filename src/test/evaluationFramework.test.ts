@@ -66,6 +66,27 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
       expect(tracesFp.limitations).toContain('CRITICAL');
       expect(tracesFp.limitations).toContain('synthetic');
     });
+
+    it('verifies exact in-domain (64) and out-of-domain refusal (6) split in the canonical RAG dataset', async () => {
+      const datasetPath = path.resolve(process.cwd(), 'benchmarks/data/rag_eval_dataset.json');
+      const raw = await fs.readFile(datasetPath, 'utf8');
+      const dataset = JSON.parse(raw);
+      expect(dataset).toHaveLength(70);
+
+      const oodItems = dataset.filter((item: any) => item.off_material === true);
+      const inDomainItems = dataset.filter((item: any) => item.off_material === false);
+
+      expect(oodItems).toHaveLength(6);
+      expect(inDomainItems).toHaveLength(64);
+      expect(oodItems.map((x: any) => x.id)).toEqual([
+        'eval_q_41',
+        'eval_q_42',
+        'eval_q_43',
+        'eval_q_44',
+        'eval_q_45',
+        'eval_q_46',
+      ]);
+    });
   });
 
   // =========================================================================
@@ -275,6 +296,62 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
       expect(singleCI.lower).toBe(0.8);
       expect(singleCI.upper).toBe(0.8);
     });
+
+    it('reproduces and mathematically validates MRR vs nDCG@5 bootstrap uncertainty disparity', () => {
+      // 1. Exact MRR distribution: 45 rank-1 hits (1.0), 19 misses (0.0)
+      const mrrScores = [
+        1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1,
+        1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0,
+      ];
+      expect(mrrScores).toHaveLength(64);
+      expect(mrrScores.filter((s) => s === 1)).toHaveLength(45);
+      expect(mrrScores.filter((s) => s === 0)).toHaveLength(19);
+
+      const mrrCI = computeQueryLevelBootstrapInterval(mrrScores, 1000, 1790950000, 'in_domain_queries');
+      expect(mrrCI.estimate).toBe(0.703);
+      expect(mrrCI.lower).toBe(0.594);
+      expect(mrrCI.upper).toBe(0.813);
+
+      // 2. Exact nDCG@5 distribution: 64 graded ranking scores clustered around the mean
+      const ndcgScores = [
+        0.553, 0.553, 0.812, 0.812, 0.734, 0.835, 0.835, 0.922, 0.339, 0.339, 0.553, 0.812, 0.606, 0.835,
+        0.821, 0.835, 0.606, 0.922, 0.734, 0.835, 0.553, 0.734, 0.734, 0.734, 0.339, 0.553, 0.707, 0.606,
+        0.553, 0.812, 0.812, 0.553, 0.553, 0.773, 0.606, 0.821, 0.922, 0.734, 0.553, 0.339, 0.899, 0.821,
+        0.922, 0.922, 0.922, 0.922, 0.835, 0.553, 0.922, 0.773, 0.553, 0.734, 0.339, 0.339, 0.423, 0.773,
+        0.734, 0.922, 0.922, 0.734, 0.835, 0.553, 0.734, 0.606,
+      ];
+      expect(ndcgScores).toHaveLength(64);
+
+      const ndcgCI = computeQueryLevelBootstrapInterval(ndcgScores, 1000, 1790950000, 'in_domain_queries');
+      expect(ndcgCI.estimate).toBe(0.703);
+      expect(ndcgCI.lower).toBe(0.662);
+      expect(ndcgCI.upper).toBe(0.745);
+
+      // 3. Mathematical proof of width difference:
+      // Both point estimates equal 0.703
+      expect(mrrCI.estimate).toBe(ndcgCI.estimate);
+
+      // Compute standard deviations
+      const mrrMean = mrrScores.reduce((a, b) => a + b, 0) / 64;
+      const mrrVar = mrrScores.reduce((a, b) => a + Math.pow(b - mrrMean, 2), 0) / 63;
+      const mrrSD = Math.sqrt(mrrVar);
+
+      const ndcgMean = ndcgScores.reduce((a, b) => a + b, 0) / 64;
+      const ndcgVar = ndcgScores.reduce((a, b) => a + Math.pow(b - ndcgMean, 2), 0) / 63;
+      const ndcgSD = Math.sqrt(ndcgVar);
+
+      // MRR standard deviation (0.460) is ~2.6x higher than nDCG (0.176) due to extreme bimodal 0/1 values
+      expect(mrrSD).toBeCloseTo(0.460, 2);
+      expect(ndcgSD).toBeCloseTo(0.176, 2);
+      expect(mrrSD / ndcgSD).toBeGreaterThan(2.5);
+
+      // Consequently, nDCG 95% bootstrap interval width (0.083) is ~2.6x narrower than MRR interval (0.219)
+      const mrrWidth = mrrCI.upper - mrrCI.lower;
+      const ndcgWidth = ndcgCI.upper - ndcgCI.lower;
+      expect(mrrWidth).toBeCloseTo(0.219, 2);
+      expect(ndcgWidth).toBeCloseTo(0.083, 2);
+      expect(mrrWidth / ndcgWidth).toBeGreaterThan(2.5);
+    });
   });
 
   // =========================================================================
@@ -437,6 +514,13 @@ describe('Phase 8: Evaluation Framework & Reproducible Benchmarking Tests', () =
       // Verify Wilson Score used for discrete binary proportions
       expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.groundingAccuracy.method).toBe('wilson_score');
       expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.refusalAccuracy.method).toBe('wilson_score');
+
+      // Verify exact query inclusion denominators
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.meanReciprocalRank.sampleSize).toBe(64);
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.ndcgAt5.sampleSize).toBe(64);
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.contextRecall.sampleSize).toBe(64);
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.refusalAccuracy.sampleSize).toBe(6);
+      expect(contract.tracks.trackB_retrievalGrounding.confidenceIntervals.refusalAccuracy.denominator).toBe(6);
 
       // Baseline comparability audit: all historical comparisons must be NOT_COMPARABLE
       expect(contract.baselineComparison).toBeDefined();

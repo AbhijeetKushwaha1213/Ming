@@ -1,4 +1,5 @@
 import { prisma, ensureDAGSchema } from './prisma.ts';
+import { serverReadCache } from './serverCache.ts';
 
 export interface SaveDAGPayload {
   id?: string;
@@ -91,12 +92,17 @@ function mapRowToDAG(row: any) {
 }
 
 export async function getUserDAGs(userId: string) {
+  const cached = serverReadCache.get<any[]>(userId, 'dags_list');
+  if (cached) return cached;
+
   await ensureDAGSchema();
   const rows = await prisma.$queryRawUnsafe<any[]>(
     'SELECT * FROM learning_dags WHERE userId = ? ORDER BY updatedAt DESC',
     userId
   );
-  return rows.map(mapRowToDAG);
+  const mapped = rows.map(mapRowToDAG);
+  serverReadCache.set(userId, 'dags_list', mapped, 60_000);
+  return mapped;
 }
 
 export async function getDAGById(id: string, userId: string) {
@@ -228,6 +234,7 @@ export async function saveDAG(userId: string, data: SaveDAGPayload) {
     );
   }
 
+  serverReadCache.invalidateUser(userId);
   return getDAGById(id, userId);
 }
 
@@ -302,5 +309,6 @@ export async function deleteDAG(id: string, userId: string) {
     id,
     userId
   );
+  serverReadCache.invalidateUser(userId);
   return true;
 }

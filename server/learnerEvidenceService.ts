@@ -283,24 +283,45 @@ export async function recordLearnerEvidence(
     source_coordinate: evidence.source_coordinate,
   });
 
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO learner_events (id, userId, topic, subtopic, eventType, sourceId, priorMastery, posteriorMastery, isCorrect, difficulty, parametersJson, evidenceDetails, idempotencyKey, timestamp)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    evidence.evidence_id,
-    evidence.user_id,
-    evidence.topic,
-    evidence.subtopic || null,
-    'ASSESSMENT_ANSWER',
-    evidence.attempt_id,
-    prior,
-    posterior,
-    evidence.is_correct ? 1 : 0,
-    evidence.difficulty,
-    JSON.stringify(bktParams),
-    eventDetails,
-    evidence.idempotency_key,
-    evidence.timestamp || now
-  );
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO learner_events (id, userId, topic, subtopic, eventType, sourceId, priorMastery, posteriorMastery, isCorrect, difficulty, parametersJson, evidenceDetails, idempotencyKey, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      evidence.evidence_id,
+      evidence.user_id,
+      evidence.topic,
+      evidence.subtopic || null,
+      'ASSESSMENT_ANSWER',
+      evidence.attempt_id,
+      prior,
+      posterior,
+      evidence.is_correct ? 1 : 0,
+      evidence.difficulty,
+      JSON.stringify(bktParams),
+      eventDetails,
+      evidence.idempotency_key,
+      evidence.timestamp || now
+    );
+  } catch (insertErr: any) {
+    const errMsg = String(insertErr?.message || '');
+    if (
+      errMsg.includes('UNIQUE') ||
+      errMsg.includes('unique') ||
+      insertErr?.code === 'P2002' ||
+      insertErr?.code === 2067
+    ) {
+      // Gracefully handle race-condition duplicate submissions without crashing or double-updating
+      const currentState = await getTopicMasteryState(evidence.user_id, evidence.topic, evidence.subtopic);
+      return {
+        applied: false,
+        duplicate: true,
+        discarded: false,
+        idempotency_key: evidence.idempotency_key,
+        updated_state: currentState,
+      };
+    }
+    throw insertErr;
+  }
 
   const updated_state: EvidenceBasedMasteryState = {
     user_id: evidence.user_id,

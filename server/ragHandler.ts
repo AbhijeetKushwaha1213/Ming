@@ -10,7 +10,8 @@ import { processAssessmentIntelligence, getUserMisconceptions, getAttemptDiagnos
 import { learnerHandler } from './learnerHandler.ts';
 import { studyAgentHandler } from './studyAgentHandler.ts';
 import { evaluationHandler } from './evaluationHandler.ts';
-import { resolveContextUser } from './authMiddleware.ts';
+import { resolveContextUser, checkRateLimit } from './authMiddleware.ts';
+import { serverReadCache } from './serverCache.ts';
 import { verifyGroundedAnswer, buildCanonicalEvidenceIndex } from './citationVerifier.ts';
 import { verifyNumericalQuestion, normalizeCorrectAnswer, computeNumericalFingerprint } from './numericalVerifier.ts';
 import { validateQuestionIntegrity } from './robustAnswerVerifier.ts';
@@ -49,46 +50,148 @@ export type RagApiResponse = {
 
 const RAG_TIMEOUT_MS = Number(process.env.RAG_TIMEOUT_MS || 45000);
 
-export function runPythonCli(args: string[], timeoutMs = RAG_TIMEOUT_MS): Promise<any> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      PYTHON_PATH,
-      [RAG_ENGINE_PATH, ...args],
-      {
-        cwd: PROJECT_ROOT,
-        timeout: timeoutMs,
-        env: {
-          ...process.env,
-          PYTHONUNBUFFERED: '1',
-        },
-        maxBuffer: 10 * 1024 * 1024,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          if ((error as any).killed || error.signal === 'SIGTERM') {
-            return reject(new Error(`RAG Engine execution timed out after ${timeoutMs}ms`));
-          }
-          console.error('RAG Engine error:', stderr || error.message);
-          return reject(new Error(stderr || error.message));
-        }
+/**
+ * Concurrency limiter queue for heavy child processes.
+ * Prevents OS process table exhaustion and CPU/memory starvation under load.
+ */
+export class ProcessConcurrencyLimiter {
+  private maxConcurrent: number;
+  private maxQueueSize: number;
+  private running = 0;
+  private queue: Array<{
+    task: () => Promise<any>;
+    resolve: (val: any) => void;
+    reject: (err: any) => void;
+    enqueuedAt: number;
+  }> = [];
+  private totalProcessed = 0;
+  private totalRejected = 0;
 
-        try {
-          // Extract JSON output (ignore warnings before JSON)
-          const jsonStartIndex = stdout.indexOf('{');
-          if (jsonStartIndex === -1) {
-            return resolve({ raw: stdout.trim() });
-          }
-          const jsonText = stdout.slice(jsonStartIndex).trim();
-          const parsed = JSON.parse(jsonText);
-          resolve(parsed);
-        } catch (parseError) {
-          console.error('JSON parse error from RAG Engine output:', stdout);
-          resolve({ raw: stdout.trim() });
-        }
+  constructor(maxConcurrent = 8, maxQueueSize = 64) {
+    this.maxConcurrent = maxConcurrent;
+    this.maxQueueSize = maxQueueSize;
+  }
+
+  getStats() {
+    return {
+      running: this.running,
+      queued: this.queue.length,
+      maxConcurrent: this.maxConcurrent,
+      maxQueueSize: this.maxQueueSize,
+      totalProcessed: this.totalProcessed,
+      totalRejected: this.totalRejected,
+    };
+  }
+
+  async run<T>(task: () => Promise<T>): Promise<T> {
+    if (this.running < this.maxConcurrent) {
+      this.running++;
+      try {
+        const result = await task();
+        this.totalProcessed++;
+        return result;
+      } finally {
+        this.running--;
+        this.dispatchNext();
       }
-    );
+    }
+
+    if (this.queue.length >= this.maxQueueSize) {
+      this.totalRejected++;
+      throw new Error(`Process concurrency capacity exceeded: queue limit of ${this.maxQueueSize} reached`);
+    }
+
+    return new Promise<T>((resolve, reject) => {
+      this.queue.push({
+        task,
+        resolve,
+        reject,
+        enqueuedAt: Date.now(),
+      });
+    });
+  }
+
+  private dispatchNext() {
+    if (this.running >= this.maxConcurrent || this.queue.length === 0) {
+      return;
+    }
+    const nextItem = this.queue.shift();
+    if (!nextItem) return;
+
+    this.running++;
+    nextItem.task()
+      .then((val) => {
+        this.totalProcessed++;
+        nextItem.resolve(val);
+      })
+      .catch((err) => {
+        nextItem.reject(err);
+      })
+      .finally(() => {
+        this.running--;
+        this.dispatchNext();
+      });
+  }
+
+  clearQueue() {
+    while (this.queue.length > 0) {
+      const item = this.queue.shift();
+      if (item) {
+        this.totalRejected++;
+        item.reject(new Error('Process queue cleared'));
+      }
+    }
+  }
+}
+
+export const ragProcessLimiter = new ProcessConcurrencyLimiter(
+  Number(process.env.RAG_MAX_CONCURRENT_PROCESSES || 8),
+  Number(process.env.RAG_MAX_QUEUE_SIZE || 64)
+);
+
+export function runPythonCli(args: string[], timeoutMs = RAG_TIMEOUT_MS): Promise<any> {
+  return ragProcessLimiter.run(() => {
+    return new Promise((resolve, reject) => {
+      execFile(
+        PYTHON_PATH,
+        [RAG_ENGINE_PATH, ...args],
+        {
+          cwd: PROJECT_ROOT,
+          timeout: timeoutMs,
+          env: {
+            ...process.env,
+            PYTHONUNBUFFERED: '1',
+          },
+          maxBuffer: 10 * 1024 * 1024,
+        },
+        (error, stdout, stderr) => {
+          if (error) {
+            if ((error as any).killed || error.signal === 'SIGTERM') {
+              return reject(new Error(`RAG Engine execution timed out after ${timeoutMs}ms`));
+            }
+            console.error('RAG Engine error:', stderr || error.message);
+            return reject(new Error(stderr || error.message));
+          }
+
+          try {
+            // Extract JSON output (ignore warnings before JSON)
+            const jsonStartIndex = stdout.indexOf('{');
+            if (jsonStartIndex === -1) {
+              return resolve({ raw: stdout.trim() });
+            }
+            const jsonText = stdout.slice(jsonStartIndex).trim();
+            const parsed = JSON.parse(jsonText);
+            resolve(parsed);
+          } catch (parseError) {
+            console.error('JSON parse error from RAG Engine output:', stdout);
+            resolve({ raw: stdout.trim() });
+          }
+        }
+      );
+    });
   });
 }
+
 
 export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
   const method = req.method?.toUpperCase() || 'GET';
@@ -98,6 +201,18 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
   // 1. Ingest / Upload Source
   // POST /api/rag/ingest
   if (method === 'POST' && pathname === '/api/rag/ingest') {
+    const rateCheck = checkRateLimit(req as any, 'ingest');
+    if (!rateCheck.allowed) {
+      res.setHeader('Retry-After', String(rateCheck.retryAfterSec));
+      res.setHeader('X-RateLimit-Limit', String(rateCheck.limit));
+      res.setHeader('X-RateLimit-Remaining', String(rateCheck.remaining));
+      res.status(429).json({
+        error: 'Rate limit exceeded for ingestion requests. Please try again later.',
+        retryAfterSec: rateCheck.retryAfterSec,
+      });
+      return;
+    }
+
     try {
       const body = req.body || {};
       const userId = await resolveContextUser(req);
@@ -232,6 +347,10 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         error: isSuccess ? null : (result.error || 'Ingestion completed with failures'),
       });
 
+      if (isSuccess) {
+        serverReadCache.invalidateUser(userId);
+      }
+
       res.status(200).json({
         success: isSuccess,
         jobId,
@@ -254,8 +373,13 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         });
         return;
       }
+      const isCapacityError = err.message && err.message.includes('capacity exceeded');
+      const statusCode = isCapacityError ? 503 : 500;
+      if (isCapacityError) {
+        res.setHeader('Retry-After', '5');
+      }
       console.error('Ingest error:', err);
-      res.status(500).json({ error: err.message || 'Ingestion failed' });
+      res.status(statusCode).json({ error: err.message || 'Ingestion failed' });
       return;
     }
   }
@@ -301,48 +425,70 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
   // 3. Search Relevant Chunks
   // POST /api/rag/search or GET /api/rag/search?query=...
   if ((method === 'POST' || method === 'GET') && pathname === '/api/rag/search') {
+    const rateCheck = checkRateLimit(req as any, 'rag');
+    if (!rateCheck.allowed) {
+      res.setHeader('Retry-After', String(rateCheck.retryAfterSec));
+      res.setHeader('X-RateLimit-Limit', String(rateCheck.limit));
+      res.setHeader('X-RateLimit-Remaining', String(rateCheck.remaining));
+      res.status(429).json({
+        error: 'Rate limit exceeded for search requests. Please try again later.',
+        retryAfterSec: rateCheck.retryAfterSec,
+      });
+      return;
+    }
+
     const query = method === 'POST' ? req.body?.query : (req.query?.query || req.query?.q);
     if (!query) {
       res.status(400).json({ error: 'Query string is required' });
       return;
     }
 
-    const userId = await resolveContextUser(req);
-    const sourceId = method === 'POST' ? req.body?.sourceId : req.query?.sourceId;
-    const topic = method === 'POST' ? req.body?.topic : req.query?.topic;
-    const subtopic = method === 'POST' ? req.body?.subtopic : req.query?.subtopic;
-    const topK = method === 'POST' ? (req.body?.topK || 5) : (Number(req.query?.topK || 5));
-    const similarityThreshold = method === 'POST' 
-      ? (req.body?.similarityThreshold ?? req.body?.minScore)
-      : (req.query?.similarityThreshold ?? req.query?.minScore);
-    const maxPerSource = method === 'POST' ? req.body?.maxPerSource : req.query?.maxPerSource;
+    try {
+      const userId = await resolveContextUser(req);
+      const sourceId = method === 'POST' ? req.body?.sourceId : req.query?.sourceId;
+      const topic = method === 'POST' ? req.body?.topic : req.query?.topic;
+      const subtopic = method === 'POST' ? req.body?.subtopic : req.query?.subtopic;
+      const topK = method === 'POST' ? (req.body?.topK || 5) : (Number(req.query?.topK || 5));
+      const similarityThreshold = method === 'POST' 
+        ? (req.body?.similarityThreshold ?? req.body?.minScore)
+        : (req.query?.similarityThreshold ?? req.query?.minScore);
+      const maxPerSource = method === 'POST' ? req.body?.maxPerSource : req.query?.maxPerSource;
 
-    const args = ['search', '--query', String(query), '--top-k', String(topK)];
-    if (userId) args.push('--user-id', String(userId));
-    if (sourceId) args.push('--source-id', String(sourceId));
-    if (topic) args.push('--topic', String(topic));
-    if (subtopic) args.push('--subtopic', String(subtopic));
-    if (similarityThreshold !== undefined && similarityThreshold !== null) {
-      args.push('--similarity-threshold', String(similarityThreshold));
+      const args = ['search', '--query', String(query), '--top-k', String(topK)];
+      if (userId) args.push('--user-id', String(userId));
+      if (sourceId) args.push('--source-id', String(sourceId));
+      if (topic) args.push('--topic', String(topic));
+      if (subtopic) args.push('--subtopic', String(subtopic));
+      if (similarityThreshold !== undefined && similarityThreshold !== null) {
+        args.push('--similarity-threshold', String(similarityThreshold));
+      }
+      if (maxPerSource !== undefined && maxPerSource !== null) {
+        args.push('--max-per-source', String(maxPerSource));
+      }
+
+      const searchResults = await runPythonCli(args);
+      
+      // Provide both snake_case and camelCase diagnostics
+      const augmentedResults = {
+        ...searchResults,
+        candidateCount: searchResults?.candidate_count ?? searchResults?.results?.length ?? 0,
+        finalEvidenceCount: searchResults?.final_evidence_count ?? searchResults?.results?.length ?? 0,
+        similarityScores: searchResults?.similarity_scores ?? (searchResults?.results || []).map((r: any) => r.score),
+        selectedSourceIds: searchResults?.selected_source_ids ?? [],
+        discardedChunks: searchResults?.discarded_chunks ?? [],
+      };
+
+      res.status(200).json(augmentedResults);
+      return;
+    } catch (err: any) {
+      const isCapacityError = err.message && err.message.includes('capacity exceeded');
+      const statusCode = isCapacityError ? 503 : 500;
+      if (isCapacityError) {
+        res.setHeader('Retry-After', '5');
+      }
+      res.status(statusCode).json({ error: err.message || 'Search execution failed' });
+      return;
     }
-    if (maxPerSource !== undefined && maxPerSource !== null) {
-      args.push('--max-per-source', String(maxPerSource));
-    }
-
-    const searchResults = await runPythonCli(args);
-    
-    // Provide both snake_case and camelCase diagnostics
-    const augmentedResults = {
-      ...searchResults,
-      candidateCount: searchResults?.candidate_count ?? searchResults?.results?.length ?? 0,
-      finalEvidenceCount: searchResults?.final_evidence_count ?? searchResults?.results?.length ?? 0,
-      similarityScores: searchResults?.similarity_scores ?? (searchResults?.results || []).map((r: any) => r.score),
-      selectedSourceIds: searchResults?.selected_source_ids ?? [],
-      discardedChunks: searchResults?.discarded_chunks ?? [],
-    };
-
-    res.status(200).json(augmentedResults);
-    return;
   }
 
   // 4. Return Specific Chunk Metadata

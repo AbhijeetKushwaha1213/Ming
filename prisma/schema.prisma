@@ -149,8 +149,10 @@ model StudyPlanItem {
   sourceId         String?
   chunkId          String?
   sourceTitle      String?
-  sourceCoordinate String?
-  status           String    @default("pending") // 'pending', 'in_progress', 'completed', 'skipped'
+  status           String    @default("pending") // 'pending', 'in_progress', 'completed', 'skipped', 'blocked'
+  conceptId        String?
+  category         String?
+  questionId       String?
   completedAt      DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

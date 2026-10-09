@@ -155,8 +155,10 @@ model StudyPlanItem {
   sourceId         String?   @map("source_id")
   chunkId          String?   @map("chunk_id")
   sourceTitle      String?   @map("source_title")
-  sourceCoordinate String?   @map("source_coordinate")
   status           String    @default("pending")
+  conceptId        String?   @map("concept_id")
+  category         String?
+  questionId       String?   @map("question_id")
   completedAt      DateTime? @map("completed_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")

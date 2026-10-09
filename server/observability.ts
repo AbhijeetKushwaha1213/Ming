@@ -9,6 +9,7 @@
 import crypto from 'node:crypto';
 import { prisma, ensureResourceSchema } from './prisma.ts';
 import { validateProductionConfig } from './configValidator.ts';
+import { serverReadCache } from './serverCache.ts';
 
 export interface RequestMetrics {
   requestId: string;
@@ -170,6 +171,7 @@ export async function getComprehensiveHealth() {
       auth: config.publicConfig.supabaseConfigured ? 'supabase_jwt' : 'dev_mode',
     },
     checks: readiness.checks,
+    cache: serverReadCache.getStats(),
     publicConfig: config.publicConfig,
     timestamp: new Date().toISOString(),
   };

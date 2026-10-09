@@ -21,8 +21,33 @@ interface RateLimitRecord {
 
 export const rateLimitMap = new Map<string, RateLimitRecord>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_GENERAL_REQUESTS_PER_MIN = 120;
-const MAX_AI_REQUESTS_PER_MIN = 30;
+export const MAX_GENERAL_REQUESTS_PER_MIN = 120;
+export const MAX_AI_REQUESTS_PER_MIN = 30;
+export const MAX_INGEST_REQUESTS_PER_MIN = 20;
+export const MAX_RAG_REQUESTS_PER_MIN = 60;
+
+export type RateLimitCategory = 'general' | 'ai' | 'ingest' | 'rag';
+
+export function resolveRateLimitCategory(category: boolean | RateLimitCategory = false): number {
+  if (category === true || category === 'ai') return MAX_AI_REQUESTS_PER_MIN;
+  if (category === 'ingest') return MAX_INGEST_REQUESTS_PER_MIN;
+  if (category === 'rag') return MAX_RAG_REQUESTS_PER_MIN;
+  return MAX_GENERAL_REQUESTS_PER_MIN;
+}
+
+export function resetRateLimitStore(): void {
+  rateLimitMap.clear();
+}
+
+export function resolveRateLimitKey(target: string | any): string {
+  if (typeof target === 'string') return target;
+  if (!target || typeof target !== 'object') return 'anonymous';
+  const headers = target.headers || {};
+  const user = headers['x-ming-user-id'] || headers['x-user-id'] || target.userId;
+  if (user) return String(user);
+  const ip = headers['x-forwarded-for'] || target.socket?.remoteAddress || '127.0.0.1';
+  return Array.isArray(ip) ? ip[0] : String(ip);
+}
 
 // Cleanup stale rate limit entries every 5 minutes
 setInterval(() => {
@@ -34,24 +59,32 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
-export function checkRateLimit(key: string, isAiEndpoint = false): { allowed: boolean; remaining: number; retryAfterSec: number } {
+export function checkRateLimit(
+  keyOrReq: string | any,
+  category: boolean | RateLimitCategory = false,
+  customLimit?: number
+): { allowed: boolean; remaining: number; retryAfterSec: number; limit: number } {
+  const catKey = typeof category === 'string' ? category : (category ? 'ai' : 'general');
+  const baseKey = resolveRateLimitKey(keyOrReq);
+  const compositeKey = `${catKey}:::${baseKey}`;
   const now = Date.now();
-  const limit = isAiEndpoint ? MAX_AI_REQUESTS_PER_MIN : MAX_GENERAL_REQUESTS_PER_MIN;
-  const record = rateLimitMap.get(key);
+  const limit = customLimit ?? resolveRateLimitCategory(category);
+  const record = rateLimitMap.get(compositeKey);
 
   if (!record || now > record.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return { allowed: true, remaining: limit - 1, retryAfterSec: 0 };
+    rateLimitMap.set(compositeKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: limit - 1, retryAfterSec: 0, limit };
   }
 
   if (record.count >= limit) {
     const retryAfterSec = Math.ceil((record.resetAt - now) / 1000);
-    return { allowed: false, remaining: 0, retryAfterSec };
+    return { allowed: false, remaining: 0, retryAfterSec, limit };
   }
 
   record.count += 1;
-  return { allowed: true, remaining: limit - record.count, retryAfterSec: 0 };
+  return { allowed: true, remaining: limit - record.count, retryAfterSec: 0, limit };
 }
+
 
 /**
  * Resolves user identity from Supabase JWT token or verified server test key.

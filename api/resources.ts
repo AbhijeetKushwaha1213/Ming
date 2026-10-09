@@ -6,6 +6,7 @@ import { ensureResourceSchema, prisma } from '../server/prisma.ts';
 import { verifySupabaseToken } from '../server/supabaseAuth.ts';
 import { authenticateRequest, resolveContextUser, AuthError } from '../server/authMiddleware.ts';
 import { detectMagicSignature } from '../server/fileValidator.ts';
+import { serverReadCache } from '../server/serverCache.ts';
 import type { CreateResourceInput } from '../src/types/resource.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -492,6 +493,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     await ensureResourceSchema();
 
     if (req.method === 'GET') {
+      const cached = serverReadCache.get<any[]>(targetUserId, 'resources_list');
+      if (cached) {
+        json(res, 200, { resources: cached });
+        return;
+      }
+
       let resources: any[] = [];
       if (targetUserId) {
         resources = await prisma.resource.findMany({
@@ -513,7 +520,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         }
       }
 
-      json(res, 200, { resources: deduped.map(serializeResource) });
+      const serialized = deduped.map(serializeResource);
+      serverReadCache.set(targetUserId, 'resources_list', serialized, 30_000);
+      json(res, 200, { resources: serialized });
       return;
     }
 
@@ -526,6 +535,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         },
       });
 
+      serverReadCache.invalidateUser(targetUserId);
       json(res, 201, { resource: serializeResource(resource) });
       return;
     }
@@ -552,6 +562,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         },
       });
 
+      serverReadCache.invalidateUser(targetUserId);
       json(res, 200, { success: true });
       return;
     }

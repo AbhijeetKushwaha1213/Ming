@@ -322,3 +322,65 @@ export async function validateFileOnDisk(
     await handle.close();
   }
 }
+
+/**
+ * Safely cleans up stale orphaned upload files older than maxAgeMs (default 24h).
+ * Recursively scans baseDir, only removing files whose mtime is older than maxAgeMs.
+ * Returns { scannedCount, deletedCount, freedBytes, errors }.
+ */
+export async function cleanupStaleUploads(
+  baseDir: string,
+  maxAgeMs = 24 * 60 * 60 * 1000
+): Promise<{ scannedCount: number; deletedCount: number; freedBytes: number; errors: string[] }> {
+  let scannedCount = 0;
+  let deletedCount = 0;
+  let freedBytes = 0;
+  const errors: string[] = [];
+
+  async function scanDirectory(dir: string): Promise<void> {
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') {
+        errors.push(`Failed to read directory ${dir}: ${err.message}`);
+      }
+      return;
+    }
+
+    const now = Date.now();
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      try {
+        if (entry.isDirectory()) {
+          await scanDirectory(fullPath);
+          // Try to remove directory if empty, ignore if not
+          try {
+            await fs.rmdir(fullPath);
+          } catch {}
+        } else if (entry.isFile()) {
+          scannedCount++;
+          const stat = await fs.stat(fullPath);
+          const ageMs = now - stat.mtimeMs;
+          if (ageMs > maxAgeMs) {
+            await fs.unlink(fullPath);
+            deletedCount++;
+            freedBytes += stat.size;
+          }
+        }
+      } catch (err: any) {
+        errors.push(`Failed to process ${fullPath}: ${err.message}`);
+      }
+    }
+  }
+
+  await scanDirectory(baseDir);
+
+  return {
+    scannedCount,
+    deletedCount,
+    freedBytes,
+    errors,
+  };
+}
+

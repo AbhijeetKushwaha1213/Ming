@@ -70,7 +70,7 @@ export function getDifficultyBKTParameters(
 export function calculateBKTUpdate(
   priorMastery: number,
   isCorrect: boolean,
-  params: BKTParameters,
+  params: BKTParameters = DEFAULT_BKT_PARAMS,
   credit?: number
 ): { posterior: number; prior: number; parameters: BKTParameters } {
   const safePrior = typeof priorMastery === 'number' && !isNaN(priorMastery) && isFinite(priorMastery)

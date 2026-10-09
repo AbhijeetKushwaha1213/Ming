@@ -10,6 +10,7 @@ import {
   extractLearnerEvidence,
   recordLearnerEvidence,
 } from './learnerEvidenceService.ts';
+import { evaluateAdaptiveRecommendations } from './adaptiveRecommendationService.ts';
 import { resolveContextUser } from './authMiddleware.ts';
 
 interface SimpleRequest {
@@ -38,6 +39,23 @@ export async function learnerHandler(req: SimpleRequest, res: SimpleResponse): P
   } catch (authErr: any) {
     res.status(401).json({ error: authErr.message || 'Unauthorized' });
     return;
+  }
+
+  // 1c. GET /api/learner/recommendations
+  if (method === 'GET' && pathname === '/api/learner/recommendations') {
+    try {
+      const topic = req.query?.topic || urlObj.searchParams.get('topic') || undefined;
+      const limitStr = req.query?.limit || urlObj.searchParams.get('limit');
+      const limit = limitStr ? parseInt(limitStr, 10) : 5;
+
+      const result = await evaluateAdaptiveRecommendations(userId, { topic, limit });
+      res.status(200).json(result);
+      return;
+    } catch (err: any) {
+      console.error('Error evaluating recommendations:', err);
+      res.status(500).json({ error: 'Failed to evaluate adaptive recommendations', details: err.message });
+      return;
+    }
   }
 
   // 1b. GET /api/learner/mastery/audit?topic=...

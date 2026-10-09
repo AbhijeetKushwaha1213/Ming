@@ -189,3 +189,90 @@ export interface EvidenceIngestionResult {
   updated_state?: EvidenceBasedMasteryState;
 }
 
+// =========================================================================
+// Canonical Phase 5 — Step 3: Adaptive Recommendation Contracts
+// =========================================================================
+
+/**
+ * Explicit recommendation categories for adaptive study guidance.
+ */
+export type RecommendationCategory =
+  | 'LEARN_CONCEPT'
+  | 'PRACTICE_CONCEPT'
+  | 'REVIEW_CONCEPT'
+  | 'ADDRESS_MISCONCEPTION'
+  | 'CONSOLIDATE_MASTERY'
+  | 'NO_ACTION';
+
+/**
+ * Discrete priority levels for UI ordering and urgency categorization.
+ */
+export type PriorityBand = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
+/**
+ * Validated course learning resource referenced by a recommendation.
+ */
+export interface RecommendedResource {
+  id: string;
+  title: string;
+  type: string;
+  folder?: string | null;
+  storage_path?: string | null;
+  source_coordinate?: string | null;
+}
+
+/**
+ * Validated assessment question referenced by a recommendation.
+ */
+export interface RecommendedQuestion {
+  id: string;
+  question_text: string;
+  type: string;
+  difficulty: string;
+  topic: string;
+  subtopic?: string | null;
+  source_id?: string | null;
+  source_coordinate?: string | null;
+}
+
+/**
+ * Server-authoritative explainable adaptive recommendation.
+ */
+export interface AdaptiveRecommendation {
+  recommendation_id: string;
+  user_id: string;
+  category: RecommendationCategory;
+  priority_band: PriorityBand;
+  priority_score: number;             // Bounded in [0.0, 1.0]
+  concept_id: string;
+  concept_name: string;
+  topic: string;
+  subtopic: string | null;
+  explanation: string;                // Concise evidence-based human explanation
+  reason_codes: string[];             // Deterministic audit codes (e.g. ['RECALL_DECAY', 'REPEATED_MISTAKE'])
+  evidence_summary: {
+    latent_mastery: number;           // pL in [0.0, 1.0]
+    current_recall_probability: number;// p_recall in [0.0, 1.0]
+    confidence: number;               // C in [0.0, 1.0]
+    evidence_count: number;
+    recent_incorrect_count: number;
+    days_since_last_review: number | null;
+    recurring_misconception: string | null;
+    prerequisite_status: 'MET' | 'UNMET' | 'NONE';
+  };
+  recommended_resource: RecommendedResource | null;
+  recommended_question: RecommendedQuestion | null;
+  generated_at: string;
+}
+
+/**
+ * Recommendation query response payload.
+ */
+export interface LearnerRecommendationResponse {
+  success: boolean;
+  recommendations: AdaptiveRecommendation[];
+  is_cold_start: boolean;
+  generated_at: string;
+  total_concepts_evaluated: number;
+}
+

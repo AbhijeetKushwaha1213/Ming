@@ -129,3 +129,22 @@ export async function initializeDiagnosticState(params: {
   }
   return res.json();
 }
+
+/**
+ * Fetch adaptive learning recommendations for authenticated student.
+ */
+export async function getAdaptiveRecommendations(params?: {
+  topic?: string;
+  limit?: number;
+}): Promise<any> {
+  const query = new URLSearchParams();
+  if (params?.topic) query.append('topic', params.topic);
+  if (params?.limit) query.append('limit', String(params.limit));
+
+  const url = `/api/learner/recommendations${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to load adaptive recommendations (${res.status})`);
+  }
+  return res.json();
+}

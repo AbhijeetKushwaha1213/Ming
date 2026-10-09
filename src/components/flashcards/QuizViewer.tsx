@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { submitAssessment, DiagnosticReport } from '@/api/assessmentAPI';
 import { logStudySession } from '@/api/studyActivityAPI';
+import { trackPracticeAttempt } from '@/api/analyticsAPI';
 import { useToast } from '@/hooks/use-toast';
 
 export interface QuizQuestion {
@@ -303,6 +304,17 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
         flashcardsReviewed: questionList.length,
         correctAnswers: calculatedScore,
       });
+
+      // Record product telemetry
+      void trackPracticeAttempt('graded', {
+        topic,
+        subtopic,
+        totalQuestions: questionList.length,
+        difficulty,
+        score: calculatedScore,
+        percentage: Math.round((calculatedScore / questionList.length) * 100),
+        misconceptionCount: incorrectList.length,
+      }).catch(err => console.warn('Could not track practice attempt analytics:', err));
 
       // Notify all BKT listeners (Learning Progress, LearnerMasteryCard, etc.)
       window.dispatchEvent(new CustomEvent('studymate-bkt-refresh', { detail: { topic, subtopic } }));

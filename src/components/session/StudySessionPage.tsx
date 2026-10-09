@@ -38,6 +38,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AIChat } from '../chat/AIChat';
+import { useAuth } from '../auth/AuthProvider';
+import { logStudySession } from '@/api/studyActivityAPI';
+import { trackStudySessionStarted, trackStudySessionCompleted } from '@/api/analyticsAPI';
 
 interface StudySessionPageProps {
   subject?: string;
@@ -92,6 +95,8 @@ export const StudySessionPage = ({
   onBack 
 }: StudySessionPageProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const userId = user?.user_id || user?.id || 'default_user';
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Timer states
@@ -156,6 +161,17 @@ export const StudySessionPage = ({
       } else {
         setSessionsCompleted(prev => prev + 1);
         setTopicsCovered(prev => prev + 1);
+
+        const durationMins = Math.max(1, Math.round(totalTime / 60));
+        void logStudySession({
+          userId,
+          sessionType: 'focus_session',
+          durationMinutes: durationMins,
+          topicsCovered: [subject, topic].filter(Boolean),
+        }).catch(err => console.warn('Could not log study session:', err));
+
+        void trackStudySessionCompleted('focus_session', durationMins, [subject, topic].filter(Boolean)).catch(() => {});
+
         if (autoMode) {
           setIsBreak(true);
           setTimeLeft(breakTime * 60);
@@ -163,7 +179,7 @@ export const StudySessionPage = ({
         }
         toast({
           title: "Session Complete! 🎉",
-          description: autoMode ? "Starting break time..." : "Great job! Take a break.",
+          description: autoMode ? "Starting break time..." : "Great job! Your study session and streak have been logged.",
         });
       }
     }
@@ -192,6 +208,9 @@ export const StudySessionPage = ({
 
   const handleStart = () => {
     setIsRunning(true);
+    if (!isBreak) {
+      void trackStudySessionStarted('focus_session', topic).catch(() => {});
+    }
     toast({
       title: `${isBreak ? 'Break' : 'Focus'} Started! 🚀`,
       description: isBreak ? "Enjoy your break!" : "Focus time! You've got this!",
@@ -216,9 +235,28 @@ export const StudySessionPage = ({
   };
 
   const handleStop = () => {
+    const elapsedSeconds = totalTime - timeLeft;
     setIsRunning(false);
     setIsBreak(false);
     setTimeLeft(totalTime);
+
+    if (elapsedSeconds >= 60) {
+      const durationMins = Math.max(1, Math.round(elapsedSeconds / 60));
+      void logStudySession({
+        userId,
+        sessionType: 'focus_session',
+        durationMinutes: durationMins,
+        topicsCovered: [subject, topic].filter(Boolean),
+      }).catch(err => console.warn('Could not log study session:', err));
+
+      void trackStudySessionCompleted('focus_session', durationMins, [subject, topic].filter(Boolean)).catch(() => {});
+
+      toast({
+        title: "Session Logged! ⏱️",
+        description: `${durationMins} minute(s) recorded in your daily study progress & streak!`,
+      });
+    }
+
     generateSessionSummary();
   };
 

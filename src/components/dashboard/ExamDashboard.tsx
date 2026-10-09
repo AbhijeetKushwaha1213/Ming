@@ -17,6 +17,7 @@ import { useSubjects } from '@/hooks/useSubjects';
 import { useDailyStats } from '@/hooks/useDailyStats';
 import { AddSubjectDialog } from '../subjects/AddSubjectDialog';
 import { AIStudyAgentPanel } from './AIStudyAgentPanel';
+import { navigateToTab } from '@/utils/navigation';
 
 
 export const ExamDashboard = () => {
@@ -39,22 +40,30 @@ export const ExamDashboard = () => {
   const topicsLeft = subjects.reduce((acc, s) => acc + (s.total_topics - s.completed_topics), 0);
   const studyStreak = user?.study_streak || 0;
 
+  const activeSubject = subjects.find(s => s.completed_topics < s.total_topics) || subjects[0];
+  const activeSubjectName = activeSubject?.name || 'General Studies';
+  const activeTopicName = activeSubject ? `${activeSubject.name} Practice` : 'Exam Preparation';
+
   const handleStartNextSession = () => {
-    console.log('Starting next study session...');
+    console.log('Starting next study session for:', activeSubjectName);
     setCurrentView('session');
     toast({
       title: "Session Started! 🚀",
-      description: "Your Chemistry - Organic Reactions session has begun. Focus and give your best!",
+      description: `Your ${activeSubjectName} session has begun. Focus and give your best!`,
     });
   };
 
   const handleViewStudyPlan = () => {
-    console.log('Viewing study plan...');
-    setCurrentView('plan');
-    toast({
-      title: "Study Plan Loaded 📚",
-      description: "Your personalized study plan is now open.",
-    });
+    const agentEl = document.getElementById('ai-study-agent-panel');
+    if (agentEl) {
+      agentEl.scrollIntoView({ behavior: 'smooth' });
+      toast({
+        title: "AI Study Agent 🤖",
+        description: "Viewing your personalized daily learning plan.",
+      });
+    } else {
+      setCurrentView('plan');
+    }
   };
 
 
@@ -96,8 +105,8 @@ export const ExamDashboard = () => {
   if (currentView === 'session') {
     return (
       <StudySessionPage 
-        subject="Chemistry" 
-        topic="Organic Reactions" 
+        subject={activeSubjectName} 
+        topic={activeTopicName} 
         onBack={handleBackToDashboard}
       />
     );
@@ -225,7 +234,9 @@ export const ExamDashboard = () => {
         </Card>
 
         {/* Real AI Study Agent & Personalized Daily Planning (Phase 5) */}
-        <AIStudyAgentPanel />
+        <div id="ai-study-agent-panel">
+          <AIStudyAgentPanel />
+        </div>
 
         {/* Progress Overview */}
         <Card className="p-6">
@@ -256,45 +267,45 @@ export const ExamDashboard = () => {
         {/* Exam-Focused Tools Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="p-6">
-            <h3 className="text-lg font-bold text-foreground mb-4">Mock Tests</h3>
+            <h3 className="text-lg font-bold text-foreground mb-4">Adaptive Assessments</h3>
             <div className="space-y-3">
               <Button 
                 variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setShowScheduleMockTest(true)}
+                className="w-full justify-start text-foreground"
+                onClick={() => navigateToTab('flashcards', 'assessment', { topic: activeSubjectName })}
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Schedule Mock Test
+                <Plus className="w-4 h-4 mr-2 text-primary" />
+                Launch Subject Assessment
               </Button>
               <Button 
                 variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setShowViewResults(true)}
+                className="w-full justify-start text-foreground"
+                onClick={() => navigateToTab('flashcards', 'assessment')}
               >
-                <Target className="w-4 h-4 mr-2" />
-                View Results
+                <Target className="w-4 h-4 mr-2 text-primary" />
+                View Assessment Diagnostics
               </Button>
             </div>
           </Card>
 
           <Card className="p-6">
-            <h3 className="text-lg font-bold text-foreground mb-4">Exam Tools</h3>
+            <h3 className="text-lg font-bold text-foreground mb-4">Learning Vault</h3>
             <div className="space-y-3">
               <Button 
                 variant="outline" 
-                className="w-full justify-start text-destructive border-destructive/30 hover:bg-destructive/10"
-                onClick={() => setShowDeleteTracker(true)}
+                className="w-full justify-start text-foreground"
+                onClick={() => navigateToTab('flashcards', 'vault')}
               >
-                <BookOpen className="w-4 h-4 mr-2" />
-                Delete Tracker
+                <BookOpen className="w-4 h-4 mr-2 text-primary" />
+                Flashcards & Material Vault
               </Button>
               <Button 
                 variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setShowRevisionLog(true)}
+                className="w-full justify-start text-foreground"
+                onClick={() => navigateToTab('flashcards', 'dag', { topic: activeSubjectName })}
               >
-                <Lightbulb className="w-4 h-4 mr-2" />
-                Revision Log
+                <Lightbulb className="w-4 h-4 mr-2 text-primary" />
+                Concept Mastery DAG
               </Button>
             </div>
           </Card>

@@ -7,7 +7,7 @@
  */
 
 import crypto from 'node:crypto';
-import { prisma, ensureResourceSchema } from './prisma.ts';
+import { prisma, ensureResourceSchema, ensureAnalyticsSchema } from './prisma.ts';
 import { validateProductionConfig } from './configValidator.ts';
 import { serverReadCache } from './serverCache.ts';
 
@@ -111,6 +111,7 @@ export async function getReadinessStatus(): Promise<{ ready: boolean; statusCode
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       await ensureResourceSchema();
+      await ensureAnalyticsSchema();
       await prisma.resource.count({ take: 1 });
       checks.database = `ok (${Date.now() - startDb}ms)`;
       lastDbErr = null;

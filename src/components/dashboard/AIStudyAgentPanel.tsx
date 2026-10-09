@@ -50,6 +50,7 @@ import {
   ActivityType,
 } from '@/api/studyAgentAPI';
 import { generateAssessment, AssessmentQuestion, DiagnosticReport } from '@/api/assessmentAPI';
+import { trackAgentTask } from '@/api/analyticsAPI';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { navigateToTab } from '@/utils/navigation';
@@ -348,8 +349,19 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
     // 1. Advance study loop with authoritative evidence
     try {
       await completeStudyActivity(item.id, report, userId);
-    } catch {
+      void trackAgentTask('completed', {
+        actionId: item.id,
+        activityType: item.activityType,
+        topic: item.topic,
+      }).catch(() => {});
+    } catch (err: any) {
       await handleToggleItemStatus(item);
+      void trackAgentTask('failed', {
+        actionId: item.id,
+        activityType: item.activityType,
+        topic: item.topic,
+        reason: err?.message,
+      }).catch(() => {});
     }
 
     // 2. Toast success

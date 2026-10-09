@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ChooseSubjectsStep } from './ChooseSubjectsStep';
 import { supabase } from '@/integrations/supabase/client';
+import { trackOnboardingCompleted } from '@/api/analyticsAPI';
 
 interface OnboardingData {
   name: string;
@@ -198,7 +199,14 @@ export const OnboardingFlow = () => {
         description: "Your personalized learning journey begins now!",
       });
 
-      // 4. Guaranteed direct redirect to dashboard
+      // 4. Record product telemetry
+      void trackOnboardingCompleted({
+        learningMode: userType,
+        subjectsCount: data.subjects?.length || 0,
+        academicDetails: details,
+      }).catch((e) => console.warn('Could not track onboarding completion:', e));
+
+      // 5. Guaranteed direct redirect to dashboard
       navigate('/dashboard', { replace: true });
     } catch (error) {
       console.error('Onboarding completion error:', error);

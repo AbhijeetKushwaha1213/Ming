@@ -646,3 +646,32 @@ export async function updateIngestionStatus(
   );
   return getIngestionRecord(resourceId, userId);
 }
+
+let analyticsSchemaPromise: Promise<void> | null = null;
+
+async function createAnalyticsSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      userId TEXT NOT NULL,
+      eventType TEXT NOT NULL,
+      eventPropertiesJson TEXT,
+      timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS analytics_events_user_time_idx ON analytics_events(userId, timestamp)',
+  );
+  await prisma.$executeRawUnsafe(
+    'CREATE INDEX IF NOT EXISTS analytics_events_user_type_idx ON analytics_events(userId, eventType)',
+  );
+}
+
+export async function ensureAnalyticsSchema() {
+  if (!analyticsSchemaPromise) {
+    analyticsSchemaPromise = createAnalyticsSchema();
+  }
+
+  return analyticsSchemaPromise;
+}

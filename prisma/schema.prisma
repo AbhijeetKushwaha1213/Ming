@@ -261,4 +261,16 @@ model LearningDAG {
   @@map("learning_dags")
 }
 
+model AnalyticsEvent {
+  id                  String   @id @default(cuid())
+  userId              String
+  eventType           String
+  eventPropertiesJson String?
+  timestamp           DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([userId, eventType])
+  @@map("analytics_events")
+}
+
 

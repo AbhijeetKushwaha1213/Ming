@@ -15,6 +15,7 @@ import {
   uploadPdfResource,
 } from '@/api/resourceAPI';
 import { ingestSource, searchChunks } from '@/api/ragAPI';
+import { trackMaterialIngestion } from '@/api/analyticsAPI';
 import type { CreateResourceInput, ResourceItem, ResourceType, RagChunk } from '@/types/resource';
 import {
   Plus,
@@ -241,7 +242,20 @@ export const ResourceSpace = () => {
           userId: user.user_id,
           title: newResource.title,
           sourceType: 'TEXT',
-        }).catch(err => console.warn('Note vector indexing:', err));
+        }).then((res) => {
+          void trackMaterialIngestion('succeeded', {
+            sourceType: 'TEXT',
+            title: newResource.title,
+            chunkCount: res.chunks_created,
+          });
+        }).catch(err => {
+          console.warn('Note vector indexing:', err);
+          void trackMaterialIngestion('failed', {
+            sourceType: 'TEXT',
+            title: newResource.title,
+            error: err.message,
+          });
+        });
       }
 
       if (newResource.type === 'LINK') {
@@ -266,7 +280,20 @@ export const ResourceSpace = () => {
           userId: user.user_id,
           title: newResource.title,
           sourceType: 'PDF',
-        }).catch(err => console.warn('PDF vector indexing:', err));
+        }).then((res) => {
+          void trackMaterialIngestion('succeeded', {
+            sourceType: 'PDF',
+            title: newResource.title,
+            chunkCount: res.chunks_created,
+          });
+        }).catch(err => {
+          console.warn('PDF vector indexing:', err);
+          void trackMaterialIngestion('failed', {
+            sourceType: 'PDF',
+            title: newResource.title,
+            error: err.message,
+          });
+        });
       }
 
       if (newResource.type === 'PPTX') {
@@ -275,14 +302,28 @@ export const ResourceSpace = () => {
         }
 
         // Ingest into ChromaDB with slide-by-slide coordinates
-        await ingestSource({
-          file: selectedFile,
-          topic: newResource.folder || 'General',
-          subtopic: newResource.title,
-          userId: user.user_id,
-          title: newResource.title,
-          sourceType: 'PPTX',
-        });
+        try {
+          const res = await ingestSource({
+            file: selectedFile,
+            topic: newResource.folder || 'General',
+            subtopic: newResource.title,
+            userId: user.user_id,
+            title: newResource.title,
+            sourceType: 'PPTX',
+          });
+          void trackMaterialIngestion('succeeded', {
+            sourceType: 'PPTX',
+            title: newResource.title,
+            chunkCount: res.chunks_created,
+          });
+        } catch (err: any) {
+          void trackMaterialIngestion('failed', {
+            sourceType: 'PPTX',
+            title: newResource.title,
+            error: err.message,
+          });
+          throw err;
+        }
       }
 
       if (newResource.type === 'VIDEO') {
@@ -295,15 +336,29 @@ export const ResourceSpace = () => {
         }
 
         // Ingest into ChromaDB with timestamp coordinates
-        await ingestSource({
-          file: selectedFile || undefined,
-          url: newResource.linkUrl.trim() || undefined,
-          topic: newResource.folder || 'General',
-          subtopic: newResource.title,
-          userId: user.user_id,
-          title: newResource.title,
-          sourceType: 'VIDEO',
-        });
+        try {
+          const res = await ingestSource({
+            file: selectedFile || undefined,
+            url: newResource.linkUrl.trim() || undefined,
+            topic: newResource.folder || 'General',
+            subtopic: newResource.title,
+            userId: user.user_id,
+            title: newResource.title,
+            sourceType: 'VIDEO',
+          });
+          void trackMaterialIngestion('succeeded', {
+            sourceType: 'VIDEO',
+            title: newResource.title,
+            chunkCount: res.chunks_created,
+          });
+        } catch (err: any) {
+          void trackMaterialIngestion('failed', {
+            sourceType: 'VIDEO',
+            title: newResource.title,
+            error: err.message,
+          });
+          throw err;
+        }
       }
 
       const resource = await createResource(payload);

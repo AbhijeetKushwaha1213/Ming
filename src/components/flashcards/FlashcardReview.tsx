@@ -4,9 +4,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { RotateCcw, ThumbsUp, ThumbsDown, Shuffle, X, Brain } from 'lucide-react';
+import { RotateCcw, ThumbsUp, ThumbsDown, Shuffle, X, Brain, Trophy, Flame, Star, CheckCircle2 } from 'lucide-react';
 import { Flashcard } from '@/hooks/useFlashcards';
 import { updateLearnerMastery } from '@/api/learnerAPI';
+import { logStudySession } from '@/api/studyActivityAPI';
+import { trackReviewSessionCompleted } from '@/api/analyticsAPI';
 import { useAuth } from '@/components/auth/AuthProvider';
 
 interface FlashcardReviewProps {
@@ -21,6 +23,10 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set());
+  const [correctCount, setCorrectCount] = useState(0);
+  const [incorrectCount, setIncorrectCount] = useState(0);
+  const [startTime, setStartTime] = useState(() => Date.now());
+  const [isCompleted, setIsCompleted] = useState(false);
 
   if (flashcards.length === 0) {
     return (
@@ -49,7 +55,15 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
 
   const handleAnswer = (correct: boolean) => {
     onUpdateMastery(currentCard.id, correct);
-    setReviewedCards(prev => new Set([...prev, currentCard.id]));
+    const newReviewed = new Set([...reviewedCards, currentCard.id]);
+    setReviewedCards(newReviewed);
+
+    const updatedCorrect = correct ? correctCount + 1 : correctCount;
+    if (correct) {
+      setCorrectCount(prev => prev + 1);
+    } else {
+      setIncorrectCount(prev => prev + 1);
+    }
 
     // Record BKT Bayesian Knowledge Tracing evidence
     const topic = currentCard.tags?.[0] || currentCard.title || 'Flashcards';
@@ -64,18 +78,52 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
       window.dispatchEvent(new CustomEvent('studymate-bkt-refresh', { detail: { topic } }));
     }).catch(() => {});
 
+    // Check if deck review is now complete
+    if (newReviewed.size >= flashcards.length) {
+      const durationMins = Math.max(1, Math.round((Date.now() - startTime) / 60000));
+      void logStudySession({
+        userId,
+        sessionType: 'flashcards',
+        durationMinutes: durationMins,
+        topicsCovered: [topic],
+        flashcardsReviewed: flashcards.length,
+        correctAnswers: updatedCorrect,
+      }).catch(err => console.warn('Could not log study session:', err));
+
+      void trackReviewSessionCompleted({
+        topic,
+        cardsReviewed: flashcards.length,
+        correctCount: updatedCorrect,
+        accuracyPercentage: (updatedCorrect / flashcards.length) * 100,
+      }).catch(err => console.warn('Could not track review analytics:', err));
+
+      setTimeout(() => {
+        setIsCompleted(true);
+      }, 500);
+      return;
+    }
+
     setTimeout(handleNext, 500);
   };
 
   const handleShuffle = () => {
+    setIsCompleted(false);
+    setReviewedCards(new Set());
+    setCorrectCount(0);
+    setIncorrectCount(0);
+    setStartTime(Date.now());
     setCurrentIndex(Math.floor(Math.random() * flashcards.length));
     setShowAnswer(false);
   };
 
   const handleReset = () => {
+    setIsCompleted(false);
     setCurrentIndex(0);
     setShowAnswer(false);
     setReviewedCards(new Set());
+    setCorrectCount(0);
+    setIncorrectCount(0);
+    setStartTime(Date.now());
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -92,6 +140,58 @@ export const FlashcardReview = ({ flashcards, onUpdateMastery, onClose }: Flashc
     if (level >= 2) return 'text-amber-600 dark:text-amber-400 font-semibold';
     return 'text-rose-600 dark:text-rose-400 font-semibold';
   };
+
+  if (isCompleted) {
+    const accuracy = Math.round((correctCount / flashcards.length) * 100);
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="bg-card text-foreground border border-border rounded-2xl max-w-lg w-full p-8 shadow-2xl text-center space-y-6 animate-scale-in">
+          <div className="w-16 h-16 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-500/5">
+            <Trophy className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Review Session Complete! 🎉</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              You reviewed all {flashcards.length} cards in this deck.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            <div className="bg-muted/50 p-4 rounded-xl border border-border/60">
+              <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Accuracy</span>
+              <p className="text-3xl font-bold text-foreground mt-1">
+                {accuracy}%
+              </p>
+            </div>
+            <div className="bg-muted/50 p-4 rounded-xl border border-border/60">
+              <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Correct</span>
+              <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                {correctCount} / {flashcards.length}
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5 font-medium">
+            <Flame className="w-4 h-4 text-orange-500 shrink-0" />
+            Study activity logged & streak updated in your profile!
+          </p>
+          <div className="flex justify-center space-x-3 pt-2">
+            <Button variant="outline" onClick={handleReset}>
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Review Again
+            </Button>
+            <Button variant="outline" onClick={handleShuffle}>
+              <Shuffle className="w-4 h-4 mr-2" />
+              Shuffle & Retry
+            </Button>
+            {onClose && (
+              <Button variant="default" onClick={onClose}>
+                Done
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">

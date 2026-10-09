@@ -8,6 +8,7 @@ import { studyAgentHandler } from './studyAgentHandler.ts';
 import { evaluationHandler } from './evaluationHandler.ts';
 import { videoHandler } from './videoHandler.ts';
 import { dagHandler } from './dagHandler.ts';
+import { analyticsHandler } from './analyticsHandler.ts';
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -253,6 +254,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
   if (url.pathname.startsWith('/api/dag')) {
     const body = await readBody(req);
     await dagHandler(
+      {
+        method: req.method,
+        headers: req.headers as Record<string, HeaderValue>,
+        query: Object.fromEntries(url.searchParams.entries()),
+        url: url.toString(),
+        body,
+      },
+      createRouteResponse(res),
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/analytics')) {
+    const body = await readBody(req);
+    await analyticsHandler(
       {
         method: req.method,
         headers: req.headers as Record<string, HeaderValue>,

@@ -62,7 +62,7 @@ export const AIFlashcardGenerator = () => {
           }
         });
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Edge function timeout')), 3500)
+          setTimeout(() => reject(new Error('Edge function timeout')), 600)
         );
         const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as any;
 
@@ -97,15 +97,20 @@ export const AIFlashcardGenerator = () => {
       
       let aiContent;
       try {
-        // Try to parse the JSON response
-        aiContent = JSON.parse(responseText);
+        const jsonMatch = responseText.match(/```json\n?([\s\S]*?)\n?```/) || 
+                          responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          aiContent = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        } else {
+          aiContent = JSON.parse(responseText);
+        }
         
         // Validate the response structure
         if (!aiContent.flashcards || !Array.isArray(aiContent.flashcards)) {
           console.error('AIFlashcardGenerator: Invalid response structure:', aiContent);
           throw new Error('AI returned invalid flashcard format');
         }
-      } catch (parseError) {
+      } catch (parseError: any) {
         console.error('AIFlashcardGenerator: Failed to parse AI response:', parseError);
         console.error('AIFlashcardGenerator: Raw response was:', responseText);
         

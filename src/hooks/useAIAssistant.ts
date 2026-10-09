@@ -73,7 +73,7 @@ export const useAIAssistant = () => {
           }
         });
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Edge function timeout')), 3500)
+          setTimeout(() => reject(new Error('Edge function timeout')), 600)
         );
         const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as any;
 
@@ -177,7 +177,7 @@ export const useAIAssistant = () => {
           }
         });
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Edge function timeout')), 3500)
+          setTimeout(() => reject(new Error('Edge function timeout')), 600)
         );
         const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as any;
 

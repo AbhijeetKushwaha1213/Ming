@@ -223,6 +223,92 @@ Rules:
       });
     }
 
+    const callDirectGemini = async (): Promise<GeminiResponse> => {
+      const clientEnvKey =
+        (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_GEMINI_API_KEY || (import.meta.env as any).GEMINI_API_KEY) : null) ||
+        (typeof process !== 'undefined' ? (process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY) : null);
+      const directKey = (customLocalKey || clientEnvKey || '').trim().replace(/^["']|["']$/g, '');
+
+      if (!directKey) {
+        return {
+          response: '',
+          error: 'No Gemini API key configured',
+          details: 'Please set VITE_GEMINI_API_KEY in your environment or provide a custom key in settings.',
+        };
+      }
+
+      const candidateModels = ['gemini-2.5-flash', 'gemini-flash-latest'];
+      let lastErrorStatus = 0;
+      let lastErrorText = '';
+
+      for (const model of candidateModels) {
+        try {
+          const directEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${directKey}`;
+          const directRes = await fetch(directEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{ parts: promptParts }],
+              generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 4096,
+                topP: 0.8,
+                ...(contentType && ['notes', 'flashcards', 'quizzes', 'mindmaps'].includes(contentType)
+                  ? { responseMimeType: 'application/json' }
+                  : {}),
+              },
+            }),
+          });
+
+          if (!directRes.ok) {
+            lastErrorStatus = directRes.status;
+            lastErrorText = await directRes.text();
+            const isQuotaExceeded =
+              directRes.status === 429 ||
+              lastErrorText.includes('RESOURCE_EXHAUSTED') ||
+              lastErrorText.toLowerCase().includes('quota') ||
+              lastErrorText.toLowerCase().includes('rate limit');
+
+            if (isQuotaExceeded && typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('gemini-quota-exceeded', {
+                  detail: {
+                    status: directRes.status,
+                    message: "You've hit your daily Gemini API quota limit. Please wait or use a custom API key.",
+                    details: lastErrorText,
+                  },
+                }),
+              );
+            }
+            continue;
+          }
+
+          const directData = await directRes.json();
+          let directAiResponse = directData.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't generate a response.";
+
+          if (contentType && directAiResponse) {
+            if (directAiResponse.includes('```json')) {
+              directAiResponse = directAiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+            } else if (directAiResponse.includes('```')) {
+              directAiResponse = directAiResponse.replace(/```\s*/g, '');
+            }
+          }
+
+          return { response: directAiResponse.trim() };
+        } catch (directErr) {
+          lastErrorText = directErr instanceof Error ? directErr.message : String(directErr);
+        }
+      }
+
+      return {
+        response: '',
+        error: lastErrorStatus === 429 ? 'Gemini API Quota Exceeded (HTTP 429)' : `Gemini API Error (${lastErrorStatus || 500})`,
+        details: lastErrorText || 'Failed to generate response across candidate models.',
+      };
+    };
+
     try {
       const apiEndpoint = typeof window !== 'undefined' ? '/api/ai/generate' : 'http://127.0.0.1:3001/api/ai/generate';
       const headers: Record<string, string> = {
@@ -242,72 +328,85 @@ Rules:
         headers['x-custom-api-key'] = customLocalKey;
       }
 
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          message,
-          context,
-          userType,
-          subject,
-          contentType,
-          topic,
-          difficulty,
-          count,
-          systemPrompt: effectiveSystemPrompt,
-          promptParts,
-          groundedContext: req.groundedContext,
-          sourceTitle: req.sourceTitle,
-        }),
-      });
+      let backendErrorResponse: GeminiResponse | null = null;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        const isQuotaExceeded =
-          response.status === 429 ||
-          errorText.includes('RESOURCE_EXHAUSTED') ||
-          errorText.toLowerCase().includes('quota') ||
-          errorText.toLowerCase().includes('rate limit');
+      try {
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            message,
+            context,
+            userType,
+            subject,
+            contentType,
+            topic,
+            difficulty,
+            count,
+            systemPrompt: effectiveSystemPrompt,
+            promptParts,
+            groundedContext: req.groundedContext,
+            sourceTitle: req.sourceTitle,
+          }),
+        });
 
-        if (isQuotaExceeded && typeof window !== 'undefined') {
-          window.dispatchEvent(
-            new CustomEvent('gemini-quota-exceeded', {
-              detail: {
-                status: response.status,
-                message: "You've hit your daily Gemini API quota limit. Please wait or use a custom API key.",
-                details: errorText,
-              },
-            }),
-          );
+        if (response.ok) {
+          const data = await response.json();
+          let aiResponse = data.response || data.content || "I'm sorry, I couldn't generate a response.";
+
+          if (contentType) {
+            if (aiResponse.includes('```json')) {
+              aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+            } else if (aiResponse.includes('```')) {
+              aiResponse = aiResponse.replace(/```\s*/g, '');
+            }
+          }
+
+          return { response: aiResponse.trim() };
+        } else {
+          const errorText = await response.text();
+          const isQuotaExceeded =
+            response.status === 429 ||
+            errorText.includes('RESOURCE_EXHAUSTED') ||
+            errorText.toLowerCase().includes('quota') ||
+            errorText.toLowerCase().includes('rate limit');
+
+          if (isQuotaExceeded && typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('gemini-quota-exceeded', {
+                detail: {
+                  status: response.status,
+                  message: "You've hit your daily Gemini API quota limit. Please wait or use a custom API key.",
+                  details: errorText,
+                },
+              }),
+            );
+          }
+
+          backendErrorResponse = {
+            response: '',
+            error: isQuotaExceeded ? 'Gemini API Quota Exceeded (HTTP 429)' : `AI Gateway Error (${response.status})`,
+            details: errorText,
+          };
         }
-
-        return {
-          response: '',
-          error: isQuotaExceeded ? 'Gemini API Quota Exceeded (HTTP 429)' : `AI Gateway Error (${response.status})`,
-          details: errorText,
-        };
+      } catch (fetchErr) {
+        console.warn('Backend /api/ai/generate unreachable, falling back to direct client-side Gemini:', fetchErr);
       }
 
-      const data = await response.json();
-      let aiResponse = data.response || "I'm sorry, I couldn't generate a response.";
-
-      // Only clean raw markdown fences when generating structured format files (flashcards/notes/quizzes/etc.)
-      if (contentType) {
-        if (aiResponse.includes('```json')) {
-          aiResponse = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-        } else if (aiResponse.includes('```')) {
-          aiResponse = aiResponse.replace(/```\s*/g, '');
-        }
+      // Backend gateway was unreachable or returned an error; execute client-side direct fallback
+      const directFallback = await callDirectGemini();
+      if (directFallback.response) {
+        return directFallback;
       }
 
-      aiResponse = aiResponse.trim();
-      return { response: aiResponse };
+      // If direct fallback failed but backend gave a specific quota error, preserve quota error
+      return backendErrorResponse || directFallback;
     } catch (error) {
       console.error('Error calling AI Gateway:', error);
       return {
         response: '',
-        error: error instanceof Error ? error.message : 'Failed to contact AI Gateway',
-        details: 'Network connection or backend gateway request execution failed.',
+        error: error instanceof Error ? error.message : 'Failed to generate AI content',
+        details: 'Both backend gateway and direct client fallback failed.',
       };
     }
   }

@@ -53,7 +53,7 @@ export async function handleAiGenerate(
   let userId = authContext?.userId;
   if (!userId) {
     try {
-      userId = await resolveContextUser(req);
+      userId = await resolveContextUser(req, true);
     } catch (authErr: any) {
       res.status(401).json({ error: authErr.message || 'Unauthorized', category: 'AUTH_ERROR' });
       return;
@@ -73,7 +73,8 @@ export async function handleAiGenerate(
     return;
   }
 
-  const rawApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+  const customHeaderKey = (req.headers?.['x-custom-api-key'] as string) || '';
+  const rawApiKey = customHeaderKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
   const apiKey = rawApiKey.trim().replace(/^["']|["']$/g, '');
 
   if (!apiKey) {

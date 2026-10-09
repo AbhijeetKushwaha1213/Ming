@@ -252,7 +252,7 @@ export const DiscoverResources = ({ onNavigate }: DiscoverResourcesProps) => {
           }
         });
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Edge function timeout')), 3000)
+          setTimeout(() => reject(new Error('Edge function timeout')), 600)
         );
         await Promise.race([invokePromise, timeoutPromise]);
       } catch (invokeErr) {

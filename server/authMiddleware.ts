@@ -158,7 +158,7 @@ export class AuthError extends Error {
  */
 export async function resolveContextUser(
   req: { headers?: Record<string, any>; query?: Record<string, any>; body?: any },
-  allowAnonymousDev = true
+  allowAnonymousDev = false
 ): Promise<string> {
   const authHeader = req.headers?.authorization;
   const testKeyHeader = req.headers?.['x-ming-test-key'];
@@ -173,6 +173,18 @@ export async function resolveContextUser(
       const user = await verifySupabaseToken(authHeader);
       return user.id;
     } catch {
+      const isDevOrTest = process.env.NODE_ENV !== 'production';
+      const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
+      if (allowAnonymousDev || allowDevBypass) {
+        return (
+          (req.headers?.['x-dev-user-id'] as string) ||
+          (req.headers?.['x-ming-user-id'] as string) ||
+          req.query?.userId ||
+          req.body?.userId ||
+          req.body?.user_id ||
+          'default_user'
+        );
+      }
       throw new AuthError('Invalid or expired authentication session', 401);
     }
   }
@@ -181,19 +193,24 @@ export async function resolveContextUser(
   const isDevOrTest = process.env.NODE_ENV !== 'production';
   const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
 
-  if (isDevOrTest) {
+  if (allowDevBypass || allowAnonymousDev) {
     const devHeaderUser = (req.headers?.['x-dev-user-id'] as string) || (req.headers?.['x-ming-user-id'] as string);
     if (devHeaderUser) {
       return devHeaderUser;
     }
 
-    if (allowDevBypass || allowAnonymousDev) {
-      return (
-        req.query?.userId ||
-        req.body?.userId ||
-        req.body?.user_id ||
-        'default_user'
-      );
+    return (
+      req.query?.userId ||
+      req.body?.userId ||
+      req.body?.user_id ||
+      'default_user'
+    );
+  }
+
+  if (isDevOrTest) {
+    const devHeaderUser = (req.headers?.['x-dev-user-id'] as string) || (req.headers?.['x-ming-user-id'] as string);
+    if (devHeaderUser) {
+      return devHeaderUser;
     }
   }
 

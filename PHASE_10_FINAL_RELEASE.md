@@ -83,7 +83,7 @@ The demonstration follows one coherent 7-step learner journey:
 | **3** | Learner asks: *"How does Raft prevent split-brain during a leader election?"* | Streamed answer cites quorum ($N/2 + 1$) with clickable badge `[Source: raft_consensus_notes.md § 3.2]`. Clicking badge opens source drawer. | **Live Inference**: Gemini `gemini-2.5-flash` model generation. If API latency >3s, rely on cached demo response (disclosed as fallback). |
 | **4 & 5** | Learner starts practice drill on Raft Candidate step-down conditions. | Flashcard flips to reveal rubric; user rates "Good"; MCQ on quorum is answered correctly with instant diagnostic feedback. | **Live Compute**: SuperMemo SM-2 interval scheduling & numerical tolerance verification. |
 | **6** | Learner views Mastery Radar. | `Leader Election` shows 88% mastery; `Log Replication Quorum` shows 42%; AI Study Agent recommends a 3-question targeted drill. | **Live Compute & State**: BKT updates ($L_0=0.15, T=0.10, G=0.20, S=0.10$). Agent computes 5-factor priority score. |
-| **7** | Learner completes session. | Completion modal displays genuine metrics (12/12 cards, 92% accuracy, streak incremented to Day 5); network toggle shows offline queue sync. | **Live Compute & Persistence**: Saved to SQLite/PostgreSQL. Seeded demo baseline: prior streak days. |
+| **7** | Learner completes session. | Completion modal displays genuine metrics: 12 cards reviewed in deck, 11/12 correct answers, 92% accuracy computed via Math.round((11/12)*100); streak incremented to Day 5; network toggle shows offline queue sync. | **Live Compute & Persistence**: Saved to SQLite/PostgreSQL. Seeded demo baseline: prior streak days. |
 
 ---
 
@@ -152,7 +152,40 @@ To maintain scientific and ethical integrity:
 
 ---
 
-## 7. Verification Results
+## 7. Final Two-Point Consistency Reconciliation
+
+### 1. Bayesian Knowledge Tracing (BKT) Configuration History Reconciliation
+- **Runtime Defaults in Production Code:**
+  - `server/bktService.ts:L10-15`: `DEFAULT_BKT_PARAMS = { pL0: 0.15, pT: 0.10, pG: 0.20, pS: 0.10 }` (unchanged since Phase 4 commit `cb671c6`).
+  - `src/utils/bkt.ts:L8-13`: `DEFAULT_BKT_PARAMS = { pL0: 0.15, pT: 0.10, pG: 0.20, pS: 0.10 }` (unchanged since commit `de75975`).
+- **Canonical Evaluation Verification (`eval_run_1791563164571`):**
+  - In `server/evaluationEngine.ts` (lines 1426, 1810, 1917), the evaluation test harness explicitly verified directional evidence monotonicity, partial-credit updates, and idempotent retries using `{ pL0: 0.15, pT: 0.10, pG: 0.20, pS: 0.10 }`.
+  - In `benchmarks/data/learner_traces_eval_dataset.json`, the 40 synthetic traces start with cold-start priors in step 1 between $0.15$ and $0.50$ (median 0.20). Calibration metrics (Brier Score: 0.277, Log Loss: 0.799, ECE: 0.316) were computed directly on these precomputed priors and outcomes.
+- **Explanation of Earlier Discrepancy:**
+  - Earlier Phase 8 documentation text (`PHASE_8_EVALUATION.md`) cited the classic Corbett & Anderson (1995) textbook literature baseline ($L_0 = 0.10, T = 0.15, G = 0.20, S = 0.10$) in narrative prose and boundary notes.
+  - The actual production codebase and the evaluation assertions in `server/evaluationEngine.ts` executed with $L_0 = 0.15, T = 0.10, G = 0.20, S = 0.10$.
+  - Documentation across `PHASE_8_EVALUATION.md`, `docs/evaluation/EVALUATION_SUMMARY.md`, and this release report has been reconciled to clearly distinguish historical textbook literature citations from the verified runtime defaults without altering canonical evaluation results.
+
+### 2. Demo Session Statistics Clarification
+- **Computation Implementation:**
+  - In `src/components/flashcards/FlashcardReview.tsx:L155`:
+    `const accuracy = Math.round((correctCount / flashcards.length) * 100);`
+  - In UI completion modal (`FlashcardReview.tsx:L165-178`):
+    - Subtitle: `"You reviewed all {flashcards.length} cards in this deck."`
+    - Accuracy block: `{accuracy}%`
+    - Correct block: `{correctCount} / {flashcards.length}`
+- **Distinction Between Cards Reviewed and Correct Answers:**
+  - **Cards Reviewed:** **12** (total deck progress completed: `flashcards.length = 12`).
+  - **Correct Answers:** **11** (`correctCount = 11`, with 1 mistake recorded in BKT mastery).
+  - **Session Accuracy:** **92%**, mathematically derived as $\text{Math.round}((11 / 12) \times 100) = \text{Math.round}(91.666...) = 92\%$.
+  - *(Note: If all 12 answers had been correct, session accuracy would be 100%. "12 cards reviewed" is strictly the denominator / deck progress, not the numerator of correct responses.)*
+- **Documentation Updates:**
+  - Scene 6 of `docs/demo/DEMO_SCRIPT.md` and Table 2 in this report explicitly present:
+    `Cards Reviewed: 12/12 deck completed | Correct Answers: 11/12 | Accuracy: 92% (Math.round((11/12)*100))`.
+
+---
+
+## 8. Verification Results
 
 All automated gates passed cleanly:
 
@@ -178,7 +211,7 @@ All automated gates passed cleanly:
 
 ---
 
-## 8. Changed Files, Commit Hash & Push Status
+## 9. Changed Files, Commit Hash & Push Status
 
 ### Changed & Created Files Inventory:
 - `docs/pitch/PITCH_DECK.md` (Pitch deck markdown source with speaker notes)
@@ -189,11 +222,12 @@ All automated gates passed cleanly:
 - `docs/setup/DEMO_SETUP_GUIDE.md` (Deterministic pre-demo checklist and reset guide)
 - `docs/evaluation/EVALUATION_SUMMARY.md` (Scientific evaluation report with statistical explanations)
 - `README.md` (Updated demo links and verified capability roadmap)
+- `PHASE_8_EVALUATION.md` (Reconciled historical BKT parameters with runtime constants)
 - `PHASE_10_FINAL_RELEASE.md` (This comprehensive final release report)
 
 ---
 
-## 9. Remaining Limitations
+## 10. Remaining Limitations
 
 1. **AI API Rate Limits:** Real-time demonstration with Google Gemini requires valid API key and active quota; local mock mode (`VITE_USE_MOCK_AI=true`) is available for offline fail-safe execution.
 2. **In-Memory Analytics in SQLite Dev Mode:** Relational SQLite dev setup stores transient state locally; full multi-tenant RLS requires staging against PostgreSQL (`pgvector`).

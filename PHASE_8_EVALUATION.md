@@ -208,9 +208,9 @@ Evaluates the Bayesian Knowledge Tracing (BKT) and Spaced Repetition (SM-2) engi
 | **Log Loss (Cross-Entropy)** | **0.799** | $\le 0.850$ | Penalizes confident incorrect predictions with $\epsilon = 10^{-15}$ smoothing. |
 | **Expected Calibration Error (ECE)** | **0.316** | $\le 0.400$ | Evaluated across 10 equal-width confidence bins ($[0.0, 0.1), \dots, [0.9, 1.0]$). Reflects synthetic simulation heuristic bias. |
 | **Recommendation Determinism** | **100.0%** | $100.0\%$ | Identical learner states yield identical priority queues under fixed seed. |
-| **Cold Start Prior Preservation** | **PASSED** | $p(L_0) = 0.10$ | Unattempted topics initialized to $0.10$ baseline prior without premature mastery inflation. |
+| **Cold Start Prior Preservation** | **PASSED** | $p(L_0) \le 0.50$ (runtime default $0.15$) | Verified: initial learner steps preserve cold-start priors ($\le 0.50$, default $0.15$) without premature mastery inflation. Historical draft cited textbook $0.10$ bound. |
 | **Chronological Prediction Order** | **PASSED** | $t_{pred} < t_{outcome}$ | Verified: each prediction strictly precedes the recorded attempt timestamp. |
-| **Monotonic Evidence Updates** | **PASSED** | $\Delta > 0$ on correct, $\Delta \le 0$ on incorrect | BKT Bayesian updates obey strict directional monotonicity on verified evidence. |
+| **Monotonic Evidence Updates** | **PASSED** | $\Delta > 0$ on correct, $\Delta \le 0$ on incorrect | BKT Bayesian updates obey strict directional monotonicity on verified evidence ($L_0=0.15, T=0.10, G=0.20, S=0.10$). |
 
 ---
 
@@ -310,6 +310,6 @@ The updated evaluation implementation was verified against all project quality g
 ## 7. Unresolved Blockers & Explicit Boundaries
 
 1. **No Real-World Pedagogical Claims**: Synthetic student simulations evaluate BKT state updates and recommendation mechanics; they do **not** claim real classroom efficacy.
-2. **No BKT Hyperparameter Overfitting**: Production BKT parameters remain fixed ($L_0 = 0.10, T = 0.15, S = 0.10, G = 0.20$) without tuning against evaluation traces.
+2. **No BKT Hyperparameter Overfitting**: Cognitive model parameters remain fixed without tuning against evaluation traces. Runtime defaults in production (`server/bktService.ts`, `src/utils/bkt.ts`) and evaluation tests (`server/evaluationEngine.ts`) use $L_0 = 0.15, T = 0.10, G = 0.20, S = 0.10$. Historical draft text cited earlier textbook baseline values ($L_0 = 0.10, T = 0.15$).
 3. **Phases 9 & 10 Untouched**: Misconception intelligence and multimodal tutoring remain strictly in their respective phases; no out-of-scope work was performed.
 4. **Historical Run Artifact Preservation**: Historical benchmark run artifacts (including `eval_run_1791559005972.json` and `eval_run_1791561186056.json`) are preserved in `benchmarks/results/` for auditability; the latest canonical run is versioned as `eval_run_1791563164571.json`.

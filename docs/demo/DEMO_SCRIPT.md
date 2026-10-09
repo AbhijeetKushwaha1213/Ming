@@ -155,19 +155,21 @@ Total: 30s + 40s + 45s + 45s + 45s + 35s + 30s = 270s (4m 30s)
 
 - **Duration:** 35 seconds
 - **Starting Screen:** Session Summary & Profile Analytics (`/analytics` or Profile View).
-- **Computation Type:** **Live Application Compute & Persisted Telemetry** (Computed review count: 12/12, session accuracy: 92%, persisted SQLite/PostgreSQL activity log, and live offline queue sync). Prior streak days (Day 4) represent seeded demonstration account baseline.
+- **Computation Type:** **Live Application Compute & Persisted Telemetry** (Computed cards reviewed: 12/12 deck completed, correct answers: 11/12, session accuracy: 92% from `Math.round((11/12)*100)`, persisted SQLite/PostgreSQL activity log, and live offline queue sync). Prior streak days (Day 4) represent seeded demonstration account baseline.
 - **Visual Action:**
   1. Click **"Complete Study Session"**.
   2. Session completion modal displays genuine application metrics:
-     - Cards Reviewed: **12 / 12**
-     - Session Accuracy: **92% (11/12 correct)**
+     - Cards Reviewed: **12 / 12** (all 12 deck cards completed)
+     - Correct Answers: **11 / 12** (10 incorrect answers avoided; 1 mistake recorded in BKT)
+     - Session Accuracy: **92%** (`Math.round((11 / 12) * 100) = 92%`, computed by `FlashcardReview.tsx`)
      - Activity Logged: **Session persisted & streak incremented to Day 5**
+     *(Note: "12 cards reviewed" denotes the total deck length reviewed, strictly distinguished from the "11 correct answers" that yield the 92% accuracy figure.)*
   3. Toggle browser DevTools Network tab briefly to demonstrate offline resilience: offline event sync queue successfully flushes queued analytics events to the server.
 - **Voiceover Script:**
   > *"When the session finishes, Ming persists the study session and analytics events to our secure database with tenant isolation and row-level security. Even if a student loses connectivity mid-study, our client-side offline queue holds the telemetry and automatically synchronizes when reconnected.*  
   > *Your session statistics, mastery trajectories, and spaced-repetition schedules are permanently preserved and visualized on your learning dashboard."*
 - **Observable Result:**
-  - Completion modal displays exact session stats (12 cards, 92% accuracy); streak counter increments; offline queue status badge indicates synchronized state.
+  - Completion modal displays exact session stats: 12 cards reviewed, 11/12 correct answers, 92% calculated accuracy (`Math.round((11/12)*100)`); streak counter increments; offline queue status badge indicates synchronized state.
 - **Fail-safe / Recovery:**
   - Modal can be dismissed with `Esc` or the close icon if needed; session data is backed by local IndexedDB/localStorage fallback.
 

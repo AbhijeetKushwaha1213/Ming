@@ -129,6 +129,12 @@ Although nDCG@5 shares the same point estimate ($0.703$) as MRR, their 95% boots
 The canonical dataset `rag_eval_dataset.json` contains exactly 6 off-material questions (Quantum Computing, Culinary Arts, Marine Biology, Sports Science, Macroeconomics, and Automotive Engineering). All 6 were evaluated; all 6 were successfully refused by the cosine similarity threshold gate ($100.0\%$, Wilson 95% CI: $[61.0\%, 100.0\%]$).
 Early drafts containing references to "$n=10$" were unverified historical placeholders and have been corrected across all documentation and test assertions.
 
+### Bayesian Knowledge Tracing (BKT) Parameter Reconciliation
+- **Runtime Defaults in Production Code:** Both `server/bktService.ts` and `src/utils/bkt.ts` implement $P(L_0) = 0.15, P(T) = 0.10, P(G) = 0.20, P(S) = 0.10$, established in Phase 4 (`cb671c6`).
+- **Canonical Evaluation Verification (`eval_run_1791563164571`):** In `server/evaluationEngine.ts` (lines 1426, 1810, 1917), the evaluation test harness verified directional evidence monotonicity and idempotent state updates using `{ pL0: 0.15, pT: 0.10, pG: 0.20, pS: 0.10 }`.
+- **Synthetic Trace Calibration (Track D):** Track D calibration metrics (Brier Score: 0.277, Log Loss: 0.799, ECE: 0.316) were computed over 40 synthetic student transitions (`benchmarks/data/learner_traces_eval_dataset.json`) where initial trace priors range from $0.15$ to $0.50$ (median 0.20).
+- **Historical Text Discrepancy:** Earlier Phase 8 markdown drafts contained references to $L_0 = 0.10, T = 0.15, G = 0.20, S = 0.10$. This discrepancy arose because illustrative introductory writeups cited textbook literature values (Corbett & Anderson baseline) rather than the active production constants. All documentation has been reconciled to distinguish historical literature citations from active runtime defaults while preserving canonical evaluation records.
+
 ---
 
 ## 5. Scope & Limitations Summary

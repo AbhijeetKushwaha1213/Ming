@@ -145,8 +145,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
+  const cleanPath = url.pathname.replace(/\/+$/, '') || '/';
+
   // Secure Server-side AI Proxy Gateway
-  if (url.pathname === '/api/ai/generate') {
+  if (cleanPath === '/api/ai/generate') {
     const body = await readBody(req);
     await handleAiGenerate(
       {

@@ -13,6 +13,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useChatHistory, ChatSession } from '@/hooks/useChatHistory';
 import { ChatHistoryPanel } from './ChatHistoryPanel';
 import { Citation } from './Citation';
+import { ChatMessageRenderer } from './ChatMessageRenderer';
 import { askGroundedTutor, ingestSource, CitationData, GroundedChatResponse } from '@/api/ragAPI';
 import { geminiClient } from '@/utils/geminiClient';
 import { 
@@ -400,7 +401,33 @@ export const AIChat = ({
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
+    // If a document was attached, extract base64 inlineData so Gemini Flash can inspect it immediately
+    let fileInlineData: { mimeType: string; data: string } | undefined = undefined;
+    if (fileToIngest) {
+      try {
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const base64 = result.includes(',') ? result.split(',')[1] : result;
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(fileToIngest);
+        });
+        fileInlineData = {
+          mimeType: fileToIngest.type || 'application/pdf',
+          data: base64Data,
+        };
+      } catch (err) {
+        console.warn('Failed to extract base64 inlineData for file:', err);
+      }
+    }
+
+    const safetyDuration = fileToIngest ? 50000 : 25000;
+    let didTimeout = false;
     const safetyTimer = setTimeout(() => {
+      didTimeout = true;
       setIsLoading(false);
       setIsUploadingFile(false);
       setMessages(prev => {
@@ -418,28 +445,30 @@ export const AIChat = ({
         }
         return prev;
       });
-    }, 15000);
+    }, safetyDuration);
 
     try {
-      // 1. If file attached, ingest it into the user's RAG knowledge base first
+      // 1. If file attached, index into persistent RAG knowledge base in background (non-blocking)
       if (fileToIngest) {
         setIsUploadingFile(true);
-        try {
-          await ingestSource({
-            file: fileToIngest,
-            userId: user?.user_id || user?.id || 'default_user',
-            topic: sanitizedTopic || 'Course Document',
-            title: fileToIngest.name
+        ingestSource({
+          file: fileToIngest,
+          userId: user?.user_id || user?.id || 'default_user',
+          topic: sanitizedTopic || 'Course Document',
+          title: fileToIngest.name,
+        })
+          .then(() => {
+            toast({
+              title: "File Indexed 📚",
+              description: `"${fileToIngest.name}" is now part of your permanent study knowledge base!`,
+            });
+          })
+          .catch((ingestErr) => {
+            console.warn('Background file ingestion notice:', ingestErr);
+          })
+          .finally(() => {
+            setIsUploadingFile(false);
           });
-          toast({
-            title: "File Indexed",
-            description: `"${fileToIngest.name}" is now part of your study knowledge base!`,
-          });
-        } catch (ingestErr) {
-          console.warn('File ingestion notice (proceeding to generate response):', ingestErr);
-        } finally {
-          setIsUploadingFile(false);
-        }
       }
 
       const conversationHistory = messages.slice(-8).map(m => ({
@@ -447,14 +476,35 @@ export const AIChat = ({
         content: m.text
       }));
 
-      // Gather real-time workspace context & action prompt with timeout race
+      // Gather real-time workspace context
       const catalog = await Promise.race([
         getWorkspaceCatalog(),
         new Promise<any>(r => setTimeout(() => r({ pages: [], pagesCatalog: [], vaultCatalog: [] }), 1200))
       ]);
       const workspacePrompt = getAgentWorkspacePrompt(catalog, `Current topic/context: ${sanitizedTopic || context}`);
 
-      const isActionQuery = /(delete|remove|edit|modify|update|rename|create|folder|organize|move|copy\s+vault|vault\s+to\s+resource|add\s+notes\s+to|append|clean\s+up)/i.test(userMsgText);
+      const isActionQuery = /(delete|remove|edit|modify|update|rename|create\s+page|create\s+resource|folder|organize|move|copy\s+vault|vault\s+to\s+resource|add\s+notes\s+to|append|clean\s+up)/i.test(userMsgText);
+
+      // Build pure academic tutor prompt (never executes unwanted mutations on regular Q&A)
+      let academicTutorPrompt = `You are Ming AI, an expert, rigorous university-level academic study assistant and tutor.
+Explain concepts clearly, thoroughly, and systematically with intuitive real-world examples, definitions, and formulas.
+
+FORMATTING REQUIREMENTS:
+- Use "# " for the main topic title
+- Use "## " for key section headings (e.g. Executive Summary, Key Concepts & Deep Dive, Real-World Applications, Summary & Exam Tips)
+- For numbered points, format like:
+  1. **Concept Name**: Detailed explanation
+- For bullet items, format like:
+  * **Key Feature**: Explanation
+- Use syntax-highlighted code blocks with language identifiers where relevant (\`\`\`python, \`\`\`sql, etc.)
+- Use blockquotes ("> ") for important exam notes, formulas, or pitfalls
+- DO NOT output workspace action blocks or try to manipulate files unless explicitly instructed by the user.`;
+
+      if (language === 'hinglish') {
+        academicTutorPrompt += '\n\nIMPORTANT: Explain concepts in natural, friendly collegiate Hinglish (Hindi written in Roman/English script mixed with English technical terms). Keep technical keywords and code in English.';
+      } else if (language === 'hindi') {
+        academicTutorPrompt += '\n\nIMPORTANT: Explain concepts in clear Hindi using Devanagari script, with technical English terms in parentheses.';
+      }
 
       // If user specifically asked for workspace actions (edit, delete, modify, organize, copy), route directly to Gemini with workspace tools
       if (isActionQuery) {
@@ -464,6 +514,8 @@ export const AIChat = ({
           topic: sanitizedTopic,
           context: conversationHistory
         });
+
+        if (didTimeout) return;
 
         if (directRes && directRes.response && !directRes.error) {
           const { cleanText, actions } = parseAgentActions(directRes.response);
@@ -492,6 +544,35 @@ export const AIChat = ({
         }
       }
 
+      // If document was attached, use Gemini Flash multimodal inlineData directly for fast, precise document Q&A
+      if (fileInlineData) {
+        const multimodalRes = await geminiClient.generateContent({
+          message: userMsgText,
+          systemPrompt: academicTutorPrompt,
+          inlineData: fileInlineData,
+          topic: sanitizedTopic,
+          context: conversationHistory,
+        });
+
+        if (didTimeout) return;
+
+        if (multimodalRes && multimodalRes.response && !multimodalRes.error) {
+          const { cleanText } = parseAgentActions(multimodalRes.response);
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: cleanText || multimodalRes.response,
+            sender: 'ai',
+            timestamp: new Date(),
+            citations: [],
+            grounded: true,
+            usedGeminiFallback: true,
+            insufficientEvidence: false,
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          return;
+        }
+      }
+
       // 2. Query Grounded AI Tutor
       let tutorResult: GroundedChatResponse | null = null;
       try {
@@ -506,6 +587,8 @@ export const AIChat = ({
         console.warn('askGroundedTutor failed, falling back to direct Gemini API:', tutorError);
       }
 
+      if (didTimeout) return;
+
       // Check if tutor returned grounded response with verified citations
       const hasGroundedEvidence = tutorResult && 
         !tutorResult.insufficient_evidence && 
@@ -514,8 +597,7 @@ export const AIChat = ({
         tutorResult.citations.length > 0;
 
       if (hasGroundedEvidence && tutorResult) {
-        const { cleanText, actions } = parseAgentActions(tutorResult.response);
-        const executed = await executeAgentActions(actions, queryClient);
+        const { cleanText } = parseAgentActions(tutorResult.response);
 
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -525,36 +607,21 @@ export const AIChat = ({
           citations: tutorResult.citations || [],
           grounded: true,
           insufficientEvidence: false,
-          actionsExecuted: executed.length > 0 ? executed : undefined,
         };
         setMessages(prev => [...prev, aiMessage]);
       } else {
-        // Fall back directly to Gemini 2.5 Flash with workspace systemPrompt
-        let adjustedPrompt = workspacePrompt;
-        if (language === 'hinglish') {
-          adjustedPrompt += '\n\nIMPORTANT: Explain concepts in natural, friendly collegiate Hinglish (Hindi written in Roman/English script mixed with English technical terms). Keep technical keywords and code in English.';
-        } else if (language === 'hindi') {
-          adjustedPrompt += '\n\nIMPORTANT: Explain concepts in clear Hindi using Devanagari script, with technical English terms in parentheses.';
-        }
-
+        // Fall back directly to Gemini 2.5 Flash with academic tutor prompt (no unwanted workspace actions)
         const directRes = await geminiClient.generateContent({
           message: userMsgText,
-          systemPrompt: adjustedPrompt,
+          systemPrompt: academicTutorPrompt,
           topic: sanitizedTopic,
           context: conversationHistory
         });
 
+        if (didTimeout) return;
+
         if (directRes && directRes.response && !directRes.error) {
-          const { cleanText, actions } = parseAgentActions(directRes.response);
-          const executed = await executeAgentActions(actions, queryClient);
-
-          if (executed.length > 0) {
-            toast({
-              title: "Workspace Actions Executed ⚡",
-              description: executed.join(', '),
-            });
-          }
-
+          const { cleanText } = parseAgentActions(directRes.response);
           const responseText = cleanText?.trim() || directRes.response?.trim() || "Here is what I found.";
 
           const aiMessage: Message = {
@@ -566,7 +633,6 @@ export const AIChat = ({
             grounded: false,
             usedGeminiFallback: true,
             insufficientEvidence: false,
-            actionsExecuted: executed.length > 0 ? executed : undefined,
           };
           setMessages(prev => [...prev, aiMessage]);
         } else {
@@ -904,7 +970,7 @@ export const AIChat = ({
                           </div>
                         )}
 
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                        <ChatMessageRenderer content={message.text} isUser={message.sender === 'user'} />
 
                         {/* Verified Sources Shelf */}
                         {message.sender === 'ai' && message.citations && message.citations.length > 0 && (

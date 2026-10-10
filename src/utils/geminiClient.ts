@@ -245,7 +245,7 @@ Rules:
         try {
           const directEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${directKey}`;
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 12000);
+          const timer = setTimeout(() => controller.abort(), 35000);
           const directRes = await fetch(directEndpoint, {
             method: 'POST',
             headers: {
@@ -340,7 +340,7 @@ Rules:
 
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 6000);
+        const timer = setTimeout(() => controller.abort(), 35000);
         const response = await fetch(apiEndpoint, {
           method: 'POST',
           headers,
@@ -356,6 +356,7 @@ Rules:
             count,
             systemPrompt: effectiveSystemPrompt,
             promptParts,
+            inlineData: req.inlineData,
             groundedContext: req.groundedContext,
             sourceTitle: req.sourceTitle,
           }),

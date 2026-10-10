@@ -25,6 +25,7 @@ import {
   executeAgentActions 
 } from '@/services/agentActionEngine';
 import { geminiClient } from '@/utils/geminiClient';
+import { ChatMessageRenderer } from '../chat/ChatMessageRenderer';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
 
 function useSafeQueryClient(): QueryClient | undefined {
@@ -251,8 +252,8 @@ export const FloatingStudyAgentBar: React.FC<FloatingStudyAgentBarProps> = ({
             </div>
           ) : agentAnswer ? (
             <div className="space-y-3">
-              <div className="text-xs leading-relaxed text-foreground whitespace-pre-line max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                {agentAnswer.reply}
+              <div className="max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                <ChatMessageRenderer content={agentAnswer.reply} />
               </div>
 
               {/* Workspace Actions Executed */}

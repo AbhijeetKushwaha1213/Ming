@@ -689,6 +689,35 @@ export async function ragHandler(req: RagApiRequest, res: RagApiResponse) {
         );
       }
 
+      // Guarantee option shuffling for all MCQ questions so correct answer position is distributed naturally across options
+      for (const q of questions) {
+        if ((q.type || 'MCQ').toUpperCase() === 'MCQ' && Array.isArray(q.options) && q.options.length > 1) {
+          // Resolve authoritative correct answer text
+          let correctText = String(q.correct_answer ?? q.correctAnswer ?? '').trim();
+          const rawIdx = parseInt(correctText, 10);
+          if (!isNaN(rawIdx) && rawIdx >= 0 && rawIdx < q.options.length) {
+            correctText = String(q.options[rawIdx]).trim();
+          } else {
+            const match = q.options.find(
+              (opt: any) => String(opt).trim().toLowerCase() === correctText.toLowerCase()
+            );
+            if (match) {
+              correctText = String(match).trim();
+            }
+          }
+
+          // Shuffle options using Fisher-Yates
+          const shuffled = [...q.options];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          q.options = shuffled;
+          q.correct_answer = correctText;
+          q.correctAnswer = correctText;
+        }
+      }
+
       // 4. Persist valid generated questions into assessment_questions table with full deduplication metadata
       for (const q of questions) {
         try {

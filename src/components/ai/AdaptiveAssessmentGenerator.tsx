@@ -621,19 +621,28 @@ export const AdaptiveAssessmentGenerator: React.FC = () => {
       ];
     }
 
-    return bank.slice(0, cCount).map((item, idx) => ({
-      question_id: `q_diag_${Date.now()}_${idx}`,
-      type: (item.type || (cType === 'MIXED' ? 'MCQ' : cType)) as any,
-      topic: cTopic,
-      subtopic: item.subtopic,
-      difficulty: cDiff,
-      question: item.question,
-      options: item.options,
-      correct_answer: item.correct_answer,
-      explanation: item.explanation,
-      source_id: 'src_curriculum_standard',
-      citation_label: `Curriculum Diagnostic (${cTopic})`,
-    }));
+    return bank.slice(0, cCount).map((item, idx) => {
+      let shuffledOptions = [...item.options];
+      if (item.options && item.options.length > 1) {
+        for (let i = shuffledOptions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+        }
+      }
+      return {
+        question_id: `q_diag_${Date.now()}_${idx}`,
+        type: (item.type || (cType === 'MIXED' ? 'MCQ' : cType)) as any,
+        topic: cTopic,
+        subtopic: item.subtopic,
+        difficulty: cDiff,
+        question: item.question,
+        options: shuffledOptions,
+        correct_answer: item.correct_answer,
+        explanation: item.explanation,
+        source_id: 'src_curriculum_standard',
+        citation_label: `Curriculum Diagnostic (${cTopic})`,
+      };
+    });
   };
 
   const handleGenerateBaseline = async () => {

@@ -53,6 +53,42 @@ export interface QuizViewerProps {
   onComplete?: (report: DiagnosticReport) => void;
 }
 
+function randomizeQuizOptions(list: QuizQuestion[]): QuizQuestion[] {
+  if (!Array.isArray(list)) return [];
+  return list.map((q) => {
+    if ((q.type || 'MCQ').toUpperCase() !== 'MCQ' || !Array.isArray(q.options) || q.options.length < 2) {
+      return q;
+    }
+
+    // Resolve authoritative correct answer text
+    let correctText = String(q.correct_answer ?? '').trim();
+    const rawIdx = parseInt(correctText, 10);
+    if (!isNaN(rawIdx) && rawIdx >= 0 && rawIdx < q.options.length) {
+      correctText = String(q.options[rawIdx]).trim();
+    } else {
+      const match = q.options.find(
+        (opt) => String(opt).trim().toLowerCase() === correctText.toLowerCase()
+      );
+      if (match) {
+        correctText = String(match).trim();
+      }
+    }
+
+    // Fisher-Yates shuffle options
+    const shuffled = [...q.options];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return {
+      ...q,
+      options: shuffled,
+      correct_answer: correctText,
+    };
+  });
+}
+
 export const QuizViewer: React.FC<QuizViewerProps> = ({
   questions,
   title,
@@ -64,7 +100,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   onComplete,
 }) => {
   const { toast } = useToast();
-  const [questionList, setQuestionList] = useState<QuizQuestion[]>(questions);
+  const [questionList, setQuestionList] = useState<QuizQuestion[]>(() => randomizeQuizOptions(questions));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<any[]>(new Array(questions.length).fill(null));
   const [showResults, setShowResults] = useState(false);
@@ -73,7 +109,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   const [diagnosticReport, setDiagnosticReport] = useState<DiagnosticReport | null>(null);
 
   useEffect(() => {
-    setQuestionList(questions);
+    setQuestionList(randomizeQuizOptions(questions));
     setSelectedAnswers(new Array(questions.length).fill(null));
     setCurrentIndex(0);
   }, [questions]);

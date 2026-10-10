@@ -94,8 +94,8 @@ Create quiz questions in this EXACT JSON format:
   "quiz": [
     {
       "question": "Clear, specific question ONLY about ${topic || message}",
-      "options": ["Option A about ${topic || message}", "Option B about ${topic || message}", "Option C about ${topic || message}", "Option D about ${topic || message}"],
-      "correct_answer": 0,
+      "options": ["Plausible distractor 1 about ${topic || message}", "Plausible distractor 2 about ${topic || message}", "Accurate correct answer about ${topic || message}", "Plausible distractor 3 about ${topic || message}"],
+      "correct_answer": 2,
       "explanation": "Why this answer is correct, focusing ONLY on ${topic || message}"
     }
   ]
@@ -104,7 +104,8 @@ Create quiz questions in this EXACT JSON format:
 Rules:
 - Questions should test understanding and application of ${topic || message} ONLY
 - Always provide exactly 4 options, ALL related to ${topic || message}
-- correct_answer is the index (0-3) of the correct option
+- CRITICAL: Randomize the placement of the correct answer across indices 0, 1, 2, and 3. DO NOT always make the first option (index 0) the correct answer. Distribute correct answers across all positions.
+- correct_answer is the integer index (0-3) of the correct option
 - Explanations must be educational and focused on ${topic || message}
 - Generate exactly ${count || 5} questions
 - DO NOT include questions about unrelated topics`;

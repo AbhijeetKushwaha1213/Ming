@@ -230,12 +230,39 @@ export const AIStudyMaterialGenerator = () => {
           break;
 
         case 'quizzes':
-          if (aiResponse.quiz) {
+          if (aiResponse.quiz && Array.isArray(aiResponse.quiz)) {
+            const randomizedQuiz = aiResponse.quiz.map((q: any) => {
+              if (Array.isArray(q.options) && q.options.length > 1) {
+                let corrText = '';
+                if (typeof q.correct_answer === 'number' && q.options[q.correct_answer]) {
+                  corrText = q.options[q.correct_answer];
+                } else if (typeof q.correct_answer === 'string') {
+                  const num = parseInt(q.correct_answer, 10);
+                  if (!isNaN(num) && q.options[num]) {
+                    corrText = q.options[num];
+                  } else {
+                    corrText = q.correct_answer;
+                  }
+                }
+                const shuffled = [...q.options];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                  const j = Math.floor(Math.random() * (i + 1));
+                  [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                const newIdx = shuffled.findIndex((opt) => opt === corrText);
+                return {
+                  ...q,
+                  options: shuffled,
+                  correct_answer: newIdx !== -1 ? newIdx : corrText,
+                };
+              }
+              return q;
+            });
             materials = [{
               id: `generated-${Date.now()}`,
               type: materialType,
               title: `${materialTopic} - Quiz`,
-              content: { questions: aiResponse.quiz },
+              content: { questions: randomizedQuiz },
               topic: materialTopic,
               difficulty,
               created_at: new Date().toISOString(),

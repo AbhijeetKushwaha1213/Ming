@@ -1829,7 +1829,8 @@ def _generate_curriculum_baseline_questions(
                 f"   - hard: multi-step problem solving, tricky edge cases, deep reasoning or calculations in {topic_clean}.\n"
                 f"4. Support varied question types: conceptual understanding, definitions, applications, comparisons, and numerical calculations where applicable.\n"
                 f"5. For MCQ, provide 4 options where distractors are plausible misconceptions within {topic_clean}, NOT phrases from unrelated subjects.\n"
-                f"6. Return ONLY a valid JSON array of objects with the schema:\n"
+                f"6. CRITICAL: Randomize the placement of the correct answer among options A, B, C, and D. Do NOT always place the correct answer as option A or the first option. Distribute correct answers across all positions.\n"
+                f"7. Return ONLY a valid JSON array of objects with the schema:\n"
                 f"[\n"
                 f"  {{\n"
                 f"    \"question\": \"clear question stem directly about {topic_clean}\",\n"
@@ -1869,6 +1870,14 @@ def _generate_curriculum_baseline_questions(
                                     q_fmt = str(pq.get("type", question_type)).upper()
                                     if q_fmt not in ["MCQ", "SHORT_ANSWER", "NUMERICAL"]:
                                         q_fmt = "MCQ"
+                                    if q_fmt == "MCQ" and isinstance(opts, list) and len(opts) > 1:
+                                        corr_text = ans
+                                        if ans.isdigit() and int(ans) < len(opts):
+                                            corr_text = str(opts[int(ans)]).strip()
+                                        shuffled_opts = list(opts)
+                                        random.shuffle(shuffled_opts)
+                                        opts = shuffled_opts
+                                        ans = corr_text
                                     if stem and ans:
                                         fp = compute_question_fingerprint(stem, topic_clean)
                                         questions.append({
@@ -2250,7 +2259,9 @@ def _generate_curriculum_baseline_questions(
         ans = item["correct_answer"]
         expl = item["explanation"]
         subt = item["subtopic"]
-        opts = item["options"]
+        opts = list(item["options"])
+        if len(opts) > 1:
+            random.shuffle(opts)
         fp = compute_question_fingerprint(stem, topic_clean)
         questions.append({
             "question_id": f"q_curr_{int(time.time()*1000)}_{idx}",
@@ -2372,7 +2383,8 @@ def generate_grounded_assessment(
                 f"3. Every question must be directly relevant to {topic} and the provided chunks.\n"
                 f"4. DO NOT include concepts from unrelated subjects (e.g. NEVER mention operating systems, software architecture, or safety invariants if the text is about Linear Algebra or Data Mining).\n"
                 f"5. For MCQ questions, provide 4 options where distractors are plausible misconceptions within {topic} and the text. NEVER inject distractors from unrelated systems domains.\n"
-                f"6. Return ONLY a valid JSON array of objects with the following schema:\n"
+                f"6. CRITICAL: Randomize the placement of the correct answer among options A, B, C, and D. Do NOT always place the correct answer as option A or the first option. Distribute correct answers across all positions.\n"
+                f"7. Return ONLY a valid JSON array of objects with the following schema:\n"
                 f"[\n"
                 f"  {{\n"
                 f"    \"question\": \"clear question stem based on chunk text\",\n"
@@ -2416,10 +2428,20 @@ def generate_grounded_assessment(
                                     loc = matched_r.get("location", {})
                                     actual_cid = matched_r.get("chunk_id", f"chunk_{idx}")
 
+                                    cand_type = str(pq.get("type", question_type)).upper() if str(pq.get("type", question_type)).upper() in ["MCQ", "SHORT_ANSWER", "NUMERICAL"] else "MCQ"
+                                    if cand_type == "MCQ" and isinstance(opts, list) and len(opts) > 1:
+                                        corr_text = ans
+                                        if ans.isdigit() and int(ans) < len(opts):
+                                            corr_text = str(opts[int(ans)]).strip()
+                                        shuffled_opts = list(opts)
+                                        random.shuffle(shuffled_opts)
+                                        opts = shuffled_opts
+                                        ans = corr_text
+
                                     cand = {
                                         "question_id": f"q_{uuid.uuid4().hex[:10]}",
                                         "assessment_id": asmt_id,
-                                        "type": str(pq.get("type", question_type)).upper() if str(pq.get("type", question_type)).upper() in ["MCQ", "SHORT_ANSWER", "NUMERICAL"] else "MCQ",
+                                        "type": cand_type,
                                         "topic": topic,
                                         "subtopic": pq.get("subtopic") or subtopic or matched_r.get("subtopic", "Core Concepts"),
                                         "difficulty": difficulty,
@@ -2539,6 +2561,7 @@ def generate_grounded_assessment(
                             f"A deprecated model not supported by {topic} evidence",
                             f"A trivial baseline with zero influence on {cur_subtopic}"
                         ]
+                    random.shuffle(options)
 
                     cand = {
                         "question_id": f"q_{uuid.uuid4().hex[:10]}",

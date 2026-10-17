@@ -37,7 +37,6 @@
 
 <sub>
   📊 <a href="public/pitch.html" target="_blank"><b>Open Interactive Pitch Deck (HTML)</b></a> &nbsp;•&nbsp;
-  📑 <a href="docs/pitch/PITCH_DECK.md"><b>Pitch Deck Source (MD)</b></a> &nbsp;•&nbsp;
   🎥 <a href="docs/demo/DEMO_SCRIPT.md"><b>Demo Recording Script & Timeline</b></a> &nbsp;•&nbsp;
   🏛️ <a href="docs/architecture/ARCHITECTURE_OVERVIEW.md"><b>Architecture Overview</b></a> &nbsp;•&nbsp;
   📈 <a href="docs/evaluation/EVALUATION_SUMMARY.md"><b>Evaluation Summary ($N=147$)</b></a>
@@ -71,29 +70,13 @@
 - **Flexible Input Modes:** Upload documents (PDF/Text), paste lecture notes, or enter a topic for instant curriculum-aligned generation.
 - **Adaptive Difficulty:** Easy, Medium, Hard, or Adaptive AI mode with customized depth and key exam pointers.
 
-<div align="center">
-<!-- 👉 REPLACE: docs/screenshots/generator.png -->
-<img src="https://placehold.co/1000x560/111827/6366f1?text=AI+Generator+Wizard%0A(docs%2Fscreenshots%2Fgenerator.png)&font=montserrat" alt="AI Generator" width="85%"/>
-</div>
-
 ### 📊 2. Dual-Mode Student Dashboards
 - **🎓 College Mode:** Track courses, ongoing software projects, daily skill milestones, and portfolio progress.
 - **📝 Exam Prep Mode:** Syllabus breakdown, mock test schedules, revision logs, and per-subject performance tracking.
 
-<div align="center">
-<!-- 👉 REPLACE: docs/screenshots/dashboard-college.png & dashboard-exam.png -->
-<img src="https://placehold.co/490x300/111827/06b6d4?text=College+Dashboard&font=montserrat" alt="College dashboard" width="48%"/>
-<img src="https://placehold.co/490x300/111827/8b5cf6?text=Exam+Dashboard&font=montserrat" alt="Exam dashboard" width="48%"/>
-</div>
-
 ### 💬 3. Grounded AI Tutor & Chat Assistant
 - Instant doubt clarification, step-by-step problem solving, and concept deconstruction.
 - Context-aware explanations with **markdown**, **code highlighting**, and **formula rendering**.
-
-<div align="center">
-<!-- 👉 REPLACE: docs/media/chat.gif -->
-<img src="https://placehold.co/1000x500/111827/3ecf8e/gif?text=AI+Tutor+Chat+GIF%0A(docs%2Fmedia%2Fchat.gif)&font=montserrat" alt="AI chat" width="85%"/>
-</div>
 
 ### ⏱️ 4. Focus Workspace & Interactive Dev Tools
 - Integrated **Pomodoro** timer with ambient soundscapes.
@@ -104,51 +87,6 @@
 - Block-based rich text note editor (TipTap).
 - **Flashcard Vault** with spaced revision cycles and difficulty rating.
 - **Offline support** and caching via IndexedDB for uninterrupted learning.
-
----
-
-## 🖼️ Screenshots
-
-> 💡 Replace each placeholder with a real capture. Recommended size: **1600×900**, PNG or WebP, stored in `docs/screenshots/`.
-
-<details open>
-<summary><b>🌗 Light & Dark Mode</b></summary>
-<br/>
-<div align="center">
-<img src="https://placehold.co/600x360/ffffff/6366f1?text=Landing+Page+(Light)&font=montserrat" width="48%" alt="Landing light"/>
-<img src="https://placehold.co/600x360/0f172a/8b5cf6?text=Landing+Page+(Dark)&font=montserrat" width="48%" alt="Landing dark"/>
-</div>
-</details>
-
-<details>
-<summary><b>🃏 Flashcards, Quizzes & Mind Maps</b></summary>
-<br/>
-<div align="center">
-<img src="https://placehold.co/400x260/111827/f59e0b?text=Flashcards&font=montserrat" width="32%" alt="Flashcards"/>
-<img src="https://placehold.co/400x260/111827/ef4444?text=Quiz+Runner&font=montserrat" width="32%" alt="Quiz"/>
-<img src="https://placehold.co/400x260/111827/10b981?text=Mind+Map&font=montserrat" width="32%" alt="Mind map"/>
-</div>
-</details>
-
-<details>
-<summary><b>📅 Planner, Notes & Focus Timer</b></summary>
-<br/>
-<div align="center">
-<img src="https://placehold.co/400x260/111827/6366f1?text=Study+Planner&font=montserrat" width="32%" alt="Planner"/>
-<img src="https://placehold.co/400x260/111827/06b6d4?text=Notion-style+Editor&font=montserrat" width="32%" alt="Notes"/>
-<img src="https://placehold.co/400x260/111827/ec4899?text=Pomodoro+Focus&font=montserrat" width="32%" alt="Focus"/>
-</div>
-</details>
-
-<details>
-<summary><b>📱 Mobile / PWA</b></summary>
-<br/>
-<div align="center">
-<img src="https://placehold.co/260x520/111827/8b5cf6?text=Mobile+Home&font=montserrat" width="22%" alt="Mobile home"/>
-<img src="https://placehold.co/260x520/111827/06b6d4?text=Mobile+Chat&font=montserrat" width="22%" alt="Mobile chat"/>
-<img src="https://placehold.co/260x520/111827/3ecf8e?text=Mobile+Quiz&font=montserrat" width="22%" alt="Mobile quiz"/>
-</div>
-</details>
 
 ---
 
@@ -294,8 +232,7 @@ Ming contains comprehensive technical documentation organized into distinct doma
 | **🏛️ Architecture** | System topology, data flow, design system | [Architecture Overview](docs/architecture/ARCHITECTURE_OVERVIEW.md) • [System Architecture](docs/architecture/ARCHITECTURE.md) • [Design System](docs/architecture/DESIGN_SYSTEM.md) |
 | **🚀 Setup & Guides** | Environment configuration, auth, local run | [Demo Setup Guide](docs/setup/DEMO_SETUP_GUIDE.md) • [Google Auth Setup](docs/setup/SETUP_GOOGLE_AUTH.md) • [Contributing Guide](docs/development/CONTRIBUTING.md) |
 | **📊 Evaluation** | Benchmarks, compliance audits, metrics | [Evaluation Summary (N=147)](docs/evaluation/EVALUATION_SUMMARY.md) • [Compliance Audit](docs/evaluation/TRACK_D_FINAL_COMPLIANCE_AUDIT.md) • [Track D Audit](docs/evaluation/TRACK_D_AUDIT_REPORT.md) • [Educational Analysis](docs/evaluation/COLLEGE_AI_STUDY_COMPANION_ANALYSIS.md) |
-| **🗺️ Roadmap & Phases** | Historical phase completion reports | [Phase 10: Final Release](docs/roadmap/phases/PHASE_10_FINAL_RELEASE.md) • [Phase 9: Product Readiness](docs/roadmap/phases/PHASE_9_PRODUCT_READINESS.md) • [Phase 8: Evaluation](docs/roadmap/phases/PHASE_8_EVALUATION.md) • [All Phases (2-10)](docs/roadmap/phases/) |
-| **🎬 Demo & Pitch** | Live presentation and demo scripts | [Interactive Deck (HTML)](public/pitch.html) • [Pitch Deck (MD)](docs/pitch/PITCH_DECK.md) • [Demo Script](docs/demo/DEMO_SCRIPT.md) • [Sample Materials](docs/demo/sample_materials/) |
+| **🎬 Demo & Pitch** | Live presentation and demo scripts | [Interactive Deck (HTML)](public/pitch.html) • [Demo Script](docs/demo/DEMO_SCRIPT.md) • [Sample Materials](docs/demo/sample_materials/) |
 | **🛠️ Development** | Audits, conventions, repository health | [Repository Structure Audit](docs/development/REPOSITORY_STRUCTURE_AUDIT.md) • [Contributing Guide](docs/development/CONTRIBUTING.md) |
 
 ---
@@ -315,9 +252,7 @@ ming/
 │   ├── architecture/              # Architecture diagrams, data flow & design system
 │   ├── setup/                     # Setup, authentication, and quickstart guides
 │   ├── evaluation/                # Benchmark results, compliance & audit reports
-│   ├── roadmap/phases/            # Historical phase completion reports (Phases 2-10)
 │   ├── demo/                      # Demo script, timeline & sample study materials
-│   ├── pitch/                     # Pitch deck source markdown
 │   └── development/               # Architecture audit and contributing conventions
 │
 ├── src/                           # Frontend React 18 / TypeScript application

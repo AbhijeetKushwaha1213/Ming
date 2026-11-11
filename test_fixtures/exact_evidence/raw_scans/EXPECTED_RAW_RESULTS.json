@@ -1,0 +1,76 @@
+{
+  "raw_paragraph_scan.pdf": {
+    "fixture_label": "RAW: Clean Paragraph Scan",
+    "description": "Pure raster scan without embedded text or metadata.",
+    "expected_provider": "Gemini Multimodal Vision (gemini-2.5-flash)",
+    "layout_type": "SINGLE_COLUMN",
+    "independent_expected_regions": [
+      {
+        "description": "Black hole entropy paragraph",
+        "expected_x_min_percent": 5.0,
+        "expected_x_max_percent": 95.0,
+        "expected_y_min_percent": 12.0,
+        "expected_y_max_percent": 35.0,
+        "expected_width_min_percent": 70.0,
+        "expected_text_substring": "proportional to the area of its event horizon"
+      }
+    ],
+    "target_question": "What is black hole entropy proportional to according to Hawking radiation?",
+    "expected_answer_claim": "Black hole entropy is strictly proportional to the area of its event horizon divided by four Planck areas."
+  },
+  "raw_unequal_two_column_scan.pdf": {
+    "fixture_label": "RAW: Unequal Two-Column Scan",
+    "description": "Pure raster scan with unequal column widths (Col 1: 27.7%, Col 2: 52.3%). Proves column boundaries come from layout.",
+    "expected_provider": "Gemini Multimodal Vision (gemini-2.5-flash)",
+    "layout_type": "TWO_COLUMN",
+    "independent_expected_regions": [
+      {
+        "description": "Column 1 Narrow Text (Fundamentals)",
+        "column_index": 1,
+        "expected_x_min_percent": 4.0,
+        "expected_x_max_percent": 35.0,
+        "expected_width_max_percent": 32.0,
+        "expected_text_substring": "Degeneracy pressure arises from Pauli exclusion"
+      },
+      {
+        "description": "Column 2 Wide Text (Relativistic EoS)",
+        "column_index": 2,
+        "expected_x_min_percent": 38.0,
+        "expected_x_max_percent": 96.0,
+        "expected_width_min_percent": 40.0,
+        "expected_text_substring": "pressure scales with density to the four-thirds power"
+      }
+    ],
+    "gutter_boundary_rule": "Column 1 lines must never exceed x = 36%; Column 2 lines must never start below x = 38%. Strictly non-bridging.",
+    "target_question": "What principle causes degeneracy pressure in compact stellar remnants?",
+    "expected_answer_claim": "Degeneracy pressure arises from Pauli exclusion in compact stellar remnants."
+  },
+  "raw_equation_scan.pdf": {
+    "fixture_label": "RAW: Scanned Equation with Surrounding Prose",
+    "description": "Pure raster scan with prose and an equation block P = K * rho^(5/3).",
+    "expected_provider": "Gemini Multimodal Vision (gemini-2.5-flash)",
+    "independent_expected_regions": [
+      {
+        "description": "Equation Box",
+        "expected_type": "EQUATION",
+        "expected_x_min_percent": 15.0,
+        "expected_x_max_percent": 85.0,
+        "expected_y_min_percent": 20.0,
+        "expected_y_max_percent": 32.0,
+        "expected_notation_contains": "rho"
+      }
+    ],
+    "target_question": "What is the non-relativistic polytropic equation for degeneracy pressure?",
+    "expected_answer_claim": "The hydrostatic degeneracy pressure satisfies P = K * rho^(5/3)."
+  },
+  "raw_malformed_metadata_scan.pdf": {
+    "fixture_label": "MALFORMED: Embedded Out-of-Bounds Coordinates",
+    "description": "Scanned document with corrupt metadata (x=150% and x=-25%). Tests strict coordinate validation.",
+    "expected_provider": "PAGE_ONLY_FALLBACK (Honest Degradation)",
+    "expected_validation_result": "REJECTED",
+    "has_precise_coordinates": false,
+    "bounding_box": null,
+    "regions": null,
+    "expected_uncertainty_note_contains": "coordinate validation failed"
+  }
+}

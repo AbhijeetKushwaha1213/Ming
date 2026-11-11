@@ -101,10 +101,16 @@ def chunk_document_blocks(
         for p_num in sorted(pages_map.keys()):
             page_blocks = pages_map[p_num]
             for b in page_blocks:
-                # If diagram or figure, preserve as dedicated visual semantic chunk
-                if b.block_type in ("IMAGE", "DIAGRAM") or b.extraction_method == "VISION_DESCRIPTION":
+                # If equation, diagram, or figure, preserve as dedicated multimodal semantic chunk
+                if b.block_type in ("IMAGE", "DIAGRAM", "EQUATION") or b.extraction_method in ("VISION_DESCRIPTION", "EQUATION_EXTRACTION", "VECTOR_GRAPHICS"):
                     chunk_idx += 1
-                    cid = f"chk_{compute_chunk_hash(user_id, source_id, chunk_idx, b.text, f'p{p_num}_vis')}"
+                    cid = f"chk_{compute_chunk_hash(user_id, source_id, chunk_idx, b.text, f'p{p_num}_{b.block_type.lower()}')}"
+                    
+                    # Ensure equation chunks contain surrounding definitions and context so symbols are not isolated
+                    chunk_text = b.text
+                    if b.block_type == "EQUATION" and b.surrounding_context and b.surrounding_context not in b.text:
+                        chunk_text = f"{b.text}\nDefinitions & Context: {b.surrounding_context}"
+
                     prov = ProvenanceMetadata(
                         user_id=user_id,
                         tenant_type=tenant_type,
@@ -114,21 +120,33 @@ def chunk_document_blocks(
                         chunk_id=cid,
                         source_type=source_type,
                         page_number=p_num,
+                        page_label=b.page_label or str(p_num),
+                        physical_page_index=b.physical_page_index or p_num,
                         slide_number=None,
                         timestamp_start=None,
                         timestamp_end=None,
-                        extraction_method="VISION_DESCRIPTION",
+                        extraction_method=b.extraction_method,
                         content_hash=content_hash,
                         chunk_index=chunk_idx,
-                        section=f"Page {p_num} Visual Figure"
+                        section=f"Page {b.page_label or p_num} {b.block_type.title()}",
+                        bounding_box=b.bounding_box,
+                        regions=b.regions,
+                        has_precise_coordinates=b.has_precise_coordinates,
+                        localization_confidence=b.localization_confidence,
+                        evidence_type=b.evidence_type or ("EQUATION" if b.block_type == "EQUATION" else "DIAGRAM"),
+                        equation_crop_data=b.equation_crop_data,
+                        equation_notation=b.equation_notation,
+                        surrounding_context=b.surrounding_context,
+                        uncertainty_score=b.uncertainty_score,
+                        uncertainty_note=b.uncertainty_note
                     )
                     chunks.append(SemanticChunk(
                         chunk_id=cid,
                         chunk_index=chunk_idx,
-                        text=b.text,
-                        token_count=len(b.text.split()),
+                        text=chunk_text,
+                        token_count=len(chunk_text.split()),
                         provenance=prov,
-                        section=f"Page {p_num} Visual Figure"
+                        section=f"Page {b.page_label or p_num} {b.block_type.title()}"
                     ))
                     continue
 
@@ -153,13 +171,22 @@ def chunk_document_blocks(
                             chunk_id=cid,
                             source_type=source_type,
                             page_number=p_num,
+                            page_label=b.page_label or str(p_num),
+                            physical_page_index=b.physical_page_index or p_num,
                             slide_number=None,
                             timestamp_start=None,
                             timestamp_end=None,
                             extraction_method=b.extraction_method,
                             content_hash=content_hash,
                             chunk_index=chunk_idx,
-                            section=f"Page {p_num}"
+                            section=f"Page {b.page_label or p_num}",
+                            bounding_box=b.bounding_box,
+                            regions=b.regions,
+                            has_precise_coordinates=b.has_precise_coordinates,
+                            localization_confidence=b.localization_confidence,
+                            evidence_type=b.evidence_type or "TEXT_PASSAGE",
+                            uncertainty_score=b.uncertainty_score,
+                            uncertainty_note=b.uncertainty_note
                         )
                         chunks.append(SemanticChunk(
                             chunk_id=cid,
@@ -167,7 +194,7 @@ def chunk_document_blocks(
                             text=text_to_chunk,
                             token_count=len(text_to_chunk.split()),
                             provenance=prov,
-                            section=f"Page {p_num}"
+                            section=f"Page {b.page_label or p_num}"
                         ))
                         current_buf = [para]
                         current_len = len(para)
@@ -188,13 +215,22 @@ def chunk_document_blocks(
                         chunk_id=cid,
                         source_type=source_type,
                         page_number=p_num,
+                        page_label=b.page_label or str(p_num),
+                        physical_page_index=b.physical_page_index or p_num,
                         slide_number=None,
                         timestamp_start=None,
                         timestamp_end=None,
                         extraction_method=b.extraction_method,
                         content_hash=content_hash,
                         chunk_index=chunk_idx,
-                        section=f"Page {p_num}"
+                        section=f"Page {b.page_label or p_num}",
+                        bounding_box=b.bounding_box,
+                        regions=b.regions,
+                        has_precise_coordinates=b.has_precise_coordinates,
+                        localization_confidence=b.localization_confidence,
+                        evidence_type=b.evidence_type or "TEXT_PASSAGE",
+                        uncertainty_score=b.uncertainty_score,
+                        uncertainty_note=b.uncertainty_note
                     )
                     chunks.append(SemanticChunk(
                         chunk_id=cid,
@@ -202,7 +238,7 @@ def chunk_document_blocks(
                         text=text_to_chunk,
                         token_count=len(text_to_chunk.split()),
                         provenance=prov,
-                        section=f"Page {p_num}"
+                        section=f"Page {b.page_label or p_num}"
                     ))
 
     # 3. Video / Audio: timestamped semantic segments
@@ -210,6 +246,7 @@ def chunk_document_blocks(
         for b in blocks:
             chunk_idx += 1
             cid = f"chk_{compute_chunk_hash(user_id, source_id, chunk_idx, b.text, f't{b.timestamp_start}')}"
+            is_frame = b.block_type in ("VIDEO_FRAME", "VIDEO_FRAME_OCR", "FRAME") or b.evidence_type == "VIDEO_FRAME"
             prov = ProvenanceMetadata(
                 user_id=user_id,
                 tenant_type=tenant_type,
@@ -222,10 +259,14 @@ def chunk_document_blocks(
                 slide_number=None,
                 timestamp_start=b.timestamp_start,
                 timestamp_end=b.timestamp_end,
-                extraction_method="TRANSCRIPTION",
+                timing_precision=b.timing_precision or "SEGMENT",
+                extraction_method="VIDEO_FRAME_OCR" if is_frame else (b.extraction_method or "TRANSCRIPTION"),
                 content_hash=content_hash,
                 chunk_index=chunk_idx,
-                section=b.metadata.get("subtopic") if b.metadata else None
+                section=b.metadata.get("subtopic") if b.metadata else None,
+                evidence_type="VIDEO_FRAME" if is_frame else "TRANSCRIPT",
+                has_precise_coordinates=True if b.timestamp_start is not None else False,
+                uncertainty_note=b.uncertainty_note
             )
             chunks.append(SemanticChunk(
                 chunk_id=cid,

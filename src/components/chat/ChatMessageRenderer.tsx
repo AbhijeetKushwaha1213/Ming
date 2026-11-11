@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { Copy, Check, Terminal, Lightbulb, FileText, CheckCircle2 } from 'lucide-react';
 import { inlineMarkdownToHTML } from '@/components/notion/editor/serialization';
+import { Citation } from './Citation';
+import type { CitationData } from '@/types/resource';
 
-interface ChatMessageRendererProps {
+export interface ChatMessageRendererProps {
   content: string;
   isUser?: boolean;
+  citations?: CitationData[];
+  onOpenCitation?: (citation: CitationData) => void;
 }
 
 interface ParsedBlock {
@@ -13,6 +17,65 @@ interface ParsedBlock {
   items?: Array<{ number?: number; title?: string; text: string }>;
   language?: string;
   tableData?: { headers: string[]; rows: string[][] };
+}
+
+/**
+ * Renders inline text while converting citation markers [1], [2], [EVIDENCE_n]
+ * into interactive, clickable source-evidence buttons.
+ */
+function renderContentWithCitations(
+  rawText: string,
+  citations?: CitationData[],
+  onOpenCitation?: (cit: CitationData) => void
+): React.ReactNode {
+  if (!rawText) return null;
+  if (!citations || citations.length === 0) {
+    return <span dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(rawText) }} />;
+  }
+
+  const regex = /(\[(?:EVIDENCE_\d+|\d+|chk_[a-zA-Z0-9_\-]+)\])/g;
+  const parts = rawText.split(regex);
+  if (parts.length <= 1) {
+    return <span dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(rawText) }} />;
+  }
+
+  return (
+    <>
+      {parts.map((part, pIdx) => {
+        const match = part.match(/^\[(EVIDENCE_(\d+)|\d+|chk_[a-zA-Z0-9_\-]+)\]$/);
+        if (match) {
+          const token = match[1];
+          let matchedCit: CitationData | undefined;
+
+          // Check if numeric like "1" or "EVIDENCE_1"
+          const numMatch = token.match(/^(?:EVIDENCE_)?(\d+)$/);
+          if (numMatch) {
+            const num = parseInt(numMatch[1], 10);
+            matchedCit =
+              citations.find((c) => c.citation_number === num) ||
+              citations.find((c) => c.citation_id?.toLowerCase().includes(`evidence_${num}`)) ||
+              citations[num - 1];
+          } else {
+            matchedCit = citations.find((c) => c.chunk_id === token || c.citation_id === token);
+          }
+
+          if (matchedCit) {
+            return (
+              <Citation
+                key={`inline-cit-${pIdx}`}
+                citation={matchedCit}
+                inline={true}
+                directOpen={true}
+                onOpenSource={onOpenCitation}
+              />
+            );
+          }
+        }
+
+        return <span key={`inline-txt-${pIdx}`} dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(part) }} />;
+      })}
+    </>
+  );
 }
 
 /**
@@ -264,7 +327,12 @@ function CodeBlockView({ code, language }: { code: string; language?: string }) 
 /**
  * Rich message renderer for AI Chat
  */
-export const ChatMessageRenderer: React.FC<ChatMessageRendererProps> = ({ content, isUser }) => {
+export const ChatMessageRenderer: React.FC<ChatMessageRendererProps> = ({
+  content,
+  isUser,
+  citations,
+  onOpenCitation,
+}) => {
   if (!content) return null;
 
   // For user messages, simple clean styled text
@@ -281,10 +349,9 @@ export const ChatMessageRenderer: React.FC<ChatMessageRendererProps> = ({ conten
   // If no structured blocks parsed, fallback to single clean formatted paragraph
   if (blocks.length === 0) {
     return (
-      <p
-        className="text-xs sm:text-sm text-foreground/95 leading-relaxed break-words"
-        dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(content) }}
-      />
+      <p className="text-xs sm:text-sm text-foreground/95 leading-relaxed break-words">
+        {renderContentWithCitations(content, citations, onOpenCitation)}
+      </p>
     );
   }
 
@@ -342,15 +409,14 @@ export const ChatMessageRenderer: React.FC<ChatMessageRendererProps> = ({ conten
                           {item.text.split('\n').map((subLine, sIdx) => (
                             <div key={sIdx} className="flex items-start gap-1.5 text-muted-foreground pl-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0 mt-1.5" />
-                              <span
-                                className="flex-1"
-                                dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(subLine) }}
-                              />
+                              <span className="flex-1">
+                                {renderContentWithCitations(subLine, citations, onOpenCitation)}
+                              </span>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <span dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(item.text) }} />
+                        <span>{renderContentWithCitations(item.text, citations, onOpenCitation)}</span>
                       )}
                     </div>
                   </div>
@@ -370,7 +436,7 @@ export const ChatMessageRenderer: React.FC<ChatMessageRendererProps> = ({ conten
                           {item.title}:
                         </strong>
                       )}
-                      <span dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(item.text) }} />
+                      <span>{renderContentWithCitations(item.text, citations, onOpenCitation)}</span>
                     </div>
                   </div>
                 ))}
@@ -387,10 +453,9 @@ export const ChatMessageRenderer: React.FC<ChatMessageRendererProps> = ({ conten
                 className="border-l-3 border-primary/70 bg-primary/5 dark:bg-primary/10 px-3.5 py-2 rounded-r-xl my-2.5 text-xs sm:text-sm leading-relaxed text-foreground/90 flex items-start gap-2"
               >
                 <Lightbulb className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <span
-                  className="flex-1"
-                  dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(block.content || '') }}
-                />
+                <span className="flex-1">
+                  {renderContentWithCitations(block.content || '', citations, onOpenCitation)}
+                </span>
               </div>
             );
 
@@ -413,7 +478,7 @@ export const ChatMessageRenderer: React.FC<ChatMessageRendererProps> = ({ conten
                       <tr key={rIdx} className="hover:bg-muted/30 transition-colors">
                         {row.map((cell, cIdx) => (
                           <td key={cIdx} className="px-3 py-2 text-muted-foreground">
-                            <span dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(cell) }} />
+                            <span>{renderContentWithCitations(cell, citations, onOpenCitation)}</span>
                           </td>
                         ))}
                       </tr>
@@ -429,8 +494,9 @@ export const ChatMessageRenderer: React.FC<ChatMessageRendererProps> = ({ conten
               <p
                 key={idx}
                 className="text-xs sm:text-sm text-foreground/95 leading-relaxed break-words"
-                dangerouslySetInnerHTML={{ __html: inlineMarkdownToHTML(block.content || '') }}
-              />
+              >
+                {renderContentWithCitations(block.content || '', citations, onOpenCitation)}
+              </p>
             );
         }
       })}

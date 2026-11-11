@@ -135,10 +135,21 @@ export async function askGroundedTutor(params: {
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
+    const timer = setTimeout(() => controller.abort(), 25000);
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('ming_auth_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const testKey = localStorage.getItem('x-ming-test-key');
+    if (testKey) headers['x-ming-test-key'] = testKey;
+    const testUser = localStorage.getItem('x-ming-user-id');
+    if (testUser) headers['x-ming-user-id'] = testUser;
+    const devUser = localStorage.getItem('x-dev-user-id');
+    if (devUser) headers['x-dev-user-id'] = devUser;
+
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       signal: controller.signal,
       body: JSON.stringify({
         query: message,

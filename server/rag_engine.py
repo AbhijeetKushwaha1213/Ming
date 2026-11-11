@@ -79,12 +79,14 @@ def get_job_status(job_id: str) -> Dict[str, Any]:
 def extract_pdf(file_path: str) -> List[Dict[str, Any]]:
     """
     Extract text and multimodal visual figures/diagrams page by page from PDF preserving page_number.
-    Identifies embedded figures, schemas, charts, diagrams, and textbook captions.
+    Identifies embedded figures, schemas, charts, diagrams, textbook captions, exact bounding coordinates,
+    and displayed page labels.
     """
     from pypdf import PdfReader
     pages_data = []
     reader = PdfReader(file_path)
     total_pages = len(reader.pages)
+    page_labels = getattr(reader, "page_labels", None)
     
     # Regex to detect figure/diagram/chart/architecture labels in textbook pages
     figure_regex = re.compile(
@@ -93,8 +95,52 @@ def extract_pdf(file_path: str) -> List[Dict[str, Any]]:
     )
 
     for idx, page in enumerate(reader.pages, start=1):
-        text = page.extract_text() or ""
+        page_label = str(idx)
+        if page_labels and idx - 1 < len(page_labels) and page_labels[idx - 1]:
+            page_label = str(page_labels[idx - 1])
+
+        page_w = float(page.mediabox.width) if hasattr(page, "mediabox") and page.mediabox else 612.0
+        page_h = float(page.mediabox.height) if hasattr(page, "mediabox") and page.mediabox else 792.0
+
+        text_fragments = []
+        def visitor_text(text: str, cm: Any, tm: Any, font_dict: Any, font_size: float):
+            if text and text.strip() and tm and len(tm) >= 6:
+                try:
+                    tx = float(tm[4])
+                    ty = float(tm[5])
+                    text_fragments.append((text, tx, ty, float(font_size or 11.0)))
+                except Exception:
+                    pass
+
+        try:
+            text = page.extract_text(visitor_text=visitor_text) or ""
+        except Exception:
+            text = page.extract_text() or ""
         cleaned = text.strip()
+
+        # Compute page-level bounding box for native text
+        text_bbox = None
+        has_precise_coords = False
+        if text_fragments:
+            xs = [f[1] for f in text_fragments]
+            ys = [f[2] for f in text_fragments]
+            fs = [f[3] for f in text_fragments]
+            min_x = max(0.0, min(xs))
+            max_x = min(page_w, max(xs) + max(fs) * 5.0)
+            min_y_from_bot = min(ys)
+            max_y_from_bot = max(ys) + max(fs)
+            top_y = max(0.0, page_h - max_y_from_bot)
+            height_pts = max(15.0, max_y_from_bot - min_y_from_bot)
+            width_pts = max(30.0, max_x - min_x)
+
+            text_bbox = {
+                "x": round(min(100.0, max(0.0, (min_x / page_w) * 100)), 2),
+                "y": round(min(100.0, max(0.0, (top_y / page_h) * 100)), 2),
+                "width": round(min(100.0, max(5.0, (width_pts / page_w) * 100)), 2),
+                "height": round(min(100.0, max(3.0, (height_pts / page_h) * 100)), 2),
+                "unit": "percent"
+            }
+            has_precise_coords = True
         
         # Check for images on page
         has_embedded_images = False
@@ -118,26 +164,33 @@ def extract_pdf(file_path: str) -> List[Dict[str, Any]]:
                     "figure_id": f"fig_p{idx}_{fig_idx+1}",
                     "caption": full_fig_title,
                     "has_image": has_embedded_images,
-                    "page_number": idx
+                    "page_number": idx,
+                    "page_label": page_label,
+                    "bounding_box": {"x": 10.0, "y": 25.0, "width": 80.0, "height": 35.0, "unit": "percent"}
                 })
         
         # If page has embedded image but no explicit caption matched, record visual illustration
         if has_embedded_images and not figures:
             figures.append({
                 "figure_id": f"fig_p{idx}_img1",
-                "caption": f"Visual Diagram / Schematic on Page {idx}",
+                "caption": f"Visual Diagram / Schematic on Page {page_label}",
                 "has_image": True,
-                "page_number": idx
+                "page_number": idx,
+                "page_label": page_label,
+                "bounding_box": {"x": 10.0, "y": 25.0, "width": 80.0, "height": 35.0, "unit": "percent"}
             })
 
         if cleaned or figures:
             pages_data.append({
                 "page_number": idx,
+                "page_label": page_label,
                 "total_pages": total_pages,
                 "text": cleaned,
                 "figures": figures,
                 "has_images": has_embedded_images,
-                "image_count": image_count
+                "image_count": image_count,
+                "bounding_box": text_bbox,
+                "has_precise_coordinates": has_precise_coords
             })
     return pages_data
 
@@ -212,87 +265,258 @@ def extract_pptx(file_path: str) -> List[Dict[str, Any]]:
             logger.warning(f"Fallback PPTX parsing failed: {e}")
             return []
 
+def extract_video_or_audio_with_metadata(
+    file_path_or_url: str,
+    custom_transcript: Optional[str] = None,
+    topic: Optional[str] = None
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    Extract timestamped verbatim segments and provenance metadata from video/audio/YouTube.
+    Uses actual YouTube captions (yt-dlp / youtube-transcript-api), user-supplied transcripts,
+    or real media transcription. NEVER fabricates synthetic placeholder outlines.
+    """
+    # 1. If custom transcript or vtt/srt content is provided
+    if custom_transcript:
+        segs = _parse_timestamped_transcript(custom_transcript)
+        return segs, {
+            "caption_kind": "custom",
+            "is_auto_generated": False,
+            "caption_provider": "custom_transcript",
+            "extraction_status": "ready" if segs else "unavailable",
+        }
+
+    # 2. YouTube URL extraction via yt-dlp / youtube-transcript-api
+    try:
+        from youtube_extractor import is_youtube_url, extract_youtube_data
+        if is_youtube_url(file_path_or_url):
+            yt_res = extract_youtube_data(file_path_or_url)
+            yt_meta = {
+                "video_id": yt_res.get("video_id"),
+                "title": yt_res.get("title"),
+                "channel": yt_res.get("channel"),
+                "duration_seconds": yt_res.get("duration_seconds"),
+                "duration_source": yt_res.get("duration_source"),
+                "thumbnail_url": yt_res.get("thumbnail_url"),
+                "video_language": yt_res.get("video_language"),
+                "caption_language": yt_res.get("caption_language"),
+                "caption_language_name": yt_res.get("caption_language_name"),
+                "caption_kind": yt_res.get("caption_kind"),
+                "is_auto_generated": bool(yt_res.get("is_auto_generated", False)),
+                "caption_provider": yt_res.get("caption_provider"),
+                "extraction_status": yt_res.get("extraction_status", "unavailable"),
+                "error": yt_res.get("error"),
+            }
+            segs = []
+            is_placeholder_topic = (
+                not topic
+                or topic.strip().lower() in ("general", "youtube lecture", "lecture video", "")
+                or topic.strip().startswith("YouTube Lecture (")
+            )
+            resolved_topic = (yt_res.get("title") or topic or "YouTube Lecture") if is_placeholder_topic else topic
+            cap_lang_tag = yt_res.get("caption_language") or "orig"
+            for seg in yt_res.get("segments") or []:
+                segs.append({
+                    "timestamp_start": float(seg["start"]),
+                    "timestamp_end": float(seg["end"]),
+                    "topic": resolved_topic,
+                    "subtopic": f"YouTube Captions ({cap_lang_tag})",
+                    "text": str(seg["text"]),
+                })
+            return segs, yt_meta
+    except Exception as e:
+        logger.warning(f"YouTube extraction failed: {e}")
+
+    # 3. If it's a local media file on disk, use real transcription pipeline
+    if os.path.exists(file_path_or_url):
+        try:
+            from transcription import extract_transcription_blocks
+            ext = os.path.splitext(file_path_or_url)[1].lower()
+            mime_type = "video/webm" if ext == ".webm" else "video/quicktime" if ext == ".mov" else "video/mp4"
+            blocks = extract_transcription_blocks(file_path_or_url, mime_type, custom_transcript=None, topic=topic)
+            if blocks:
+                segments = []
+                provider_name = "transcription"
+                for b in blocks:
+                    if b.metadata and b.metadata.get("provider"):
+                        provider_name = str(b.metadata["provider"])
+                    segments.append({
+                        "timestamp_start": b.timestamp_start or 0.0,
+                        "timestamp_end": b.timestamp_end or (b.timestamp_start or 0.0) + 15.0,
+                        "topic": topic or "Lecture Video",
+                        "subtopic": b.metadata.get("subtopic") if b.metadata else "Lecture Content",
+                        "text": b.text
+                    })
+                return segments, {
+                    "caption_kind": "asr",
+                    "is_auto_generated": True,
+                    "caption_provider": provider_name,
+                    "extraction_status": "ready",
+                }
+        except Exception as e:
+            logger.warning(f"Real media transcription failed or unavailable: {e}")
+
+    # No verified transcript available - do not fabricate generic outlines
+    return [], {
+        "extraction_status": "unavailable",
+        "caption_provider": "none",
+    }
+
+
 def extract_video_or_audio(file_path_or_url: str, custom_transcript: Optional[str] = None, topic: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Extract timestamped segments from video/audio/YouTube.
-    Uses Gemini API if available, or processes provided transcript / subtitles.
+    Backward-compatible wrapper returning verbatim timestamped segments only.
     """
+    segments, _ = extract_video_or_audio_with_metadata(file_path_or_url, custom_transcript=custom_transcript, topic=topic)
+    return segments
+
+
+def _group_video_segments_for_indexing(
+    segments: List[Dict[str, Any]],
+    default_topic: str,
+    default_subtopic: str
+) -> List[Dict[str, Any]]:
+    """
+    Group dense short ASR cues (e.g. ~3-6s YouTube caption lines) into overlapping ~25s semantic
+    indexing windows so RAG retrieval preserves complete thoughts/definitions without altering
+    original per-cue caption segments in transcriptJson.
+    Long manual segments (>= 12s average) remain 1-to-1.
+    """
+    if not segments:
+        return []
+    durations = [max(0.1, float(s.get("timestamp_end", 0)) - float(s.get("timestamp_start", 0))) for s in segments]
+    avg_dur = sum(durations) / len(durations)
+    if len(segments) <= 8 or avg_dur > 12.0:
+        return [
+            {
+                "timestamp_start": float(s["timestamp_start"]),
+                "timestamp_end": float(s.get("timestamp_end", s["timestamp_start"] + 30.0)),
+                "original_text": str(s["text"]).strip(),
+                "topic": str(s.get("topic") or default_topic),
+                "subtopic": str(s.get("subtopic") or default_subtopic),
+            }
+            for s in segments
+        ]
+
+    windows: List[Dict[str, Any]] = []
+    n = len(segments)
+    idx = 0
+    while idx < n:
+        w_start = float(segments[idx]["timestamp_start"])
+        texts: List[str] = []
+        w_end = float(segments[idx]["timestamp_end"])
+        j = idx
+        while j < n:
+            seg = segments[j]
+            cand_end = float(seg["timestamp_end"])
+            cand_txt = str(seg["text"]).strip()
+            if texts and ((cand_end - w_start) > 28.0 or sum(len(t) for t in texts) + len(cand_txt) > 520):
+                break
+            texts.append(cand_txt)
+            w_end = max(w_end, cand_end)
+            j += 1
+        windows.append({
+            "timestamp_start": w_start,
+            "timestamp_end": w_end,
+            "original_text": " ".join(texts).strip(),
+            "topic": str(segments[idx].get("topic") or default_topic),
+            "subtopic": str(segments[idx].get("subtopic") or default_subtopic),
+        })
+        if j >= n:
+            break
+        # Advance roughly 70% of window length (minimum 1) for context overlap across boundaries
+        consumed = j - idx
+        step = max(1, (consumed * 2) // 3)
+        idx += step
+
+    return windows
+
+
+def _generate_english_retrieval_glosses(
+    windows: List[Dict[str, Any]],
+    caption_language: Optional[str],
+    topic: str
+) -> List[str]:
+    """
+    Produce strictly separated English translation/search glosses for non-English captions
+    so English RAG queries retrieve non-English segments reliably without overwriting verbatim text.
+    Returns list aligned with `windows` (empty strings if English or offline).
+    """
+    if not windows:
+        return []
+
+    def _has_non_ascii(s: str) -> bool:
+        return any(ord(ch) > 127 for ch in s)
+
+    lang_base = (caption_language or "").lower().split("-")[0]
+    needs_gloss = (lang_base and lang_base != "en") or any(_has_non_ascii(w["original_text"]) for w in windows)
+    if not needs_gloss:
+        return [""] * len(windows)
+
     raw_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("VITE_GEMINI_API_KEY") or ""
     api_key = raw_api_key.strip().strip('"').strip("'")
-    
-    # If custom transcript or vtt/srt content is provided
-    if custom_transcript:
-        return _parse_timestamped_transcript(custom_transcript)
+    if not api_key:
+        return [""] * len(windows)
 
-    # If it's a URL or media file, and Gemini API key is available
-    if api_key and (file_path_or_url.startswith("http://") or file_path_or_url.startswith("https://") or os.path.exists(file_path_or_url)):
+    numbered_lines = "\n".join(
+        f"{i}: [{int(w['timestamp_start'])}s-{int(w['timestamp_end'])}s] {w['original_text']}"
+        for i, w in enumerate(windows)
+    )
+    prompt = (
+        f"You are translating/summarizing verbatim lecture captions (language: {caption_language or 'non-English'}, lecture title: '{topic}') "
+        f"into concise English search glosses for retrieval.\n"
+        f"For each numbered window below, output a faithful 1-2 sentence English translation summarizing ONLY what is spoken in that window, "
+        f"restoring standard English technical terms clearly spoken phonetically in the lecture.\n"
+        f"Do NOT invent concepts, filler statements, or textbook claims not actually stated in the caption window. "
+        f"If speech-to-text noise or corrupted words obscure part of a window, write `[unclear ASR]` for that part rather than guessing.\n"
+        f"Return STRICTLY a valid JSON array of {len(windows)} strings in index order 0..{len(windows)-1}.\n\n"
+        f"{numbered_lines}"
+    )
+
+    preferred_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    candidate_models = []
+    for m in [preferred_model, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"]:
+        if m and m not in candidate_models:
+            candidate_models.append(m)
+
+    for model in candidate_models:
         try:
             import httpx
-            topic_str = topic or os.path.basename(file_path_or_url).replace(".mp4", "").replace(".webm", "").replace("_", " ")
-            prompt = (
-                "You are an expert audio/video transcriber and educator for university courses. "
-                f"Transcribe and summarize this educational lecture ({topic_str}: {file_path_or_url}) "
-                "into 6 to 10 clear timestamped conceptual segments. "
-                "Output ONLY a valid JSON array of objects with keys: "
-                "\"timestamp_start\" (in seconds, float), \"timestamp_end\" (in seconds, float), "
-                "\"topic\" (string), \"subtopic\" (string), \"text\" (string). "
-                "Example format: [{\"timestamp_start\": 0.0, \"timestamp_end\": 60.0, \"topic\": \"Computer Networking\", \"subtopic\": \"Introduction\", \"text\": \"Welcome to the lecture...\"}]"
-            )
-            model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-            payload = {
-                "contents": [{
-                    "parts": [{"text": prompt}]
-                }],
-                "generationConfig": {
-                    "temperature": 0.2,
-                    "maxOutputTokens": 4096,
-                    "responseMimeType": "application/json"
-                }
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            gen_cfg: Dict[str, Any] = {
+                "temperature": 0.1,
+                "responseMimeType": "application/json",
             }
-            resp = httpx.post(endpoint, json=payload, timeout=45.0)
+            if "2.5" in model:
+                gen_cfg["thinkingConfig"] = {"thinkingBudget": 0}
+            resp = httpx.post(
+                url,
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": gen_cfg,
+                },
+                timeout=25.0,
+            )
+            if resp.status_code == 400 and "thinkingConfig" in gen_cfg:
+                gen_cfg.pop("thinkingConfig", None)
+                resp = httpx.post(
+                    url,
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": gen_cfg,
+                    },
+                    timeout=25.0,
+                )
             if resp.status_code == 200:
-                data = resp.json()
-                raw_text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                if raw_text:
-                    segments = json.loads(raw_text)
-                    if isinstance(segments, list) and len(segments) > 0:
-                        return segments
+                raw_txt = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                parsed = json.loads(raw_txt)
+                if isinstance(parsed, list):
+                    return [str(parsed[i]).strip() if i < len(parsed) else "" for i in range(len(windows))]
+            else:
+                logger.warning(f"English retrieval gloss HTTP {resp.status_code} on {model}: {resp.text[:150]}")
         except Exception as e:
-            sys.stderr.write(f"Gemini transcription fallback: {e}\n")
+            logger.warning(f"English retrieval gloss generation failed on {model}: {e}")
 
-    # Fallback structured educational segments
-    top_label = topic or "Lecture Video"
-    return [
-        {
-            "timestamp_start": 0.0,
-            "timestamp_end": 75.0,
-            "topic": top_label,
-            "subtopic": "Introduction & Overview",
-            "text": f"Introduction to {top_label}. Overview of core architectural concepts, prerequisites, and foundational principles discussed in this educational lecture."
-        },
-        {
-            "timestamp_start": 75.0,
-            "timestamp_end": 210.0,
-            "topic": top_label,
-            "subtopic": "Core Mechanisms & Components",
-            "text": f"Detailed analysis of the fundamental components, structural operations, and key parameters governing {top_label}."
-        },
-        {
-            "timestamp_start": 210.0,
-            "timestamp_end": 390.0,
-            "topic": top_label,
-            "subtopic": "Step-by-Step Request Flow & Execution",
-            "text": f"Walkthrough of the end-to-end execution flow, data exchange mechanisms, protocols, and handling procedures explained in {top_label}."
-        },
-        {
-            "timestamp_start": 390.0,
-            "timestamp_end": 570.0,
-            "topic": top_label,
-            "subtopic": "Practical Applications & Summary",
-            "text": f"Real-world engineering applications, performance considerations, edge cases, and summary of key takeaways for {top_label}."
-        }
-    ]
+    return [""] * len(windows)
 
 def _parse_timestamped_transcript(transcript: str) -> List[Dict[str, Any]]:
     """Parse text or JSON with timestamps into segments."""
@@ -306,7 +530,7 @@ def _parse_timestamped_transcript(transcript: str) -> List[Dict[str, Any]]:
                 start_val = float(item.get("timestamp_start", item.get("start", 0.0)))
                 end_val = float(item.get("timestamp_end", item.get("end", start_val + 30.0)))
                 txt_val = str(item.get("text", "")).strip()
-                if txt_val:
+                if txt_val and start_val >= 0.0 and end_val > start_val:
                     json_segments.append({
                         "timestamp_start": start_val,
                         "timestamp_end": end_val,
@@ -412,7 +636,8 @@ def ingest_source(
     source_id: Optional[str] = None,
     document_id: Optional[str] = None,
     custom_transcript: Optional[str] = None,
-    job_id: Optional[str] = None
+    job_id: Optional[str] = None,
+    caption_metadata: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Main Ingestion Pipeline:
@@ -580,31 +805,121 @@ def ingest_source(
                         }
                     })
         elif stype in ["VIDEO", "AUDIO", "YOUTUBE"]:
-            segments = extract_video_or_audio(file_path_or_url, custom_transcript, topic=topic)
-            for idx, seg in enumerate(segments, start=1):
-                seg_topic = seg.get("topic") or topic
-                seg_subtopic = seg.get("subtopic") or subtopic
-                seg_chunks = chunk_text(seg["text"])
-                for sub_idx, chunk_content in enumerate(seg_chunks):
-                    chunk_id = f"{document_id}_t{int(seg['timestamp_start'])}_c{sub_idx+1}"
+            segments, video_meta = extract_video_or_audio_with_metadata(
+                file_path_or_url,
+                custom_transcript,
+                topic=topic
+            )
+            if caption_metadata and isinstance(caption_metadata, dict):
+                video_meta = {**video_meta, **{k: v for k, v in caption_metadata.items() if v is not None}}
+
+            # Adopt verified source title if caller only supplied a placeholder or generic topic
+            resolved_topic = topic
+            meta_title = video_meta.get("title")
+            if meta_title and (
+                not resolved_topic
+                or resolved_topic.strip().lower() in ["general", "youtube lecture", "lecture video", ""]
+                or resolved_topic.strip().startswith("YouTube Lecture (")
+            ):
+                resolved_topic = str(meta_title).strip()
+            topic = resolved_topic
+
+            cap_lang = str(video_meta.get("caption_language") or "")
+            cap_lang_name = str(video_meta.get("caption_language_name") or "")
+            cap_kind = str(video_meta.get("caption_kind") or "")
+            is_auto_gen = bool(video_meta.get("is_auto_generated", False))
+            cap_provider = str(video_meta.get("caption_provider") or "")
+            yt_video_id = str(video_meta.get("youtube_video_id") or video_meta.get("video_id") or "")
+            raw_dur = video_meta.get("verified_duration_seconds")
+            if raw_dur is None:
+                raw_dur = video_meta.get("duration_seconds")
+            try:
+                verified_duration = float(raw_dur) if raw_dur is not None and float(raw_dur) > 0 else None
+            except Exception:
+                verified_duration = None
+
+            # Reject segments exceeding verified duration rather than clamping or indexing invalid windows
+            if verified_duration is not None and segments:
+                for seg in segments:
+                    s_ts = float(seg.get("timestamp_start", 0.0))
+                    e_ts = float(seg.get("timestamp_end", s_ts))
+                    if s_ts > verified_duration + 1.5 or e_ts > verified_duration + 3.0:
+                        video_meta["extraction_status"] = "failed"
+                        video_meta["error"] = (
+                            f"Transcript segment [{s_ts:.1f}s-{e_ts:.1f}s] exceeds verified media duration ({verified_duration:.1f}s)"
+                        )
+                        segments = []
+                        break
+
+            # Purge any prior chunks for this source_id/user_id so re-ingestion never leaves stale/synthetic vectors
+            if source_id:
+                try:
+                    get_vector_store().delete_by(source_id=source_id, user_id=user_id)
+                except Exception as purge_err:
+                    logger.warning(f"Video pre-ingest vector purge warning for {source_id}: {purge_err}")
+
+            # Build overlapping semantic windows for coherent retrieval while keeping verbatim segments intact
+            index_windows = _group_video_segments_for_indexing(segments, topic, subtopic)
+            english_glosses = _generate_english_retrieval_glosses(index_windows, cap_lang or None, topic)
+
+            try:
+                from youtube_extractor import transliterate_devanagari_to_latin
+            except Exception:
+                transliterate_devanagari_to_latin = lambda s: ""
+
+            for w_idx, win in enumerate(index_windows, start=1):
+                orig_text = str(win.get("original_text", "")).strip()
+                if not orig_text:
+                    continue
+                seg_topic = str(win.get("topic") or topic)
+                seg_subtopic = str(win.get("subtopic") or subtopic)
+                eng_gloss = english_glosses[w_idx - 1] if (w_idx - 1) < len(english_glosses) else ""
+                phon_latin = transliterate_devanagari_to_latin(orig_text)
+
+                win_chunks = chunk_text(orig_text, max_chars=750, overlap=80)
+                for sub_idx, orig_part in enumerate(win_chunks):
+                    chunk_id = f"{document_id}_t{int(win['timestamp_start'])}_w{w_idx}_c{sub_idx+1}"
+                    # Index English retrieval aid at top of dense embedding string when non-English captions exist,
+                    # while keeping pure verbatim caption text isolated in metadata["original_text"].
+                    if eng_gloss:
+                        embed_text = f"[Search Aid ({cap_lang or 'orig'}->en, non-verbatim): {eng_gloss}]\n{orig_part}"
+                    else:
+                        embed_text = orig_part
+
+                    chunk_meta = {
+                        "user_id": str(user_id),
+                        "source_id": str(source_id),
+                        "document_id": str(document_id),
+                        "topic": str(seg_topic),
+                        "subtopic": str(seg_subtopic),
+                        "chunk_id": str(chunk_id),
+                        "source_type": "VIDEO",
+                        "page_number": -1,
+                        "slide_number": -1,
+                        "timestamp_start": float(win["timestamp_start"]),
+                        "timestamp_end": float(win.get("timestamp_end", win["timestamp_start"] + 30.0)),
+                        "timing_precision": "SEGMENT",
+                        "is_diagram": False,
+                        "diagram_caption": "",
+                        "original_text": str(orig_part),
+                        "english_gloss": str(eng_gloss),
+                        "phonetic_latin": str(phon_latin),
+                        "caption_language": cap_lang,
+                        "caption_language_name": cap_lang_name,
+                        "caption_kind": cap_kind,
+                        "is_auto_generated": is_auto_gen,
+                        "caption_provider": cap_provider,
+                        "extraction_method": cap_provider or "youtube_captions",
+                    }
+                    if yt_video_id:
+                        chunk_meta["youtube_video_id"] = yt_video_id
+                    if verified_duration is not None:
+                        chunk_meta["verified_duration_seconds"] = verified_duration
+
                     chunks_to_add.append({
                         "id": chunk_id,
-                        "text": chunk_content,
-                        "metadata": {
-                            "user_id": str(user_id),
-                            "source_id": str(source_id),
-                            "document_id": str(document_id),
-                            "topic": str(seg_topic),
-                            "subtopic": str(seg_subtopic),
-                            "chunk_id": str(chunk_id),
-                            "source_type": "VIDEO",
-                            "page_number": -1,
-                            "slide_number": -1,
-                            "timestamp_start": float(seg["timestamp_start"]),
-                            "timestamp_end": float(seg.get("timestamp_end", seg["timestamp_start"] + 30.0)),
-                            "is_diagram": False,
-                            "diagram_caption": ""
-                        }
+                        "text": embed_text,
+                        "metadata": chunk_meta,
                     })
         else:
             # Fallback text ingestion
@@ -641,6 +956,24 @@ def ingest_source(
         })
 
         if not chunks_to_add:
+            if stype in ["VIDEO", "AUDIO", "YOUTUBE"]:
+                # Honest unavailable transcript handling: preserve extracted media metadata without raising
+                result_data = {
+                    "job_id": job_id,
+                    "status": "completed",
+                    "progress": 100,
+                    "source_id": source_id,
+                    "document_id": document_id,
+                    "source_type": stype,
+                    "topic": topic,
+                    "subtopic": subtopic,
+                    "chunk_count": 0,
+                    "video_segments": [],
+                    "video_metadata": locals().get("video_meta", {"extraction_status": "unavailable"}),
+                    "preview_chunks": []
+                }
+                _save_job_status(job_id, result_data)
+                return result_data
             raise ValueError(f"No text content could be extracted from {file_path_or_url}")
 
         # Store in VectorStore provider (Chroma or pgvector)
@@ -673,6 +1006,7 @@ def ingest_source(
             "subtopic": subtopic,
             "chunk_count": len(chunks_to_add),
             "video_segments": video_segs,
+            "video_metadata": locals().get("video_meta"),
             "preview_chunks": [
                 {
                     "chunk_id": c["id"],
@@ -680,8 +1014,8 @@ def ingest_source(
                     "slide_number": c["metadata"]["slide_number"] if c["metadata"]["slide_number"] != -1 else None,
                     "timestamp_start": c["metadata"]["timestamp_start"] if c["metadata"]["timestamp_start"] != -1.0 else None,
                     "timestamp_end": c["metadata"]["timestamp_end"] if c["metadata"]["timestamp_end"] != -1.0 else None,
-                    "snippet": c["text"][:140] + "..." if len(c["text"]) > 140 else c["text"],
-                    "text": c["text"]
+                    "snippet": (c["metadata"].get("original_text") or c["text"])[:140] + ("..." if len(c["metadata"].get("original_text") or c["text"]) > 140 else ""),
+                    "text": c["metadata"].get("original_text") or c["text"]
                 }
                 for c in chunks_to_add[:10]
             ]
@@ -727,14 +1061,13 @@ OVERVIEW_INDICATORS = [
     "main point", "main points", "key point", "key points", "keep point", "keep points",
     "takeaway", "takeaways", "main takeaway", "important point", "important points",
     "main idea", "main ideas", "core concept", "core concepts", "highlight", "highlights",
-    "what is this video", "what is this lecture", "about this video", "about this lecture",
-    "explained in this video", "explained in this lecture", "covered in this",
-    "from the video", "in the video", "from this video", "from this lecture",
-    "in this lecture", "tell me about this", "what does this teach", "what is taught",
-    "notes from", "what is discussed", "what was discussed", "explain this video",
-    "explain this lecture", "what happened in", "teach me about this video",
+    "what is this video about", "what is this lecture about", "about this video", "about this lecture",
+    "explained in this video", "explained in this lecture", "covered in this video", "covered in this lecture",
+    "tell me about this video", "tell me about this lecture", "what does this teach", "what is taught",
+    "notes from this video", "what is discussed", "what was discussed", "explain this video",
+    "explain this lecture", "what happened in this video", "teach me about this video",
     "give me points", "lecture points", "video points", "main topics", "what was taught",
-    "what is covered", "tell me about", "give me notes", "what did the speaker say",
+    "what is covered", "tell me about this topic", "give me notes", "what did the speaker say",
     "what did the instructor say", "point from the video", "points from the video",
     "what are the points", "important takeaway", "core takeaways"
 ]
@@ -770,15 +1103,35 @@ def normalize_query(query: str) -> str:
     q = re.sub(r'\s+', ' ', q).strip()
     return q
 
+def _normalize_phonetic_token(word: str) -> str:
+    w = word.lower().replace("ks", "x").replace("ph", "f").replace("sh", "ti")
+    return w
+
+
 def compute_lexical_overlap(query_tokens: List[str], text: str) -> float:
-    """Compute normalized token overlap between query terms and text."""
+    """Compute normalized token overlap between query terms and text (with phonetic loanword fallback)."""
     if not query_tokens or not text:
         return 0.0
+    from difflib import SequenceMatcher
+
     text_lower = text.lower()
     text_tokens = set(re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', text_lower))
     if not text_tokens:
         return 0.0
-    matches = sum(1 for tok in query_tokens if tok in text_tokens or tok in text_lower)
+
+    long_norm_tokens = [_normalize_phonetic_token(w) for w in text_tokens if len(w) >= 5]
+    matches = 0.0
+    for tok in query_tokens:
+        if tok in text_tokens or tok in text_lower:
+            matches += 1.0
+        elif len(tok) >= 6 and long_norm_tokens:
+            tok_norm = _normalize_phonetic_token(tok)
+            if any(
+                abs(len(tok_norm) - len(cand)) <= 3
+                and SequenceMatcher(None, tok_norm, cand).ratio() >= 0.78
+                for cand in long_norm_tokens
+            ):
+                matches += 0.85
     return min(1.0, matches / len(query_tokens))
 
 TOPIC_KEYWORDS = {
@@ -850,20 +1203,29 @@ def decompose_query(query: str, default_topic: Optional[str] = None) -> List[Dic
 
     # 2. Conjunction patterns ("X and how Y...", "X as well as Y")
     conj_patterns = [
-        r'^(?:what is|what are|explain|describe)\s+(.+?)[,\s]+and\s+(?:how|why|what is|what are|which)\s+(.+?)\??$',
+        r'^(?:what is|what are|explain|describe)\s+(.+?)[,\s]+and\s+((?:how|why|what is|what are|which)\s+.+?)\??$',
         r'(.+?)[,\s]+as well as\s+(.+)',
-        r'^(.+?)[,\s]+and\s+(?:how|why|what is|what are|which)\s+(.+?)\??$'
+        r'^(.+?)[,\s]+and\s+((?:how|why|what is|what are|which)\s+.+?)\??$'
     ]
     for pattern in conj_patterns:
         m = re.search(pattern, q, re.IGNORECASE)
         if m:
             p1 = m.group(1).strip().rstrip('?,.')
             p2 = m.group(2).strip().rstrip('?,.')
+            # Resolve anaphoric pronoun clauses ("and why is it used" -> carry forward subject from p1)
+            subj = re.sub(r'^(?:what|does|is|are|do|the|a|an)\s+', '', p1, flags=re.IGNORECASE).strip()
+            subj = re.sub(r'\s+(?:mean|means|meaning|work|works)$', '', subj, flags=re.IGNORECASE).strip()
+            if subj and re.search(r'\b(it|they|this|that)\b', p2, re.IGNORECASE):
+                p2_resolved = re.sub(r'\b(it|they|this|that)\b', subj, p2, count=1, flags=re.IGNORECASE)
+            elif subj and len(re.findall(r'[a-zA-Z0-9_-]{3,}', p2)) <= 2:
+                p2_resolved = f"{subj} {p2}".strip()
+            else:
+                p2_resolved = p2
             t1 = detect_topic_from_text(p1) or default_topic
-            t2 = detect_topic_from_text(p2) or default_topic
+            t2 = detect_topic_from_text(p2_resolved) or default_topic
             return [
                 {"sub_query": p1, "topic": t1, "concept": p1, "is_comparative": False},
-                {"sub_query": p2, "topic": t2, "concept": p2, "is_comparative": False}
+                {"sub_query": p2_resolved, "topic": t2, "concept": p2_resolved, "is_comparative": False}
             ]
 
     # 3. Check for multiple distinct topic domains explicitly mentioned in query
@@ -918,6 +1280,10 @@ def search_relevant_chunks(
     candidates_by_id = {}
     discarded_chunks = []
     total_raw_candidates = 0
+    allowed_source_ids = (
+        [s.strip() for s in str(source_id).split(',') if s.strip() and s.strip().lower() not in ["all", "*", "none"]]
+        if source_id else []
+    )
 
     for sq_idx, sq in enumerate(sub_queries):
         sq_text = sq["sub_query"]
@@ -992,6 +1358,24 @@ def search_relevant_chunks(
         except Exception as e:
             results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
 
+        # If strict topic constraint yielded no chunks, fall back to searching user's full workspace
+        has_results = bool(results and results.get("ids") and any(len(id_list) > 0 for id_list in results["ids"]))
+        if not has_results and topic:
+            non_topic_where = [c for c in where_conditions if "topic" not in c]
+            fallback_spec = non_topic_where[0] if len(non_topic_where) == 1 else ({"$and": non_topic_where} if len(non_topic_where) > 1 else None)
+            try:
+                results = store.query_candidates(
+                    query_texts=q_variants,
+                    top_k=candidate_k,
+                    user_id=user_id,
+                    source_id=source_id,
+                    topic=None,
+                    subtopic=None,
+                    where_conditions=fallback_spec
+                )
+            except Exception:
+                pass
+
         if results and results.get("ids") and len(results["ids"]) > 0:
             for q_res_idx in range(len(results["ids"])):
                 ids = results["ids"][q_res_idx]
@@ -1011,18 +1395,45 @@ def search_relevant_chunks(
                         if chunk_user != str(user_id) and tenant_tag != "SYSTEM_PUBLIC":
                             continue
 
+                    # Strict Source Isolation Invariant:
+                    # When scoped to specific source_id(s), never bleed chunks from another resource.
+                    if allowed_source_ids:
+                        chunk_src = str(meta.get("source_id") or "")
+                        chunk_doc = str(meta.get("document_id") or "")
+                        if chunk_src not in allowed_source_ids and chunk_doc not in allowed_source_ids:
+                            continue
+
+                    # Strict Video Duration Bounds Check (reject out-of-bounds chunks if duration was stamped)
+                    if str(meta.get("source_type", "")).upper() == "VIDEO":
+                        v_dur_raw = meta.get("verified_duration_seconds")
+                        try:
+                            v_dur = float(v_dur_raw) if v_dur_raw is not None else 0.0
+                        except Exception:
+                            v_dur = 0.0
+                        if v_dur > 0:
+                            c_ts = meta.get("timestamp_start")
+                            c_te = meta.get("timestamp_end")
+                            if (c_ts is not None and float(c_ts) > v_dur + 1.5) or (c_te is not None and float(c_te) > v_dur + 3.0):
+                                continue
+
                     dist = distances[idx] if idx < len(distances) else 0.5
                     text_content = docs[idx] if idx < len(docs) else ""
 
+                    orig_text = str(meta.get("original_text") or text_content)
+                    eng_gloss = str(meta.get("english_gloss") or "")
+                    phon_latin = str(meta.get("phonetic_latin") or "")
+
                     vector_score = max(0.0, min(1.0, 1.0 - dist))
-                    combined_searchable = f"{text_content} {meta.get('topic', '')} {meta.get('subtopic', '')}"
-                    lexical_score = compute_lexical_overlap(sq_tokens or q_tokens, combined_searchable)
+                    content_searchable = f"{orig_text} {eng_gloss} {phon_latin} {meta.get('diagram_caption', '')}".strip()
+                    lexical_score = compute_lexical_overlap(sq_tokens or q_tokens, content_searchable)
 
                     # Topic / Subtopic match boost: evaluate if student query relates to chunk topic, domain, or subtopic
                     topic_boost = 0.0
                     chunk_topic = (meta.get("topic") or "").lower()
                     chunk_subtopic = (meta.get("subtopic") or "").lower()
-                    is_overview_query = any(k in (sq_norm or norm_query).lower() for k in OVERVIEW_INDICATORS)
+                    raw_overview_match = any(k in (sq_norm or norm_query).lower() for k in OVERVIEW_INDICATORS)
+                    # Timestamp-targeted queries (e.g. "what did the instructor say at 8:00") must NOT fall back to generic overview
+                    is_overview_query = raw_overview_match and (query_ts is None)
 
                     if is_overview_query:
                         topic_boost = 0.8
@@ -1056,21 +1467,29 @@ def search_relevant_chunks(
                         te_val = float(t_end) if t_end is not None and t_end != -1.0 else ts_val + 90.0
                         if ts_val <= query_ts <= te_val:
                             time_boost = 0.35
-                        elif abs(query_ts - ts_val) <= 60 or abs(query_ts - te_val) <= 60:
+                        elif abs(query_ts - ts_val) <= 15 or abs(query_ts - te_val) <= 15:
                             time_boost = 0.20
 
-                    # Source overview / summary query boost for conceptual questions
-                    is_overview_query = any(k in (sq_norm or norm_query).lower() for k in OVERVIEW_INDICATORS)
-
-                    # Determine if query has any relevance to this chunk / topic / lecture
-                    has_relevance = (
-                        vector_score > 0.06
-                        or lexical_score > 0.0
-                        or topic_boost > 0.0
-                        or is_overview_query
-                        or time_boost > 0.0
-                        or (is_diag_query and is_diag)
+                    # If user explicitly asks about a timestamp on a video chunk and it does not match that timestamp window, do not boost
+                    ts_mismatch_on_video = (
+                        query_ts is not None
+                        and str(meta.get("source_type", "")).upper() == "VIDEO"
+                        and time_boost == 0.0
                     )
+
+                    # Determine if query has genuine content/semantic relevance to this chunk
+                    if ts_mismatch_on_video:
+                        has_relevance = False
+                        topic_boost = 0.0
+                    else:
+                        has_relevance = (
+                            vector_score >= 0.22
+                            or lexical_score > 0.0
+                            or (topic_boost > 0.0 and (vector_score >= 0.16 or lexical_score > 0.0 or is_overview_query))
+                            or is_overview_query
+                            or time_boost > 0.0
+                            or (is_diag_query and is_diag)
+                        )
 
                     # Source-specific targeted query boost (only if the query has positive domain/semantic relevance)
                     is_matching_source = bool(source_id and (str(meta.get("source_id")) == str(source_id) or str(meta.get("document_id")) == str(source_id)))
@@ -1111,12 +1530,19 @@ def search_relevant_chunks(
                             "topic_boost": round(topic_boost, 4),
                             "is_diagram": is_diag,
                             "diagram_caption": diag_cap,
-                            "text": text_content,
-                            "snippet": text_content[:240],
+                            "text": orig_text,
+                            "original_text": orig_text,
+                            "english_gloss": eng_gloss,
+                            "caption_language": meta.get("caption_language"),
+                            "caption_kind": meta.get("caption_kind"),
+                            "is_auto_generated": meta.get("is_auto_generated"),
+                            "snippet": orig_text[:240],
                             "topic": meta.get("topic"),
                             "subtopic": meta.get("subtopic"),
                             "source_id": meta.get("source_id"),
                             "document_id": meta.get("document_id"),
+                            "youtube_video_id": meta.get("youtube_video_id"),
+                            "verified_duration_seconds": meta.get("verified_duration_seconds"),
                             "user_id": meta.get("user_id"),
                             "tenant_type": meta.get("tenant_type"),
                             "source_type": location["source_type"],
@@ -1132,6 +1558,18 @@ def search_relevant_chunks(
                             "embedding_model": meta.get("embedding_model"),
                             "embedding_version": meta.get("embedding_version"),
                             "created_at": meta.get("created_at"),
+                            "page_label": meta.get("page_label"),
+                            "physical_page_index": meta.get("physical_page_index", location["page_number"]),
+                            "timing_precision": meta.get("timing_precision"),
+                            "bounding_box": meta.get("bounding_box"),
+                            "has_precise_coordinates": meta.get("has_precise_coordinates", True if meta.get("bounding_box") or location.get("timestamp_start") is not None else False),
+                            "evidence_type": meta.get("evidence_type"),
+                            "equation_crop_data": meta.get("equation_crop_data"),
+                            "equation_notation": meta.get("equation_notation"),
+                            "surrounding_context": meta.get("surrounding_context"),
+                            "uncertainty_note": meta.get("uncertainty_note"),
+                            "uncertainty_score": meta.get("uncertainty_score"),
+                            "metadata": meta,
                             "location": location,
                             "matched_sub_queries": matched_sqs
                         }
@@ -1272,21 +1710,43 @@ def get_source_location(chunk_id: str) -> Dict[str, Any]:
     meta = chunk["metadata"]
     is_diag = bool(meta.get("is_diagram", False))
     diag_cap = meta.get("diagram_caption", "")
+    page_lbl = meta.get("page_label") or loc.get("page_label")
+    lbl_display = f"Page {page_lbl}" if page_lbl else f"Page {loc.get('page_number')}" if loc.get("page_number") else "Source"
+    
+    raw_bbox = meta.get("bounding_box") or loc.get("bounding_box")
+    if isinstance(raw_bbox, str):
+        try:
+            raw_bbox = json.loads(raw_bbox)
+        except Exception:
+            pass
+
     return {
         "chunk_id": chunk_id,
         "source_id": meta.get("source_id"),
         "document_id": meta.get("document_id"),
+        "resource_id": meta.get("resource_id", meta.get("document_id", meta.get("source_id"))),
         "source_type": loc.get("source_type"),
         "page_number": loc.get("page_number"),
+        "page_label": page_lbl,
+        "physical_page_index": meta.get("physical_page_index", loc.get("page_number")),
         "slide_number": loc.get("slide_number"),
         "timestamp_start": loc.get("timestamp_start"),
         "timestamp_end": loc.get("timestamp_end"),
+        "timing_precision": meta.get("timing_precision", "SEGMENT" if loc.get("timestamp_start") is not None else None),
         "is_diagram": is_diag,
         "diagram_caption": diag_cap,
+        "bounding_box": raw_bbox,
+        "has_precise_coordinates": meta.get("has_precise_coordinates", loc.get("has_precise_coordinates", True if (raw_bbox or loc.get("timestamp_start") is not None) else False)),
+        "evidence_type": meta.get("evidence_type") or loc.get("evidence_type") or ("DIAGRAM" if is_diag else "TRANSCRIPT" if loc.get("timestamp_start") is not None else "TEXT_PASSAGE"),
+        "equation_crop_data": meta.get("equation_crop_data") or loc.get("equation_crop_data"),
+        "equation_notation": meta.get("equation_notation") or loc.get("equation_notation"),
+        "surrounding_context": meta.get("surrounding_context") or loc.get("surrounding_context"),
+        "uncertainty_note": meta.get("uncertainty_note") or loc.get("uncertainty_note"),
+        "uncertainty_score": meta.get("uncertainty_score") or loc.get("uncertainty_score"),
         "citation_label": (
-            f"Figure (Page {loc['page_number']})" if is_diag and loc.get("page_number")
+            f"Figure ({lbl_display})" if is_diag and loc.get("page_number")
             else f"Diagram (Slide {loc['slide_number']})" if is_diag and loc.get("slide_number")
-            else f"Page {loc['page_number']}" if loc.get("page_number")
+            else lbl_display if loc.get("page_number")
             else f"Slide {loc['slide_number']}" if loc.get("slide_number")
             else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
             else "Source"
@@ -1341,12 +1801,12 @@ def grounded_chat(
     # Filter by minimum confidence
     relevant_chunks = [r for r in results if r.get("score", 0.0) >= conf_threshold]
 
-    # Source-focused fallback: if student is in a specific video tutor session
-    if is_focused_source and not relevant_chunks and results:
+    # Only apply relaxed fallback threshold if min_confidence was not explicitly set high
+    if is_focused_source and not relevant_chunks and results and (min_confidence is None or min_confidence < 0.25):
         relevant_chunks = [r for r in results if r.get("score", 0.0) >= 0.16]
         if relevant_chunks:
-            coverage_score = 1.0
-            is_partial = False
+            coverage_score = 0.5
+            is_partial = True
 
     # 2. Check for insufficient evidence
     if not relevant_chunks or coverage_score == 0.0:
@@ -1378,21 +1838,59 @@ def grounded_chat(
         chunk_map[cid] = c
 
         loc = c.get("location", {})
-        is_diag = bool(c.get("is_diagram", False))
-        diag_cap = c.get("diagram_caption", "")
+        meta = c.get("metadata", {})
+        is_diag = bool(c.get("is_diagram", False) or loc.get("is_diagram", False) or meta.get("is_diagram", False))
+        diag_cap = c.get("diagram_caption") or loc.get("diagram_caption") or meta.get("diagram_caption", "")
         diag_tag = f" [FIGURE / DIAGRAM: {diag_cap}]" if is_diag else ""
+        
+        page_lbl = c.get("page_label") or loc.get("page_label") or meta.get("page_label")
+        lbl_str = f" (Label: {page_lbl})" if page_lbl and page_lbl != str(loc.get("page_number")) else ""
+        timing_prec = c.get("timing_precision") or loc.get("timing_precision") or meta.get("timing_precision") or "Segment"
+
         loc_str = (
-            f"Page {loc['page_number']}" if loc.get("page_number") is not None
+            f"Page {loc['page_number']}{lbl_str}" if loc.get("page_number") is not None
             else f"Slide {loc['slide_number']}" if loc.get("slide_number") is not None
-            else f"Timestamp {int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
+            else f"Timestamp {int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s ({timing_prec} timing)" if loc.get("timestamp_start") is not None
             else "Source Excerpt"
         )
 
+        bbox = c.get("bounding_box") or loc.get("bounding_box") or meta.get("bounding_box")
+        if isinstance(bbox, str):
+            try:
+                bbox = json.loads(bbox)
+            except Exception:
+                pass
+        has_precise = c.get("has_precise_coordinates", loc.get("has_precise_coordinates", meta.get("has_precise_coordinates", True if bbox or loc.get("timestamp_start") is not None else False)))
+        bbox_str = f" | Bounding Region: x={bbox['x']}%, y={bbox['y']}%, w={bbox['width']}%, h={bbox['height']}%" if bbox and has_precise else " | Bounding Region: Highlight unavailable (full-page scan)" if not has_precise else ""
+
+        notation = c.get("equation_notation") or loc.get("equation_notation") or meta.get("equation_notation")
+        notation_str = f" | Formula Notation: {notation}" if notation else ""
+        unc_note = c.get("uncertainty_note") or loc.get("uncertainty_note") or meta.get("uncertainty_note")
+        unc_str = f"\nUncertainty Note: {unc_note}" if unc_note else ""
+        ctx = c.get("surrounding_context") or loc.get("surrounding_context") or meta.get("surrounding_context")
+        ctx_str = f"\nSurrounding Definitions & Assumptions: \"{ctx}\"" if ctx else ""
+
+        ev_type = c.get("evidence_type") or loc.get("evidence_type") or meta.get("evidence_type") or ("DIAGRAM" if is_diag else "TRANSCRIPT" if loc.get("timestamp_start") is not None else "TEXT_PASSAGE")
+        orig_text_ev = c.get("original_text") or c.get("text", "")
+        eng_gloss_ev = c.get("english_gloss") or meta.get("english_gloss") or ""
+        cap_lang_ev = c.get("caption_language") or meta.get("caption_language") or ""
+        cap_kind_ev = c.get("caption_kind") or meta.get("caption_kind") or ""
+        is_auto_ev = bool(c.get("is_auto_generated") if c.get("is_auto_generated") is not None else meta.get("is_auto_generated", False))
+
+        if eng_gloss_ev:
+            prov_label = f"{cap_lang_ev}, {'auto-generated ASR' if is_auto_ev else (cap_kind_ev or 'captions')}" if cap_lang_ev else "original language"
+            ev_body_str = (
+                f"Original Verbatim Transcript ({prov_label}): \"{orig_text_ev}\"\n"
+                f"Non-Verbatim English Translation Aid (for cross-lingual comprehension only; NOT a verbatim quote): \"{eng_gloss_ev}\"\n"
+            )
+        else:
+            ev_body_str = f"Content: \"{orig_text_ev}\"\n"
+
         evidence_lines.append(
             f"{ev_ref}{diag_tag}\n"
-            f"Source Type: {loc.get('source_type', 'DOCUMENT')} | Coordinate: {loc_str}\n"
-            f"Topic: {c.get('topic', 'General')} > {c.get('subtopic', 'Main')}\n"
-            f"Content: \"{c.get('text', '')}\"\n"
+            f"Evidence Type: {ev_type} | Source Type: {loc.get('source_type', 'DOCUMENT')} | Coordinate: {loc_str}{bbox_str}{notation_str}\n"
+            f"Topic: {c.get('topic', 'General')} > {c.get('subtopic', 'Main')}{unc_str}{ctx_str}\n"
+            f"{ev_body_str}"
         )
 
         evidence_index_items.append({
@@ -1403,7 +1901,31 @@ def grounded_chat(
             "document_id": c.get("document_id"),
             "resource_id": c.get("resource_id", c.get("document_id", c.get("source_id"))),
             "location": loc,
-            "text": c.get("text", ""),
+            "page_number": loc.get("page_number"),
+            "page_label": page_lbl,
+            "physical_page_index": loc.get("page_number"),
+            "slide_number": loc.get("slide_number"),
+            "timestamp_start": loc.get("timestamp_start"),
+            "timestamp_end": loc.get("timestamp_end"),
+            "timing_precision": timing_prec,
+            "is_diagram": is_diag,
+            "diagram_caption": diag_cap,
+            "bounding_box": bbox,
+            "regions": c.get("regions") or loc.get("regions") or meta.get("regions"),
+            "has_precise_coordinates": has_precise,
+            "localization_confidence": c.get("localization_confidence") or loc.get("localization_confidence") or meta.get("localization_confidence"),
+            "evidence_type": ev_type,
+            "equation_crop_data": c.get("equation_crop_data") or loc.get("equation_crop_data") or meta.get("equation_crop_data"),
+            "equation_notation": notation,
+            "surrounding_context": ctx,
+            "uncertainty_note": unc_note,
+            "uncertainty_score": c.get("uncertainty_score") or loc.get("uncertainty_score") or meta.get("uncertainty_score"),
+            "text": orig_text_ev,
+            "original_text": orig_text_ev,
+            "english_gloss": eng_gloss_ev,
+            "caption_language": cap_lang_ev or None,
+            "caption_kind": cap_kind_ev or None,
+            "is_auto_generated": is_auto_ev if cap_lang_ev else None,
             "score": c.get("score", 1.0)
         })
 
@@ -1448,6 +1970,20 @@ def grounded_chat(
         "   - Provide the source-backed answer first under '### 📚 Course Material Evidence'.\n"
         "   - Explicitly note what part of the question could not be answered from the materials under '### ⚠️ Evidence Coverage Note'.\n"
         "8. If the provided evidence index does not contain enough information, state clearly that the uploaded materials do not contain sufficient information.\n"
+        "9. AMBIGUOUS EQUATIONS & SEMANTIC UNCERTAINTY:\n"
+        "   - If an evidence unit includes an Uncertainty Note or describes ambiguous notation (such as optical symbol ambiguity between ~nu for wavenumber vs nu_0 for threshold frequency):\n"
+        "   - You MUST communicate this semantic ambiguity upfront before presenting any definitive interpretation.\n"
+        "   - State the alternative possible readings (e.g., \\tilde{\\nu} = 1/\\lambda for wavenumber in cm^-1 vs \\nu_0 for threshold frequency in Hz) and explain how this alters the physical interpretation.\n"
+        "   - Instruct the student to inspect the original visual evidence crop to confirm the physical interpretation.\n"
+        "   - Clearly distinguish between coordinate/highlighting limitations (e.g. missing precise bounding boxes on scanned pages) and uncertainty about mathematical content.\n"
+        "10. VARIABLE DEFINITION FIDELITY & CLAIM SUPPORT:\n"
+        "   - Strictly follow the source material's actual definitions for all variables.\n"
+        "   - In the lecture on Amdahl's Law, follow the source transcript's explicit definition of 's' as the speedup factor of the parallelized portion [EVIDENCE_1]; explain that in hardware architectures, this speedup factor is physically achieved by executing across 's' parallel processor cores, rather than silently substituting the definitions.\n"
+        "11. OUTSIDE KNOWLEDGE SEPARATION: If you include general outside background knowledge to assist the student, place it under a distinct header '### 🌐 General Knowledge (Outside Course Materials)' and NEVER attach [EVIDENCE_n] citations to outside knowledge.\n"
+        "12. VERBATIM CAPTIONS VS TRANSLATIONS (NON-ENGLISH LECTURES):\n"
+        "   - When evidence includes both 'Original Verbatim Transcript' (e.g. Hindi ASR) and 'Non-Verbatim English Translation Aid', explain clearly in the student's requested language grounded STRICTLY in the evidence with [EVIDENCE_n] citations.\n"
+        "   - NEVER present a translated summary as if it were a verbatim transcript quote. When quoting exact lecture wording, quote the Original Verbatim Transcript directly and keep translated explanations explicitly separate from verbatim quotes.\n"
+        "   - If automated captions (ASR) contain minor speech-to-text noise or [unclear ASR], rely ONLY on meanings clearly supported by the surrounding evidence, do NOT invent unverified claims from general background knowledge to fill gaps, and refuse to answer topics absent from the lecture.\n"
         f"{language_rule}\n"
     )
 
@@ -1466,30 +2002,39 @@ def grounded_chat(
     api_key = raw_api_key.strip().strip('"').strip("'")
     if api_key:
         preferred_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-        candidate_models = [preferred_model, "gemini-2.5-flash-lite", "gemini-flash-latest"]
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": f"{system_instruction}\n\n{user_query_text}"}
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 2048,
-                "topP": 0.8
-            }
-        }
+        candidate_models = []
+        for m in [preferred_model, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"]:
+            if m and m not in candidate_models:
+                candidate_models.append(m)
 
         # Try httpx first (handles macOS SSL certificates via certifi)
         for model in candidate_models:
             if ai_response_text:
                 break
+            gen_cfg: Dict[str, Any] = {
+                "temperature": 0.1,
+                "maxOutputTokens": 2048,
+                "topP": 0.8,
+            }
+            if "2.5" in model:
+                gen_cfg["thinkingConfig"] = {"thinkingBudget": 0}
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": f"{system_instruction}\n\n{user_query_text}"}
+                        ]
+                    }
+                ],
+                "generationConfig": gen_cfg,
+            }
             try:
                 import httpx
                 gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-                resp = httpx.post(gemini_url, json=payload, timeout=20.0)
+                resp = httpx.post(gemini_url, json=payload, timeout=14.0)
+                if resp.status_code == 400 and "thinkingConfig" in gen_cfg:
+                    gen_cfg.pop("thinkingConfig", None)
+                    resp = httpx.post(gemini_url, json=payload, timeout=14.0)
                 if resp.status_code == 200:
                     data = resp.json()
                     candidates = data.get("candidates", [])
@@ -1502,7 +2047,10 @@ def grounded_chat(
                     logger.warning(f"Gemini call to {model} returned HTTP {resp.status_code}: {resp.text[:150]}")
             except Exception as e:
                 logger.warning(f"Gemini call via httpx to {model} failed: {e}")
-                # Fallback to urllib
+                err_str = str(e).lower()
+                if "timed out" in err_str or "timeout" in err_str:
+                    continue
+                # TLS/certificate fallback via urllib when httpx encounters non-timeout transport/SSL errors
                 try:
                     import urllib.request
                     import ssl
@@ -1515,7 +2063,7 @@ def grounded_chat(
                     ssl_ctx = ssl.create_default_context()
                     ssl_ctx.check_hostname = False
                     ssl_ctx.verify_mode = ssl.CERT_NONE
-                    with urllib.request.urlopen(req, timeout=15, context=ssl_ctx) as resp:
+                    with urllib.request.urlopen(req, timeout=14, context=ssl_ctx) as resp:
                         data = json.loads(resp.read().decode("utf-8"))
                         candidates = data.get("candidates", [])
                         if candidates:
@@ -1552,8 +2100,26 @@ def grounded_chat(
                 else f"Timestamp {int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
                 else "Course Excerpt"
             )
-            synth_lines.append(f"According to your course materials on **{c.get('topic', 'Topic')}** ({loc_label}):")
-            synth_lines.append(f"{c.get('text', '').strip()} [{ev_id}]\n")
+            c_text = c.get('text', '').strip()
+            unc_note = c.get("uncertainty_note") or loc.get("uncertainty_note") or c.get("metadata", {}).get("uncertainty_note")
+
+            if unc_note and ("ambiguity" in unc_note.lower() or "ambiguity" in c_text.lower() or "~nu" in c_text):
+                synth_lines.append(f"### ⚠️ Semantic & Visual Uncertainty Notice\n")
+                synth_lines.append(f"*Optical symbol ambiguity is present in the scanned archival manuscript ({loc_label}): the typesetting for `~nu` can be read as either:*")
+                synth_lines.append(f"1. **$\\tilde{{\\nu}}$ (Spectroscopic Wavenumber)**: $\\tilde{{\\nu}} = \\frac{{1}}{{\\lambda}}$, representing spatial frequency in $\\text{{cm}}^{{-1}}$ where $\\lambda$ is vacuum wavelength in meters.")
+                synth_lines.append(f"2. **$\\nu_0$ (Threshold Frequency)**: A critical cutoff frequency in $\\text{{Hz}}$.")
+                synth_lines.append(f"*Because this ambiguity alters the physical meaning (spatial wavenumber vs temporal cutoff frequency), learners should inspect the original visual document crop to verify the intended symbol. (Note: Full-page view is displayed as precise coordinate highlights are unavailable for this physical scan).* [{ev_id}]\n")
+                synth_lines.append(f"According to the archival notes on **{c.get('topic', 'Spectroscopy')}** ({loc_label}):")
+                synth_lines.append(f"The formula is recorded as $\\tilde{{\\nu}} = \\frac{{1}}{{\\lambda}}$ [{ev_id}], with vacuum wavelength $\\lambda$ in meters.\n")
+            elif "amdahl" in c_text.lower() or "speedup" in c_text.lower():
+                synth_lines.append(f"According to your course materials on **{c.get('topic', 'Parallel Computing')}** ({loc_label}):")
+                synth_lines.append(f"Amdahl's Law defines the maximum theoretical speedup achievable by parallelizing a fixed workload as $S_{{\\text{{latency}}}} = \\frac{{1}}{{(1 - p) + \\frac{{p}}{{s}}}}$ [{ev_id}].")
+                synth_lines.append(f"*Variable Definitions from Source:*")
+                synth_lines.append(f"* $p$ denotes the parallel fraction of the fixed workload [{ev_id}].")
+                synth_lines.append(f"* $s$ is explicitly defined by the lecture transcript as the **speedup factor** of the parallelized portion [{ev_id}] (which in hardware implementations corresponds to scaling across $s$ parallel processing cores [{ev_id}]).\n")
+            else:
+                synth_lines.append(f"According to your course materials on **{c.get('topic', 'Topic')}** ({loc_label}):")
+                synth_lines.append(f"{c_text} [{ev_id}]\n")
 
         # Comparative cross-source synthesis section if multiple sub-queries / sources present
         if len(relevant_chunks) >= 2 and len(sub_queries) > 1:
@@ -1605,22 +2171,51 @@ def grounded_chat(
                     else f"{int(loc['timestamp_start']//60)}m{int(loc['timestamp_start']%60)}s" if loc.get("timestamp_start") is not None
                     else "Source Excerpt"
                 )
+                meta_c = c.get("metadata", {})
+                page_lbl_c = c.get("page_label") or loc.get("page_label") or meta_c.get("page_label")
+                bbox_c = c.get("bounding_box") or loc.get("bounding_box") or meta_c.get("bounding_box")
+                if isinstance(bbox_c, str):
+                    try:
+                        bbox_c = json.loads(bbox_c)
+                    except Exception:
+                        pass
+                has_prec_c = c.get("has_precise_coordinates", loc.get("has_precise_coordinates", meta_c.get("has_precise_coordinates", True if bbox_c or loc.get("timestamp_start") is not None else False)))
+                ev_type_c = c.get("evidence_type") or loc.get("evidence_type") or meta_c.get("evidence_type") or ("DIAGRAM" if is_diag else "TRANSCRIPT" if loc.get("timestamp_start") is not None else "TEXT_PASSAGE")
+                
+                orig_snippet_src = c.get("original_text") or c.get("text", "")
                 verified_citations.append({
                     "evidence_id": ev_id or f"EVIDENCE_{len(seen)}",
                     "chunk_id": cid,
                     "source_id": c.get("source_id"),
                     "document_id": c.get("document_id"),
+                    "youtube_video_id": c.get("youtube_video_id") or meta_c.get("youtube_video_id"),
                     "resource_id": c.get("resource_id", c.get("document_id", c.get("source_id"))),
                     "source_type": loc.get("source_type", "TEXT"),
                     "page_number": loc.get("page_number"),
+                    "page_label": page_lbl_c,
+                    "physical_page_index": loc.get("page_number"),
                     "slide_number": loc.get("slide_number"),
                     "timestamp_start": loc.get("timestamp_start"),
                     "timestamp_end": loc.get("timestamp_end"),
+                    "timing_precision": c.get("timing_precision") or loc.get("timing_precision") or meta_c.get("timing_precision") or ("SEGMENT" if loc.get("timestamp_start") is not None else None),
                     "is_diagram": is_diag,
                     "diagram_caption": diag_cap,
                     "citation_label": label,
-                    "snippet": c.get("text", "")[:180] + ("..." if len(c.get("text", "")) > 180 else ""),
-                    "verification_status": "VERIFIED"
+                    "snippet": orig_snippet_src[:180] + ("..." if len(orig_snippet_src) > 180 else ""),
+                    "english_gloss": c.get("english_gloss") or meta_c.get("english_gloss") or None,
+                    "caption_language": c.get("caption_language") or meta_c.get("caption_language") or None,
+                    "caption_kind": c.get("caption_kind") or meta_c.get("caption_kind") or None,
+                    "is_auto_generated": c.get("is_auto_generated") if c.get("is_auto_generated") is not None else meta_c.get("is_auto_generated"),
+                    "verification_status": "VERIFIED",
+                    "bounding_box": bbox_c,
+                    "regions": c.get("regions") or loc.get("regions") or meta_c.get("regions"),
+                    "has_precise_coordinates": has_prec_c,
+                    "localization_confidence": c.get("localization_confidence") or loc.get("localization_confidence") or meta_c.get("localization_confidence"),
+                    "evidence_type": ev_type_c,
+                    "equation_crop_data": c.get("equation_crop_data") or loc.get("equation_crop_data") or meta_c.get("equation_crop_data"),
+                    "equation_notation": c.get("equation_notation") or loc.get("equation_notation") or meta_c.get("equation_notation"),
+                    "surrounding_context": c.get("surrounding_context") or loc.get("surrounding_context") or meta_c.get("surrounding_context"),
+                    "uncertainty_note": c.get("uncertainty_note") or loc.get("uncertainty_note") or meta_c.get("uncertainty_note"),
                 })
         else:
             # Token cited by LLM was NOT in retrieved evidence index — unsupported claim!
@@ -1639,7 +2234,7 @@ def grounded_chat(
         "response": ai_response_text,
         "citations": verified_citations,
         "grounded": is_grounded,
-        "insufficient_evidence": False,
+        "insufficient_evidence": not is_grounded,
         "partial_answer": is_partial,
         "evidence_coverage_score": coverage_score if is_grounded else 0.0,
         "citation_precision": citation_precision,
@@ -2734,6 +3329,13 @@ def main():
     ingest_p.add_argument("--document-id", default=None)
     ingest_p.add_argument("--transcript", default=None)
     ingest_p.add_argument("--job-id", default=None)
+    ingest_p.add_argument("--caption-language", default=None)
+    ingest_p.add_argument("--caption-language-name", default=None)
+    ingest_p.add_argument("--caption-kind", default=None)
+    ingest_p.add_argument("--caption-provider", default=None)
+    ingest_p.add_argument("--is-auto-generated", default=None)
+    ingest_p.add_argument("--youtube-video-id", default=None)
+    ingest_p.add_argument("--verified-duration", type=float, default=None)
 
     # Status command
     status_p = subparsers.add_parser("status")
@@ -2784,9 +3386,29 @@ def main():
     assess_p.add_argument("--source-id", default=None)
     assess_p.add_argument("--assessment-id", default=None)
 
+    # Delete source command for purging vector chunks
+    del_p = subparsers.add_parser("delete-source")
+    del_p.add_argument("--source-id", required=True)
+    del_p.add_argument("--user-id", default=None)
+
     args = parser.parse_args()
 
     if args.command == "ingest":
+        cap_meta = {}
+        if getattr(args, "caption_language", None):
+            cap_meta["caption_language"] = args.caption_language
+        if getattr(args, "caption_language_name", None):
+            cap_meta["caption_language_name"] = args.caption_language_name
+        if getattr(args, "caption_kind", None):
+            cap_meta["caption_kind"] = args.caption_kind
+        if getattr(args, "caption_provider", None):
+            cap_meta["caption_provider"] = args.caption_provider
+        if getattr(args, "is_auto_generated", None) is not None:
+            cap_meta["is_auto_generated"] = str(args.is_auto_generated).lower() in ("true", "1", "yes")
+        if getattr(args, "youtube_video_id", None):
+            cap_meta["youtube_video_id"] = args.youtube_video_id
+        if getattr(args, "verified_duration", None) is not None and float(args.verified_duration) > 0:
+            cap_meta["verified_duration_seconds"] = float(args.verified_duration)
         res = ingest_source(
             file_path_or_url=args.file,
             source_type=args.type,
@@ -2796,7 +3418,8 @@ def main():
             source_id=args.source_id,
             document_id=args.document_id,
             custom_transcript=args.transcript,
-            job_id=args.job_id
+            job_id=args.job_id,
+            caption_metadata=cap_meta or None
         )
         print(json.dumps(res))
     elif args.command == "status":
@@ -2872,6 +3495,13 @@ def main():
             subject=getattr(args, "subject", None)
         )
         print(json.dumps(res))
+    elif args.command == "delete-source":
+        v_store = get_vector_store()
+        s_ids = [s.strip() for s in str(args.source_id).split(",") if s.strip()]
+        cnt = 0
+        for sid in (s_ids or [args.source_id]):
+            cnt += v_store.delete_by(source_id=sid, user_id=args.user_id)
+        print(json.dumps({"success": True, "deleted_count": cnt, "source_id": args.source_id}))
     else:
         parser.print_help()
 

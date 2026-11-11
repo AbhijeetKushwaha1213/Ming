@@ -1,0 +1,139 @@
+{
+  "single_page_mixed_equation.pdf": {
+    "fixture_label": "SYNTHETIC: Single-Page Mixed Multimodal PDF",
+    "description": "Page 1 contains selectable text prose and parameter definitions, with an embedded raster equation image in between.",
+    "physical_page": 1,
+    "displayed_page_label": "1",
+    "prose_evidence": "In quantum electrodynamics, photon energy is proportional to electromagnetic radiation frequency.",
+    "parameter_definitions": "where E is photon energy in Joules, h denotes Planck constant, and nu is frequency in Hertz.",
+    "drawing_type": "EMBEDDED_RASTER",
+    "equation_notation": "E = h * nu",
+    "target_question": "What equation relates photon energy to frequency, and what are its variables?",
+    "expected_answer_claim": "Photon energy is given by E = h * nu, where E is energy in Joules, h is Planck constant, and nu is frequency.",
+    "expected_citation_coordinates": {
+      "page_number": 1,
+      "has_precise_coordinates": true,
+      "evidence_type": "EQUATION"
+    }
+  },
+  "vector_equation.pdf": {
+    "fixture_label": "SYNTHETIC: Vector Graphics Path Equation PDF",
+    "description": "Page 1 contains an equation whose fraction bar and square root radical are rendered strictly through PDF vector path drawing operators (m, l, S).",
+    "physical_page": 1,
+    "displayed_page_label": "1",
+    "drawing_type": "VECTOR_PATH",
+    "extraction_method": "VECTOR_GRAPHICS",
+    "prose_evidence": "The relativistic mass of a moving particle increases with velocity relative to the speed of light",
+    "equation_notation": "m_rel = m_0 / sqrt(1 - v^2 / c^2)",
+    "parameter_definitions": "where m_0 is rest mass, v is particle velocity, and c is the speed of light in vacuum.",
+    "target_question": "What is the formula for relativistic mass, and how is it defined?",
+    "expected_answer_claim": "Relativistic mass is given by m_rel = m_0 / sqrt(1 - v^2 / c^2), where m_0 is rest mass and c is speed of light."
+  },
+  "scanned_equation.pdf": {
+    "fixture_label": "SYNTHETIC: Scanned Multimodal Document PDF (3 Pages)",
+    "description": "Multi-page raster scan: Page 1 has 2 columns (multiline passage in Col 1, ambiguous equation in Col 2); Page 2 is rotated 90 deg; Page 3 is degraded archival fallback.",
+    "pages_count": 3,
+    "page_1_two_column": {
+      "col1_passage": {
+        "text": "In wave mechanics and spectroscopy, radiation is characterized by wave vectors and spatial frequency in dispersive media.",
+        "regions_count": 3,
+        "has_precise_coordinates": true,
+        "localization_confidence": 0.98,
+        "uncertainty_score": 0.0,
+        "column_confined": "x <= 48%"
+      },
+      "col2_equation": {
+        "text": "Spectroscopic wavenumber formulation: ~nu = 1 / lambda",
+        "equation_notation": "~nu = 1 / lambda",
+        "regions_count": 1,
+        "has_precise_coordinates": true,
+        "localization_confidence": 0.96,
+        "uncertainty_score": 0.45,
+        "uncertainty_note": "Optical symbol ambiguity detected in scanned notation (~nu vs nu_0); inspect original visual evidence crop.",
+        "column_confined": "x >= 53%"
+      }
+    },
+    "page_2_rotated": {
+      "page_rotation": 90,
+      "has_precise_coordinates": true,
+      "localization_confidence": 0.95,
+      "regions_count": 2
+    },
+    "page_3_degraded": {
+      "has_precise_coordinates": false,
+      "bounding_box": null,
+      "regions": null,
+      "localization_confidence": null,
+      "uncertainty_note": "Scanned document page 3: degraded archival scan; precise coordinate highlight unavailable.",
+      "expected_ui_behavior": "Displays Full-Page Scan notice without drawing an invented highlight overlay."
+    },
+    "target_question": "What is the formula for spectroscopic wavenumber in the archival manuscript?",
+    "expected_answer_claim": "Spectroscopic wavenumber is given by ~nu = 1 / lambda, where lambda is vacuum wavelength."
+  },
+  "custom_page_labels.pdf": {
+    "fixture_label": "SYNTHETIC: Custom Page Labels PDF",
+    "description": "Multi-page document where physical pages 1..4 have displayed labels i, ii, Ch1-1, Ch1-2.",
+    "pages": [
+      {
+        "physical_index": 1,
+        "displayed_label": "i",
+        "topic": "Preface"
+      },
+      {
+        "physical_index": 2,
+        "displayed_label": "ii",
+        "topic": "Table of Contents"
+      },
+      {
+        "physical_index": 3,
+        "displayed_label": "Ch1-1",
+        "topic": "Multi-Level Page Table Translation"
+      },
+      {
+        "physical_index": 4,
+        "displayed_label": "Ch1-2",
+        "topic": "Translation Lookaside Buffers"
+      }
+    ],
+    "target_question": "How does 64-bit multi-level paging map linear addresses, and on what page is this documented?",
+    "expected_answer_claim": "64-bit architectures utilize 4-level paging to map 48-bit linear addresses to physical frames.",
+    "expected_physical_page": 3,
+    "expected_displayed_label": "Ch1-1"
+  },
+  "lecture_exact_timestamps.mp4": {
+    "fixture_label": "SYNTHETIC: Lecture Media with Known Transcript Timestamps",
+    "description": "Video lecture with verified audio transcript segments and on-screen slide frame OCR.",
+    "segments": [
+      {
+        "segment_id": "seg_01",
+        "start": 12.0,
+        "end": 28.0,
+        "text": "Synthetic Grounding Fixture: Welcome to Advanced Operating Systems. Today we analyze multi-level paging and hardware MMU translation.",
+        "evidence_type": "TRANSCRIPT",
+        "timing_precision": "SEGMENT"
+      },
+      {
+        "segment_id": "seg_02",
+        "start": 145.0,
+        "end": 180.0,
+        "text": "The professor emphasizes: Amdahl's Law defines the maximum theoretical speedup achievable by parallelizing a fixed workload across multi-core processors: S_latency = 1 / ((1 - p) + p / s).",
+        "evidence_type": "TRANSCRIPT",
+        "timing_precision": "SEGMENT"
+      },
+      {
+        "segment_id": "seg_03_visual_frame",
+        "start": 160.0,
+        "end": 165.0,
+        "text": "On-screen slide diagram displays formula: Speedup(s) = 1 / ((1 - p) + p/s)",
+        "evidence_type": "VIDEO_FRAME",
+        "timing_precision": "FRAME"
+      }
+    ],
+    "target_question": "What formula defines the maximum theoretical speedup in parallel processors according to the lecture?",
+    "expected_answer_claim": "Amdahl's Law states that theoretical speedup is S_latency = 1 / ((1 - p) + p / s).",
+    "expected_timestamp_start": 145.0,
+    "expected_timestamp_end": 180.0,
+    "expected_timing_precision": "SEGMENT",
+    "expected_evidence_type": "TRANSCRIPT"
+  }
+}

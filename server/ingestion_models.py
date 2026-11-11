@@ -18,18 +18,31 @@ class ProvenanceMetadata:
     source_id: str
     chunk_id: str
     source_type: str  # PDF | PPT | PPTX | IMAGE | VIDEO | AUDIO | TEXT
-    extraction_method: str  # NATIVE_TEXT | OCR | VISION_DESCRIPTION | TRANSCRIPTION | TABLE | SPEAKER_NOTES
+    extraction_method: str  # NATIVE_TEXT | OCR | EMBEDDED_LAYOUT_METADATA | GEMINI_VISION_OCR | PAGE_ONLY_FALLBACK | VISION_DESCRIPTION | TRANSCRIPTION | TABLE | SPEAKER_NOTES | EQUATION_EXTRACTION | VIDEO_FRAME_OCR | VECTOR_GRAPHICS
     content_hash: str
     chunk_index: int
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_version: str = "v1"
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     page_number: Optional[int] = None
+    page_label: Optional[str] = None
+    physical_page_index: Optional[int] = None
     slide_number: Optional[int] = None
     timestamp_start: Optional[float] = None
     timestamp_end: Optional[float] = None
+    timing_precision: Optional[str] = None  # SEGMENT | WORD | FRAME
     section: Optional[str] = None
     heading: Optional[str] = None
+    bounding_box: Optional[Dict[str, Any]] = None  # {x, y, width, height, unit}
+    regions: Optional[List[Dict[str, Any]]] = None  # List of {x, y, width, height, unit}
+    has_precise_coordinates: bool = True
+    localization_confidence: Optional[float] = None
+    evidence_type: Optional[str] = None  # TEXT_PASSAGE | EQUATION | DIAGRAM | TRANSCRIPT | VIDEO_FRAME
+    equation_crop_data: Optional[str] = None
+    equation_notation: Optional[str] = None
+    surrounding_context: Optional[str] = None
+    uncertainty_score: Optional[float] = None
+    uncertainty_note: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -39,14 +52,27 @@ class ProvenanceMetadata:
 @dataclass
 class ContentBlock:
     block_id: str
-    block_type: str  # TEXT | SECTION | HEADING | IMAGE | DIAGRAM | TABLE | TRANSCRIPT_SEGMENT | SPEAKER_NOTE
+    block_type: str  # TEXT | SECTION | HEADING | IMAGE | DIAGRAM | TABLE | TRANSCRIPT_SEGMENT | SPEAKER_NOTE | EQUATION
     text: str
-    extraction_method: str  # NATIVE_TEXT | OCR | VISION_DESCRIPTION | TRANSCRIPTION | TABLE | SPEAKER_NOTES
+    extraction_method: str  # NATIVE_TEXT | OCR | EMBEDDED_LAYOUT_METADATA | GEMINI_VISION_OCR | PAGE_ONLY_FALLBACK | VISION_DESCRIPTION | TRANSCRIPTION | TABLE | SPEAKER_NOTES | EQUATION_EXTRACTION | VIDEO_FRAME_OCR | VECTOR_GRAPHICS
     confidence: float = 1.0
     page_number: Optional[int] = None
+    page_label: Optional[str] = None
+    physical_page_index: Optional[int] = None
     slide_number: Optional[int] = None
     timestamp_start: Optional[float] = None
     timestamp_end: Optional[float] = None
+    timing_precision: Optional[str] = None  # SEGMENT | WORD | FRAME
+    bounding_box: Optional[Dict[str, Any]] = None  # {x, y, width, height, unit}
+    regions: Optional[List[Dict[str, Any]]] = None  # List of {x, y, width, height, unit}
+    has_precise_coordinates: bool = True
+    localization_confidence: Optional[float] = None
+    evidence_type: Optional[str] = None  # TEXT_PASSAGE | EQUATION | DIAGRAM | TRANSCRIPT | VIDEO_FRAME
+    equation_crop_data: Optional[str] = None
+    equation_notation: Optional[str] = None
+    surrounding_context: Optional[str] = None
+    uncertainty_score: Optional[float] = None
+    uncertainty_note: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:

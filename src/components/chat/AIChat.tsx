@@ -375,13 +375,9 @@ export const AIChat = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     // Set topic only if real topic and not a greeting/casual message
-    const isGreeting = /^(hi|hey|hello|hy|yo|sup|test|help|start|good\s+(morning|afternoon|evening))\b/i.test(userMsgText.trim()) || userMsgText.trim().length <= 3;
     let effectiveTopic = currentTopic;
     if (attachedName) {
       effectiveTopic = attachedName.replace(/\.[^/.]+$/, "");
-      setCurrentTopic(effectiveTopic);
-    } else if (!effectiveTopic && !isGreeting && userMsgText.length > 5) {
-      effectiveTopic = userMsgText.slice(0, 35);
       setCurrentTopic(effectiveTopic);
     }
 
@@ -424,7 +420,7 @@ export const AIChat = ({
       }
     }
 
-    const safetyDuration = fileToIngest ? 50000 : 25000;
+    const safetyDuration = fileToIngest ? 60000 : 35000;
     let didTimeout = false;
     const safetyTimer = setTimeout(() => {
       didTimeout = true;
@@ -592,9 +588,7 @@ FORMATTING REQUIREMENTS:
       // Check if tutor returned grounded response with verified citations
       const hasGroundedEvidence = tutorResult && 
         !tutorResult.insufficient_evidence && 
-        tutorResult.grounded && 
-        tutorResult.citations && 
-        tutorResult.citations.length > 0;
+        (tutorResult.grounded || (Array.isArray(tutorResult.citations) && tutorResult.citations.length > 0));
 
       if (hasGroundedEvidence && tutorResult) {
         const { cleanText } = parseAgentActions(tutorResult.response);
@@ -970,7 +964,11 @@ FORMATTING REQUIREMENTS:
                           </div>
                         )}
 
-                        <ChatMessageRenderer content={message.text} isUser={message.sender === 'user'} />
+                        <ChatMessageRenderer
+                          content={message.text}
+                          isUser={message.sender === 'user'}
+                          citations={message.citations}
+                        />
 
                         {/* Verified Sources Shelf */}
                         {message.sender === 'ai' && message.citations && message.citations.length > 0 && (

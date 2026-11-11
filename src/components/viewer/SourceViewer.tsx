@@ -57,10 +57,19 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
 
   const title = citation.source_title || citation.citation_label || 'Course Material';
   const pageNum = citation.page_number ?? citation.location?.page_number;
+  const pageLabel = citation.page_label ?? citation.location?.page_label ?? (pageNum ? `Page ${pageNum}` : undefined);
   const slideNum = citation.slide_number ?? citation.location?.slide_number;
   const timeStart = citation.timestamp_start ?? citation.location?.timestamp_start;
   const timeEnd = citation.timestamp_end ?? citation.location?.timestamp_end;
   const excerptText = citation.excerpt || citation.snippet || '';
+  const boundingBox = citation.bounding_box ?? citation.location?.bounding_box;
+  const hasPreciseCoordinates = citation.has_precise_coordinates ?? citation.location?.has_precise_coordinates ?? Boolean(boundingBox || timeStart !== undefined);
+  const evidenceType = citation.evidence_type ?? citation.location?.evidence_type;
+  const equationCropData = citation.equation_crop_data ?? citation.location?.equation_crop_data;
+  const equationNotation = citation.equation_notation ?? citation.location?.equation_notation;
+  const surroundingContext = citation.surrounding_context ?? citation.location?.surrounding_context;
+  const uncertaintyNote = citation.uncertainty_note ?? citation.location?.uncertainty_note;
+  const timingPrecision = citation.timing_precision ?? citation.location?.timing_precision;
 
   const getSourceTypeIcon = () => {
     if (citation.is_diagram) return <ImageIcon className="w-4 h-4 text-primary" />;
@@ -183,8 +192,18 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
         <PdfViewer
           resourceId={resourceId}
           pageNumber={pageNum || 1}
+          pageLabel={pageLabel}
           title={title}
           excerpt={excerptText}
+          boundingBox={boundingBox}
+          regions={citation.regions ?? citation.location?.regions}
+          hasPreciseCoordinates={hasPreciseCoordinates}
+          evidenceType={evidenceType}
+          equationCropData={equationCropData}
+          equationNotation={equationNotation}
+          surroundingContext={surroundingContext}
+          uncertaintyNote={uncertaintyNote}
+          localizationConfidence={citation.localization_confidence ?? citation.location?.localization_confidence}
         />
       );
     }
@@ -209,6 +228,8 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
           timestampEnd={timeEnd}
           title={title}
           excerpt={excerptText}
+          evidenceType={evidenceType}
+          timingPrecision={timingPrecision}
         />
       );
     }

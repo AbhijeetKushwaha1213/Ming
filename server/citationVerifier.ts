@@ -195,9 +195,12 @@ export function buildCanonicalEvidenceIndex(
       source_type: (loc.source_type || c.source_type || 'TEXT').toUpperCase() as SourceType,
       text: c.text || '',
       page_number: loc.page_number !== undefined ? loc.page_number : c.page_number,
+      page_label: c.page_label ?? loc.page_label ?? (c.page_number !== undefined && c.page_number !== null ? String(c.page_number) : null),
+      physical_page_index: c.physical_page_index ?? loc.physical_page_index ?? c.page_number ?? loc.page_number ?? null,
       slide_number: loc.slide_number !== undefined ? loc.slide_number : c.slide_number,
       timestamp_start: loc.timestamp_start !== undefined ? loc.timestamp_start : c.timestamp_start,
       timestamp_end: loc.timestamp_end !== undefined ? loc.timestamp_end : c.timestamp_end,
+      timing_precision: c.timing_precision ?? loc.timing_precision ?? (loc.timestamp_start !== undefined && loc.timestamp_start !== null ? 'SEGMENT' : undefined),
       extraction_method: (c.extraction_method || 'NATIVE_TEXT') as ExtractionMethod,
       content_hash: c.content_hash || '',
       chunk_index: c.chunk_index !== undefined ? c.chunk_index : idx,
@@ -207,6 +210,20 @@ export function buildCanonicalEvidenceIndex(
       embedding_version: c.embedding_version || 'v1',
       created_at: c.created_at || new Date().toISOString(),
       relevance_score: c.score !== undefined ? c.score : (c.relevance_score ?? 1.0),
+      bounding_box: c.bounding_box ?? loc.bounding_box ?? null,
+      regions: c.regions ?? loc.regions ?? null,
+      has_precise_coordinates: c.has_precise_coordinates !== undefined
+        ? Boolean(c.has_precise_coordinates)
+        : loc.has_precise_coordinates !== undefined
+        ? Boolean(loc.has_precise_coordinates)
+        : Boolean(c.bounding_box || loc.bounding_box || c.regions || loc.regions || (loc.timestamp_start !== undefined && loc.timestamp_start !== null)),
+      localization_confidence: c.localization_confidence ?? loc.localization_confidence ?? null,
+      evidence_type: (c.evidence_type ?? loc.evidence_type ?? (loc.is_diagram ? 'DIAGRAM' : (loc.timestamp_start !== undefined && loc.timestamp_start !== null) ? 'TRANSCRIPT' : 'TEXT_PASSAGE')) as any,
+      equation_crop_data: c.equation_crop_data ?? loc.equation_crop_data ?? null,
+      equation_notation: c.equation_notation ?? loc.equation_notation ?? null,
+      surrounding_context: c.surrounding_context ?? loc.surrounding_context ?? null,
+      uncertainty_score: c.uncertainty_score ?? loc.uncertainty_score ?? null,
+      uncertainty_note: c.uncertainty_note ?? loc.uncertainty_note ?? null,
     };
 
     items.push(item);
@@ -233,20 +250,31 @@ export function formatEvidenceIndexForPrompt(index: CanonicalEvidenceIndex): str
 
   return index.items
     .map((item) => {
+      const pageLabelStr = item.page_label && item.page_label !== String(item.page_number) ? ` (Label: ${item.page_label})` : '';
       const locStr =
         item.page_number !== null && item.page_number !== undefined
-          ? `Page ${item.page_number}`
+          ? `Page ${item.page_number}${pageLabelStr}`
           : item.slide_number !== null && item.slide_number !== undefined
           ? `Slide ${item.slide_number}`
           : item.timestamp_start !== null && item.timestamp_start !== undefined
-          ? `Timestamp ${Math.floor(item.timestamp_start / 60)}m${Math.floor(item.timestamp_start % 60)}s`
+          ? `Timestamp ${Math.floor(item.timestamp_start / 60)}m${Math.floor(item.timestamp_start % 60)}s (${item.timing_precision || 'Segment'} precision)`
           : 'Document Excerpt';
+
+      const coordStr = item.has_precise_coordinates && item.bounding_box
+        ? ` | Bounding Region: x=${item.bounding_box.x}%, y=${item.bounding_box.y}%, w=${item.bounding_box.width}%, h=${item.bounding_box.height}%`
+        : item.has_precise_coordinates === false
+        ? ' | Bounding Region: Coordinate highlight unavailable (full-page scan)'
+        : '';
+
+      const notationStr = item.equation_notation ? ` | Formula Notation: ${item.equation_notation}` : '';
+      const uncStr = item.uncertainty_note ? `\nUncertainty Note: ${item.uncertainty_note}` : '';
+      const defStr = item.surrounding_context ? `\nSurrounding Definitions & Assumptions: "${item.surrounding_context}"` : '';
 
       return (
         `${item.evidence_ref}\n` +
-        `Source Type: ${item.source_type} | Location: ${locStr}\n` +
+        `Evidence Type: ${item.evidence_type || 'TEXT_PASSAGE'} | Source Type: ${item.source_type} | Location: ${locStr}${coordStr}${notationStr}\n` +
         `Resource ID: ${item.resource_id}\n` +
-        `Extraction Method: ${item.extraction_method}\n` +
+        `Extraction Method: ${item.extraction_method}${uncStr}${defStr}\n` +
         `Content: "${item.text}"`
       );
     })
@@ -376,29 +404,65 @@ export function verifyCoordinates(
 
 /**
  * Extracts claims and evidence references from free-form answer text.
+ * Accurately detects outside-knowledge sections and numbered citations.
  */
 export function extractClaimsFromAnswer(answerText: string): ProposedClaim[] {
   if (!answerText || !answerText.trim()) return [];
 
-  const sentences = answerText
-    .split(/(?<=[.!?\n])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // Identify lines under outside knowledge sections
+  const lines = answerText.split('\n');
+  let inOutsideKnowledge = false;
+  const sentenceEntries: Array<{ text: string; isOutside: boolean }> = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (
+      trimmed.toLowerCase().includes('outside knowledge') ||
+      trimmed.toLowerCase().includes('general knowledge') ||
+      trimmed.toLowerCase().includes('external context')
+    ) {
+      inOutsideKnowledge = true;
+    } else if (trimmed.startsWith('#') && !trimmed.toLowerCase().includes('knowledge')) {
+      inOutsideKnowledge = false;
+    }
+
+    if (trimmed && !trimmed.startsWith('#') && !trimmed.endsWith(':')) {
+      const sanitized = trimmed.replace(/(?<=\b(?:Eq|Fig|Ref|e\.g|i\.e|vs)\.)\s+/gi, ' ');
+      const lineSentences = sanitized
+        .split(/(?<=[.!?])\s+(?=[A-Z*#])/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      for (const s of lineSentences) {
+        sentenceEntries.push({ text: s, isOutside: inOutsideKnowledge });
+      }
+    }
+  }
 
   const claims: ProposedClaim[] = [];
 
-  sentences.forEach((sentence, idx) => {
-    // Look for [EVIDENCE_n] or [CHUNK_id] tokens
-    const evTokens = sentence.match(/\[(EVIDENCE_\d+|[a-zA-Z0-9_\-]+)\]/g) || [];
-    const evidenceIds = evTokens.map((t) => t.replace(/[\[\]]/g, ''));
-    const cleanText = sentence.replace(/\[(EVIDENCE_\d+|[a-zA-Z0-9_\-]+)\]/g, '').trim();
+  sentenceEntries.forEach((entry, idx) => {
+    const sentence = entry.text;
+    // Look for [EVIDENCE_n], [1], [2], or [CHUNK_id] tokens
+    const evTokens = sentence.match(/\[(EVIDENCE_\d+|\d+|[a-zA-Z0-9_\-]+)\]/g) || [];
+    const evidenceIds = evTokens.map((t) => {
+      const raw = t.replace(/[\[\]]/g, '');
+      // If purely numeric like "1", map to "EVIDENCE_1"
+      if (/^\d+$/.test(raw)) {
+        return `EVIDENCE_${raw}`;
+      }
+      return raw;
+    });
+
+    const cleanText = sentence.replace(/\[(EVIDENCE_\d+|\d+|[a-zA-Z0-9_\-]+)\]/g, '').trim();
 
     if (cleanText) {
       claims.push({
         claim_id: `claim_${idx + 1}`,
         text: cleanText,
         evidence_ids: evidenceIds,
-      });
+        ...(entry.isOutside ? { is_outside_knowledge: true } : {}),
+      } as any);
     }
   });
 
@@ -447,24 +511,58 @@ export async function verifyCitation(
     };
   }
 
+  // Common metadata payload helper
+  const buildCanonicalLocation = (status: CitationVerificationStatus): VerifiedCitation => {
+    return {
+      citation_id: `cit_${canonical!.evidence_id.toLowerCase()}_${canonical!.chunk_id}`,
+      chunk_id: canonical!.chunk_id,
+      resource_id: canonical!.resource_id,
+      source_title: citation.source_title || `Source ${canonical!.resource_id}`,
+      source_type: canonical!.source_type,
+      location: {
+        source_type: canonical!.source_type,
+        page_number: canonical!.page_number,
+        page_label: canonical!.page_label,
+        physical_page_index: canonical!.physical_page_index,
+        slide_number: canonical!.slide_number,
+        timestamp_start: canonical!.timestamp_start,
+        timestamp_end: canonical!.timestamp_end,
+        timing_precision: canonical!.timing_precision,
+        is_diagram: canonical!.evidence_type === 'DIAGRAM',
+        diagram_caption: canonical!.heading || undefined,
+        bounding_box: canonical!.bounding_box,
+        regions: canonical!.regions,
+        has_precise_coordinates: canonical!.has_precise_coordinates,
+        localization_confidence: canonical!.localization_confidence,
+        evidence_type: canonical!.evidence_type,
+        equation_crop_data: canonical!.equation_crop_data,
+        equation_notation: canonical!.equation_notation,
+        surrounding_context: canonical!.surrounding_context,
+        uncertainty_note: canonical!.uncertainty_note,
+        uncertainty_score: canonical!.uncertainty_score,
+      },
+      excerpt: citation.excerpt || canonical!.text.slice(0, 200),
+      verification_status: status,
+      bounding_box: canonical!.bounding_box,
+      regions: canonical!.regions,
+      has_precise_coordinates: canonical!.has_precise_coordinates,
+      localization_confidence: canonical!.localization_confidence,
+      evidence_type: canonical!.evidence_type,
+      equation_crop_data: canonical!.equation_crop_data,
+      equation_notation: canonical!.equation_notation,
+      surrounding_context: canonical!.surrounding_context,
+      uncertainty_note: canonical!.uncertainty_note,
+      uncertainty_score: canonical!.uncertainty_score,
+      page_label: canonical!.page_label,
+    };
+  };
+
   // If citation specifies a resource_id and it differs from canonical provenance -> spoofed resource ID
   if (citation.resource_id && citation.resource_id !== canonical.resource_id) {
-    return {
-      citation_id: `cit_unverified_spoofed_${canonical.chunk_id}`,
-      chunk_id: canonical.chunk_id,
-      resource_id: canonical.resource_id,
-      source_title: citation.source_title || 'Spoofed Resource Citation',
-      source_type: canonical.source_type,
-      location: {
-        source_type: canonical.source_type,
-        page_number: canonical.page_number,
-        slide_number: canonical.slide_number,
-        timestamp_start: canonical.timestamp_start,
-        timestamp_end: canonical.timestamp_end,
-      },
-      excerpt: citation.excerpt || '',
-      verification_status: 'UNVERIFIED',
-    };
+    const unv = buildCanonicalLocation('UNVERIFIED');
+    unv.citation_id = `cit_unverified_spoofed_${canonical.chunk_id}`;
+    unv.source_title = citation.source_title || 'Spoofed Resource Citation';
+    return unv;
   }
 
   // 2. Revalidate tenant security boundary (server-side authenticated identity only)
@@ -475,43 +573,19 @@ export async function verifyCitation(
     canonical.user_id === 'default_user';
 
   if (!isOwner && !isSystemPublic) {
-    return {
-      citation_id: `cit_cross_tenant_${canonical.chunk_id}`,
-      chunk_id: canonical.chunk_id,
-      resource_id: canonical.resource_id,
-      source_title: citation.source_title || 'Cross-Tenant Resource',
-      source_type: canonical.source_type,
-      location: {
-        source_type: canonical.source_type,
-        page_number: canonical.page_number,
-        slide_number: canonical.slide_number,
-        timestamp_start: canonical.timestamp_start,
-        timestamp_end: canonical.timestamp_end,
-      },
-      excerpt: citation.excerpt || '',
-      verification_status: 'CROSS_TENANT_REJECTED',
-    };
+    const rej = buildCanonicalLocation('CROSS_TENANT_REJECTED');
+    rej.citation_id = `cit_cross_tenant_${canonical.chunk_id}`;
+    rej.source_title = citation.source_title || 'Cross-Tenant Resource';
+    return rej;
   }
 
   // 3. Revalidate resource existence & deletion state via authoritative check
   const resourceRecord = await checkResource(canonical.resource_id);
   if (!resourceRecord || !resourceRecord.exists || resourceRecord.isDeleted) {
-    return {
-      citation_id: `cit_unavailable_${canonical.chunk_id}`,
-      chunk_id: canonical.chunk_id,
-      resource_id: canonical.resource_id,
-      source_title: citation.source_title || 'Unavailable Resource',
-      source_type: canonical.source_type,
-      location: {
-        source_type: canonical.source_type,
-        page_number: canonical.page_number,
-        slide_number: canonical.slide_number,
-        timestamp_start: canonical.timestamp_start,
-        timestamp_end: canonical.timestamp_end,
-      },
-      excerpt: citation.excerpt || '',
-      verification_status: 'SOURCE_UNAVAILABLE',
-    };
+    const unav = buildCanonicalLocation('SOURCE_UNAVAILABLE');
+    unav.citation_id = `cit_unavailable_${canonical.chunk_id}`;
+    unav.source_title = citation.source_title || 'Unavailable Resource';
+    return unav;
   }
 
   // Revalidate resource record tenant authorization
@@ -521,22 +595,10 @@ export async function verifyCitation(
     resourceRecord.userId === 'default_user';
 
   if (resourceRecord.userId !== authenticatedUserId && !isRecordPublic) {
-    return {
-      citation_id: `cit_cross_tenant_${canonical.chunk_id}`,
-      chunk_id: canonical.chunk_id,
-      resource_id: canonical.resource_id,
-      source_title: citation.source_title || 'Cross-Tenant Resource',
-      source_type: canonical.source_type,
-      location: {
-        source_type: canonical.source_type,
-        page_number: canonical.page_number,
-        slide_number: canonical.slide_number,
-        timestamp_start: canonical.timestamp_start,
-        timestamp_end: canonical.timestamp_end,
-      },
-      excerpt: citation.excerpt || '',
-      verification_status: 'CROSS_TENANT_REJECTED',
-    };
+    const rej = buildCanonicalLocation('CROSS_TENANT_REJECTED');
+    rej.citation_id = `cit_cross_tenant_${canonical.chunk_id}`;
+    rej.source_title = citation.source_title || 'Cross-Tenant Resource';
+    return rej;
   }
 
   // 4. Coordinate verification
@@ -549,82 +611,32 @@ export async function verifyCitation(
 
   const coordCheck = verifyCoordinates(canonical.source_type, proposedCoords, canonical);
   if (!coordCheck.match) {
-    return {
-      citation_id: `cit_coord_mismatch_${canonical.chunk_id}`,
-      chunk_id: canonical.chunk_id,
-      resource_id: canonical.resource_id,
-      source_title: citation.source_title || 'Coordinate Mismatched Citation',
-      source_type: canonical.source_type,
-      // Retain canonical navigation metadata, but flag status explicitly as COORDINATE_MISMATCH
-      location: {
-        source_type: canonical.source_type,
-        page_number: canonical.page_number,
-        slide_number: canonical.slide_number,
-        timestamp_start: canonical.timestamp_start,
-        timestamp_end: canonical.timestamp_end,
-      },
-      excerpt: citation.excerpt || '',
-      verification_status: 'COORDINATE_MISMATCH',
-    };
+    const mis = buildCanonicalLocation('COORDINATE_MISMATCH');
+    mis.citation_id = `cit_coord_mismatch_${canonical.chunk_id}`;
+    mis.source_title = citation.source_title || 'Coordinate Mismatched Citation';
+    return mis;
   }
 
   // 5. Excerpt / Content alignment
   if (citation.excerpt && citation.excerpt.trim()) {
     const alignCheck = checkExcerptAlignment(citation.excerpt, canonical.text);
     if (!alignCheck.aligned) {
-      return {
-        citation_id: `cit_unaligned_${canonical.chunk_id}`,
-        chunk_id: canonical.chunk_id,
-        resource_id: canonical.resource_id,
-        source_title: citation.source_title || 'Unaligned Excerpt Citation',
-        source_type: canonical.source_type,
-        location: {
-          source_type: canonical.source_type,
-          page_number: canonical.page_number,
-          slide_number: canonical.slide_number,
-          timestamp_start: canonical.timestamp_start,
-          timestamp_end: canonical.timestamp_end,
-        },
-        excerpt: citation.excerpt,
-        verification_status: 'UNVERIFIED',
-      };
+      const unal = buildCanonicalLocation('UNVERIFIED');
+      unal.citation_id = `cit_unaligned_${canonical.chunk_id}`;
+      unal.source_title = citation.source_title || 'Unaligned Excerpt Citation';
+      unal.excerpt = citation.excerpt;
+      return unal;
     } else if (alignCheck.partial) {
-      return {
-        citation_id: `cit_partially_aligned_${canonical.chunk_id}`,
-        chunk_id: canonical.chunk_id,
-        resource_id: canonical.resource_id,
-        source_title: citation.source_title || 'Partially Aligned Citation',
-        source_type: canonical.source_type,
-        location: {
-          source_type: canonical.source_type,
-          page_number: canonical.page_number,
-          slide_number: canonical.slide_number,
-          timestamp_start: canonical.timestamp_start,
-          timestamp_end: canonical.timestamp_end,
-        },
-        excerpt: citation.excerpt,
-        verification_status: 'PARTIALLY_VERIFIED',
-      };
+      const part = buildCanonicalLocation('PARTIALLY_VERIFIED');
+      part.citation_id = `cit_partially_aligned_${canonical.chunk_id}`;
+      part.source_title = citation.source_title || 'Partially Aligned Citation';
+      part.excerpt = citation.excerpt;
+      return part;
     }
   }
 
   // 6. Citation fully verified! Retains complete canonical navigation coordinates.
-  return {
-    citation_id: `cit_${canonical.evidence_id.toLowerCase()}_${canonical.chunk_id}`,
-    chunk_id: canonical.chunk_id,
-    resource_id: canonical.resource_id,
-    source_title: citation.source_title || `Source ${canonical.resource_id}`,
-    source_type: canonical.source_type,
-    location: {
-      source_type: canonical.source_type,
-      page_number: canonical.page_number,
-      slide_number: canonical.slide_number,
-      timestamp_start: canonical.timestamp_start,
-      timestamp_end: canonical.timestamp_end,
-    },
-    excerpt: citation.excerpt || canonical.text.slice(0, 200),
-    verification_status: 'VERIFIED',
-  };
+  return buildCanonicalLocation('VERIFIED');
 }
 
 /**
@@ -758,6 +770,7 @@ export async function verifyGroundedAnswer(
       supportStatus = 'PARTIALLY_VERIFIED';
     }
 
+    const isOutside = Boolean((c as any).is_outside_knowledge);
     const evaluatedClaim: GroundedClaim = {
       claim_id: claimId,
       text: c.text,
@@ -766,6 +779,7 @@ export async function verifyGroundedAnswer(
       support_status: supportStatus,
       supportStatus: supportStatus,
       citations: claimCitations,
+      is_outside_knowledge: isOutside,
     };
 
     verifiedClaims.push(evaluatedClaim);
@@ -774,8 +788,25 @@ export async function verifyGroundedAnswer(
     }
   }
 
-  // Compile final verified citations list
+  // Compile final verified citations list and assign sequential citation numbers [1], [2], ...
   const finalCitations = Array.from(citationMap.values());
+  finalCitations.forEach((cit, idx) => {
+    cit.citation_number = idx + 1;
+  });
+
+  // Map citation_indices onto verified claims
+  for (const vc of verifiedClaims) {
+    const indices: number[] = [];
+    for (const evId of vc.evidence_ids) {
+      const matchIdx = finalCitations.findIndex(
+        (cit) => cit.chunk_id === evId || cit.citation_id.includes(evId.toLowerCase())
+      );
+      if (matchIdx !== -1 && !indices.includes(matchIdx + 1)) {
+        indices.push(matchIdx + 1);
+      }
+    }
+    vc.citation_indices = indices;
+  }
 
   // Determine contract grounding & coverage score
   const totalClaims = verifiedClaims.length;

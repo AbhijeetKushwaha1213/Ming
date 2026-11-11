@@ -5,6 +5,7 @@ Preserves all Phase 1 multi-tenant hardening and zero-trust invariants.
 """
 
 import os
+import json
 from typing import List, Dict, Any, Optional
 import chromadb
 
@@ -18,6 +19,34 @@ from vector_store import (
 
 CHROMA_DATA_PATH = os.environ.get("CHROMA_DATA_PATH", "./chroma_data")
 COLLECTION_NAME = "studymate_multimodal_kb"
+
+def _clean_metadata_for_chroma(meta: Dict[str, Any]) -> Dict[str, Any]:
+    cleaned = {}
+    for k, v in meta.items():
+        if v is None:
+            continue
+        if isinstance(v, (str, int, float, bool)):
+            cleaned[k] = v
+        elif isinstance(v, (dict, list)):
+            cleaned[k] = json.dumps(v)
+        else:
+            cleaned[k] = str(v)
+    return cleaned
+
+def _restore_metadata_from_chroma(meta: Dict[str, Any]) -> Dict[str, Any]:
+    restored = {}
+    for k, v in meta.items():
+        if isinstance(v, str) and (
+            (v.startswith("{") and v.endswith("}")) or
+            (v.startswith("[") and v.endswith("]"))
+        ):
+            try:
+                restored[k] = json.loads(v)
+            except Exception:
+                restored[k] = v
+        else:
+            restored[k] = v
+    return restored
 
 class ChromaVectorStore(BaseVectorStore):
     """
@@ -57,7 +86,7 @@ class ChromaVectorStore(BaseVectorStore):
 
         ids = [c["id"] for c in chunks]
         documents = [c["text"] for c in chunks]
-        metadatas = [c["metadata"] for c in chunks]
+        metadatas = [_clean_metadata_for_chroma(c["metadata"]) for c in chunks]
 
         batch_size = 100
         total_inserted = 0
@@ -138,7 +167,8 @@ class ChromaVectorStore(BaseVectorStore):
         n_queries = len(query_texts)
         res_ids = results.get("ids") or [[] for _ in range(n_queries)]
         res_docs = results.get("documents") or [[] for _ in range(n_queries)]
-        res_metas = results.get("metadatas") or [[] for _ in range(n_queries)]
+        raw_metas = results.get("metadatas") or [[] for _ in range(n_queries)]
+        res_metas = [[_restore_metadata_from_chroma(m) for m in meta_list] for meta_list in raw_metas]
         res_dists = results.get("distances") or [[] for _ in range(n_queries)]
 
         return {
@@ -152,7 +182,7 @@ class ChromaVectorStore(BaseVectorStore):
         """Retrieve chunk text and metadata by chunk_id."""
         res = self.collection.get(ids=[chunk_id], include=["metadatas", "documents"])
         if res and res.get("ids") and len(res["ids"]) > 0:
-            meta = res["metadatas"][0] if res.get("metadatas") else {}
+            meta = _restore_metadata_from_chroma(res["metadatas"][0]) if res.get("metadatas") else {}
             return {
                 "found": True,
                 "chunk_id": chunk_id,

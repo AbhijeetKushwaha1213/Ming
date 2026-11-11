@@ -1,0 +1,73 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<<
+/Producer (pypdf)
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Count 1
+/Kids [ 4 0 R ]
+>>
+endobj
+3 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+4 0 obj
+<<
+/Type /Page
+/MediaBox [ 0 0 612 792 ]
+/Resources <<
+/Font <<
+/F1 5 0 R
+>>
+>>
+/Contents 6 0 R
+/Parent 2 0 R
+>>
+endobj
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+6 0 obj
+<<
+/Length 611
+>>
+stream
+BT /F1 12 Tf 50 740 Td 14 TL (Synthetic Grounding Fixture: Vector Graphics Path Mathematical Formulation.) Tj T* (The relativistic mass of a moving particle increases with velocity relative to the speed of light:) Tj T* (Formula 2.1: Relativistic Mass with Lorentz Factor) Tj ET
+BT /F1 12 Tf 50 670 Td (m_rel = ) Tj ET
+BT /F1 12 Tf 110 682 Td (m_0) Tj ET
+100 675 m 190 675 l 1.5 w S
+105 658 m 110 658 l 115 645 l 122 668 l 190 668 l 1.5 w S
+BT /F1 12 Tf 125 652 Td (1 - v^2 / c^2) Tj ET
+BT /F1 12 Tf 50 610 Td 14 TL (where m_0 is rest mass, v is particle velocity, and c is the speed of light in vacuum.) Tj ET
+
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000054 00000 n 
+0000000113 00000 n 
+0000000162 00000 n 
+0000000290 00000 n 
+0000000360 00000 n 
+trailer
+<<
+/Size 7
+/Root 3 0 R
+/Info 1 0 R
+>>
+startxref
+1022
+%%EOF

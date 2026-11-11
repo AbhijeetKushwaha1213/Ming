@@ -28,14 +28,44 @@ export interface CreateResourceInput {
   tags?: string[];
 }
 
+export interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  unit?: 'percent' | 'points';
+}
+
+export type EvidenceType =
+  | 'TEXT_PASSAGE'
+  | 'EQUATION'
+  | 'DIAGRAM'
+  | 'TRANSCRIPT'
+  | 'VIDEO_FRAME';
+
+export type TimingPrecision = 'SEGMENT' | 'WORD' | 'FRAME';
+
 export interface RagChunkLocation {
   source_type: string;
   page_number?: number | null;
+  page_label?: string | null;
+  physical_page_index?: number | null;
   slide_number?: number | null;
   timestamp_start?: number | null;
   timestamp_end?: number | null;
+  timing_precision?: TimingPrecision;
   is_diagram?: boolean;
   diagram_caption?: string;
+  bounding_box?: BoundingBox | null;
+  regions?: BoundingBox[] | null;
+  has_precise_coordinates?: boolean;
+  localization_confidence?: number | null;
+  evidence_type?: EvidenceType;
+  equation_crop_data?: string | null;
+  equation_notation?: string | null;
+  surrounding_context?: string | null;
+  uncertainty_note?: string | null;
+  uncertainty_score?: number | null;
 }
 
 export interface RagChunk {
@@ -88,6 +118,7 @@ export interface RagJobStatus {
 
 export interface CitationData {
   citation_id?: string;
+  citation_number?: number; // 1-based index e.g. 1 for [1]
   chunk_id: string;
   source_id?: string;
   document_id?: string;
@@ -95,9 +126,12 @@ export interface CitationData {
   source_title?: string;
   source_type: string;
   page_number?: number | null;
+  page_label?: string | null;
+  physical_page_index?: number | null;
   slide_number?: number | null;
   timestamp_start?: number | null;
   timestamp_end?: number | null;
+  timing_precision?: TimingPrecision;
   is_diagram?: boolean;
   diagram_caption?: string;
   citation_label: string;
@@ -105,6 +139,16 @@ export interface CitationData {
   excerpt?: string;
   verification_status?: CitationVerificationStatus | string;
   location?: SourceLocation;
+  bounding_box?: BoundingBox | null;
+  regions?: BoundingBox[] | null;
+  has_precise_coordinates?: boolean;
+  localization_confidence?: number | null;
+  evidence_type?: EvidenceType;
+  equation_crop_data?: string | null;
+  equation_notation?: string | null;
+  surrounding_context?: string | null;
+  uncertainty_note?: string | null;
+  uncertainty_score?: number | null;
 }
 
 export interface GroundedChatResponse {

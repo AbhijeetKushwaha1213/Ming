@@ -18,6 +18,32 @@ import type { SourceType, ExtractionMethod } from './ingestionTypes.ts';
 export type { SourceType, ExtractionMethod };
 
 /**
+ * Bounding region in page coordinates (normalized percentage 0-100% or points)
+ */
+export interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  unit?: 'percent' | 'points';
+}
+
+/**
+ * Normalized evidence type classification
+ */
+export type EvidenceType =
+  | 'TEXT_PASSAGE'
+  | 'EQUATION'
+  | 'DIAGRAM'
+  | 'TRANSCRIPT'
+  | 'VIDEO_FRAME';
+
+/**
+ * Timing precision for audio/video media
+ */
+export type TimingPrecision = 'SEGMENT' | 'WORD' | 'FRAME';
+
+/**
  * Canonical Evidence Object
  * Normalized atomic unit of verified knowledge retrieved from the vector store
  * to support response generation and citation navigation.
@@ -29,12 +55,25 @@ export interface CanonicalEvidence {
   source_type: SourceType;
   text: string;
   page_number?: number | null;
+  page_label?: string | null;
+  physical_page_index?: number | null;
   slide_number?: number | null;
   timestamp_start?: number | null;
   timestamp_end?: number | null;
+  timing_precision?: TimingPrecision;
   extraction_method: ExtractionMethod;
   content_hash: string;
   relevance_score: number;
+  bounding_box?: BoundingBox | null;
+  regions?: BoundingBox[] | null;
+  has_precise_coordinates?: boolean;
+  localization_confidence?: number | null;
+  evidence_type?: EvidenceType;
+  equation_crop_data?: string | null;
+  equation_notation?: string | null;
+  surrounding_context?: string | null;
+  uncertainty_score?: number | null;
+  uncertainty_note?: string | null;
 }
 
 /**
@@ -62,9 +101,11 @@ export interface GroundedClaim {
   text: string;
   claim?: string; // Canonical alias for claim text
   evidence_ids: string[];
+  citation_indices?: number[]; // e.g. [1, 2]
   support_status: ClaimSupportStatus;
   supportStatus?: ClaimSupportStatus; // Canonical alias for support_status
   citations?: VerifiedCitation[];
+  is_outside_knowledge?: boolean;
 }
 
 /**
@@ -84,11 +125,24 @@ export type CitationVerificationStatus =
 export interface SourceLocation {
   source_type: SourceType | string;
   page_number?: number | null;
+  page_label?: string | null;
+  physical_page_index?: number | null;
   slide_number?: number | null;
   timestamp_start?: number | null;
   timestamp_end?: number | null;
+  timing_precision?: TimingPrecision;
   is_diagram?: boolean;
   diagram_caption?: string;
+  bounding_box?: BoundingBox | null;
+  regions?: BoundingBox[] | null;
+  has_precise_coordinates?: boolean;
+  localization_confidence?: number | null;
+  evidence_type?: EvidenceType;
+  equation_crop_data?: string | null;
+  equation_notation?: string | null;
+  surrounding_context?: string | null;
+  uncertainty_note?: string | null;
+  uncertainty_score?: number | null;
 }
 
 /**
@@ -98,6 +152,7 @@ export interface SourceLocation {
  */
 export interface VerifiedCitation {
   citation_id: string;
+  citation_number?: number; // e.g. 1 for [1]
   chunk_id: string;
   resource_id: string;
   source_title: string;
@@ -105,6 +160,17 @@ export interface VerifiedCitation {
   location: SourceLocation;
   excerpt: string;
   verification_status: CitationVerificationStatus | string;
+  bounding_box?: BoundingBox | null;
+  regions?: BoundingBox[] | null;
+  has_precise_coordinates?: boolean;
+  localization_confidence?: number | null;
+  evidence_type?: EvidenceType;
+  equation_crop_data?: string | null;
+  equation_notation?: string | null;
+  surrounding_context?: string | null;
+  uncertainty_note?: string | null;
+  uncertainty_score?: number | null;
+  page_label?: string | null;
 }
 
 /**

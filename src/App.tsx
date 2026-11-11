@@ -23,6 +23,7 @@ const Landing = lazy(() => import("./pages/Landing"));
 const EvaluationDashboard = lazy(() =>
   import("./components/dev/EvaluationDashboard").then((m) => ({ default: m.EvaluationDashboard })),
 );
+const ExactEvidenceVerificationPage = lazy(() => import("./pages/ExactEvidenceVerificationPage"));
 const ExamModeRoute = lazy(() => import("./pages/ExamModeRoute"));
 
 const queryClient = new QueryClient({
@@ -125,6 +126,7 @@ export const App = () => {
 
                   {/* Development & Diagnostics */}
                   <Route path="/dev/evaluation" element={<EvaluationDashboard />} />
+                  <Route path="/dev/exact-evidence" element={<ExactEvidenceVerificationPage />} />
 
                   {/* 404 Fallback */}
                   <Route path="*" element={<NotFound />} />

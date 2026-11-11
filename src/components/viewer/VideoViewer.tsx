@@ -11,6 +11,8 @@ export interface VideoViewerProps {
   timestampEnd?: number | null;
   title?: string;
   excerpt?: string;
+  evidenceType?: string;
+  timingPrecision?: string;
   className?: string;
 }
 
@@ -20,6 +22,8 @@ export const VideoViewer: React.FC<VideoViewerProps> = ({
   timestampEnd,
   title = 'Lecture Video',
   excerpt,
+  evidenceType = 'TRANSCRIPT',
+  timingPrecision = 'SEGMENT',
   className = '',
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -180,8 +184,11 @@ export const VideoViewer: React.FC<VideoViewerProps> = ({
           </span>
         </div>
 
-        {/* Timestamp Highlight Badge */}
+        {/* Timestamp Highlight Badge & Precision Indicator */}
         <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-800 bg-emerald-100/50">
+            {evidenceType === 'VIDEO_FRAME' ? 'Visual Video Frame' : 'Spoken Audio Transcript'} ({timingPrecision === 'SEGMENT' ? 'Segment Precision' : timingPrecision})
+          </Badge>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100" onClick={handleJumpToStart}>
             <Clock className="w-3.5 h-3.5" /> Jump to Cited Segment ({formatSeconds(timestampStart || 0)})
           </Button>
@@ -193,8 +200,11 @@ export const VideoViewer: React.FC<VideoViewerProps> = ({
         <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex items-start gap-2 text-xs">
           <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div className="text-foreground/90 leading-tight">
-            <span className="font-semibold text-emerald-700 dark:text-emerald-300">Verified Evidence Timestamp:</span>{' '}
+            <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+              Verified {evidenceType === 'VIDEO_FRAME' ? 'Video Frame' : 'Transcript'} Timestamp:
+            </span>{' '}
             <span className="font-mono text-emerald-800 dark:text-emerald-200">[{formatSeconds(timestampStart || 0)}{timestampEnd ? ` - ${formatSeconds(timestampEnd)}` : ''}]</span>{' '}
+            <span className="text-muted-foreground text-[11px]">({timingPrecision === 'SEGMENT' ? 'Segment timing' : timingPrecision})</span>:{' '}
             <span className="italic">"{excerpt}"</span>
           </div>
         </div>

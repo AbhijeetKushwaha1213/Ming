@@ -1,0 +1,26 @@
+[
+  {
+    "segment_id": "seg_01",
+    "start": 12.0,
+    "end": 28.0,
+    "text": "Synthetic Grounding Fixture: Welcome to Advanced Operating Systems. Today we analyze multi-level paging and hardware MMU translation.",
+    "evidence_type": "TRANSCRIPT",
+    "timing_precision": "SEGMENT"
+  },
+  {
+    "segment_id": "seg_02",
+    "start": 145.0,
+    "end": 180.0,
+    "text": "The professor emphasizes: Amdahl's Law defines the maximum theoretical speedup achievable by parallelizing a fixed workload across multi-core processors: S_latency = 1 / ((1 - p) + p / s).",
+    "evidence_type": "TRANSCRIPT",
+    "timing_precision": "SEGMENT"
+  },
+  {
+    "segment_id": "seg_03_visual_frame",
+    "start": 160.0,
+    "end": 165.0,
+    "text": "On-screen slide diagram displays formula: Speedup(s) = 1 / ((1 - p) + p/s)",
+    "evidence_type": "VIDEO_FRAME",
+    "timing_precision": "FRAME"
+  }
+]

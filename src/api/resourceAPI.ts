@@ -224,6 +224,8 @@ export async function fetchResourceFile(
     if (testKey) headers['x-ming-test-key'] = testKey;
     const testUser = localStorage.getItem('x-ming-user-id');
     if (testUser) headers['x-ming-user-id'] = testUser;
+    const devUser = localStorage.getItem('x-dev-user-id');
+    if (devUser) headers['x-dev-user-id'] = devUser;
   }
 
   const res = await fetch(getResourceFileUrl(resourceId), {

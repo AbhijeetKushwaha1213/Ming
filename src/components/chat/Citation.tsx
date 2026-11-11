@@ -52,6 +52,12 @@ export const Citation: React.FC<CitationProps> = ({
 
   const stype = (citation.source_type || 'TEXT').toUpperCase();
   const isDiagram = Boolean(citation.is_diagram || locationDetails?.is_diagram);
+  const isEquation = citation.evidence_type === 'EQUATION' || locationDetails?.evidence_type === 'EQUATION';
+  const citNumPrefix = citation.citation_number ? `[${citation.citation_number}] ` : '';
+  const rawPageLabel = citation.page_label ?? locationDetails?.page_label;
+  const pageLabel = rawPageLabel
+    ? (/^\d+$/.test(rawPageLabel) ? `Page ${rawPageLabel}` : rawPageLabel)
+    : (citation.page_number ? `Page ${citation.page_number}` : undefined);
 
   // Helper to format timestamp seconds into MM:SS
   const formatTime = (seconds?: number | null) => {
@@ -62,8 +68,18 @@ export const Citation: React.FC<CitationProps> = ({
   };
 
   const getSourceConfig = () => {
+    if (isEquation) {
+      return {
+        icon: <BookOpen className="w-3.5 h-3.5 text-purple-600" />,
+        badgeColor: 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100',
+        label: `${citNumPrefix}Formula (${pageLabel || 'Equation'})`,
+        typeLabel: 'Mathematical Formulation / Equation',
+      };
+    }
     if (isDiagram) {
-      const coord = citation.page_number
+      const coord = pageLabel
+        ? pageLabel
+        : citation.page_number
         ? `Page ${citation.page_number}`
         : citation.slide_number
         ? `Slide ${citation.slide_number}`
@@ -71,7 +87,7 @@ export const Citation: React.FC<CitationProps> = ({
       return {
         icon: <ImageIcon className="w-3.5 h-3.5 text-primary" />,
         badgeColor: 'border-primary/25 bg-secondary text-primary hover:bg-secondary/80',
-        label: `Figure (${coord})`,
+        label: `${citNumPrefix}Figure (${coord})`,
         typeLabel: 'Multimodal Figure / Diagram',
       };
     }
@@ -79,7 +95,7 @@ export const Citation: React.FC<CitationProps> = ({
       return {
         icon: <FileText className="w-3.5 h-3.5 text-rose-600" />,
         badgeColor: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
-        label: citation.page_number ? `Page ${citation.page_number}` : 'PDF Excerpt',
+        label: `${citNumPrefix}${pageLabel || (citation.page_number ? `Page ${citation.page_number}` : 'PDF Excerpt')}`,
         typeLabel: 'Textbook / PDF Document',
       };
     }
@@ -87,25 +103,23 @@ export const Citation: React.FC<CitationProps> = ({
       return {
         icon: <Presentation className="w-3.5 h-3.5 text-amber-600" />,
         badgeColor: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
-        label: citation.slide_number ? `Slide ${citation.slide_number}` : 'Slide Excerpt',
+        label: `${citNumPrefix}${citation.slide_number ? `Slide ${citation.slide_number}` : 'Slide Excerpt'}`,
         typeLabel: 'Presentation Slides',
       };
     }
     if (stype.includes('VIDEO') || stype.includes('AUDIO') || stype.includes('YOUTUBE')) {
+      const isVideoFrame = citation.evidence_type === 'VIDEO_FRAME' || locationDetails?.evidence_type === 'VIDEO_FRAME';
       return {
         icon: <Video className="w-3.5 h-3.5 text-emerald-600" />,
         badgeColor: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
-        label:
-          citation.timestamp_start !== null && citation.timestamp_start !== undefined && citation.timestamp_start >= 0
-            ? formatTime(citation.timestamp_start)
-            : 'Lecture Video',
-        typeLabel: 'Lecture Video / Audio',
+        label: `${citNumPrefix}${isVideoFrame ? 'Video Frame' : 'Lecture'} (${formatTime(citation.timestamp_start)})`,
+        typeLabel: isVideoFrame ? 'On-Screen Video Frame (Visual)' : 'Lecture Audio Transcript',
       };
     }
     return {
       icon: <BookOpen className="w-3.5 h-3.5 text-blue-600" />,
       badgeColor: 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100',
-      label: citation.citation_label || 'Course Notes',
+      label: `${citNumPrefix}${citation.citation_label || 'Course Notes'}`,
       typeLabel: 'Verified Study Notes',
     };
   };
@@ -220,7 +234,9 @@ export const Citation: React.FC<CitationProps> = ({
               {/* Behavior by Source Type */}
               {stype.includes('PDF') && (
                 <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Page {locationDetails.page_number || 'N/A'} of uploaded course document</span>
+                  <span>
+                    {pageLabel || `Page ${locationDetails.page_number || 'N/A'}`} of uploaded course document
+                  </span>
                   <Button
                     size="sm"
                     variant="outline"
@@ -230,8 +246,49 @@ export const Citation: React.FC<CitationProps> = ({
                     }}
                     data-testid="jump-to-page-btn"
                   >
-                    <ExternalLink className="w-3 h-3" /> Jump to Page {locationDetails.page_number}
+                    <ExternalLink className="w-3 h-3" /> Jump to {pageLabel || `Page ${locationDetails.page_number}`}
                   </Button>
+                </div>
+              )}
+
+              {/* Scanned Document - Highlight Unavailable Notice */}
+              {(citation.has_precise_coordinates === false || locationDetails.has_precise_coordinates === false) && (
+                <div
+                  data-testid="citation-highlight-unavailable-notice"
+                  className="mt-2 p-2 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-200 flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Precise coordinate highlight unavailable for this document scan. Jump to Page opens authentic document page without invented coordinates.</span>
+                </div>
+              )}
+
+              {/* Equation / Figure Crop Preview */}
+              {(locationDetails.equation_crop_data || citation.equation_crop_data) && (
+                <div data-testid="citation-evidence-crop" className="mt-2 p-2.5 rounded-lg bg-secondary/80 border border-border space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Authentic Document Evidence Crop ({isEquation ? 'Formula' : 'Figure'})</span>
+                  </div>
+                  <div className="p-1 bg-white dark:bg-zinc-900 rounded border border-border flex items-center justify-center max-h-32 overflow-hidden">
+                    <img
+                      src={locationDetails.equation_crop_data || citation.equation_crop_data}
+                      alt="Supporting Evidence Crop"
+                      className="max-h-28 object-contain"
+                    />
+                  </div>
+                  {(locationDetails.equation_notation || citation.equation_notation) && (
+                    <div className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded w-max">
+                      {locationDetails.equation_notation || citation.equation_notation}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Extraction Uncertainty Note */}
+              {(locationDetails.uncertainty_note || citation.uncertainty_note) && (
+                <div data-testid="citation-uncertainty-note" className="mt-2 p-2 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-200 flex items-start gap-1.5">
+                  <span className="font-semibold shrink-0">⚠️ Uncertainty:</span>
+                  <span>{locationDetails.uncertainty_note || citation.uncertainty_note}</span>
                 </div>
               )}
 

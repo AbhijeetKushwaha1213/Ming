@@ -1,7 +1,112 @@
-import { prisma, ensureStudyPlanSchema, ensureLearnerSchema, ensureResourceSchema, ensureAssessmentSchema } from './prisma.ts';
+import {
+  prisma,
+  ensureStudyPlanSchema,
+  ensureLearnerSchema,
+  ensureResourceSchema,
+  ensureAssessmentSchema,
+  ensureDAGSchema,
+  ensureLearnerPreferencesSchema,
+} from './prisma.ts';
 import { getAllLearnerMastery, getLearnerEventHistory, logLearnerEvent, type MasteryStatus } from './bktService.ts';
 import { evaluateAdaptiveRecommendations } from './adaptiveRecommendationService.ts';
 import type { RecommendationCategory } from './learnerTypes.ts';
+import { getUserDAGs } from './dagService.ts';
+import { normalizeConceptString } from './learnerEvidenceService.ts';
+
+export function isValidIANATimezone(tz?: string | null): boolean {
+  if (!tz || typeof tz !== 'string') return false;
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getCalendarDateInTimezone(date: Date = new Date(), timezone: string = 'Asia/Kolkata'): string {
+  const validTz = isValidIANATimezone(timezone) ? timezone : 'Asia/Kolkata';
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: validTz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(date);
+}
+
+export interface LearnerPreferences {
+  userId: string;
+  targetMinutes: number;
+  examDate: string | null;
+  timezone: string;
+}
+
+export async function getLearnerPreferences(userId: string): Promise<LearnerPreferences> {
+  await ensureLearnerPreferencesSchema();
+  const rows: any[] = await prisma.$queryRawUnsafe(
+    'SELECT * FROM learner_preferences WHERE userId = ? LIMIT 1',
+    userId
+  );
+  if (rows && rows.length > 0) {
+    const r = rows[0];
+    return {
+      userId: r.userId,
+      targetMinutes: Number(r.targetMinutes) || 60,
+      examDate: r.examDate || null,
+      timezone: isValidIANATimezone(r.timezone) ? r.timezone : 'Asia/Kolkata',
+    };
+  }
+  return {
+    userId,
+    targetMinutes: 60,
+    examDate: null,
+    timezone: 'Asia/Kolkata',
+  };
+}
+
+export async function saveLearnerPreferences(
+  userId: string,
+  prefs: Partial<LearnerPreferences>
+): Promise<LearnerPreferences> {
+  await ensureLearnerPreferencesSchema();
+  const current = await getLearnerPreferences(userId);
+  const targetMinutes =
+    prefs.targetMinutes !== undefined && !isNaN(Number(prefs.targetMinutes)) && Number(prefs.targetMinutes) > 0
+      ? Math.max(15, Math.min(480, Math.round(Number(prefs.targetMinutes))))
+      : current.targetMinutes;
+  const examDate =
+    prefs.examDate !== undefined
+      ? (prefs.examDate && /^\d{4}-\d{2}-\d{2}$/.test(prefs.examDate) ? prefs.examDate : null)
+      : current.examDate;
+  const timezone =
+    prefs.timezone !== undefined && isValidIANATimezone(prefs.timezone)
+      ? prefs.timezone
+      : current.timezone;
+
+  const nowStr = new Date().toISOString();
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO learner_preferences (userId, targetMinutes, examDate, timezone, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(userId) DO UPDATE SET
+       targetMinutes = excluded.targetMinutes,
+       examDate = excluded.examDate,
+       timezone = excluded.timezone,
+       updatedAt = excluded.updatedAt`,
+    userId,
+    targetMinutes,
+    examDate,
+    timezone,
+    nowStr,
+    nowStr
+  );
+
+  return {
+    userId,
+    targetMinutes,
+    examDate,
+    timezone,
+  };
+}
 
 export type ActivityType =
   | 'REVIEW_SOURCE'
@@ -60,6 +165,8 @@ export interface StudyPlanRecommendation {
   conceptId?: string | null;
   category?: RecommendationCategory;
   questionId?: string | null;
+  originItemId?: string | null;
+  rescheduledFromId?: string | null;
 }
 
 export interface DailyStudyPlanResult {
@@ -72,6 +179,11 @@ export interface DailyStudyPlanResult {
   status: string;
   summary: string;
   isColdStart: boolean;
+  isRecoveryPlan?: boolean;
+  missedTasksCount?: number;
+  isInfeasible?: boolean;
+  paceWarning?: string | null;
+  feasibilityExplanation?: string | null;
   items: Array<StudyPlanRecommendation & { id: string; status: PlanItemStatus; completedAt: string | null }>;
 }
 
@@ -134,11 +246,14 @@ export async function computeDeterministicPriorities(params: {
   let examUrgencyScore = 0.2; // default neutral
   if (examDate && !isNaN(examDate.getTime())) {
     const diffTime = examDate.getTime() - now.getTime();
-    daysUntilExam = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-    if (daysUntilExam <= 3) examUrgencyScore = 1.0;
-    else if (daysUntilExam <= 7) examUrgencyScore = 0.85;
-    else if (daysUntilExam <= 14) examUrgencyScore = 0.60;
-    else if (daysUntilExam <= 30) examUrgencyScore = 0.40;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    daysUntilExam = diffDays;
+    if (diffDays < 0) examUrgencyScore = 0.0; // Exam has passed
+    else if (diffDays === 0) examUrgencyScore = 1.0; // Exam is today
+    else if (diffDays <= 3) examUrgencyScore = 1.0;
+    else if (diffDays <= 7) examUrgencyScore = 0.85;
+    else if (diffDays <= 14) examUrgencyScore = 0.60;
+    else if (diffDays <= 30) examUrgencyScore = 0.40;
     else examUrgencyScore = 0.25;
   }
 
@@ -167,7 +282,30 @@ export async function computeDeterministicPriorities(params: {
     userMisconceptions = [];
   }
 
-  // Collect distinct topics from mastery and resources
+  // 5. Fetch User DAGs for topic discovery and Prerequisite Gating
+  let userDAGs: any[] = [];
+  try {
+    userDAGs = await getUserDAGs(userId);
+  } catch {
+    userDAGs = [];
+  }
+  const dagNodeMap = new Map<string, { id?: string; title: string; status: string; prerequisites: string[]; mastery?: number }>();
+  userDAGs.forEach((dag) => {
+    (dag.nodes || []).forEach((node: any) => {
+      const nodeTitle = node.title || node.name;
+      if (nodeTitle) {
+        dagNodeMap.set(normalizeConceptString(nodeTitle), {
+          id: node.id,
+          title: nodeTitle,
+          status: node.status || 'available',
+          prerequisites: node.prerequisites || [],
+          mastery: node.mastery,
+        });
+      }
+    });
+  });
+
+  // Collect distinct topics from mastery, resources, and user DAG nodes
   const topicMap = new Map<string, { topic: string; subtopic: string | null; source?: any }>();
 
   masteryRecords.forEach((m) => {
@@ -182,6 +320,18 @@ export async function computeDeterministicPriorities(params: {
     if (!topicMap.has(key)) {
       topicMap.set(key, { topic: t, subtopic: null, source: r });
     }
+  });
+
+  userDAGs.forEach((dag) => {
+    (dag.nodes || []).forEach((node: any) => {
+      const nodeTitle = node.title || node.name;
+      if (nodeTitle) {
+        const key = `${nodeTitle}:::`;
+        if (!topicMap.has(key)) {
+          topicMap.set(key, { topic: nodeTitle, subtopic: null });
+        }
+      }
+    });
   });
 
   const assessedCount = masteryRecords.filter((m) => m.attempts > 0).length;
@@ -253,6 +403,26 @@ export async function computeDeterministicPriorities(params: {
       overallScore = Math.min(1.0, overallScore + boost);
     }
 
+    // DAG Prerequisite Gating: If explicit prerequisite is unmet in DAG, deprioritize
+    const dagNode = dagNodeMap.get(normalizeConceptString(item.topic)) || (item.subtopic ? dagNodeMap.get(normalizeConceptString(item.subtopic)) : undefined);
+    if (dagNode) {
+      if (dagNode.status === 'locked' || dagNode.status === 'unmet') {
+        overallScore *= 0.10;
+      } else if (dagNode.prerequisites && dagNode.prerequisites.length > 0) {
+        let hasUnmet = false;
+        for (const pre of dagNode.prerequisites) {
+          const preNode = Array.from(dagNodeMap.values()).find(
+            (n) => n.id === pre || normalizeConceptString(n.title) === normalizeConceptString(pre)
+          );
+          if (preNode && (preNode.status === 'locked' || preNode.status === 'weak' || (preNode.mastery ?? 0) < 0.60)) {
+            hasUnmet = true;
+            break;
+          }
+        }
+        if (hasUnmet) overallScore *= 0.10;
+      }
+    }
+
     priorities.push({
       topic: item.topic,
       subtopic: item.subtopic,
@@ -293,6 +463,8 @@ export async function computeDeterministicPriorities(params: {
   };
 }
 
+const activePlanGenerationLocks = new Map<string, Promise<DailyStudyPlanResult>>();
+
 /**
  * 2. Generate Personalized Daily Study Plan
  * Connects deterministic priority scores with real grounded course evidence.
@@ -306,28 +478,379 @@ export async function generatePersonalizedDailyPlan(params: {
   targetMinutes?: number;
   examDate?: string | null;
   forceRegenerate?: boolean;
+  referenceDate?: string;
+  timezone?: string;
+  timezoneOffsetMinutes?: number;
+  allowClockOverride?: boolean;
 }): Promise<DailyStudyPlanResult> {
   await ensureStudyPlanSchema();
   await ensureResourceSchema();
   await ensureLearnerSchema();
+  await ensureDAGSchema();
+  await ensureLearnerPreferencesSchema();
 
   const userId = params.userId;
-  const targetMinutes = params.targetMinutes || 60;
-  const planDate = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
 
-  // Check if active plan exists for today
-  if (!params.forceRegenerate) {
-    const existingPlan = await getTodayStudyPlan(userId, planDate);
-    if (existingPlan) {
-      return existingPlan;
+  // 1. Resolve Learner Preferences
+  const userPrefs = await getLearnerPreferences(userId);
+  const userTimezone = (params.timezone && isValidIANATimezone(params.timezone))
+    ? params.timezone
+    : userPrefs.timezone;
+
+  // 2. Production Clock Boundary:
+  // Trusted server clock is enforced. Client-supplied referenceDate is only honored in test environment
+  // or when explicitly authorized via allowClockOverride.
+  const isTestEnv = process.env.NODE_ENV === 'test';
+  let planDate: string;
+  if ((isTestEnv || params.allowClockOverride) && params.referenceDate && /^\d{4}-\d{2}-\d{2}$/.test(params.referenceDate)) {
+    planDate = params.referenceDate;
+  } else if ((isTestEnv || params.allowClockOverride) && params.timezoneOffsetMinutes !== undefined) {
+    const localMs = Date.now() - params.timezoneOffsetMinutes * 60000;
+    planDate = new Date(localMs).toISOString().split('T')[0];
+  } else {
+    // Trusted server clock + validated learner IANA timezone (no accidental UTC skew)
+    planDate = getCalendarDateInTimezone(new Date(), userTimezone);
+  }
+
+  // 3. Concurrency Lock: Prevent duplicate active plans/items under concurrent requests
+  const lockKey = `${userId}:::${planDate}`;
+  const existingLock = activePlanGenerationLocks.get(lockKey);
+  if (existingLock) {
+    return existingLock;
+  }
+
+  const generationPromise = (async () => {
+    try {
+      return await executePlanGeneration(params, planDate, userPrefs, userTimezone);
+    } finally {
+      activePlanGenerationLocks.delete(lockKey);
+    }
+  })();
+
+  activePlanGenerationLocks.set(lockKey, generationPromise);
+  return generationPromise;
+}
+
+async function executePlanGeneration(
+  params: {
+    userId: string;
+    targetMinutes?: number;
+    examDate?: string | null;
+    forceRegenerate?: boolean;
+    referenceDate?: string;
+    timezone?: string;
+    timezoneOffsetMinutes?: number;
+    allowClockOverride?: boolean;
+  },
+  planDate: string,
+  userPrefs: LearnerPreferences,
+  userTimezone: string
+): Promise<DailyStudyPlanResult> {
+  const userId = params.userId;
+
+  // Sanitize Daily Budget (Target Minutes represents the ENTIRE day's budget)
+  const rawBudget = params.targetMinutes !== undefined ? Number(params.targetMinutes) : userPrefs.targetMinutes;
+  const targetMinutes = (!rawBudget || isNaN(rawBudget) || rawBudget <= 0)
+    ? 60
+    : Math.max(15, Math.min(480, Math.round(rawBudget)));
+
+  // Exam Date resolution
+  const examDate = params.examDate !== undefined ? (params.examDate || null) : userPrefs.examDate;
+
+  // Auto-persist updated preferences so preferences reload faithfully
+  if (params.targetMinutes !== undefined || params.examDate !== undefined || params.timezone !== undefined) {
+    await saveLearnerPreferences(userId, {
+      targetMinutes,
+      examDate: examDate || null,
+      timezone: userTimezone,
+    });
+  }
+
+  // 1. Check if active plan exists for today
+  let completedItemsToday: Array<StudyPlanRecommendation & { id: string; status: PlanItemStatus; completedAt: string | null; originItemId?: string | null; rescheduledFromId?: string | null }> = [];
+  const existingTodayPlan = await getTodayStudyPlan(userId, planDate, { allowClockOverride: true });
+
+  if (existingTodayPlan) {
+    if (!params.forceRegenerate) {
+      return existingTodayPlan;
+    }
+    // If replanning today, PRESERVE already completed tasks so learner progress is never lost!
+    completedItemsToday = (existingTodayPlan.items || []).filter((i) => i.status === 'completed');
+    // Archive previous version of today's plan
+    await prisma.$executeRawUnsafe(
+      "UPDATE study_plans SET status = 'archived', updatedAt = ? WHERE id = ?",
+      new Date().toISOString(),
+      existingTodayPlan.id
+    );
+  }
+
+  // 2. Query historical completed items to prevent resurrection of tasks whose replacements were finished
+  const userCompletedRows: any[] = await prisma.$queryRawUnsafe(
+    `SELECT DISTINCT topic, subtopic, conceptId, originItemId, rescheduledFromId, questionId
+     FROM study_plan_items
+     WHERE userId = ? AND status = 'completed'`,
+    userId
+  );
+  const completedConceptKeys = new Set<string>();
+  const completedOriginIds = new Set<string>();
+  for (const c of userCompletedRows) {
+    completedConceptKeys.add(`${(c.topic || '').toLowerCase()}:::${(c.subtopic || '').toLowerCase()}`);
+    if (c.conceptId) completedConceptKeys.add(c.conceptId.toLowerCase());
+    if (c.originItemId) completedOriginIds.add(c.originItemId);
+    if (c.rescheduledFromId) completedOriginIds.add(c.rescheduledFromId);
+  }
+  for (const c of completedItemsToday) {
+    completedConceptKeys.add(`${(c.topic || '').toLowerCase()}:::${(c.subtopic || '').toLowerCase()}`);
+    if (c.conceptId) completedConceptKeys.add(c.conceptId.toLowerCase());
+    if (c.originItemId) completedOriginIds.add(c.originItemId);
+  }
+
+  // 3. Budget Accounting:
+  // targetMinutes represents the ENTIRE DAY'S budget.
+  // Completed duration is subtracted so repeated replanning never grants a fresh budget!
+  const completedMinutesToday = completedItemsToday.reduce((acc, i) => acc + i.estimatedMinutes, 0);
+  let remainingTime = Math.max(0, targetMinutes - completedMinutesToday);
+
+  // If budget was reduced below time already completed:
+  // Retain completion history and explain why no further work fits.
+  if (remainingTime <= 0 && completedItemsToday.length > 0) {
+    const summaryText = `You have already completed ${completedMinutesToday}m of study today, which fulfills your updated daily budget of ${targetMinutes}m. Completed tasks have been retained, and no additional tasks are scheduled for today. Great job exceeding your goal!`;
+    const planId = `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const planTitle = `Personalized Mastery Plan for ${planDate}`;
+    const summaryEnvelope = JSON.stringify({
+      text: summaryText,
+      isRecoveryPlan: false,
+      missedTasksCount: 0,
+      isInfeasible: false,
+      paceWarning: null,
+      feasibilityExplanation: summaryText,
+    });
+
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO study_plans (id, userId, planDate, title, targetMinutes, status, summary, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, 'completed', ?, ?, ?)`,
+      planId,
+      userId,
+      planDate,
+      planTitle,
+      targetMinutes,
+      summaryEnvelope,
+      new Date().toISOString(),
+      new Date().toISOString()
+    );
+
+    const savedCompletedItems: any[] = [];
+    for (const comp of completedItemsToday) {
+      const compItemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const nowStr = new Date().toISOString();
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO study_plan_items (
+          id, planId, userId, priority, priorityScore, topic, subtopic, activityType,
+          title, description, estimatedMinutes, reason, expectedOutcome,
+          sourceId, chunkId, sourceTitle, sourceCoordinate, status,
+          conceptId, category, questionId, originItemId, rescheduledFromId,
+          completedAt, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?)`,
+        compItemId,
+        planId,
+        userId,
+        comp.priority,
+        comp.priorityScore,
+        comp.topic,
+        comp.subtopic || null,
+        comp.activityType,
+        comp.title,
+        comp.description,
+        comp.estimatedMinutes,
+        comp.reason,
+        comp.expectedOutcome,
+        comp.sourceId || null,
+        comp.chunkId || null,
+        comp.sourceTitle || null,
+        comp.sourceCoordinate || null,
+        comp.conceptId || null,
+        comp.category || null,
+        comp.questionId || null,
+        comp.originItemId || comp.id,
+        comp.rescheduledFromId || null,
+        comp.completedAt || nowStr,
+        nowStr,
+        nowStr
+      );
+      savedCompletedItems.push({
+        ...comp,
+        id: compItemId,
+        status: 'completed',
+      });
+    }
+
+    return {
+      id: planId,
+      userId,
+      planDate,
+      title: planTitle,
+      targetMinutes,
+      totalPlannedMinutes: completedMinutesToday,
+      status: 'completed',
+      summary: summaryText,
+      isColdStart: false,
+      isRecoveryPlan: false,
+      missedTasksCount: 0,
+      isInfeasible: false,
+      paceWarning: null,
+      feasibilityExplanation: summaryText,
+      items: savedCompletedItems,
+    };
+  }
+
+  // 4. DAG Prerequisite Map: Ensure carried-over tasks respect prerequisite eligibility
+  const userDAGs = await getUserDAGs(userId);
+  const dagNodeMap = new Map<string, any>();
+  for (const dag of userDAGs) {
+    for (const node of dag.nodes) {
+      dagNodeMap.set(node.id, node);
+      dagNodeMap.set(normalizeConceptString(node.title), node);
     }
   }
 
-  // Authoritative Phase 5 Step 3 Adaptive Recommendations
-  const adaptiveRecs = await evaluateAdaptiveRecommendations(userId, { limit: 10 });
-  const isColdStart = adaptiveRecs.is_cold_start;
+  // 5. Inspect previous plans for missed days / incomplete backlog across multiple missed days
+  const priorPlans: any[] = await prisma.$queryRawUnsafe(
+    "SELECT * FROM study_plans WHERE userId = ? AND planDate < ? AND status != 'archived' ORDER BY planDate DESC, createdAt DESC LIMIT 14",
+    userId,
+    planDate
+  );
 
-  // Query real uploaded course materials to ground recommendations strictly scoped to user
+  const missedTasksToReschedule: any[] = [];
+  const seenMissedKeys = new Set<string>();
+  const plansToArchive: string[] = [];
+
+  for (const prior of priorPlans) {
+    plansToArchive.push(prior.id);
+
+    const priorItems: any[] = await prisma.$queryRawUnsafe(
+      "SELECT * FROM study_plan_items WHERE planId = ? AND (status = 'pending' OR status = 'in_progress') ORDER BY priority ASC",
+      prior.id
+    );
+
+    for (const item of priorItems) {
+      const conceptKey = `${(item.topic || '').toLowerCase()}:::${(item.subtopic || '').toLowerCase()}`;
+      const originKey = item.originItemId || item.id;
+
+      // Deduplicate across several historical plans containing the same concept
+      if (seenMissedKeys.has(conceptKey) || seenMissedKeys.has(originKey)) {
+        continue;
+      }
+
+      // RESURRECTION CHECK: Ensure a task is not resurrected after it or its replacement was completed
+      if (
+        completedConceptKeys.has(conceptKey) ||
+        (item.conceptId && completedConceptKeys.has(item.conceptId.toLowerCase())) ||
+        completedOriginIds.has(originKey) ||
+        completedOriginIds.has(item.id)
+      ) {
+        continue;
+      }
+
+      // PREREQUISITE CHECK: Carried-over tasks must respect prerequisite eligibility
+      const dagNode = dagNodeMap.get(item.conceptId) || dagNodeMap.get(normalizeConceptString(item.topic));
+      if (dagNode) {
+        const isLocked = dagNode.status === 'locked' || dagNode.status === 'unmet';
+        let hasUnmetPrereq = false;
+        if (dagNode.prerequisites && dagNode.prerequisites.length > 0) {
+          for (const pre of dagNode.prerequisites) {
+            const preNode = Array.from(dagNodeMap.values()).find(
+              (n) => n.id === pre || normalizeConceptString(n.title) === normalizeConceptString(pre)
+            );
+            if (preNode && (preNode.status === 'locked' || preNode.status === 'weak' || (preNode.mastery ?? 0) < 0.60)) {
+              hasUnmetPrereq = true;
+              break;
+            }
+          }
+        }
+        if (isLocked || hasUnmetPrereq) {
+          // Defer carried-over task whose prerequisite is not met
+          continue;
+        }
+      }
+
+      seenMissedKeys.add(conceptKey);
+      seenMissedKeys.add(originKey);
+      missedTasksToReschedule.push({
+        ...item,
+        missedPlanDate: prior.planDate,
+      });
+    }
+  }
+
+  // Archive harvested historical plans so they are not processed repeatedly
+  for (const pId of plansToArchive) {
+    await prisma.$executeRawUnsafe(
+      "UPDATE study_plans SET status = 'archived', updatedAt = ? WHERE id = ?",
+      new Date().toISOString(),
+      pId
+    );
+  }
+  // Mark harvested items as rescheduled
+  for (const m of missedTasksToReschedule) {
+    await prisma.$executeRawUnsafe(
+      "UPDATE study_plan_items SET status = 'rescheduled', updatedAt = ? WHERE id = ?",
+      new Date().toISOString(),
+      m.id
+    );
+  }
+
+  let priorityRank = 1;
+  let rescheduledCount = 0;
+  const scheduledConceptKeys = new Set<string>();
+  const recommendedItems: StudyPlanRecommendation[] = [];
+
+  // Register concepts already completed today
+  completedItemsToday.forEach((c) => {
+    scheduledConceptKeys.add(`${c.topic.toLowerCase()}:::${(c.subtopic || '').toLowerCase()}`);
+    if (c.conceptId) scheduledConceptKeys.add(c.conceptId.toLowerCase());
+  });
+
+  // 6. Reschedule missed tasks from prior session (lineage tracking + prerequisite compliance)
+  for (const missed of missedTasksToReschedule) {
+    const key = `${missed.topic.toLowerCase()}:::${(missed.subtopic || '').toLowerCase()}`;
+    if (scheduledConceptKeys.has(key)) continue;
+    if (remainingTime < 15 && recommendedItems.length > 0) break;
+
+    const estTime = Math.min(missed.estimatedMinutes || 20, Math.max(15, remainingTime));
+    const reasonText = missed.missedPlanDate
+      ? `Rescheduled from missed session on ${missed.missedPlanDate}: ${missed.reason}`
+      : `Rescheduled from missed session: ${missed.reason}`;
+
+    recommendedItems.push({
+      priority: priorityRank++,
+      priorityScore: Math.min(1.0, Number(missed.priorityScore || 0.7) + 0.15),
+      topic: missed.topic,
+      subtopic: missed.subtopic || null,
+      conceptId: missed.conceptId || null,
+      category: (missed.category as RecommendationCategory) || 'PRACTICE_CONCEPT',
+      activityType: missed.activityType as ActivityType,
+      title: missed.title,
+      description: missed.description,
+      estimatedMinutes: estTime,
+      reason: reasonText,
+      expectedOutcome: missed.expectedOutcome,
+      sourceId: missed.sourceId || null,
+      chunkId: missed.chunkId || null,
+      sourceTitle: missed.sourceTitle || null,
+      sourceCoordinate: missed.sourceCoordinate || null,
+      questionId: missed.questionId || null,
+      originItemId: missed.originItemId || missed.id,
+      rescheduledFromId: missed.id,
+    });
+
+    scheduledConceptKeys.add(key);
+    if (missed.conceptId) scheduledConceptKeys.add(missed.conceptId.toLowerCase());
+    remainingTime -= estTime;
+    rescheduledCount++;
+  }
+
+  // 7. Authoritative Phase 5 Step 3 Adaptive Recommendations for remaining time
+  let isColdStart = false;
   const resources: any[] = await prisma.$queryRawUnsafe(
     userId === 'default_user'
       ? "SELECT * FROM resources WHERE userId = 'default_user' ORDER BY createdAt DESC LIMIT 10"
@@ -345,92 +868,115 @@ export async function generatePersonalizedDailyPlan(params: {
     userMisconceptions = [];
   }
 
-  const recommendedItems: StudyPlanRecommendation[] = [];
-  let remainingTime = targetMinutes;
-  let priorityRank = 1;
+  if (remainingTime >= 15) {
+    const adaptiveRecs = await evaluateAdaptiveRecommendations(userId, {
+      limit: 10,
+      now: planDate,
+      examDate,
+    });
+    isColdStart = adaptiveRecs.is_cold_start;
 
-  if (adaptiveRecs.recommendations.length > 0) {
-    for (const rec of adaptiveRecs.recommendations) {
-      if (remainingTime < 15 && recommendedItems.length > 0) break;
+    if (adaptiveRecs.recommendations.length > 0) {
+      for (const rec of adaptiveRecs.recommendations) {
+        if (remainingTime < 15 && (recommendedItems.length > 0 || completedItemsToday.length > 0)) break;
 
-      const matchingHighSeverityMisconception = userMisconceptions.find(
-        (m) =>
-          (m.topic?.toLowerCase() === rec.topic.toLowerCase() ||
-            (m.concept && m.concept.toLowerCase() === rec.concept_name.toLowerCase())) &&
-          (m.severity === 'high' || m.severity === 'critical')
-      );
-      const isMisconception = rec.category === 'ADDRESS_MISCONCEPTION' || Boolean(matchingHighSeverityMisconception);
-      const effectiveCategory: RecommendationCategory = isMisconception ? 'ADDRESS_MISCONCEPTION' : rec.category;
+        const key = `${rec.topic.toLowerCase()}:::${(rec.subtopic || '').toLowerCase()}`;
+        if (scheduledConceptKeys.has(key)) continue;
+        if (rec.concept_id && scheduledConceptKeys.has(rec.concept_id.toLowerCase())) continue;
 
-      // Activity mapping from Canonical Category
-      let activityType: ActivityType = 'PRACTICE_ASSESSMENT';
-      if (effectiveCategory === 'ADDRESS_MISCONCEPTION') {
-        activityType = 'RESOLVE_MISCONCEPTION';
-      } else if (effectiveCategory === 'REVIEW_CONCEPT') {
-        activityType = rec.recommended_resource ? 'REVIEW_SOURCE' : 'PRACTICE_ASSESSMENT';
-      } else if (effectiveCategory === 'PRACTICE_CONCEPT') {
-        activityType = 'PRACTICE_WEAK_CONCEPTS';
-      } else if (effectiveCategory === 'LEARN_CONCEPT') {
-        activityType = isColdStart ? 'DIAGNOSTIC_ASSESSMENT' : 'PRACTICE_ASSESSMENT';
-      } else if (effectiveCategory === 'CONSOLIDATE_MASTERY') {
-        activityType = 'PRACTICE_ASSESSMENT';
+        const matchingHighSeverityMisconception = userMisconceptions.find(
+          (m) =>
+            (m.topic?.toLowerCase() === rec.topic.toLowerCase() ||
+              (m.concept && m.concept.toLowerCase() === rec.concept_name.toLowerCase())) &&
+            (m.severity === 'high' || m.severity === 'critical')
+        );
+        const isMisconception = rec.category === 'ADDRESS_MISCONCEPTION' || Boolean(matchingHighSeverityMisconception);
+        const effectiveCategory: RecommendationCategory = isMisconception ? 'ADDRESS_MISCONCEPTION' : rec.category;
+
+        // Activity mapping from Canonical Category
+        let activityType: ActivityType = 'PRACTICE_ASSESSMENT';
+        if (effectiveCategory === 'ADDRESS_MISCONCEPTION') {
+          activityType = 'RESOLVE_MISCONCEPTION';
+        } else if (effectiveCategory === 'REVIEW_CONCEPT') {
+          activityType = rec.recommended_resource ? 'REVIEW_SOURCE' : 'PRACTICE_ASSESSMENT';
+        } else if (effectiveCategory === 'PRACTICE_CONCEPT') {
+          activityType = 'PRACTICE_WEAK_CONCEPTS';
+        } else if (effectiveCategory === 'LEARN_CONCEPT') {
+          activityType = isColdStart ? 'DIAGNOSTIC_ASSESSMENT' : 'PRACTICE_ASSESSMENT';
+        } else if (effectiveCategory === 'CONSOLIDATE_MASTERY') {
+          activityType = 'PRACTICE_ASSESSMENT';
+        }
+
+        let title = `Practice ${rec.concept_name}`;
+        let expectedOutcome = `Reinforce retrieval and demonstrate stable mastery in ${rec.concept_name}.`;
+
+        if (effectiveCategory === 'ADDRESS_MISCONCEPTION') {
+          const topConcept = matchingHighSeverityMisconception?.concept || rec.concept_name;
+          title = `Resolve Misconception: ${topConcept}`;
+          expectedOutcome = `Eliminate misconception and raise concept mastery toward proficiency (≥60%).`;
+        } else if (effectiveCategory === 'REVIEW_CONCEPT') {
+          title = `Review Concept: ${rec.concept_name}`;
+          expectedOutcome = `Counteract retention decay and refresh knowledge through grounded source review.`;
+        } else if (effectiveCategory === 'LEARN_CONCEPT') {
+          title = isColdStart ? `Diagnostic Knowledge Check: ${rec.concept_name}` : `Learn Foundational Concept: ${rec.concept_name}`;
+          expectedOutcome = isColdStart
+            ? `Calibrate initial BKT mastery state and identify baseline strengths.`
+            : `Establish conceptual foundations through verified study.`;
+        } else if (effectiveCategory === 'CONSOLIDATE_MASTERY') {
+          title = `Consolidate Mastery: ${rec.concept_name}`;
+          expectedOutcome = `Maintain retention stability across extended intervals.`;
+        }
+
+        const estTime = Math.min(25, Math.max(15, remainingTime));
+
+        const itemReason = isColdStart && effectiveCategory === 'LEARN_CONCEPT'
+          ? 'No assessment history found. Diagnostic assessment is needed to calibrate your personal BKT baseline without assuming unproven mastery.'
+          : rec.explanation;
+
+        const itemExpectedOutcome = isColdStart && effectiveCategory === 'LEARN_CONCEPT'
+          ? 'Calibrate initial P(L0) knowledge state and uncover specific strengths and weak topics.'
+          : expectedOutcome;
+
+        recommendedItems.push({
+          priority: priorityRank++,
+          priorityScore: rec.priority_score,
+          topic: rec.topic,
+          subtopic: rec.subtopic || null,
+          conceptId: rec.concept_id,
+          category: effectiveCategory,
+          activityType,
+          title,
+          description: `Targeted adaptive activity for ${rec.concept_name} based on verified learner intelligence.`,
+          estimatedMinutes: estTime,
+          reason: itemReason,
+          expectedOutcome: itemExpectedOutcome,
+          sourceId: rec.recommended_resource?.id || (resources[0]?.id || null),
+          chunkId: null,
+          sourceTitle: rec.recommended_resource?.title || (resources[0]?.title || null),
+          sourceCoordinate: rec.recommended_resource
+            ? rec.recommended_resource.type === 'PDF' ? 'Slide / Key Section' : 'Lecture Material'
+            : null,
+          questionId: rec.recommended_question?.id || null,
+        });
+
+        scheduledConceptKeys.add(key);
+        if (rec.concept_id) scheduledConceptKeys.add(rec.concept_id.toLowerCase());
+        remainingTime -= estTime;
       }
-
-      let title = `Practice ${rec.concept_name}`;
-      let expectedOutcome = `Reinforce retrieval and demonstrate stable mastery in ${rec.concept_name}.`;
-
-      if (effectiveCategory === 'ADDRESS_MISCONCEPTION') {
-        const topConcept = matchingHighSeverityMisconception?.concept || rec.concept_name;
-        title = `Resolve Misconception: ${topConcept}`;
-        expectedOutcome = `Eliminate misconception and raise concept mastery toward proficiency (≥60%).`;
-      } else if (effectiveCategory === 'REVIEW_CONCEPT') {
-        title = `Review Concept: ${rec.concept_name}`;
-        expectedOutcome = `Counteract retention decay and refresh knowledge through grounded source review.`;
-      } else if (effectiveCategory === 'LEARN_CONCEPT') {
-        title = isColdStart ? `Diagnostic Knowledge Check: ${rec.concept_name}` : `Learn Foundational Concept: ${rec.concept_name}`;
-        expectedOutcome = isColdStart
-          ? `Calibrate initial BKT mastery state and identify baseline strengths.`
-          : `Establish conceptual foundations through verified study.`;
-      } else if (effectiveCategory === 'CONSOLIDATE_MASTERY') {
-        title = `Consolidate Mastery: ${rec.concept_name}`;
-        expectedOutcome = `Maintain retention stability across extended intervals.`;
-      }
-
-      const estTime = Math.min(25, Math.max(15, remainingTime));
-
-      recommendedItems.push({
-        priority: priorityRank++,
-        priorityScore: rec.priority_score,
-        topic: rec.topic,
-        subtopic: rec.subtopic || null,
-        conceptId: rec.concept_id,
-        category: effectiveCategory,
-        activityType,
-        title,
-        description: `Targeted adaptive activity for ${rec.concept_name} based on verified learner intelligence.`,
-        estimatedMinutes: estTime,
-        reason: rec.explanation,
-        expectedOutcome,
-        sourceId: rec.recommended_resource?.id || (resources[0]?.id || null),
-        chunkId: null,
-        sourceTitle: rec.recommended_resource?.title || (resources[0]?.title || null),
-        sourceCoordinate: rec.recommended_resource
-          ? rec.recommended_resource.type === 'PDF' ? 'Slide / Key Section' : 'Lecture Material'
-          : null,
-        questionId: rec.recommended_question?.id || null,
-      });
-
-      remainingTime -= estTime;
     }
   }
 
-  // Fallback if no concept recommendations generated (e.g. catalog/DAG empty)
-  if (recommendedItems.length === 0) {
-    const { priorities, weakTopics } = await computeDeterministicPriorities({
+  // 8. Fallback if no items scheduled yet
+  if (recommendedItems.length === 0 && completedItemsToday.length === 0) {
+    const { priorities } = await computeDeterministicPriorities({
       userId,
-      examDate: params.examDate,
+      examDate,
       availableMinutes: targetMinutes,
     });
+
+    const masteryRecords = await getAllLearnerMastery(userId);
+    const hasPriorAssessments = masteryRecords.some((m) => m.attempts > 0);
+    isColdStart = !hasPriorAssessments;
 
     if (isColdStart) {
       recommendedItems.push({
@@ -441,7 +987,7 @@ export async function generatePersonalizedDailyPlan(params: {
         activityType: 'DIAGNOSTIC_ASSESSMENT',
         title: `Take ${priorities[0]?.topic || 'Course'} Diagnostic Assessment`,
         description: 'Complete a 15-minute diagnostic assessment to establish your personal BKT mastery baseline.',
-        estimatedMinutes: Math.min(20, remainingTime),
+        estimatedMinutes: Math.min(20, remainingTime > 0 ? remainingTime : 20),
         reason: 'No assessment history found. Diagnostic assessment is needed to identify baseline knowledge without fabricated progress.',
         expectedOutcome: 'Calibrate initial P(L0) knowledge state and uncover specific strengths and weak topics.',
         sourceId: resources[0]?.id || null,
@@ -472,10 +1018,31 @@ export async function generatePersonalizedDailyPlan(params: {
           category: 'LEARN_CONCEPT',
         });
         remainingTime -= Math.min(25, remainingTime);
+      } else if (resources.length === 0 && remainingTime >= 15) {
+        recommendedItems.push({
+          priority: priorityRank++,
+          priorityScore: 0.80,
+          topic: 'Workspace Setup',
+          subtopic: 'Ingest Material',
+          activityType: 'REVIEW_SOURCE',
+          title: 'Upload Course Material or Syllabus',
+          description: 'Upload your lecture notes, textbook chapters, or course syllabus to activate personalized adaptive study planning.',
+          estimatedMinutes: 15,
+          reason: 'No course resources found in your workspace. Upload learning material to begin.',
+          expectedOutcome: 'Ingest course documents and initialize your personalized Bayesian knowledge map.',
+          sourceId: null,
+          chunkId: null,
+          sourceTitle: 'StudyMate Workspace',
+          sourceCoordinate: 'Upload Area',
+          category: 'LEARN_CONCEPT',
+        });
+        remainingTime -= 15;
       }
     } else {
       for (const p of priorities) {
         if (remainingTime < 15) break;
+        const key = `${p.topic.toLowerCase()}:::${(p.subtopic || '').toLowerCase()}`;
+        if (scheduledConceptKeys.has(key)) continue;
 
         const matchingResource = resources.find((r) =>
           r.title?.toLowerCase().includes(p.topic.toLowerCase()) ||
@@ -507,10 +1074,11 @@ export async function generatePersonalizedDailyPlan(params: {
             sourceCoordinate: matchingResource?.type === 'PDF' ? 'Slide / Key Section' : 'Lecture Material',
             category: 'ADDRESS_MISCONCEPTION',
           });
+          scheduledConceptKeys.add(key);
           remainingTime -= estTime;
         }
 
-        if (p.details.recentIncorrectCount > 0 || p.details.currentMastery < 0.60) {
+        if ((p.details.recentIncorrectCount > 0 || p.details.currentMastery < 0.60) && remainingTime >= 15) {
           const estTime = Math.min(25, remainingTime);
           recommendedItems.push({
             priority: priorityRank++,
@@ -529,23 +1097,100 @@ export async function generatePersonalizedDailyPlan(params: {
             sourceCoordinate: matchingResource?.type === 'PDF' ? 'Key Section' : 'Lecture Material',
             category: 'PRACTICE_CONCEPT',
           });
+          scheduledConceptKeys.add(key);
           remainingTime -= estTime;
         }
       }
     }
   }
 
-  // Persist plan into study_plans and study_plan_items
+  // 9. Workload Feasibility & Pace Analysis (Assumptions & Sparse Evidence Uncertainty)
+  let isInfeasible = false;
+  let paceWarning: string | null = null;
+  let feasibilityExplanation: string | null = null;
+
+  if (examDate) {
+    const examTime = new Date(examDate).getTime();
+    const todayTime = new Date(planDate).getTime();
+    const diffDays = Math.ceil((examTime - todayTime) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      // Exam is today!
+      isInfeasible = false;
+      paceWarning = null;
+      feasibilityExplanation = "Exam is today! The plan focuses exclusively on high-yield rapid review and confidence consolidation.";
+    } else if (diffDays < 0) {
+      // Past exam date
+      isInfeasible = false;
+      paceWarning = null;
+      feasibilityExplanation = `The specified target exam date (${examDate}) has passed. Daily planning has switched to continuous mastery pacing.`;
+    } else {
+      const daysUntilExam = diffDays;
+      const totalAvailHours = Math.round(((daysUntilExam * targetMinutes) / 60) * 10) / 10;
+
+      const masteryList: any[] = await getAllLearnerMastery(userId);
+      const weakOrUnassessed = masteryList.filter(
+        (m) => m.masteryProbability < 0.60 || m.attempts === 0 || m.status === 'developing'
+      );
+      const neededTopicCount = Math.max(weakOrUnassessed.length, recommendedItems.length, 1);
+      const estimatedNeededMinutes = neededTopicCount * 45 + (rescheduledCount * 15);
+      const estimatedNeededHours = Math.round((estimatedNeededMinutes / 60) * 10) / 10;
+
+      const totalAttempts = masteryList.reduce((acc, m) => acc + (m.attempts || 0), 0);
+      const isSparseEvidence = isColdStart || totalAttempts < 3;
+      const uncertaintyNote = isSparseEvidence
+        ? " (Estimated based on baseline heuristic; actual learning duration will adapt as you complete assessments)"
+        : "";
+
+      if (estimatedNeededHours > totalAvailHours) {
+        isInfeasible = true;
+        const recommendedDailyMinutes = Math.min(240, Math.ceil(estimatedNeededMinutes / daysUntilExam));
+        paceWarning = `⚠️ Infeasible Pace Alert: You have ${daysUntilExam} day(s) until your exam. At ${targetMinutes}m/day (~${totalAvailHours}h total), available study time is insufficient to cover the estimated ${estimatedNeededHours}h of weak and unmastered concepts${uncertaintyNote}. Today's plan prioritizes the highest-yield items. Consider increasing your daily budget to ${recommendedDailyMinutes}m/day or focusing strictly on high-yield prerequisites.`;
+        feasibilityExplanation = paceWarning;
+      } else {
+        isInfeasible = false;
+        feasibilityExplanation = `On track: At ${targetMinutes}m/day across ${daysUntilExam} remaining day(s) (~${totalAvailHours}h total), your pace is sufficient to master all prioritized topics before your exam.${uncertaintyNote}`;
+      }
+    }
+  }
+
+  // 10. Plan Title, Summary & Metadata Envelope
+  const isRecoveryPlan = rescheduledCount > 0;
   const planId = `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const planTitle = isColdStart
     ? 'Diagnostic & Foundational Study Plan'
+    : isRecoveryPlan
+    ? `Recovery & Mastery Plan for ${planDate}`
     : `Personalized Mastery Plan for ${planDate}`;
-  const totalPlannedMinutes = recommendedItems.reduce((acc, i) => acc + i.estimatedMinutes, 0);
 
-  const planSummary = isColdStart
-    ? 'Cold-start plan focusing on baseline calibration and foundational course orientation.'
-    : `Targeted plan addressing ${recommendedItems.length} prioritized learning items, timed for ${totalPlannedMinutes} minutes total.`;
+  const allItemsCount = completedItemsToday.length + recommendedItems.length;
+  const totalPlannedMinutes =
+    completedItemsToday.reduce((acc, i) => acc + i.estimatedMinutes, 0) +
+    recommendedItems.reduce((acc, i) => acc + i.estimatedMinutes, 0);
 
+  let summaryText = '';
+  if (isRecoveryPlan) {
+    summaryText = `Missed-Day Recovery Plan: Rescheduled ${rescheduledCount} incomplete task(s) from your missed session on ${missedTasksToReschedule[0]?.missedPlanDate || 'previous day'}. Timed for ${totalPlannedMinutes}m total.`;
+  } else if (isColdStart) {
+    summaryText = 'Cold-start plan focusing on baseline calibration and foundational course orientation.';
+  } else {
+    summaryText = `Targeted plan addressing ${allItemsCount} prioritized learning items, timed for ${totalPlannedMinutes} minutes total.`;
+  }
+
+  if (paceWarning) {
+    summaryText += ` ${paceWarning}`;
+  }
+
+  const summaryEnvelope = JSON.stringify({
+    text: summaryText,
+    isRecoveryPlan,
+    missedTasksCount: rescheduledCount,
+    isInfeasible,
+    paceWarning,
+    feasibilityExplanation,
+  });
+
+  // 11. Persist into study_plans table
   await prisma.$executeRawUnsafe(
     `INSERT INTO study_plans (id, userId, planDate, title, targetMinutes, status, summary, createdAt, updatedAt)
      VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`,
@@ -554,24 +1199,71 @@ export async function generatePersonalizedDailyPlan(params: {
     planDate,
     planTitle,
     targetMinutes,
-    planSummary,
+    summaryEnvelope,
     new Date().toISOString(),
     new Date().toISOString()
   );
 
-  const savedItems = [];
+  // 12. Persist preserved completed items & new recommended items
+  const finalSavedItems: Array<StudyPlanRecommendation & { id: string; status: PlanItemStatus; completedAt: string | null }> = [];
 
-  for (const item of recommendedItems) {
-    const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const now = new Date().toISOString();
+  for (const comp of completedItemsToday) {
+    const compItemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const nowStr = new Date().toISOString();
     await prisma.$executeRawUnsafe(
       `INSERT INTO study_plan_items (
         id, planId, userId, priority, priorityScore, topic, subtopic, activityType,
         title, description, estimatedMinutes, reason, expectedOutcome,
         sourceId, chunkId, sourceTitle, sourceCoordinate, status,
-        conceptId, category, questionId,
+        conceptId, category, questionId, originItemId, rescheduledFromId,
         completedAt, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?)`,
+      compItemId,
+      planId,
+      userId,
+      comp.priority,
+      comp.priorityScore,
+      comp.topic,
+      comp.subtopic || null,
+      comp.activityType,
+      comp.title,
+      comp.description,
+      comp.estimatedMinutes,
+      comp.reason,
+      comp.expectedOutcome,
+      comp.sourceId || null,
+      comp.chunkId || null,
+      comp.sourceTitle || null,
+      comp.sourceCoordinate || null,
+      comp.conceptId || null,
+      comp.category || null,
+      comp.questionId || null,
+      comp.originItemId || comp.id,
+      comp.rescheduledFromId || null,
+      comp.completedAt || nowStr,
+      nowStr,
+      nowStr
+    );
+
+    finalSavedItems.push({
+      ...comp,
+      id: compItemId,
+      status: 'completed',
+      completedAt: comp.completedAt || nowStr,
+    });
+  }
+
+  for (const item of recommendedItems) {
+    const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const nowStr = new Date().toISOString();
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO study_plan_items (
+        id, planId, userId, priority, priorityScore, topic, subtopic, activityType,
+        title, description, estimatedMinutes, reason, expectedOutcome,
+        sourceId, chunkId, sourceTitle, sourceCoordinate, status,
+        conceptId, category, questionId, originItemId, rescheduledFromId,
+        completedAt, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, NULL, ?, ?)`,
       itemId,
       planId,
       userId,
@@ -592,14 +1284,16 @@ export async function generatePersonalizedDailyPlan(params: {
       item.conceptId || null,
       item.category || null,
       item.questionId || null,
-      now,
-      now
+      item.originItemId || itemId,
+      item.rescheduledFromId || null,
+      nowStr,
+      nowStr
     );
 
-    savedItems.push({
+    finalSavedItems.push({
       ...item,
       id: itemId,
-      status: 'pending' as PlanItemStatus,
+      status: 'pending',
       completedAt: null,
     });
   }
@@ -612,18 +1306,37 @@ export async function generatePersonalizedDailyPlan(params: {
     targetMinutes,
     totalPlannedMinutes,
     status: 'active',
-    summary: planSummary,
-    isColdStart,
-    items: savedItems,
+    summary: summaryText,
+    isColdStart: isColdStart || finalSavedItems.some((i) => i.activityType === 'DIAGNOSTIC_ASSESSMENT'),
+    isRecoveryPlan,
+    missedTasksCount: rescheduledCount,
+    isInfeasible,
+    paceWarning,
+    feasibilityExplanation,
+    items: finalSavedItems,
   };
 }
 
 /**
  * 3. Retrieve Today's Active Study Plan for Authenticated Student
+ * Strictly idempotent read operation: NEVER regenerates or rewrites plans on read requests.
  */
-export async function getTodayStudyPlan(userId: string, dateStr?: string): Promise<DailyStudyPlanResult | null> {
+export async function getTodayStudyPlan(
+  userId: string,
+  dateStr?: string,
+  options?: { allowClockOverride?: boolean }
+): Promise<DailyStudyPlanResult | null> {
   await ensureStudyPlanSchema();
-  const planDate = dateStr || new Date().toISOString().split('T')[0];
+  await ensureLearnerPreferencesSchema();
+
+  const isTestEnv = process.env.NODE_ENV === 'test';
+  let planDate: string;
+  if ((isTestEnv || options?.allowClockOverride) && dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    planDate = dateStr;
+  } else {
+    const prefs = await getLearnerPreferences(userId);
+    planDate = getCalendarDateInTimezone(new Date(), prefs.timezone);
+  }
 
   const planRows: any[] = await prisma.$queryRawUnsafe(
     "SELECT * FROM study_plans WHERE userId = ? AND planDate = ? AND status != 'archived' ORDER BY createdAt DESC LIMIT 1",
@@ -651,6 +1364,8 @@ export async function getTodayStudyPlan(userId: string, dateStr?: string): Promi
     conceptId: r.conceptId || null,
     category: (r.category as RecommendationCategory) || null,
     questionId: r.questionId || null,
+    originItemId: r.originItemId || null,
+    rescheduledFromId: r.rescheduledFromId || null,
     activityType: r.activityType as ActivityType,
     title: r.title,
     description: r.description,
@@ -667,6 +1382,25 @@ export async function getTodayStudyPlan(userId: string, dateStr?: string): Promi
 
   const totalPlannedMinutes = items.reduce((acc, i) => acc + i.estimatedMinutes, 0);
 
+  let summaryText = plan.summary || '';
+  let isRecoveryPlan = false;
+  let missedTasksCount = 0;
+  let isInfeasible = false;
+  let paceWarning: string | null = null;
+  let feasibilityExplanation: string | null = null;
+
+  if (plan.summary && typeof plan.summary === 'string' && plan.summary.trim().startsWith('{')) {
+    try {
+      const meta = JSON.parse(plan.summary);
+      summaryText = meta.text || plan.summary;
+      isRecoveryPlan = Boolean(meta.isRecoveryPlan);
+      missedTasksCount = Number(meta.missedTasksCount || 0);
+      isInfeasible = Boolean(meta.isInfeasible);
+      paceWarning = meta.paceWarning || null;
+      feasibilityExplanation = meta.feasibilityExplanation || null;
+    } catch {}
+  }
+
   return {
     id: plan.id,
     userId: plan.userId,
@@ -675,8 +1409,13 @@ export async function getTodayStudyPlan(userId: string, dateStr?: string): Promi
     targetMinutes: Number(plan.targetMinutes),
     totalPlannedMinutes,
     status: plan.status,
-    summary: plan.summary || '',
+    summary: summaryText,
     isColdStart: items.some((i) => i.activityType === 'DIAGNOSTIC_ASSESSMENT'),
+    isRecoveryPlan,
+    missedTasksCount,
+    isInfeasible,
+    paceWarning,
+    feasibilityExplanation,
     items,
   };
 }
@@ -1197,7 +1936,109 @@ export async function answerStudyAgentQuery(params: {
   const topPriority = priorities[0];
   const topWeak = weakTopics[0];
 
-  // 1. Cold Start query
+  // 1. "Did I miss a day?" / "Replan" / "Catch up" / "Behind"
+  if (lowerQuery.includes('miss') || lowerQuery.includes('behind') || lowerQuery.includes('replan') || lowerQuery.includes('catch up')) {
+    let todayPlan = await getTodayStudyPlan(userId);
+    if (!todayPlan) {
+      try {
+        const latestRows: any[] = await prisma.$queryRawUnsafe(
+          "SELECT id, planDate FROM study_plans WHERE userId = ? AND status != 'archived' ORDER BY planDate DESC, createdAt DESC LIMIT 1",
+          userId
+        );
+        if (latestRows.length > 0) {
+          todayPlan = await getTodayStudyPlan(userId, latestRows[0].planDate, { allowClockOverride: true });
+        }
+      } catch {}
+    }
+
+    if (todayPlan?.isRecoveryPlan) {
+      return {
+        reply: `🔄 **Missed-Day Recovery in Progress**: I noticed you missed a previous study session. I have automatically rescheduled **${todayPlan.missedTasksCount}** incomplete task(s) into today's plan without resetting your completion history. Start with your top carryover task to get right back on track!`,
+        recommendedTopic: todayPlan.items.find((i) => i.status === 'pending')?.topic || topPriority?.topic,
+        suggestedAction: 'View Recovery Plan',
+        evidenceUsed: {
+          masteryStats: masteryList,
+          topWeakTopic: topWeak?.topic || null,
+          isColdStart,
+        },
+      };
+    } else {
+      return {
+        reply: `📅 You don't have any uncompleted tasks from prior sessions. Your current study plan is up to date! If you fell behind on your syllabus, you can regenerate your plan with an updated daily time budget.`,
+        recommendedTopic: topPriority?.topic,
+        suggestedAction: 'View Today’s Plan',
+        evidenceUsed: {
+          masteryStats: masteryList,
+          topWeakTopic: topWeak?.topic || null,
+          isColdStart,
+        },
+      };
+    }
+  }
+
+  // 2. "Am I on track?" / "Pace" / "Is there enough time?" / "Feasible"
+  if (lowerQuery.includes('pace') || lowerQuery.includes('enough time') || lowerQuery.includes('on track') || lowerQuery.includes('feasib')) {
+    let todayPlan = await getTodayStudyPlan(userId);
+    if (!todayPlan) {
+      try {
+        const latestRows: any[] = await prisma.$queryRawUnsafe(
+          "SELECT id, planDate FROM study_plans WHERE userId = ? AND status != 'archived' ORDER BY planDate DESC, createdAt DESC LIMIT 1",
+          userId
+        );
+        if (latestRows.length > 0) {
+          todayPlan = await getTodayStudyPlan(userId, latestRows[0].planDate, { allowClockOverride: true });
+        }
+      } catch {}
+    }
+
+    if (todayPlan?.paceWarning) {
+      return {
+        reply: `⏱️ **Exam Pace & Workload Assessment**:\n\n${todayPlan.paceWarning}\n\nI recommend increasing your daily study time budget or focusing strictly on high-yield prerequisite concepts to ensure complete preparation.`,
+        recommendedTopic: topWeak?.topic || topPriority?.topic,
+        suggestedAction: 'Adjust Daily Time Budget',
+        evidenceUsed: {
+          masteryStats: masteryList,
+          topWeakTopic: topWeak?.topic || null,
+          isColdStart,
+        },
+      };
+    } else if (todayPlan?.feasibilityExplanation) {
+      return {
+        reply: `⏱️ **Exam Pace & Workload Assessment**:\n\n${todayPlan.feasibilityExplanation}\n\nMaintain this steady pace to achieve comprehensive mastery before exam day.`,
+        recommendedTopic: topPriority?.topic,
+        suggestedAction: 'Continue Daily Study Plan',
+        evidenceUsed: {
+          masteryStats: masteryList,
+          topWeakTopic: topWeak?.topic || null,
+          isColdStart,
+        },
+      };
+    } else if (params.examDate) {
+      const prefs = await getLearnerPreferences(userId);
+      const todayDate = getCalendarDateInTimezone(new Date(), prefs.timezone);
+      const remainingDays = getDifferenceInDays(params.examDate, todayDate);
+      const totalEstimatedMinutes = priorities.reduce((acc, p) => acc + (p.estimatedMinutes || 25), 0);
+      const dailyBudget = prefs.dailyBudgetMinutes || 30;
+      const totalAvailableMinutes = Math.max(1, remainingDays) * dailyBudget;
+      const feasible = totalAvailableMinutes >= totalEstimatedMinutes;
+      const explanation = feasible
+        ? `You have approximately ${remainingDays} day(s) remaining until your exam with an estimated ${totalEstimatedMinutes} mins of study needed across ${priorities.length} topic(s). At ${dailyBudget} mins/day (${totalAvailableMinutes} mins total capacity), your study schedule is fully feasible.`
+        : `⚠️ Pace Alert: You have approximately ${remainingDays} day(s) remaining until your exam with ${totalEstimatedMinutes} mins of estimated study required across ${priorities.length} topic(s). At ${dailyBudget} mins/day (${totalAvailableMinutes} mins capacity), you need an additional ${totalEstimatedMinutes - totalAvailableMinutes} mins to complete full syllabus mastery.`;
+
+      return {
+        reply: `⏱️ **Exam Pace & Workload Assessment**:\n\n${explanation}\n\n${feasible ? 'Maintain this steady pace to achieve comprehensive mastery before exam day.' : 'I recommend increasing your daily study time budget or focusing strictly on high-yield prerequisite concepts.'}`,
+        recommendedTopic: topWeak?.topic || topPriority?.topic,
+        suggestedAction: feasible ? 'Continue Daily Study Plan' : 'Adjust Daily Time Budget',
+        evidenceUsed: {
+          masteryStats: masteryList,
+          topWeakTopic: topWeak?.topic || null,
+          isColdStart,
+        },
+      };
+    }
+  }
+
+  // 3. Cold Start query fallback (when query is general greeting/start)
   if (isColdStart) {
     return {
       reply:
@@ -1265,7 +2106,7 @@ export async function answerStudyAgentQuery(params: {
     };
   }
 
-  // 4. "Why are you recommending this?"
+  // 6. "Why are you recommending this?"
   if (lowerQuery.includes('why') || lowerQuery.includes('reason')) {
     const candidate = topPriority;
     return {

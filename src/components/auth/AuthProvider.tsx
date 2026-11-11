@@ -378,6 +378,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleForcedSignOut = () => {
+      updateUserState(null);
+      setIsLoading(false);
+    };
+    window.addEventListener('ming-auth-signout', handleForcedSignOut);
+    return () => window.removeEventListener('ming-auth-signout', handleForcedSignOut);
+  }, []);
+
   const signIn = async (email: string, password: string): Promise<UserProfile> => {
     try {
       setIsLoading(true);

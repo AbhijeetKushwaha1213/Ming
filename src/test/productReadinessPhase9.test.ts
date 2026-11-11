@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import {
   recordProductEvent,
   getUserAnalyticsSummary,
@@ -165,6 +165,22 @@ describe('Phase 9 — Product Readiness, UX, Retention, Analytics & Deployment',
   });
 
   describe('3. Server Analytics Handler Authorization & Impersonation Prevention', () => {
+    const testSecret = 'phase9_analytics_test_secret';
+    let prevSecret: string | undefined;
+
+    beforeAll(() => {
+      prevSecret = process.env.MING_TEST_SECRET;
+      process.env.MING_TEST_SECRET = testSecret;
+    });
+
+    afterAll(() => {
+      if (prevSecret === undefined) {
+        delete process.env.MING_TEST_SECRET;
+      } else {
+        process.env.MING_TEST_SECRET = prevSecret;
+      }
+    });
+
     it('rejects unauthenticated requests with 401', async () => {
       const req = {
         method: 'POST',
@@ -184,7 +200,8 @@ describe('Phase 9 — Product Readiness, UX, Retention, Analytics & Deployment',
         method: 'POST',
         url: '/api/analytics/track',
         headers: {
-          'x-dev-user-id': userAlpha,
+          'x-ming-test-key': testSecret,
+          'x-ming-user-id': userAlpha,
         },
         body: {
           userId: userBeta, // Attempting to impersonate userBeta!
@@ -203,7 +220,8 @@ describe('Phase 9 — Product Readiness, UX, Retention, Analytics & Deployment',
         method: 'POST',
         url: '/api/analytics/track',
         headers: {
-          'x-dev-user-id': userAlpha,
+          'x-ming-test-key': testSecret,
+          'x-ming-user-id': userAlpha,
         },
         body: {
           eventType: 'HACKATHON_DEMO_INVALID_EVENT',
@@ -221,7 +239,8 @@ describe('Phase 9 — Product Readiness, UX, Retention, Analytics & Deployment',
         method: 'POST',
         url: '/api/analytics/track',
         headers: {
-          'x-dev-user-id': userAlpha,
+          'x-ming-test-key': testSecret,
+          'x-ming-user-id': userAlpha,
         },
         body: {
           eventType: 'STUDY_SESSION_STARTED',
@@ -240,7 +259,8 @@ describe('Phase 9 — Product Readiness, UX, Retention, Analytics & Deployment',
         method: 'POST',
         url: '/api/analytics/track',
         headers: {
-          'x-dev-user-id': userAlpha,
+          'x-ming-test-key': testSecret,
+          'x-ming-user-id': userAlpha,
         },
         body: {
           eventType: 'STUDY_SESSION_STARTED',

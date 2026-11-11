@@ -89,7 +89,14 @@ export const AuthCallback = () => {
         });
 
         // 2. Centralized post-auth redirect
-        const destination = getPostAuthDestination(finalProfile);
+        const storedRedirect =
+          typeof window !== 'undefined'
+            ? sessionStorage.getItem('ming_post_auth_redirect')
+            : null;
+        if (storedRedirect && typeof window !== 'undefined') {
+          sessionStorage.removeItem('ming_post_auth_redirect');
+        }
+        const destination = getPostAuthDestination(finalProfile, storedRedirect);
         console.log('AuthCallback: Navigating to destination:', destination);
         if (isActive) {
           navigate(destination, { replace: true });

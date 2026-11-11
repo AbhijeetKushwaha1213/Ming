@@ -235,7 +235,7 @@ export const ExamDashboard = () => {
 
         {/* Real AI Study Agent & Personalized Daily Planning (Phase 5) */}
         <div id="ai-study-agent-panel">
-          <AIStudyAgentPanel />
+          <AIStudyAgentPanel examDate={user?.examDate} />
         </div>
 
         {/* Progress Overview */}

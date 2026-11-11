@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Target,
   AlertTriangle,
+  RotateCcw,
   FileText,
   Send,
   Layers,
@@ -32,6 +33,7 @@ import {
   Play,
   ExternalLink,
   ShieldCheck,
+  Calendar,
 } from 'lucide-react';
 import {
   getDailyStudyPlan,
@@ -42,6 +44,8 @@ import {
   deliverStudyActivity,
   completeStudyActivity,
   skipStudyActivity,
+  getLearnerPreferences,
+  updateLearnerPreferences,
   DailyStudyPlan,
   StudyPlanItem,
   StudyAction,
@@ -92,6 +96,9 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedReasons, setExpandedReasons] = useState<Record<string, boolean>>({});
+  const [selectedDailyMinutes, setSelectedDailyMinutes] = useState<number>(60);
+  const [effectiveExamDate, setEffectiveExamDate] = useState<string | null>(examDate || user?.examDate || null);
+  const [userTimezone, setUserTimezone] = useState<string>('Asia/Kolkata');
 
   // Adaptive study loop state (Phase 6)
   const [nextAction, setNextAction] = useState<StudyAction | null>(null);
@@ -114,18 +121,55 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
     actionsExecuted?: string[];
   } | null>(null);
 
-  // Load existing plan or generate
+  // Load existing plan or generate with persistent preferences
   const loadPlan = useCallback(async () => {
     setIsLoading(true);
     try {
+      // 1. Restore persistent learner preferences
+      let initialBudget = selectedDailyMinutes;
+      let initialExamDate = effectiveExamDate;
+      let initialTz = userTimezone;
+
+      try {
+        const prefRes = await getLearnerPreferences(userId);
+        if (prefRes.success && prefRes.preferences) {
+          if (prefRes.preferences.targetMinutes) {
+            initialBudget = prefRes.preferences.targetMinutes;
+            setSelectedDailyMinutes(initialBudget);
+          }
+          if (prefRes.preferences.examDate !== undefined) {
+            initialExamDate = prefRes.preferences.examDate || examDate || user?.examDate || null;
+            setEffectiveExamDate(initialExamDate);
+          }
+          if (prefRes.preferences.timezone) {
+            initialTz = prefRes.preferences.timezone;
+            setUserTimezone(initialTz);
+          }
+        }
+      } catch (prefErr) {
+        console.warn('Could not load preferences:', prefErr);
+      }
+
+      // 2. Fetch today's study plan
       const res = await getDailyStudyPlan(userId);
       if (res.success && res.plan) {
         setPlan(res.plan);
+        if (res.plan.targetMinutes) {
+          setSelectedDailyMinutes(res.plan.targetMinutes);
+        }
       } else {
-        // Auto-generate today's plan
-        const genRes = await generateDailyStudyPlan({ userId, examDate, targetMinutes: 60 });
+        // Auto-generate today's plan using saved preferences
+        const genRes = await generateDailyStudyPlan({
+          userId,
+          examDate: initialExamDate,
+          targetMinutes: initialBudget,
+          timezone: initialTz,
+        });
         if (genRes.success && genRes.plan) {
           setPlan(genRes.plan);
+          if (genRes.plan.targetMinutes) {
+            setSelectedDailyMinutes(genRes.plan.targetMinutes);
+          }
         }
       }
 
@@ -144,7 +188,7 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [userId, examDate]);
+  }, [userId, examDate, user?.examDate]);
 
   const handleSkipNextAction = async (actionId: string) => {
     setIsSkippingAction(true);
@@ -170,17 +214,37 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
     loadPlan();
   }, [loadPlan]);
 
-  const handleGenerate = async (force: boolean = false) => {
+  const handleGenerate = async (
+    force: boolean = false,
+    customMinutes?: number,
+    customExamDate?: string | null
+  ) => {
     setIsGenerating(true);
     try {
+      const minutes = customMinutes !== undefined ? customMinutes : selectedDailyMinutes;
+      const targetExam = customExamDate !== undefined ? customExamDate : effectiveExamDate;
+
+      // Persist preferences immediately
+      void updateLearnerPreferences({
+        targetMinutes: minutes,
+        examDate: targetExam,
+        timezone: userTimezone,
+      }, userId).catch(() => {});
+
       const res = await generateDailyStudyPlan({
         userId,
-        examDate,
-        targetMinutes: 60,
+        examDate: targetExam,
+        targetMinutes: minutes,
+        timezone: userTimezone,
         forceRegenerate: force,
       });
       if (res.success && res.plan) {
         setPlan(res.plan);
+        setSelectedDailyMinutes(res.plan.targetMinutes);
+        toast({
+          title: res.plan.isRecoveryPlan ? "Recovery Plan Generated 🔄" : "Daily Plan Updated ⚡",
+          description: res.plan.summary,
+        });
       }
     } catch (err) {
       console.error('Error generating study plan:', err);
@@ -596,16 +660,65 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleGenerate(true)}
-          disabled={isGenerating}
-          className="self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-          {isGenerating ? 'Regenerating...' : 'Regenerate Plan'}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {/* Target Exam Date Input */}
+          <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg px-2.5 py-1 text-xs shadow-sm">
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground font-medium">Exam:</span>
+            <input
+              type="date"
+              aria-label="Target Exam Date"
+              value={effectiveExamDate || ''}
+              onChange={(e) => {
+                const newDate = e.target.value ? e.target.value : null;
+                setEffectiveExamDate(newDate);
+                handleGenerate(true, undefined, newDate);
+              }}
+              disabled={isGenerating}
+              className="bg-transparent font-medium text-foreground cursor-pointer focus:outline-none text-xs"
+            />
+          </div>
+
+          {/* Daily Budget Selector */}
+          <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg px-2.5 py-1 text-xs shadow-sm">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground font-medium">Budget:</span>
+            <select
+              aria-label="Daily Study Budget"
+              value={selectedDailyMinutes}
+              onChange={(e) => {
+                const mins = Number(e.target.value);
+                setSelectedDailyMinutes(mins);
+                handleGenerate(true, mins, undefined);
+              }}
+              disabled={isGenerating}
+              className="bg-transparent font-medium text-foreground cursor-pointer focus:outline-none"
+            >
+              <option value={30}>30 mins</option>
+              <option value={45}>45 mins</option>
+              <option value={60}>60 mins</option>
+              <option value={90}>90 mins</option>
+              <option value={120}>120 mins</option>
+            </select>
+          </div>
+
+          {/* Timezone Indicator */}
+          <Badge variant="outline" className="text-[11px] font-mono text-muted-foreground hidden md:inline-flex">
+            {userTimezone}
+          </Badge>
+
+          {/* Regenerate Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleGenerate(true)}
+            disabled={isGenerating}
+            className="self-start sm:self-auto"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+            {isGenerating ? 'Regenerating...' : 'Regenerate Plan'}
+          </Button>
+        </div>
       </div>
 
       {/* Progress & Target Stats */}
@@ -631,6 +744,65 @@ export const AIStudyAgentPanel: React.FC<AIStudyAgentPanelProps> = ({
               <span>{completionPct}%</span>
             </div>
             <Progress value={completionPct} className="h-2" />
+          </div>
+        </div>
+      )}
+
+      {/* Missed-Day Recovery Notice */}
+      {plan?.isRecoveryPlan && (
+        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-300/60 dark:border-blue-500/30 flex items-start gap-3">
+          <RotateCcw className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-200">
+                Missed-Day Recovery Plan Active
+              </h4>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 text-xs">
+                {plan.missedTasksCount} Rescheduled Task{plan.missedTasksCount === 1 ? '' : 's'}
+              </Badge>
+            </div>
+            <p className="text-xs text-blue-800 dark:text-blue-300">
+              Incomplete tasks from your missed study session have been automatically rescheduled and prioritized in today’s plan. Your historical completion record remains preserved.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Infeasible Workload / Pace Warning */}
+      {plan?.isInfeasible && plan?.paceWarning && (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-300/60 dark:border-rose-500/30 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-sm text-rose-900 dark:text-rose-200">
+                Exam Pace Warning: Workload Infeasible
+              </h4>
+              <Badge variant="destructive" className="text-xs">
+                Insufficient Time
+              </Badge>
+            </div>
+            <p className="text-xs text-rose-800 dark:text-rose-300">
+              {plan.paceWarning}
+            </p>
+            <div className="pt-1 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-rose-900 dark:text-rose-200">Quick adjust:</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-rose-300 bg-background hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                onClick={() => handleGenerate(true, 90)}
+              >
+                Increase to 90m/day
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-rose-300 bg-background hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                onClick={() => handleGenerate(true, 120)}
+              >
+                Increase to 120m/day
+              </Button>
+            </div>
           </div>
         </div>
       )}

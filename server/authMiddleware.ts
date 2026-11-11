@@ -87,6 +87,23 @@ export function checkRateLimit(
 
 
 /**
+ * Verifies if an incoming HTTP request is authorized to override the server's production clock.
+ * Strictly checks for the secret internal test key. Client-supplied dates without this key are rejected.
+ * Production explicitly forbids test clock overrides.
+ */
+export function isAuthorizedTestClockRequest(req: { headers?: Record<string, any> }): boolean {
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+  const testKeyHeader = req.headers?.['x-ming-test-key'];
+  const envTestSecret = process.env.MING_TEST_SECRET;
+  if (testKeyHeader && envTestSecret && testKeyHeader === envTestSecret) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Resolves user identity from Supabase JWT token or verified server test key.
  * Strictly forbids untrusted query/body user impersonation in production.
  */
@@ -94,21 +111,13 @@ export async function authenticateRequest(
   req: IncomingMessage,
   options: { optional?: boolean } = {}
 ): Promise<SecurityContext | null> {
+  const isDevOrTest = process.env.NODE_ENV !== 'production';
   const authHeader = req.headers['authorization'];
   const testKeyHeader = req.headers['x-ming-test-key'];
   const envTestSecret = process.env.MING_TEST_SECRET;
 
-  // 1. Check for verified automated test suite / internal benchmark execution
-  if (testKeyHeader && envTestSecret && testKeyHeader === envTestSecret) {
-    const testUserId = (req.headers['x-ming-user-id'] as string) || 'default_user';
-    return {
-      userId: testUserId,
-      email: `${testUserId}@test.local`,
-      isServiceRole: true,
-    };
-  }
-
-  // 2. Validate standard Bearer JWT from Supabase Auth
+  // 1. Validate standard Bearer JWT from Supabase Auth FIRST
+  // Strictly derives identity from verified token; forged headers cannot change identity.
   if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
     try {
       const user = await verifySupabaseToken(authHeader);
@@ -119,12 +128,42 @@ export async function authenticateRequest(
       };
     } catch {
       if (options.optional) return null;
+      if (!isDevOrTest) {
+        throw new AuthError('Invalid or expired authentication session', 401);
+      }
+      // In non-production: check test key or dev headers
+      if (testKeyHeader && envTestSecret && testKeyHeader === envTestSecret) {
+        const testUserId = (req.headers['x-ming-user-id'] as string) || 'default_user';
+        return {
+          userId: testUserId,
+          email: `${testUserId}@test.local`,
+          isServiceRole: true,
+        };
+      }
+      const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
+      if (allowDevBypass) {
+        const devUserId = (req.headers['x-dev-user-id'] as string) || 'default_user';
+        return {
+          userId: devUserId,
+          email: `${devUserId}@ming.local`,
+          isServiceRole: false,
+        };
+      }
       throw new AuthError('Invalid or expired authentication session', 401);
     }
   }
 
+  // 2. Check for verified automated test suite / internal benchmark execution with configured secret
+  if (testKeyHeader && envTestSecret && testKeyHeader === envTestSecret) {
+    const testUserId = (req.headers['x-ming-user-id'] as string) || 'default_user';
+    return {
+      userId: testUserId,
+      email: `${testUserId}@test.local`,
+      isServiceRole: true,
+    };
+  }
+
   // 3. Fallback for development / non-production local benchmark execution if explicitly configured
-  const isDevOrTest = process.env.NODE_ENV !== 'production';
   const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
 
   if (isDevOrTest && allowDevBypass) {
@@ -160,22 +199,26 @@ export async function resolveContextUser(
   req: { headers?: Record<string, any>; query?: Record<string, any>; body?: any },
   allowAnonymousDev = false
 ): Promise<string> {
+  const isDevOrTest = process.env.NODE_ENV !== 'production';
   const authHeader = req.headers?.authorization;
   const testKeyHeader = req.headers?.['x-ming-test-key'];
   const envTestSecret = process.env.MING_TEST_SECRET;
 
-  if (testKeyHeader && envTestSecret && testKeyHeader === envTestSecret) {
-    return (req.headers?.['x-ming-user-id'] as string) || 'default_user';
-  }
-
+  // 1. Standard Bearer JWT verification (strictly derives identity from verified token)
   if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
     try {
       const user = await verifySupabaseToken(authHeader);
+      // Forged identity headers (e.g. x-ming-user-id, x-dev-user-id) MUST NOT override the verified user
       return user.id;
     } catch {
-      const isDevOrTest = process.env.NODE_ENV !== 'production';
+      if (!isDevOrTest) {
+        throw new AuthError('Invalid or expired authentication session', 401);
+      }
+      if (testKeyHeader && envTestSecret && testKeyHeader === envTestSecret) {
+        return (req.headers?.['x-ming-user-id'] as string) || 'default_user';
+      }
       const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
-      if (allowAnonymousDev || allowDevBypass || isDevOrTest) {
+      if (allowAnonymousDev || allowDevBypass) {
         return (
           (req.headers?.['x-dev-user-id'] as string) ||
           (req.headers?.['x-ming-user-id'] as string) ||
@@ -189,30 +232,20 @@ export async function resolveContextUser(
     }
   }
 
-  // Development / Benchmark fallback when explicitly enabled
-  const isDevOrTest = process.env.NODE_ENV !== 'production';
-  const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
-
-  if (allowDevBypass || allowAnonymousDev) {
-    const devHeaderUser = (req.headers?.['x-dev-user-id'] as string) || (req.headers?.['x-ming-user-id'] as string);
-    if (devHeaderUser) {
-      return devHeaderUser;
-    }
-
-    return (
-      req.query?.userId ||
-      req.body?.userId ||
-      req.body?.user_id ||
-      'default_user'
-    );
+  // 2. Internal test key is honored ONLY when MING_TEST_SECRET is explicitly configured
+  if (testKeyHeader && envTestSecret && testKeyHeader === envTestSecret) {
+    return (req.headers?.['x-ming-user-id'] as string) || 'default_user';
   }
 
+  // 3. Development / Benchmark fallback when explicitly enabled (NON-PRODUCTION ONLY)
   if (isDevOrTest) {
-    const devHeaderUser = (req.headers?.['x-dev-user-id'] as string) || (req.headers?.['x-ming-user-id'] as string);
-    if (devHeaderUser) {
-      return devHeaderUser;
-    }
-    if (allowAnonymousDev) {
+    const allowDevBypass = process.env.ALLOW_DEV_AUTH_BYPASS === 'true';
+    if (allowDevBypass || allowAnonymousDev) {
+      const devHeaderUser = (req.headers?.['x-dev-user-id'] as string) || (req.headers?.['x-ming-user-id'] as string);
+      if (devHeaderUser) {
+        return devHeaderUser;
+      }
+
       return (
         req.query?.userId ||
         req.body?.userId ||

@@ -14,7 +14,7 @@
  * 9. Regression Verification across Phases 4 & 5
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import {
   generatePersonalizedDailyPlan,
   getTodayStudyPlan,
@@ -626,12 +626,38 @@ describe('Canonical Phase 6: AI Study Agent & Adaptive Study Loop', () => {
   // 8. HTTP Handler Integration
   // =========================================================================
   describe('8. HTTP Handler Integration', () => {
+    const testSecret = 'study_loop_test_secret';
+    let prevSecret: string | undefined;
+
+    beforeAll(() => {
+      prevSecret = process.env.MING_TEST_SECRET;
+      process.env.MING_TEST_SECRET = testSecret;
+    });
+
+    afterAll(() => {
+      if (prevSecret === undefined) {
+        delete process.env.MING_TEST_SECRET;
+      } else {
+        process.env.MING_TEST_SECRET = prevSecret;
+      }
+    });
+
+    it('rejects unauthenticated GET /api/agent/next-action with 401', async () => {
+      const { req, res } = createMockReqRes({
+        method: 'GET',
+        url: 'http://localhost:3001/api/agent/next-action',
+      });
+
+      await studyAgentHandler(req, res);
+      expect(res.statusCode).toBe(401);
+    });
+
     it('GET /api/agent/next-action returns 200 with next study action', async () => {
       const u = `http_next_${Date.now()}`;
       const { req, res } = createMockReqRes({
         method: 'GET',
         url: 'http://localhost:3001/api/agent/next-action',
-        headers: { 'x-dev-user-id': u },
+        headers: { 'x-ming-test-key': testSecret, 'x-ming-user-id': u },
       });
 
       await studyAgentHandler(req, res);
@@ -650,7 +676,7 @@ describe('Canonical Phase 6: AI Study Agent & Adaptive Study Loop', () => {
       const { req, res } = createMockReqRes({
         method: 'GET',
         url: `http://localhost:3001/api/agent/activity/${actionId}`,
-        headers: { 'x-dev-user-id': u },
+        headers: { 'x-ming-test-key': testSecret, 'x-ming-user-id': u },
       });
 
       await studyAgentHandler(req, res);
@@ -670,7 +696,7 @@ describe('Canonical Phase 6: AI Study Agent & Adaptive Study Loop', () => {
       const { req, res } = createMockReqRes({
         method: 'POST',
         url: `http://localhost:3001/api/agent/activity/${actionId}/complete`,
-        headers: { 'x-dev-user-id': u },
+        headers: { 'x-ming-test-key': testSecret, 'x-ming-user-id': u },
         body: { score: 100 },
       });
 
@@ -690,7 +716,7 @@ describe('Canonical Phase 6: AI Study Agent & Adaptive Study Loop', () => {
       const { req, res } = createMockReqRes({
         method: 'POST',
         url: `http://localhost:3001/api/agent/activity/${actionId}/skip`,
-        headers: { 'x-dev-user-id': u },
+        headers: { 'x-ming-test-key': testSecret, 'x-ming-user-id': u },
         body: { reason: 'Skipped for now' },
       });
 
@@ -707,7 +733,7 @@ describe('Canonical Phase 6: AI Study Agent & Adaptive Study Loop', () => {
       const { req, res } = createMockReqRes({
         method: 'GET',
         url: 'http://localhost:3001/api/agent/activity/bogus_action_id_123',
-        headers: { 'x-dev-user-id': u },
+        headers: { 'x-ming-test-key': testSecret, 'x-ming-user-id': u },
       });
 
       await studyAgentHandler(req, res);

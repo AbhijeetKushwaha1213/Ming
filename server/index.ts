@@ -294,14 +294,17 @@ async function start() {
   const server = http.createServer((req, res) => {
     handleRequest(req, res).catch((error) => {
       console.error('API server error:', error);
+      const statusCode = (error && typeof error === 'object' && typeof error.statusCode === 'number')
+        ? error.statusCode
+        : 500;
       if (!res.headersSent) {
-        res.statusCode = 500;
+        res.statusCode = statusCode;
         res.setHeader('Content-Type', 'application/json');
       }
       res.end(
         JSON.stringify({
           error:
-            process.env.NODE_ENV === 'production'
+            process.env.NODE_ENV === 'production' && statusCode === 500
               ? 'Internal server error'
               : error instanceof Error
                 ? error.message

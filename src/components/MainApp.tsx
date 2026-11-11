@@ -7,15 +7,24 @@ import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { SessionTimeoutWarning } from '@/components/security/SessionTimeoutWarning';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export const MainApp = () => {
   const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState('home');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'home';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const { isOnline } = useOfflineSupport();
   const { measureComponentRender } = usePerformanceMonitor();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   // Add keyboard shortcuts
   useKeyboardShortcuts({
@@ -87,6 +96,7 @@ export const MainApp = () => {
   const handleTabChange = (tab: string) => {
     console.log('MainApp: Tab change requested:', tab);
     setActiveTab(tab);
+    setSearchParams({ tab });
   };
 
   return (

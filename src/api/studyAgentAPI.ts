@@ -53,6 +53,8 @@ export interface StudyPlanItem {
   conceptId?: string | null;
   category?: string | null;
   questionId?: string | null;
+  originItemId?: string | null;
+  rescheduledFromId?: string | null;
   status: PlanItemStatus;
   completedAt: string | null;
 }
@@ -67,6 +69,11 @@ export interface DailyStudyPlan {
   status: string;
   summary: string;
   isColdStart: boolean;
+  isRecoveryPlan?: boolean;
+  missedTasksCount?: number;
+  isInfeasible?: boolean;
+  paceWarning?: string | null;
+  feasibilityExplanation?: string | null;
   items: StudyPlanItem[];
 }
 
@@ -197,6 +204,48 @@ export async function getDailyStudyPlan(
   return res.json();
 }
 
+export interface LearnerPreferences {
+  userId: string;
+  targetMinutes: number;
+  examDate: string | null;
+  timezone: string;
+}
+
+/**
+ * Fetch persistent learner preferences (budget, exam date, timezone).
+ */
+export async function getLearnerPreferences(
+  userId?: string
+): Promise<{ success: boolean; preferences: LearnerPreferences }> {
+  const query = new URLSearchParams();
+  if (userId) query.set('userId', userId);
+  const res = await fetch(`/api/agent/preferences?${query.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Failed to load learner preferences (${res.status})`);
+  }
+  return res.json();
+}
+
+/**
+ * Save persistent learner preferences (budget, exam date, timezone).
+ */
+export async function updateLearnerPreferences(
+  preferences: Partial<LearnerPreferences>,
+  userId?: string
+): Promise<{ success: boolean; preferences: LearnerPreferences }> {
+  const query = new URLSearchParams();
+  if (userId) query.set('userId', userId);
+  const res = await fetch(`/api/agent/preferences?${query.toString()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(preferences),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to save learner preferences (${res.status})`);
+  }
+  return res.json();
+}
+
 /**
  * Generate a personalized daily study plan grounded in actual learner state and uploaded resources.
  */
@@ -205,6 +254,9 @@ export async function generateDailyStudyPlan(params: {
   targetMinutes?: number;
   examDate?: string | null;
   forceRegenerate?: boolean;
+  referenceDate?: string;
+  timezone?: string;
+  timezoneOffsetMinutes?: number;
 }): Promise<{ success: boolean; plan: DailyStudyPlan }> {
   const res = await fetch('/api/agent/plan/generate', {
     method: 'POST',

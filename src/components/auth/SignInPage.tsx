@@ -25,7 +25,7 @@ import {
 import { useAuth } from './AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { getPostAuthDestination } from './authNavigation';
+import { getPostAuthDestination, getSafeRedirectTarget } from './authNavigation';
 
 type AuthView = 'auth' | 'forgot-request' | 'forgot-verify' | 'reset-new-password' | 'verify-email';
 
@@ -182,7 +182,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({ initialTab = 'signin' })
     setIsLoading(true);
     try {
       const profile = await signIn(email, password);
-      const destination = getPostAuthDestination(profile);
+      const redirectParam = searchParams.get('redirect');
+      const destination = getPostAuthDestination(profile, redirectParam);
       navigate(destination);
     } catch (error) {
       console.error('Sign in error:', error);
@@ -203,7 +204,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({ initialTab = 'signin' })
         setVerifyResendCooldown(60);
         setAuthView('verify-email');
       } else if (result.user) {
-        const destination = getPostAuthDestination(result.user);
+        const redirectParam = searchParams.get('redirect');
+        const destination = getPostAuthDestination(result.user, redirectParam);
         navigate(destination);
       }
     } catch (error) {
@@ -216,6 +218,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({ initialTab = 'signin' })
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
+      const safeRedirect = getSafeRedirectTarget(searchParams.get('redirect'));
+      if (safeRedirect && typeof window !== 'undefined') {
+        sessionStorage.setItem('ming_post_auth_redirect', safeRedirect);
+      }
       await signInWithGoogle();
     } catch (error) {
       console.error('Google sign in error:', error);

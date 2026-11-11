@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { AUTH_ROUTES, isOnboardingComplete, getPostAuthDestination } from './authNavigation';
 import { SignInPage } from './SignInPage';
@@ -38,7 +38,12 @@ export const ProtectedRoute: React.FC<{
     if (hasCachedProfile) {
       return <AuthLoadingScreen message="Loading Ming..." />;
     }
-    return <Navigate to={AUTH_ROUTES.LOGIN} state={{ from: location }} replace />;
+    const intendedPath = `${location.pathname}${location.search || ''}`;
+    const loginTarget =
+      intendedPath && intendedPath !== AUTH_ROUTES.DASHBOARD
+        ? `${AUTH_ROUTES.LOGIN}?redirect=${encodeURIComponent(intendedPath)}`
+        : AUTH_ROUTES.LOGIN;
+    return <Navigate to={loginTarget} state={{ from: location }} replace />;
   }
 
   if (requireOnboarding && !isOnboardingComplete(user)) {
@@ -87,13 +92,15 @@ export const PublicAuthRoute: React.FC<{ initialTab?: 'signin' | 'signup' }> = (
   initialTab = 'signin',
 }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const [searchParams] = useSearchParams();
 
   if (isLoading) {
     return <AuthLoadingScreen message="Checking your session..." />;
   }
 
   if (isAuthenticated && user) {
-    const destination = getPostAuthDestination(user);
+    const redirectParam = searchParams.get('redirect');
+    const destination = getPostAuthDestination(user, redirectParam);
     return <Navigate to={destination} replace />;
   }
 

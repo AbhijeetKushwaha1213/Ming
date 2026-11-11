@@ -45,6 +45,7 @@ export interface EvaluateRecommendationsOptions {
   topic?: string;
   limit?: number;
   now?: Date | string;
+  examDate?: string | null;
 }
 
 /**
@@ -52,7 +53,7 @@ export interface EvaluateRecommendationsOptions {
  * 
  * Score Formula:
  * Base = 0.35 * MasteryDeficit + 0.25 * RetrievalDeficit + 0.25 * RecentMistakes + 0.15 * Uncertainty
- * Score = min(1.0, max(0.0, (Base + MisconceptionBoost + PrereqBonus) * PrereqGate))
+ * Score = min(1.0, max(0.0, (Base + MisconceptionBoost + PrereqBonus + ExamBoost) * PrereqGate))
  */
 export function calculatePriorityScore(params: {
   attempts: number;
@@ -63,6 +64,7 @@ export function calculatePriorityScore(params: {
   hasRecurringMisconception: boolean;
   hasSingleMisconception: boolean;
   prerequisiteStatus: 'MET' | 'UNMET' | 'NONE';
+  daysUntilExam?: number | null;
 }): { score: number; band: PriorityBand } {
   const {
     attempts,
@@ -73,6 +75,7 @@ export function calculatePriorityScore(params: {
     hasRecurringMisconception,
     hasSingleMisconception,
     prerequisiteStatus,
+    daysUntilExam,
   } = params;
 
   // 1. Mastery Deficit:
@@ -104,17 +107,28 @@ export function calculatePriorityScore(params: {
     misconceptionBoost = 0.05;
   }
 
+  // Exam Urgency Boost:
+  let examBoost = 0.0;
+  if (daysUntilExam !== null && daysUntilExam !== undefined) {
+    if (daysUntilExam < 0) examBoost = 0.0; // Exam has passed
+    else if (daysUntilExam === 0) examBoost = 0.20; // Exam is today
+    else if (daysUntilExam <= 3) examBoost = 0.15;
+    else if (daysUntilExam <= 7) examBoost = 0.08;
+    else if (daysUntilExam <= 14) examBoost = 0.04;
+  }
+
   // Prerequisite Gating:
   // If explicit prerequisite is UNMET (locked in DAG), deprioritize heavily
   let prereqGate = 1.0;
   let prereqBonus = 0.0;
   if (prerequisiteStatus === 'UNMET') {
     prereqGate = 0.10;
+    examBoost = 0.0; // Exam urgency cannot bypass prerequisite rules
   } else if (prerequisiteStatus === 'MET') {
     prereqBonus = 0.05;
   }
 
-  const rawScore = (baseScore + misconceptionBoost + prereqBonus) * prereqGate;
+  const rawScore = (baseScore + misconceptionBoost + prereqBonus + examBoost) * prereqGate;
   const boundedScore = Math.max(0.0, Math.min(1.0, rawScore));
   const finalScore = Math.round(boundedScore * 1000) / 1000;
 
@@ -323,19 +337,23 @@ export async function evaluateAdaptiveRecommendations(
   }
 
   // Build DAG node status map for prerequisite lookup
-  const dagNodeMap = new Map<string, { status: string; prerequisites: string[] }>();
+  const dagNodeMap = new Map<string, { id?: string; title: string; status: string; prerequisites: string[]; mastery?: number }>();
   userDAGs.forEach((dag) => {
     (dag.nodes || []).forEach((node: any) => {
-      if (node.title) {
-        dagNodeMap.set(normalizeConceptString(node.title), {
+      const nodeTitle = node.title || node.name;
+      if (nodeTitle) {
+        dagNodeMap.set(normalizeConceptString(nodeTitle), {
+          id: node.id,
+          title: nodeTitle,
           status: node.status || 'available',
           prerequisites: node.prerequisites || [],
+          mastery: node.mastery,
         });
       }
     });
   });
 
-  // 7. Aggregate Distinct Concepts from Mastery, Events, and Course Resources
+  // 7. Aggregate Distinct Concepts from Mastery, Events, Course Resources, and DAGs
   interface ConceptCandidate {
     concept_id: string;
     concept_name: string;
@@ -386,15 +404,35 @@ export async function evaluateAdaptiveRecommendations(
   // C. From Uploaded Resources (ensures cold-start unassessed topics are discoverable)
   resourceRows.forEach((r) => {
     const topic = r.folder || r.title || 'Course Material';
-    const ident = computeCanonicalConceptId(topic, null, topic);
+    const subtopic = r.folder ? r.title : null;
+    const conceptName = r.title || topic;
+    const ident = computeCanonicalConceptId(topic, subtopic, conceptName);
     if (!candidateMap.has(ident.concept_id)) {
       candidateMap.set(ident.concept_id, {
         concept_id: ident.concept_id,
         concept_name: ident.concept_name,
         topic: topic,
-        subtopic: null,
+        subtopic: subtopic,
       });
     }
+  });
+
+  // D. From User DAG Nodes (ensures topics in course roadmap are evaluated)
+  userDAGs.forEach((dag) => {
+    (dag.nodes || []).forEach((node: any) => {
+      const nodeTitle = node.title || node.name;
+      if (nodeTitle) {
+        const ident = computeCanonicalConceptId(dag.topic || 'Course Material', null, nodeTitle);
+        if (!candidateMap.has(ident.concept_id)) {
+          candidateMap.set(ident.concept_id, {
+            concept_id: ident.concept_id,
+            concept_name: nodeTitle,
+            topic: dag.topic || 'Course Material',
+            subtopic: null,
+          });
+        }
+      }
+    });
   });
 
   // 8. Filter by Topic if requested
@@ -464,11 +502,45 @@ export async function evaluateAdaptiveRecommendations(
     const normConcept = normalizeConceptString(candidate.concept_name);
     const dagNode = dagNodeMap.get(normConcept);
     let prereqStatus: 'MET' | 'UNMET' | 'NONE' = 'NONE';
+    let unmetPrereqTitle: string | null = null;
     if (dagNode) {
-      if (dagNode.status === 'locked') {
+      if (dagNode.status === 'locked' || dagNode.status === 'unmet') {
         prereqStatus = 'UNMET';
-      } else if (dagNode.prerequisites.length > 0) {
-        prereqStatus = 'MET';
+        if (dagNode.prerequisites && dagNode.prerequisites.length > 0) {
+          const preIdOrTitle = dagNode.prerequisites[0];
+          const preNode = Array.from(dagNodeMap.values()).find(
+            (n) => n.id === preIdOrTitle || normalizeConceptString(n.title) === normalizeConceptString(preIdOrTitle)
+          );
+          unmetPrereqTitle = preNode?.title || preIdOrTitle;
+        } else {
+          unmetPrereqTitle = 'Foundational concept';
+        }
+      } else if (dagNode.prerequisites && dagNode.prerequisites.length > 0) {
+        let allMet = true;
+        for (const preIdOrTitle of dagNode.prerequisites) {
+          const preNode = Array.from(dagNodeMap.values()).find(
+            (n) => n.id === preIdOrTitle || normalizeConceptString(n.title) === normalizeConceptString(preIdOrTitle)
+          );
+          if (preNode) {
+            const preMastery = preNode.mastery ?? 0.0;
+            if (preNode.status === 'locked' || preNode.status === 'weak' || preNode.status === 'unmet' || preMastery < 0.60) {
+              allMet = false;
+              unmetPrereqTitle = preNode.title;
+              break;
+            }
+          }
+        }
+        prereqStatus = allMet ? 'MET' : 'UNMET';
+      }
+    }
+
+    // Days until exam calculation
+    let daysUntilExam: number | null = null;
+    if (options.examDate) {
+      const examTime = new Date(options.examDate).getTime();
+      const nowTime = now.getTime();
+      if (!isNaN(examTime)) {
+        daysUntilExam = Math.max(0, Math.ceil((examTime - nowTime) / (1000 * 60 * 60 * 24)));
       }
     }
 
@@ -494,6 +566,7 @@ export async function evaluateAdaptiveRecommendations(
       hasRecurringMisconception: hasRecurring,
       hasSingleMisconception: hasSingle,
       prerequisiteStatus: prereqStatus,
+      daysUntilExam,
     });
 
     // Content Selection: Search user resources strictly scoped
@@ -540,7 +613,7 @@ export async function evaluateAdaptiveRecommendations(
     }
 
     // Explanation
-    const explanation = generateRecommendationExplanation({
+    let explanation = generateRecommendationExplanation({
       category,
       conceptName: candidate.concept_name,
       latentMastery,
@@ -550,6 +623,10 @@ export async function evaluateAdaptiveRecommendations(
       elapsedDays: retention.elapsed_days > 0 ? retention.elapsed_days : null,
       recurringMisconception: recurringMisconceptionKey,
     });
+
+    if (prereqStatus === 'UNMET' && unmetPrereqTitle) {
+      explanation += ` Note: Foundational prerequisite "${unmetPrereqTitle}" is unmet in your course roadmap and should be mastered first.`;
+    }
 
     const recHash = crypto
       .createHash('sha256')

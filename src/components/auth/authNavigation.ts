@@ -35,12 +35,30 @@ export function isOnboardingComplete(profile: Partial<UserProfile> | null | unde
 }
 
 /**
+ * Sanitizes a post-auth internal redirect path to prevent open redirects.
+ */
+export function getSafeRedirectTarget(redirectPath?: string | null): string | null {
+  if (!redirectPath || typeof redirectPath !== 'string') return null;
+  const trimmed = redirectPath.trim();
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.includes('\\')) {
+    return null;
+  }
+  return trimmed;
+}
+
+/**
  * Single source of truth for post-authentication destinations.
  * Authenticated + Onboarding Incomplete -> /onboarding
- * Authenticated + Onboarding Complete   -> /dashboard
+ * Authenticated + Onboarding Complete   -> safe redirectPath or /dashboard
  * Unauthenticated                       -> /login
  */
-export function getPostAuthDestination(profile: Partial<UserProfile> | null | undefined): string {
+export function getPostAuthDestination(
+  profile: Partial<UserProfile> | null | undefined,
+  redirectPath?: string | null
+): string {
   if (!profile) return AUTH_ROUTES.ONBOARDING;
-  return isOnboardingComplete(profile) ? AUTH_ROUTES.DASHBOARD : AUTH_ROUTES.ONBOARDING;
+  if (!isOnboardingComplete(profile)) {
+    return AUTH_ROUTES.ONBOARDING;
+  }
+  return getSafeRedirectTarget(redirectPath) || AUTH_ROUTES.DASHBOARD;
 }

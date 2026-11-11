@@ -60,3 +60,8 @@ dev.db
 # Lockfile & TypeScript build cache
 bun.lockb
 *.tsbuildinfo
+
+# Verification screenshots, temp artifacts & generated pipeline outputs
+screenshots/
+tmp_artifacts/
+**/ACTUAL_*PIPELINE_RESULTS.json

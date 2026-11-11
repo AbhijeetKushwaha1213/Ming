@@ -13,7 +13,7 @@
  * 8. Regression Verification (Phase 4 Grading, Phase 5 Step 1 Idempotency, Phase 5 Step 2 Non-Destructive Retention)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import {
   calculatePriorityScore,
   determineRecommendationCategory,
@@ -850,14 +850,29 @@ describe('Canonical Phase 5 — Step 3: Adaptive Learning Recommendations', () =
   // 8. API Contract & Zero-Trust Security
   // =========================================================================
   describe('8. API Contract & Zero-Trust Security', () => {
+    const testSecret = 'adaptive_rec_test_secret';
+    let prevSecret: string | undefined;
+
+    beforeAll(() => {
+      prevSecret = process.env.MING_TEST_SECRET;
+      process.env.MING_TEST_SECRET = testSecret;
+    });
+
+    afterAll(() => {
+      if (prevSecret === undefined) {
+        delete process.env.MING_TEST_SECRET;
+      } else {
+        process.env.MING_TEST_SECRET = prevSecret;
+      }
+    });
+
     it('8.1 GET /api/learner/recommendations requires authenticated session', async () => {
       const { req, res } = createMockReqRes({
         method: 'GET',
         url: 'http://localhost:3001/api/learner/recommendations',
       });
-      // No userId query or header provided, defaults to default_user if permitted or 401
       await learnerHandler(req, res);
-      expect([200, 401]).toContain(res.statusCode);
+      expect(res.statusCode).toBe(401);
     });
 
     it('8.2 GET /api/learner/recommendations returns valid response schema', async () => {
@@ -871,7 +886,10 @@ describe('Canonical Phase 5 — Step 3: Adaptive Learning Recommendations', () =
       const { req, res } = createMockReqRes({
         method: 'GET',
         url: `http://localhost:3001/api/learner/recommendations?userId=${apiUser}`,
-        headers: { 'x-dev-user-id': apiUser },
+        headers: {
+          'x-ming-test-key': testSecret,
+          'x-ming-user-id': apiUser,
+        },
         query: { userId: apiUser },
       });
 
@@ -897,7 +915,10 @@ describe('Canonical Phase 5 — Step 3: Adaptive Learning Recommendations', () =
       const { req, res } = createMockReqRes({
         method: 'GET',
         url: `http://localhost:3001/api/learner/recommendations?userId=${limitUser}&limit=2`,
-        headers: { 'x-dev-user-id': limitUser },
+        headers: {
+          'x-ming-test-key': testSecret,
+          'x-ming-user-id': limitUser,
+        },
         query: { userId: limitUser, limit: '2' },
       });
 
@@ -924,7 +945,10 @@ describe('Canonical Phase 5 — Step 3: Adaptive Learning Recommendations', () =
       const { req, res } = createMockReqRes({
         method: 'GET',
         url: `http://localhost:3001/api/learner/recommendations?userId=${filterUser}&topic=Algebra`,
-        headers: { 'x-dev-user-id': filterUser },
+        headers: {
+          'x-ming-test-key': testSecret,
+          'x-ming-user-id': filterUser,
+        },
         query: { userId: filterUser, topic: 'Algebra' },
       });
 

@@ -9,9 +9,11 @@ import {
   deliverStudyActivity,
   completeStudyActivityWithEvidence,
   skipStudyActivity,
+  getLearnerPreferences,
+  saveLearnerPreferences,
   type PlanItemStatus,
 } from './studyAgentService.ts';
-import { resolveContextUser } from './authMiddleware.ts';
+import { resolveContextUser, isAuthorizedTestClockRequest } from './authMiddleware.ts';
 
 interface SimpleRequest {
   method?: string;
@@ -42,7 +44,8 @@ export async function studyAgentHandler(req: SimpleRequest, res: SimpleResponse)
       return;
     } catch (err: any) {
       console.error('Error getting next study action:', err);
-      res.status(500).json({ error: 'Failed to get next study action', details: err.message });
+      const status = typeof err?.statusCode === 'number' ? err.statusCode : 500;
+      res.status(status).json({ error: 'Failed to get next study action', details: err.message });
       return;
     }
   }
@@ -58,7 +61,12 @@ export async function studyAgentHandler(req: SimpleRequest, res: SimpleResponse)
       return;
     } catch (err: any) {
       console.error('Error completing study activity:', err);
-      const status = err.message?.includes('unauthorized') || err.message?.includes('not found') ? 404 : 500;
+      const status =
+        typeof err?.statusCode === 'number'
+          ? err.statusCode
+          : err.message?.includes('unauthorized') || err.message?.includes('not found')
+          ? 404
+          : 500;
       res.status(status).json({ error: 'Failed to complete study activity', details: err.message });
       return;
     }
@@ -75,7 +83,12 @@ export async function studyAgentHandler(req: SimpleRequest, res: SimpleResponse)
       return;
     } catch (err: any) {
       console.error('Error skipping study activity:', err);
-      const status = err.message?.includes('unauthorized') || err.message?.includes('not found') ? 404 : 500;
+      const status =
+        typeof err?.statusCode === 'number'
+          ? err.statusCode
+          : err.message?.includes('unauthorized') || err.message?.includes('not found')
+          ? 404
+          : 500;
       res.status(status).json({ error: 'Failed to skip study activity', details: err.message });
       return;
     }
@@ -96,7 +109,12 @@ export async function studyAgentHandler(req: SimpleRequest, res: SimpleResponse)
       return;
     } catch (err: any) {
       console.error('Error delivering study activity:', err);
-      const status = err.message?.includes('unauthorized') || err.message?.includes('not found') ? 404 : 500;
+      const status =
+        typeof err?.statusCode === 'number'
+          ? err.statusCode
+          : err.message?.includes('unauthorized') || err.message?.includes('not found')
+          ? 404
+          : 500;
       res.status(status).json({ error: 'Failed to deliver study activity', details: err.message });
       return;
     }
@@ -119,48 +137,105 @@ export async function studyAgentHandler(req: SimpleRequest, res: SimpleResponse)
       return;
     } catch (err: any) {
       console.error('Error computing priorities:', err);
-      res.status(500).json({ error: 'Failed to compute study priorities', details: err.message });
+      const status = typeof err?.statusCode === 'number' ? err.statusCode : 500;
+      res.status(status).json({ error: 'Failed to compute study priorities', details: err.message });
       return;
     }
   }
 
-  // 6. GET /api/agent/plan (Get today's active study plan)
+  // 5b. GET /api/agent/preferences & POST/PUT /api/agent/preferences
+  if (pathname === '/api/agent/preferences') {
+    if (method === 'GET') {
+      try {
+        const userId = await resolveContextUser(req);
+        const preferences = await getLearnerPreferences(userId);
+        res.status(200).json({ success: true, preferences });
+        return;
+      } catch (err: any) {
+        console.error('Error fetching learner preferences:', err);
+        const status = typeof err?.statusCode === 'number' ? err.statusCode : 500;
+        res.status(status).json({ error: 'Failed to fetch preferences', details: err.message });
+        return;
+      }
+    }
+
+    if (method === 'POST' || method === 'PUT') {
+      try {
+        const userId = await resolveContextUser(req);
+        const body = req.body || {};
+        const preferences = await saveLearnerPreferences(userId, body);
+        res.status(200).json({ success: true, preferences });
+        return;
+      } catch (err: any) {
+        console.error('Error saving learner preferences:', err);
+        const status = typeof err?.statusCode === 'number' ? err.statusCode : 500;
+        res.status(status).json({ error: 'Failed to save preferences', details: err.message });
+        return;
+      }
+    }
+  }
+
+  // 6. GET /api/agent/plan (Get today's active study plan - strictly idempotent read)
   if (method === 'GET' && pathname === '/api/agent/plan') {
     try {
       const userId = await resolveContextUser(req);
-      const date = (req.query?.date as string) || undefined;
+      const isAuthorizedClock = isAuthorizedTestClockRequest(req);
+      // Production planning uses server trusted clock; client-supplied dates stripped unless test authorized
+      const date = isAuthorizedClock
+        ? ((req.query?.date as string) || (req.query?.referenceDate as string) || undefined)
+        : undefined;
 
-      const plan = await getTodayStudyPlan(userId, date);
+      const plan = await getTodayStudyPlan(userId, date, { allowClockOverride: isAuthorizedClock });
       res.status(200).json({ success: true, plan });
       return;
     } catch (err: any) {
       console.error('Error fetching today study plan:', err);
-      res.status(500).json({ error: 'Failed to fetch study plan', details: err.message });
+      const status = typeof err?.statusCode === 'number' ? err.statusCode : 500;
+      res.status(status).json({ error: 'Failed to fetch study plan', details: err.message });
       return;
     }
   }
 
-  // 7. POST /api/agent/plan/generate
-  if (method === 'POST' && pathname === '/api/agent/plan/generate') {
+  // 7. POST /api/agent/plan/generate or POST /api/agent/plan/replan
+  if (
+    method === 'POST' &&
+    (pathname === '/api/agent/plan/generate' || pathname === '/api/agent/plan/replan')
+  ) {
     try {
       const body = req.body || {};
       const userId = await resolveContextUser(req);
-      const targetMinutes = body.targetMinutes ? Number(body.targetMinutes) : 60;
-      const examDate = body.examDate || null;
-      const forceRegenerate = Boolean(body.forceRegenerate);
+      const isAuthorizedClock = isAuthorizedTestClockRequest(req);
+
+      const targetMinutes = body.targetMinutes !== undefined ? Number(body.targetMinutes) : undefined;
+      const examDate = body.examDate !== undefined ? body.examDate : undefined;
+      const timezone = body.timezone || undefined;
+      const forceRegenerate = pathname === '/api/agent/plan/replan' || Boolean(body.forceRegenerate);
+
+      // Controlled-clock injection available ONLY for authorized test requests; ignored in production
+      const referenceDate = isAuthorizedClock
+        ? (body.referenceDate || (req.query?.referenceDate as string) || undefined)
+        : undefined;
+      const timezoneOffsetMinutes = isAuthorizedClock && body.timezoneOffsetMinutes !== undefined
+        ? Number(body.timezoneOffsetMinutes)
+        : undefined;
 
       const plan = await generatePersonalizedDailyPlan({
         userId,
         targetMinutes,
         examDate,
+        timezone,
         forceRegenerate,
+        referenceDate,
+        timezoneOffsetMinutes,
+        allowClockOverride: isAuthorizedClock,
       });
 
       res.status(200).json({ success: true, plan });
       return;
     } catch (err: any) {
       console.error('Error generating daily study plan:', err);
-      res.status(500).json({ error: 'Failed to generate study plan', details: err.message });
+      const status = typeof err?.statusCode === 'number' ? err.statusCode : 500;
+      res.status(status).json({ error: 'Failed to generate study plan', details: err.message });
       return;
     }
   }
@@ -197,7 +272,8 @@ export async function studyAgentHandler(req: SimpleRequest, res: SimpleResponse)
       return;
     } catch (err: any) {
       console.error('Error updating plan item status:', err);
-      res.status(500).json({ error: 'Failed to update plan item status', details: err.message });
+      const status = typeof err?.statusCode === 'number' ? err.statusCode : 500;
+      res.status(status).json({ error: 'Failed to update plan item status', details: err.message });
       return;
     }
   }

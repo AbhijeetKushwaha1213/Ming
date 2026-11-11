@@ -56,6 +56,13 @@ export const VideoLibrary: React.FC<VideoLibraryProps> = ({
         </Badge>
       );
     }
+    if (transcriptStatus === 'unavailable') {
+      return (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5">
+          Transcript Unavailable
+        </Badge>
+      );
+    }
     return (
       <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 flex items-center gap-1">
         <CheckCircle2 className="w-2.5 h-2.5" />

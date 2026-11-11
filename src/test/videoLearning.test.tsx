@@ -4,10 +4,18 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import {
   extractYouTubeId,
   isValidYouTubeUrl,
+  parseYouTubeInput,
+  normalizeYouTubeUrl,
+  isKnownMismatchedVideoRecord,
+  verifyVideoEvidenceIntegrity,
   formatTimestamp,
   parseTimestamp,
   formatDuration,
   extractTimestampCitations,
+  validateTranscriptSegments,
+  isSyntheticOrInvalidTranscript,
+  MEDIA_START_TOLERANCE_SECONDS,
+  CAPTION_CUE_END_TOLERANCE_SECONDS,
 } from '@/utils/videoUtils';
 import {
   fetchUserVideos,
@@ -18,9 +26,16 @@ import {
   processVideoById,
   fetchVideoTranscript,
   askVideoQuestion,
+  getStoredVideos,
+  VideoAuthError,
+  isVideoAuthError,
 } from '@/api/videoAPI';
+import { supabase } from '@/integrations/supabase/client';
+import { AddVideoModal, PENDING_VIDEO_DRAFT_KEY } from '@/components/video/AddVideoModal';
+import { VideoPlayer } from '@/components/video/VideoPlayer';
 import { VideoAITutorPanel } from '@/components/video/VideoAITutorPanel';
 import { VideoTranscriptPanel } from '@/components/video/VideoTranscriptPanel';
+import { VideoLearningPage } from '@/components/video/VideoLearningPage';
 import type { VideoRecord, TranscriptSegment } from '@/types/video';
 
 describe('Ming Video Learning Feature Test Suite', () => {
@@ -499,6 +514,829 @@ describe('Ming Video Learning Feature Test Suite', () => {
       fireEvent.click(citationBtn);
 
       expect(mockSeek).toHaveBeenCalledWith(720);
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 16: Strict Transcript Duration Bounds & Integrity
+  // ----------------------------------------------------
+  describe('16. Strict Transcript Duration Bounds & Integrity Validation', () => {
+    const mediaDuration = 219; // 3:39 multiplexing lecture
+
+    it('accepts valid segments within verified media duration', () => {
+      const validSegments = [
+        { start: 0, end: 60, text: 'Introduction to Multiplexing' },
+        { start: 60, end: 150, text: 'Time Division Multiplexing principles' },
+        { start: 150, end: 218, text: 'Frequency Division Multiplexing summary' },
+      ];
+
+      const res = validateTranscriptSegments(validSegments, mediaDuration);
+      expect(res.valid).toBe(true);
+      expect(res.segments).toHaveLength(3);
+    });
+
+    it('strictly REJECTS out-of-bounds segments (e.g. 5:00 / 300s on 3:39 video) without clamping', () => {
+      const invalidSegments = [
+        { start: 0, end: 60, text: 'Introduction' },
+        { start: 300, end: 600, text: 'Detailed Walkthrough at 5 to 10 minutes' },
+      ];
+
+      const res = validateTranscriptSegments(invalidSegments, mediaDuration);
+      expect(res.valid).toBe(false);
+      expect(res.error).toContain('exceeds verified media duration');
+      // Verify no clamping occurred
+      expect(res.segments).toBeUndefined();
+    });
+
+    it('rejects negative or malformed timestamps', () => {
+      const negativeStart = [{ start: -5, end: 30, text: 'Negative timestamp' }];
+      expect(validateTranscriptSegments(negativeStart, 100).valid).toBe(false);
+
+      const invertedOrder = [{ start: 50, end: 20, text: 'End before start' }];
+      expect(validateTranscriptSegments(invertedOrder, 100).valid).toBe(false);
+    });
+
+    it('detects and rejects synthetic placeholder template text masquerading as real transcript', () => {
+      const syntheticSegments = [
+        {
+          start: 0,
+          end: 60,
+          text: 'Introduction to Operating system. Overview of core architectural concepts, prerequisites',
+          subtopic: 'Introduction & Overview',
+        },
+        {
+          start: 60,
+          end: 120,
+          text: 'Detailed analysis of fundamental mechanisms',
+          subtopic: 'Detailed Walkthrough',
+        },
+      ];
+
+      expect(isSyntheticOrInvalidTranscript(syntheticSegments, 300)).toBe(true);
+      const res = validateTranscriptSegments(syntheticSegments, 300);
+      expect(res.valid).toBe(false);
+      expect(res.error).toContain('synthetic placeholder');
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 17: Video Unavailable Transcript State & Grounding Refusal
+  // ----------------------------------------------------
+  describe('17. Video Unavailable Transcript State & Grounding Refusal', () => {
+    it('renders explicit notice when transcript is unavailable in VideoTranscriptPanel', () => {
+      render(
+        <VideoTranscriptPanel
+          segments={[]}
+          currentTime={0}
+          onSeek={vi.fn()}
+          transcriptStatus="unavailable"
+        />
+      );
+
+      expect(screen.getByText('No verified transcript available for this lecture')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Verbatim transcript evidence is not available for this lecture/i)
+      ).toBeInTheDocument();
+    });
+
+    it('displays ungrounded mode badge in AI Tutor when transcript is unavailable', () => {
+      const ungroundedVideo: VideoRecord = {
+        id: 'vid_no_transcript',
+        userId: 'student_1',
+        title: 'Multiplexing Lecture',
+        sourceType: 'youtube',
+        durationSeconds: 219,
+        status: 'ready',
+        transcriptStatus: 'unavailable',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      render(<VideoAITutorPanel video={ungroundedVideo} onSeek={vi.fn()} />);
+
+      expect(screen.getByText('Ungrounded Mode')).toBeInTheDocument();
+      expect(screen.getByText(/Transcript unavailable - conceptual help without citations/i)).toBeInTheDocument();
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 18: Video Switching Cleans Stale Chat & Citations
+  // ----------------------------------------------------
+  describe('18. Video Switching Cleans Stale Chat & Citations', () => {
+    const videoA: VideoRecord = {
+      id: 'vid_A',
+      userId: 'student_1',
+      title: 'Lecture A: Computer Networks',
+      sourceType: 'youtube',
+      status: 'ready',
+      durationSeconds: 219,
+      transcriptStatus: 'ready',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const videoB: VideoRecord = {
+      id: 'vid_B',
+      userId: 'student_1',
+      title: 'Lecture B: Operating Systems',
+      sourceType: 'youtube',
+      status: 'ready',
+      durationSeconds: 300,
+      transcriptStatus: 'unavailable',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    it('resets conversation history and citations when active video changes', async () => {
+      const { rerender } = render(<VideoAITutorPanel video={videoA} onSeek={vi.fn()} />);
+
+      expect(screen.getByText(/Lecture A: Computer Networks/i)).toBeInTheDocument();
+
+      // Switch to video B
+      rerender(<VideoAITutorPanel video={videoB} onSeek={vi.fn()} />);
+
+      // Must now show Video B welcome and NOT Video A
+      await waitFor(() => {
+        expect(screen.getByText(/Lecture B: Operating Systems/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Lecture A: Computer Networks/i)).toBeNull();
+        expect(screen.getByText('Ungrounded Mode')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 19: Expand Left Pane Viewing Mode
+  // ----------------------------------------------------
+  describe('19. Expand Left Pane Viewing Mode', () => {
+    const sampleVideo: VideoRecord = {
+      id: 'vid_expand_test',
+      userId: 'default_user',
+      title: 'Multiplexing In Computer Networks',
+      sourceType: 'youtube',
+      youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      youtubeVideoId: 'dQw4w9WgXcQ',
+      status: 'ready',
+      durationSeconds: 219,
+      transcriptStatus: 'ready',
+      transcriptJson: JSON.stringify([
+        { start: 0, end: 60, text: 'Multiplexing principles' },
+      ]),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    beforeEach(() => {
+      localStorage.clear();
+      localStorage.setItem('ming_user_videos', JSON.stringify([sampleVideo]));
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => JSON.stringify({ success: true, videos: [sampleVideo] }),
+      } as any);
+    });
+
+    it('provides labelled mode control with accessible aria-pressed and toggles workspace view', async () => {
+      render(<VideoLearningPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Multiplexing In Computer Networks').length).toBeGreaterThan(0);
+      });
+
+      const toggleBtn = screen.getByRole('button', { name: /expand left pane/i });
+      expect(toggleBtn).toBeInTheDocument();
+      expect(toggleBtn).toHaveAttribute('aria-pressed', 'false');
+
+      // Click to toggle to expanded-left
+      fireEvent.click(toggleBtn);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /restore default view/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /restore default view/i })).toHaveAttribute(
+          'aria-pressed',
+          'true'
+        );
+      });
+
+      // Click again to restore default
+      const restoreBtn = screen.getByRole('button', { name: /restore default view/i });
+      fireEvent.click(restoreBtn);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /expand left pane/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /expand left pane/i })).toHaveAttribute(
+          'aria-pressed',
+          'false'
+        );
+      });
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 20: ASR Trailing Caption Timing Tolerance & Provenance Rendering
+  // ----------------------------------------------------
+  describe('20. ASR Trailing Caption Timing Tolerance & Provenance', () => {
+    it('accepts trailing ASR caption cue within documented tolerance across rounded 219s and 220s durations', () => {
+      const cues = [
+        { start: 0.02, end: 4.13, text: 'अब हम लोग स्टार्ट करेंगे मल्टीप्लेक्सिंग के बारे में' },
+        { start: 218.3, end: 220.96, text: 'डिविजन मल्टीप्ल एक्सेस तो यह तीन तरीके हैं' },
+      ];
+
+      expect(MEDIA_START_TOLERANCE_SECONDS).toBe(1.5);
+      expect(CAPTION_CUE_END_TOLERANCE_SECONDS).toBe(3.0);
+
+      expect(validateTranscriptSegments(cues, 220).valid).toBe(true);
+      expect(validateTranscriptSegments(cues, 219).valid).toBe(true);
+      expect(validateTranscriptSegments([{ start: 218.0, end: 225.0, text: 'Too long beyond video' }], 220).valid).toBe(false);
+    });
+
+    it('throws honestly in processVideoById instead of masquerading failure as ready', async () => {
+      const staleLocal: VideoRecord = {
+        id: 'vid_fail_honest',
+        userId: 'student_1',
+        title: 'Test Video',
+        sourceType: 'youtube',
+        status: 'processing',
+        durationSeconds: 0,
+        transcriptStatus: 'processing',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem('ming_user_videos', JSON.stringify([staleLocal]));
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: async () => JSON.stringify({ error: 'Extraction subprocess timed out' }),
+      } as any);
+
+      await expect(processVideoById('vid_fail_honest')).rejects.toThrow(/timed out/i);
+    });
+
+    it('renders caption language, ASR provenance badge, and polls processing -> ready transition cleanly', async () => {
+      const processingVideo: VideoRecord = {
+        id: 'vid_poll_yt',
+        userId: 'default_user',
+        title: 'YouTube Lecture (za87oqLhGaI)',
+        sourceType: 'youtube',
+        youtubeUrl: 'https://youtu.be/za87oqLhGaI',
+        youtubeVideoId: 'za87oqLhGaI',
+        status: 'processing',
+        durationSeconds: 0,
+        transcriptStatus: 'processing',
+        extractionStatus: 'processing',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const readyVideo: VideoRecord = {
+        ...processingVideo,
+        title: '35. intro to multiplexing',
+        channelName: 'GATE CSE LECTURES BY AMIT KHURANA',
+        durationSeconds: 220,
+        durationSource: 'yt-dlp',
+        captionLanguage: 'hi',
+        captionLanguageName: 'Hindi (Original)',
+        captionKind: 'asr',
+        isAutoGenerated: true,
+        captionProvider: 'yt-dlp:json3',
+        extractionStatus: 'ready',
+        status: 'ready',
+        transcriptStatus: 'ready',
+        transcriptJson: JSON.stringify([
+          { start: 0.02, end: 4.13, text: 'अब हम लोग स्टार्ट करेंगे मल्टीप्लेक्सिंग के बारे में' },
+          { start: 120.04, end: 128.5, text: 'ट्रांसमिशन ऑफ मल्टीपल सिग्नल सिंगल डाटा लिंक' },
+        ]),
+      };
+
+      localStorage.clear();
+      localStorage.setItem('ming_user_videos', JSON.stringify([processingVideo]));
+
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (String(url).includes('/api/videos/vid_poll_yt') && !String(url).includes('/transcript')) {
+          return {
+            ok: true,
+            text: async () => JSON.stringify({ success: true, video: readyVideo }),
+          } as any;
+        }
+        return {
+          ok: true,
+          text: async () => JSON.stringify({ success: true, videos: [processingVideo] }),
+        } as any;
+      });
+
+      render(<VideoLearningPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('35. intro to multiplexing').length).toBeGreaterThan(0);
+        expect(screen.getByText('GATE CSE LECTURES BY AMIT KHURANA')).toBeInTheDocument();
+        expect(screen.getByText(/Hindi \(Original\) • Auto ASR/i)).toBeInTheDocument();
+        expect(screen.getByText('अब हम लोग स्टार्ट करेंगे मल्टीप्लेक्सिंग के बारे में')).toBeInTheDocument();
+      }, { timeout: 4000 });
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 21: Strict YouTube URL & Markdown Normalization
+  // ----------------------------------------------------
+  describe('21. Strict YouTube URL & Markdown Link Normalization', () => {
+    it('normalizes valid plain and Markdown YouTube links into canonical watch URLs', () => {
+      const plain = parseYouTubeInput('https://youtu.be/za87oqLhGaI');
+      expect(plain.valid).toBe(true);
+      expect(plain.videoId).toBe('za87oqLhGaI');
+      expect(plain.canonicalUrl).toBe('https://www.youtube.com/watch?v=za87oqLhGaI');
+      expect(plain.wasMarkdown).toBe(false);
+
+      const md = parseYouTubeInput('[35. intro to multiplexing](https://youtu.be/za87oqLhGaI)');
+      expect(md.valid).toBe(true);
+      expect(md.videoId).toBe('za87oqLhGaI');
+      expect(md.canonicalUrl).toBe('https://www.youtube.com/watch?v=za87oqLhGaI');
+      expect(md.wasMarkdown).toBe(true);
+
+      const angle = parseYouTubeInput('<https://youtu.be/za87oqLhGaI>');
+      expect(angle.valid).toBe(true);
+      expect(angle.canonicalUrl).toBe('https://www.youtube.com/watch?v=za87oqLhGaI');
+      expect(angle.wasMarkdown).toBe(true);
+
+      const matchingLabel = parseYouTubeInput(
+        '[https://youtu.be/za87oqLhGaI](https://www.youtube.com/watch?v=za87oqLhGaI)'
+      );
+      expect(matchingLabel.valid).toBe(true);
+      expect(matchingLabel.videoId).toBe('za87oqLhGaI');
+    });
+
+    it('rejects spoofed Markdown labels, malformed links, non-YouTube domains, and bare IDs by default', () => {
+      expect(parseYouTubeInput('[https://youtu.be/za87oqLhGaI](https://evil.com/watch?v=za87oqLhGaI)').valid).toBe(false);
+      expect(parseYouTubeInput('[https://youtu.be/za87oqLhGaI](https://youtu.be/dQw4w9WgXcQ)').valid).toBe(false);
+      expect(parseYouTubeInput('[broken](https://youtu.be/za87oqLhGaI').valid).toBe(false);
+      expect(parseYouTubeInput('https://evil.com/?q=youtu.be/za87oqLhGaI').valid).toBe(false);
+      expect(parseYouTubeInput('za87oqLhGaI', { allowBareId: false }).valid).toBe(false);
+      expect(isValidYouTubeUrl('za87oqLhGaI')).toBe(false);
+      expect(normalizeYouTubeUrl('[title](https://youtu.be/za87oqLhGaI)')).toBe(
+        'https://www.youtube.com/watch?v=za87oqLhGaI'
+      );
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 22: AddVideoModal Normalization, Auth Preservation & Draft Restore
+  // ----------------------------------------------------
+  describe('22. AddVideoModal Normalization, Auth Error Form Preservation & Draft Restore', () => {
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null }, error: null });
+      (supabase.auth.refreshSession as any).mockResolvedValue({ data: { session: null }, error: null });
+    });
+
+    it('normalizes valid Markdown YouTube link and submits canonical URL to /api/videos', async () => {
+      (supabase.auth.getSession as any).mockResolvedValue({
+        data: { session: { access_token: 'valid-learner-jwt', expires_at: Math.floor(Date.now() / 1000) + 3600 } },
+        error: null,
+      });
+
+      const createdVideo: VideoRecord = {
+        id: 'vid_multiplex_1',
+        userId: 'learner_1',
+        title: '35. intro to multiplexing',
+        sourceType: 'youtube',
+        youtubeUrl: 'https://www.youtube.com/watch?v=za87oqLhGaI',
+        youtubeVideoId: 'za87oqLhGaI',
+        status: 'processing',
+        durationSeconds: 0,
+        transcriptStatus: 'processing',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: async () => JSON.stringify({ success: true, video: createdVideo }),
+      });
+      global.fetch = fetchMock as any;
+
+      const onVideoAdded = vi.fn();
+      const onClose = vi.fn();
+
+      render(<AddVideoModal isOpen={true} onClose={onClose} onVideoAdded={onVideoAdded} />);
+
+      fireEvent.change(screen.getByLabelText(/YouTube URL \*/i), {
+        target: { value: '[35. intro to multiplexing](https://youtu.be/za87oqLhGaI)' },
+      });
+
+      expect(screen.getByText(/Valid Video ID:/i)).toBeInTheDocument();
+      expect(screen.getByText('za87oqLhGaI')).toBeInTheDocument();
+      expect(screen.getByText('https://www.youtube.com/watch?v=za87oqLhGaI')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByLabelText(/Lecture Title/i), {
+        target: { value: '35. intro to multiplexing' },
+      });
+
+      const submitBtn = screen.getByRole('button', { name: /Add YouTube Video/i });
+      expect(submitBtn).toBeEnabled();
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(onVideoAdded).toHaveBeenCalledWith(expect.objectContaining({ id: 'vid_multiplex_1' }));
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [reqUrl, reqInit] = fetchMock.mock.calls[0];
+      expect(reqUrl).toBe('/api/videos');
+      expect(reqInit.headers.Authorization).toBe('Bearer valid-learner-jwt');
+      expect(JSON.parse(reqInit.body).youtubeUrl).toBe('https://www.youtube.com/watch?v=za87oqLhGaI');
+    });
+
+    it('rejects spoofed Markdown links and keeps submit button disabled', () => {
+      render(<AddVideoModal isOpen={true} onClose={vi.fn()} onVideoAdded={vi.fn()} />);
+
+      fireEvent.change(screen.getByLabelText(/YouTube URL \*/i), {
+        target: { value: '[https://youtu.be/za87oqLhGaI](https://youtu.be/dQw4w9WgXcQ)' },
+      });
+
+      expect(screen.getByText(/different URLs or videos/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Add YouTube Video/i })).toBeDisabled();
+    });
+
+    it('preserves entered form fields on 401, surfaces Sign In CTA, saves draft, and restores it after sign-in', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: async () => JSON.stringify({ error: 'Authentication required' }),
+      }) as any;
+
+      const onSignInRequest = vi.fn();
+      const { unmount } = render(
+        <AddVideoModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onVideoAdded={vi.fn()}
+          onSignInRequest={onSignInRequest}
+        />
+      );
+
+      fireEvent.change(screen.getByLabelText(/YouTube URL \*/i), {
+        target: { value: 'https://youtu.be/za87oqLhGaI' },
+      });
+      fireEvent.change(screen.getByLabelText(/Lecture Title/i), {
+        target: { value: 'Multiplexing Preserved Draft' },
+      });
+      fireEvent.change(screen.getByLabelText(/Optional Transcript/i), {
+        target: { value: '[00:00] Draft segment text' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Add YouTube Video/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/Authentication required/i);
+      });
+
+      expect((screen.getByLabelText(/YouTube URL \*/i) as HTMLInputElement).value).toBe('https://youtu.be/za87oqLhGaI');
+      expect((screen.getByLabelText(/Lecture Title/i) as HTMLInputElement).value).toBe('Multiplexing Preserved Draft');
+      expect((screen.getByLabelText(/Optional Transcript/i) as HTMLTextAreaElement).value).toBe('[00:00] Draft segment text');
+
+      const signInBtn = screen.getByRole('button', { name: /Sign In/i });
+      fireEvent.click(signInBtn);
+
+      await waitFor(() => {
+        expect(onSignInRequest).toHaveBeenCalledTimes(1);
+      });
+
+      const savedRaw = sessionStorage.getItem(PENDING_VIDEO_DRAFT_KEY);
+      expect(savedRaw).toBeTruthy();
+      expect(JSON.parse(savedRaw!)).toMatchObject({
+        ytUrl: 'https://youtu.be/za87oqLhGaI',
+        ytTitle: 'Multiplexing Preserved Draft',
+        ytTranscript: '[00:00] Draft segment text',
+      });
+
+      unmount();
+
+      // Returning to VideoLearningPage / reopening AddVideoModal restores the draft
+      render(<AddVideoModal isOpen={true} onClose={vi.fn()} onVideoAdded={vi.fn()} />);
+      expect((screen.getByLabelText(/YouTube URL \*/i) as HTMLInputElement).value).toBe('https://youtu.be/za87oqLhGaI');
+      expect((screen.getByLabelText(/Lecture Title/i) as HTMLInputElement).value).toBe('Multiplexing Preserved Draft');
+      expect((screen.getByLabelText(/Optional Transcript/i) as HTMLTextAreaElement).value).toBe('[00:00] Draft segment text');
+      expect(sessionStorage.getItem(PENDING_VIDEO_DRAFT_KEY)).toBeNull();
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 23: videoAPI Token Refresh, 401 Single Retry & Pre-flight URL Check
+  // ----------------------------------------------------
+  describe('23. videoAPI Auth Token Refresh & Retry Handling', () => {
+    beforeEach(() => {
+      localStorage.clear();
+      (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null }, error: null });
+      (supabase.auth.refreshSession as any).mockResolvedValue({ data: { session: null }, error: null });
+    });
+
+    it('proactively refreshes near-expiry session token before calling /api/videos', async () => {
+      (supabase.auth.getSession as any).mockResolvedValue({
+        data: {
+          session: {
+            access_token: 'expiring-token',
+            expires_at: Math.floor(Date.now() / 1000) + 10, // inside 60s refresh buffer
+          },
+        },
+        error: null,
+      });
+      (supabase.auth.refreshSession as any).mockResolvedValue({
+        data: {
+          session: {
+            access_token: 'fresh-refreshed-token',
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+          },
+        },
+        error: null,
+      });
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: async () =>
+          JSON.stringify({
+            success: true,
+            video: {
+              id: 'vid_refreshed',
+              userId: 'u1',
+              title: '35. intro to multiplexing',
+              sourceType: 'youtube',
+              youtubeUrl: 'https://www.youtube.com/watch?v=za87oqLhGaI',
+              youtubeVideoId: 'za87oqLhGaI',
+              status: 'processing',
+              durationSeconds: 0,
+              transcriptStatus: 'processing',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          }),
+      });
+      global.fetch = fetchMock as any;
+
+      await addYouTubeVideo('35. intro to multiplexing', 'https://youtu.be/za87oqLhGaI');
+
+      expect((supabase.auth as any).refreshSession).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer fresh-refreshed-token');
+    });
+
+    it('retries once on 401 after refreshing session and throws VideoAuthError if still unauthorized', async () => {
+      (supabase.auth.getSession as any).mockResolvedValue({
+        data: {
+          session: {
+            access_token: 'stale-token',
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+          },
+        },
+        error: null,
+      });
+      (supabase.auth.refreshSession as any).mockResolvedValue({
+        data: {
+          session: {
+            access_token: 'retried-fresh-token',
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+          },
+        },
+        error: null,
+      });
+
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          text: async () => JSON.stringify({ error: 'Expired JWT' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          text: async () =>
+            JSON.stringify({
+              success: true,
+              video: {
+                id: 'vid_retry_ok',
+                userId: 'u1',
+                title: '35. intro to multiplexing',
+                sourceType: 'youtube',
+                youtubeUrl: 'https://www.youtube.com/watch?v=za87oqLhGaI',
+                youtubeVideoId: 'za87oqLhGaI',
+                status: 'processing',
+                durationSeconds: 0,
+                transcriptStatus: 'processing',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            }),
+        });
+      global.fetch = fetchMock as any;
+
+      const res = await addYouTubeVideo('35. intro to multiplexing', 'https://youtu.be/za87oqLhGaI');
+      expect(res.id).toBe('vid_retry_ok');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer stale-token');
+      expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer retried-fresh-token');
+
+      // Persistent 401 without refresh -> VideoAuthError
+      (supabase.auth.refreshSession as any).mockResolvedValue({ data: { session: null }, error: null });
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: async () => JSON.stringify({ error: 'Unauthorized' }),
+      }) as any;
+
+      let caught: unknown;
+      try {
+        await addYouTubeVideo('Test', 'https://youtu.be/za87oqLhGaI');
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).toBeInstanceOf(VideoAuthError);
+      expect(isVideoAuthError(caught)).toBe(true);
+    });
+
+    it('rejects malformed Markdown links client-side before sending fetch', async () => {
+      const fetchMock = vi.fn();
+      global.fetch = fetchMock as any;
+
+      await expect(
+        addYouTubeVideo('Spoofed Domain', '[https://youtu.be/za87oqLhGaI](https://evil.com/watch?v=za87oqLhGaI)')
+      ).rejects.toThrow(/Destination must be a valid YouTube video URL/i);
+      await expect(
+        addYouTubeVideo('Spoofed ID', '[https://youtu.be/za87oqLhGaI](https://youtu.be/dQw4w9WgXcQ)')
+      ).rejects.toThrow(/different URLs or videos/i);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // ----------------------------------------------------
+  // Test 24: Lecture, Player & Transcript Mismatch Guard
+  // ----------------------------------------------------
+  describe('24. Lecture, Player & Transcript Mismatch Integrity Guard', () => {
+    const fakeMitVideo: VideoRecord = {
+      id: 'vid_mit_mismatch_local',
+      userId: 'learner_1',
+      title: 'MIT 18.06 Linear Algebra – The Geometry of Linear Equations',
+      sourceType: 'youtube',
+      youtubeUrl: 'https://www.youtube.com/watch?v=7UJ4CFRGd-U',
+      youtubeVideoId: '7UJ4CFRGd-U',
+      status: 'ready',
+      durationSeconds: 2382,
+      transcriptStatus: 'ready',
+      transcriptJson: JSON.stringify([
+        {
+          start: 480,
+          end: 510,
+          text: 'The row picture versus the column picture of linear systems.',
+        },
+      ]),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('removes legacy hardcoded sample records and never injects sample videos into empty library', () => {
+      localStorage.setItem(
+        'ming_user_videos',
+        JSON.stringify([
+          {
+            id: 'vid_sample_mit_linear_algebra',
+            userId: 'default_user',
+            title: 'MIT 18.06 Linear Algebra – The Geometry of Linear Equations',
+            sourceType: 'youtube',
+            youtubeUrl: 'https://www.youtube.com/watch?v=7UJ4CFRGd-U',
+            youtubeVideoId: '7UJ4CFRGd-U',
+            status: 'ready',
+            durationSeconds: 2382,
+            transcriptStatus: 'ready',
+          },
+        ])
+      );
+
+      expect(getStoredVideos()).toEqual([]);
+      expect(isKnownMismatchedVideoRecord(fakeMitVideo)).toMatch(/7UJ4CFRGd-U/i);
+    });
+
+    it('withholds mismatched 8:00 transcript and forces Ungrounded Mode on conflicted MIT/7UJ4CFRGd-U record', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => JSON.stringify({ success: true, videos: [fakeMitVideo] }),
+      }) as any;
+
+      render(<VideoLearningPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Source Integrity Notice — Ungrounded Mode Active/i)).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Ungrounded Mode')).toBeInTheDocument();
+      expect(screen.queryByText('Grounded')).not.toBeInTheDocument();
+      expect(screen.getByText('Verified transcript withheld (source mismatch)')).toBeInTheDocument();
+      expect(screen.queryByText(/The row picture versus the column picture/i)).not.toBeInTheDocument();
+      expect(screen.queryByText('8:00')).not.toBeInTheDocument();
+    });
+
+    it('switches to Ungrounded Mode when embedded player postMessage reports a different video_id', async () => {
+      const mismatchedRuntimeVideo: VideoRecord = {
+        id: 'vid_runtime_check',
+        userId: 'learner_1',
+        title: 'Lecture with mismatched player telemetry',
+        sourceType: 'youtube',
+        youtubeUrl: 'https://www.youtube.com/watch?v=za87oqLhGaI',
+        youtubeVideoId: 'za87oqLhGaI',
+        status: 'ready',
+        durationSeconds: 220,
+        transcriptStatus: 'ready',
+        transcriptJson: JSON.stringify([
+          { start: 0, end: 25, text: 'Multiplexing transmits multiple signals over a shared medium.' },
+        ]),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => JSON.stringify({ success: true, videos: [mismatchedRuntimeVideo] }),
+      }) as any;
+
+      render(<VideoLearningPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Grounded')).toBeInTheDocument();
+        expect(screen.getByText(/Multiplexing transmits multiple signals/i)).toBeInTheDocument();
+      });
+
+      fireEvent(
+        window,
+        new MessageEvent('message', {
+          origin: 'https://www.youtube.com',
+          data: JSON.stringify({
+            event: 'infoDelivery',
+            info: {
+              duration: 454,
+              videoData: {
+                video_id: '7UJ4CFRGd-U',
+                title: 'Gilbert Strang Interview',
+              },
+            },
+          }),
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Source Integrity Notice — Ungrounded Mode Active/i)).toBeInTheDocument();
+        expect(screen.getByText('Ungrounded Mode')).toBeInTheDocument();
+        expect(screen.queryByText(/Multiplexing transmits multiple signals/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('blocks iframe playback on URL-vs-ID conflict and rejects foreign source_id citations in askVideoQuestion', async () => {
+      const conflictedVideo: VideoRecord = {
+        id: 'vid_url_conflict',
+        userId: 'learner_1',
+        title: 'Conflicted Video Record',
+        sourceType: 'youtube',
+        youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        youtubeVideoId: 'za87oqLhGaI',
+        status: 'ready',
+        durationSeconds: 220,
+        transcriptStatus: 'unavailable',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      render(<VideoPlayer video={conflictedVideo} />);
+      expect(screen.getByText('YouTube Source Mismatch')).toBeInTheDocument();
+      expect(document.querySelector('iframe')).toBeNull();
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            success: true,
+            videoId: 'vid_target',
+            question: 'What is multiplexing?',
+            response: 'Claim [EVIDENCE_1]',
+            grounded: true,
+            citations: [
+              {
+                chunk_id: 'foreign_chunk',
+                evidence_id: 'EVIDENCE_1',
+                source_id: 'vid_other_video',
+                seek_seconds: 10,
+                formatted_timestamp: '0:10',
+                citation_label: '[0:10]',
+              },
+            ],
+          }),
+      }) as any;
+
+      const askRes = await askVideoQuestion('vid_target', 'What is multiplexing?');
+      expect(askRes.grounded).toBe(false);
+      expect(askRes.insufficient_evidence).toBe(true);
+      expect(askRes.citations).toEqual([]);
     });
   });
 });

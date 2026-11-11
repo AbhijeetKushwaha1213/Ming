@@ -1,108 +1,76 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { VideoRecord, TranscriptSegment, VideoAskResponse, VideoCitation } from '@/types/video';
-import { extractYouTubeId, extractTimestampCitations, formatTimestamp } from '@/utils/videoUtils';
+import {
+  extractYouTubeId,
+  parseYouTubeInput,
+  extractTimestampCitations,
+  formatTimestamp,
+  validateTranscriptSegments,
+  verifyVideoEvidenceIntegrity,
+  isKnownMismatchedVideoRecord,
+  CAPTION_CUE_END_TOLERANCE_SECONDS,
+} from '@/utils/videoUtils';
 import { geminiClient } from '@/utils/geminiClient';
 
 const STORAGE_KEY = 'ming_user_videos';
+const SESSION_TIMEOUT_MS = 5000;
+const TOKEN_REFRESH_BUFFER_MS = 60_000;
 
-// Default initial high-quality educational videos if user has no videos yet
-const DEFAULT_SAMPLE_VIDEOS: VideoRecord[] = [
-  {
-    id: 'vid_sample_mit_linear_algebra',
-    userId: 'default_user',
-    title: 'MIT 18.06 Linear Algebra - The Geometry of Linear Equations',
-    sourceType: 'youtube',
-    youtubeUrl: 'https://www.youtube.com/watch?v=7UJ4CFRGd-U',
-    youtubeVideoId: '7UJ4CFRGd-U',
-    status: 'ready',
-    durationSeconds: 2382,
-    thumbnailUrl: 'https://img.youtube.com/vi/7UJ4CFRGd-U/hqdefault.jpg',
-    transcriptStatus: 'ready',
-    transcriptJson: JSON.stringify([
-      {
-        start: 0,
-        end: 180,
-        text: 'Introduction to Linear Equations. The row picture versus the column picture of linear systems.',
-        topic: 'Linear Algebra',
-        subtopic: 'Systems of Equations',
+export class VideoApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'VideoApiError';
+    this.status = status;
+  }
+}
+
+export class VideoAuthError extends VideoApiError {
+  readonly isAuthError = true;
+
+  constructor(
+    message = 'Authentication required or your session has expired. Please sign in to continue.'
+  ) {
+    super(message, 401);
+    this.name = 'VideoAuthError';
+  }
+}
+
+export function isVideoAuthError(err: unknown): err is VideoAuthError {
+  return Boolean(
+    err &&
+      typeof err === 'object' &&
+      ((err as any).isAuthError === true ||
+        (err as any).status === 401 ||
+        (err as any).name === 'VideoAuthError')
+  );
+}
+
+// Never inject hardcoded fake sample videos (e.g. mismatched MIT 18.06 / Gilbert Strang records)
+const DEFAULT_SAMPLE_VIDEOS: VideoRecord[] = [];
+
+const LEGACY_CORRUPTED_IDS = new Set([
+  'vid_sample_mit_linear_algebra',
+  'vid_sample_3blue1brown_calculus',
+]);
+
+function sanitizeStoredVideoRecord(video: VideoRecord): { record: VideoRecord; changed: boolean } {
+  const integrity = verifyVideoEvidenceIntegrity(video);
+  if (!integrity.valid && (video.transcriptStatus === 'ready' || video.transcriptJson)) {
+    return {
+      changed: true,
+      record: {
+        ...video,
+        transcriptStatus: 'unavailable',
+        transcriptJson: null,
+        extractionStatus: 'failed',
+        errorMessage: video.errorMessage || integrity.error || 'Video evidence integrity verification failed',
       },
-      {
-        start: 180,
-        end: 480,
-        text: 'The geometry of two equations in two unknowns. Intersection of lines in 2D space.',
-        topic: 'Linear Algebra',
-        subtopic: 'Row Picture',
-      },
-      {
-        start: 480,
-        end: 960,
-        text: 'Linear combinations of columns. The fundamental column picture in vector notation.',
-        topic: 'Linear Algebra',
-        subtopic: 'Column Picture & Vector Spaces',
-      },
-      {
-        start: 960,
-        end: 1440,
-        text: 'Three equations in three unknowns: planes in 3D intersecting at a point or line.',
-        topic: 'Linear Algebra',
-        subtopic: '3D Geometry',
-      },
-      {
-        start: 1440,
-        end: 2382,
-        text: 'Matrix multiplication: Ax as a linear combination of the columns of matrix A.',
-        topic: 'Linear Algebra',
-        subtopic: 'Matrix Multiplication',
-      },
-    ]),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'vid_sample_3blue1brown_calculus',
-    userId: 'default_user',
-    title: 'Essence of Calculus - Chapter 1: The Essence of Derivatives',
-    sourceType: 'youtube',
-    youtubeUrl: 'https://www.youtube.com/watch?v=WUvTyaaNkzM',
-    youtubeVideoId: 'WUvTyaaNkzM',
-    status: 'ready',
-    durationSeconds: 1025,
-    thumbnailUrl: 'https://img.youtube.com/vi/WUvTyaaNkzM/hqdefault.jpg',
-    transcriptStatus: 'ready',
-    transcriptJson: JSON.stringify([
-      {
-        start: 0,
-        end: 120,
-        text: 'What is calculus? Finding the area of a circle by unrolling it into concentric rings.',
-        topic: 'Calculus',
-        subtopic: 'Geometric Intuition',
-      },
-      {
-        start: 120,
-        end: 360,
-        text: 'Breaking hard problems into infinite small approximations: dx, dt, and integration.',
-        topic: 'Calculus',
-        subtopic: 'Infinitesimals',
-      },
-      {
-        start: 360,
-        end: 720,
-        text: 'Derivatives as instantaneous rates of change. The slope of a secant line becoming a tangent line.',
-        topic: 'Calculus',
-        subtopic: 'Instantaneous Rates',
-      },
-      {
-        start: 720,
-        end: 1025,
-        text: 'The fundamental theorem of calculus: how differentiation and integration are inverse operations.',
-        topic: 'Calculus',
-        subtopic: 'Fundamental Theorem',
-      },
-    ]),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+    };
+  }
+  return { record: video, changed: false };
+}
 
 export function getStoredVideos(): VideoRecord[] {
   if (typeof window === 'undefined') return [];
@@ -110,8 +78,26 @@ export function getStoredVideos(): VideoRecord[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        let changed = false;
+        const sanitized: VideoRecord[] = [];
+        for (const entry of parsed as VideoRecord[]) {
+          if (!entry || typeof entry !== 'object') {
+            changed = true;
+            continue;
+          }
+          if (LEGACY_CORRUPTED_IDS.has(entry.id) || (entry.userId === 'default_user' && isKnownMismatchedVideoRecord(entry))) {
+            changed = true;
+            continue;
+          }
+          const res = sanitizeStoredVideoRecord(entry);
+          if (res.changed) changed = true;
+          sanitized.push(res.record);
+        }
+        if (changed) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+        }
+        return sanitized;
       }
     }
   } catch (err) {
@@ -124,8 +110,9 @@ export function saveStoredVideo(video: VideoRecord): void {
   if (typeof window === 'undefined') return;
   try {
     const current = getStoredVideos();
-    const filtered = current.filter((v) => v.id !== video.id);
-    const updated = [video, ...filtered];
+    const { record } = sanitizeStoredVideoRecord(video);
+    const filtered = current.filter((v) => v.id !== record.id);
+    const updated = [record, ...filtered];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch (err) {
     console.warn('Failed to save video to localStorage:', err);
@@ -148,31 +135,76 @@ export function findStoredVideo(id: string): VideoRecord | null {
   return list.find((v) => v.id === id) || null;
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const sessionPromise = supabase.auth.getSession();
-    const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
-      setTimeout(() => resolve({ data: { session: null } }), 800)
-    );
-    const { data } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
-    if (data?.session?.access_token) {
-      return {
-        Authorization: `Bearer ${data.session.access_token}`,
-      };
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function resolveValidAccessToken(forceRefresh = false): Promise<string | null> {
+  try {
+    if (!supabase?.auth) return null;
+
+    if (!forceRefresh && typeof supabase.auth.getSession === 'function') {
+      const sessionRes = await withTimeout(supabase.auth.getSession(), SESSION_TIMEOUT_MS);
+      const session = sessionRes?.data?.session;
+      if (session?.access_token) {
+        const expiresAtMs =
+          typeof session.expires_at === 'number' ? session.expires_at * 1000 : null;
+        const needsRefresh =
+          expiresAtMs !== null && expiresAtMs <= Date.now() + TOKEN_REFRESH_BUFFER_MS;
+        if (!needsRefresh) {
+          return session.access_token;
+        }
+      }
+    }
+
+    if (typeof supabase.auth.refreshSession === 'function') {
+      const refreshedRes = await withTimeout(supabase.auth.refreshSession(), SESSION_TIMEOUT_MS);
+      const refreshedToken = refreshedRes?.data?.session?.access_token;
+      if (refreshedToken) {
+        return refreshedToken;
+      }
     }
   } catch {
-    // Session retrieval skipped in offline/test mode
+    // Session unavailable or expired; do not log tokens
+  }
+  return null;
+}
+
+async function getAuthHeaders(forceRefresh = false): Promise<Record<string, string>> {
+  const token = await resolveValidAccessToken(forceRefresh);
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
   }
   return {};
 }
 
-/**
- * Safe fetch with strict timeout (2500ms) to ensure the UI NEVER hangs or freezes
- */
-async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs = 2500): Promise<T> {
-  const authHeaders = await getAuthHeaders();
+async function fetchWithTimeout(
+  endpoint: string,
+  options: RequestInit,
+  authHeaders: Record<string, string>,
+  timeoutMs: number
+): Promise<{ res: Response; data: any }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const onExternalAbort = () => controller.abort();
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      options.signal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+  }
 
   try {
     const res = await fetch(endpoint, {
@@ -185,8 +217,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs
       },
     });
 
-    clearTimeout(timer);
-
     const text = await res.text();
     let data: any = {};
     if (text) {
@@ -196,17 +226,48 @@ async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs
         data = { raw: text };
       }
     }
-
-    if (!res.ok) {
-      const errMsg = data?.error || res.statusText || 'Request failed';
-      throw new Error(errMsg);
-    }
-
-    return data as T;
-  } catch (err: any) {
+    return { res, data };
+  } finally {
     clearTimeout(timer);
-    throw err;
+    if (options.signal) {
+      options.signal.removeEventListener('abort', onExternalAbort);
+    }
   }
+}
+
+/**
+ * Authenticated API client wrapper:
+ * - Awaits Supabase session initialization and refreshes expired/expiring tokens.
+ * - On 401, attempts one silent session refresh + retry before surfacing VideoAuthError.
+ */
+async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs = 4500): Promise<T> {
+  const authHeaders = await getAuthHeaders(false);
+  let { res, data } = await fetchWithTimeout(endpoint, options, authHeaders, timeoutMs);
+
+  if (res.status === 401) {
+    const refreshedHeaders = await getAuthHeaders(true);
+    if (
+      refreshedHeaders.Authorization &&
+      refreshedHeaders.Authorization !== authHeaders.Authorization
+    ) {
+      const retried = await fetchWithTimeout(endpoint, options, refreshedHeaders, timeoutMs);
+      res = retried.res;
+      data = retried.data;
+    }
+  }
+
+  if (res.status === 401) {
+    throw new VideoAuthError(
+      data?.error || 'Authentication required or your session has expired. Please sign in to continue.'
+    );
+  }
+
+  if (!res.ok) {
+    const errMsg = data?.error || res.statusText || 'Request failed';
+    throw new VideoApiError(errMsg, res.status);
+  }
+
+  return data as T;
 }
 
 function parseTranscriptInput(raw?: string | TranscriptSegment[]): TranscriptSegment[] {
@@ -248,38 +309,50 @@ function parseTranscriptInput(raw?: string | TranscriptSegment[]): TranscriptSeg
 }
 
 export async function fetchUserVideos(): Promise<VideoRecord[]> {
-  const localList = getStoredVideos();
-
   try {
-    const data = await request<{ success: boolean; videos: VideoRecord[] }>('/api/videos', {}, 2000);
-    if (data && Array.isArray(data.videos) && data.videos.length > 0) {
-      // Merge cloud videos with local videos
-      const idMap = new Map<string, VideoRecord>();
-      data.videos.forEach((v) => idMap.set(v.id, v));
-      localList.forEach((v) => {
-        if (!idMap.has(v.id)) idMap.set(v.id, v);
-      });
-      const merged = Array.from(idMap.values());
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      return merged;
+    const data = await request<{ success: boolean; videos: VideoRecord[] }>('/api/videos', {}, 3000);
+    if (data && Array.isArray(data.videos)) {
+      const sanitized = data.videos
+        .filter((v) => v && !LEGACY_CORRUPTED_IDS.has(v.id))
+        .map((v) => sanitizeStoredVideoRecord(v).record);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+        } catch {
+          // Ignore storage quota warnings
+        }
+      }
+      return sanitized;
     }
   } catch (err) {
-    // API unreachable or offline - seamlessly return local list
-    console.info('Using local video library cache (local/Vercel mode)');
+    if (isVideoAuthError(err) || err instanceof VideoApiError) {
+      throw err;
+    }
+    // API server genuinely unreachable - fall back to sanitized local cache
+    console.info('API unreachable; using sanitized local video cache');
   }
 
-  return localList;
+  return getStoredVideos();
 }
 
 export async function fetchVideoById(id: string): Promise<VideoRecord> {
   try {
-    const data = await request<{ success: boolean; video: VideoRecord }>(`/api/videos/${encodeURIComponent(id)}`, {}, 2000);
+    const data = await request<{ success: boolean; video: VideoRecord }>(
+      `/api/videos/${encodeURIComponent(id)}`,
+      {},
+      3000
+    );
     if (data?.video) {
-      saveStoredVideo(data.video);
-      return data.video;
+      const { record } = sanitizeStoredVideoRecord(data.video);
+      saveStoredVideo(record);
+      return record;
     }
   } catch (err: any) {
-    if (err?.message && (/access denied/i.test(err.message) || /not found or access denied/i.test(err.message))) {
+    if (
+      isVideoAuthError(err) ||
+      err instanceof VideoApiError ||
+      (err?.message && (/access denied/i.test(err.message) || /not found or access denied/i.test(err.message)))
+    ) {
       throw err;
     }
   }
@@ -295,93 +368,45 @@ export async function addYouTubeVideo(
   youtubeUrl: string,
   transcript?: string | TranscriptSegment[]
 ): Promise<VideoRecord> {
-  const ytId = extractYouTubeId(youtubeUrl);
-  const cleanTitle = title.trim() || `YouTube Lecture (${ytId || 'Video'})`;
-  const parsedSegments = parseTranscriptInput(transcript);
-
-  const defaultSegments: TranscriptSegment[] =
-    parsedSegments.length > 0
-      ? parsedSegments
-      : [
-          {
-            start: 0,
-            end: 90,
-            text: `Introduction and lecture overview for ${cleanTitle}. Core motivations and topics covered.`,
-            topic: cleanTitle,
-            subtopic: 'Introduction & Overview',
-          },
-          {
-            start: 90,
-            end: 300,
-            text: `Core principles, definitions, and foundational concepts explained in ${cleanTitle}.`,
-            topic: cleanTitle,
-            subtopic: 'Core Concepts',
-          },
-          {
-            start: 300,
-            end: 600,
-            text: `Step-by-step mathematical derivation, code walkthrough, or practical application for ${cleanTitle}.`,
-            topic: cleanTitle,
-            subtopic: 'Detailed Walkthrough',
-          },
-          {
-            start: 600,
-            end: 900,
-            text: `Review, examination takeaways, summary points, and best practices for ${cleanTitle}.`,
-            topic: cleanTitle,
-            subtopic: 'Summary & Practice',
-          },
-        ];
-
-  const nowIso = new Date().toISOString();
-  const fallbackVideo: VideoRecord = {
-    id: `vid_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-    userId: 'default_user',
-    title: cleanTitle,
-    sourceType: 'youtube',
-    youtubeUrl: youtubeUrl.trim(),
-    youtubeVideoId: ytId,
-    status: 'ready',
-    durationSeconds: 900,
-    thumbnailUrl: ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : undefined,
-    transcriptStatus: 'ready',
-    transcriptJson: JSON.stringify(defaultSegments),
-    errorMessage: null,
-    createdAt: nowIso,
-    updatedAt: nowIso,
-  };
-
-  // Pre-save to persistent local library immediately
-  saveStoredVideo(fallbackVideo);
-
-  // Fast race with backend (800ms max). If server responds, use server data; otherwise use instant local video!
-  try {
-    const serverPromise = request<{ success: boolean; video: VideoRecord }>(
-      '/api/videos',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          title: cleanTitle,
-          sourceType: 'youtube',
-          youtubeUrl,
-          transcript: defaultSegments,
-        }),
-      },
-      800
-    );
-
-    const timeoutRace = new Promise<null>((resolve) => setTimeout(() => resolve(null), 800));
-    const data = (await Promise.race([serverPromise, timeoutRace])) as any;
-
-    if (data?.video?.id) {
-      saveStoredVideo(data.video);
-      return data.video;
-    }
-  } catch (err) {
-    // Backend server unavailable - instant local video is already active
+  const parsedUrl = parseYouTubeInput(youtubeUrl, { allowBareId: false });
+  if (!parsedUrl.valid || !parsedUrl.canonicalUrl || !parsedUrl.videoId) {
+    throw new Error(parsedUrl.error || 'Invalid YouTube URL. Please enter a usable YouTube video link.');
   }
 
-  return fallbackVideo;
+  const canonicalUrl = parsedUrl.canonicalUrl;
+  const rawTitle = title.trim();
+  const parsedSegments = parseTranscriptInput(transcript);
+
+  let validatedSegments: TranscriptSegment[] | null = null;
+  if (parsedSegments.length > 0) {
+    const validation = validateTranscriptSegments(parsedSegments);
+    if (!validation.valid) {
+      throw new Error(`Invalid transcript provided: ${validation.error}`);
+    }
+    validatedSegments = validation.segments!;
+  }
+
+  const data = await request<{ success: boolean; video: VideoRecord }>(
+    '/api/videos',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        title: rawTitle,
+        sourceType: 'youtube',
+        youtubeUrl: canonicalUrl,
+        transcript: validatedSegments || undefined,
+      }),
+    },
+    10000
+  );
+
+  if (data?.video?.id) {
+    const { record } = sanitizeStoredVideoRecord(data.video);
+    saveStoredVideo(record);
+    return record;
+  }
+
+  throw new Error('Failed to create video record on server.');
 }
 
 export async function uploadVideoFile(
@@ -393,7 +418,16 @@ export async function uploadVideoFile(
   const cleanTitle = title.trim() || file.name.replace(/\.[^/.]+$/, '');
   const parsedSegments = parseTranscriptInput(transcript);
 
-  return new Promise((resolve) => {
+  let validatedSegments: TranscriptSegment[] | null = null;
+  if (parsedSegments.length > 0) {
+    const validation = validateTranscriptSegments(parsedSegments);
+    if (!validation.valid) {
+      throw new Error(`Invalid transcript provided: ${validation.error}`);
+    }
+    validatedSegments = validation.segments!;
+  }
+
+  return new Promise((resolve, reject) => {
     if (onProgress) onProgress(30);
 
     const reader = new FileReader();
@@ -406,13 +440,12 @@ export async function uploadVideoFile(
     };
 
     reader.onload = async () => {
-      if (onProgress) onProgress(95);
-
-      const fileDataUrl = reader.result as string;
-      const base64Data = fileDataUrl.includes(',') ? fileDataUrl.split(',')[1] : fileDataUrl;
-
-      // Try uploading to backend server first
       try {
+        if (onProgress) onProgress(95);
+
+        const fileDataUrl = reader.result as string;
+        const base64Data = fileDataUrl.includes(',') ? fileDataUrl.split(',')[1] : fileDataUrl;
+
         const data = await request<{ success: boolean; video: VideoRecord }>(
           '/api/videos',
           {
@@ -422,79 +455,27 @@ export async function uploadVideoFile(
               sourceType: 'upload',
               fileName: file.name,
               base64Data,
-              transcript: parsedSegments,
+              transcript: validatedSegments || undefined,
             }),
           },
-          3000
+          30000
         );
 
         if (data?.video) {
           if (onProgress) onProgress(100);
-          saveStoredVideo(data.video);
-          resolve(data.video);
+          const { record } = sanitizeStoredVideoRecord(data.video);
+          saveStoredVideo(record);
+          resolve(record);
           return;
         }
-      } catch (err) {
-        console.info('Server upload unavailable, creating local video record');
+        reject(new Error('Failed to upload video to server.'));
+      } catch (err: any) {
+        reject(err);
       }
-
-      // Local fallback for offline/Vercel video preview
-      const localId = `vid_upload_${Date.now()}`;
-      const nowIso = new Date().toISOString();
-      const localVideo: VideoRecord = {
-        id: localId,
-        userId: 'default_user',
-        title: cleanTitle,
-        sourceType: 'upload',
-        fileUrl: URL.createObjectURL(file),
-        status: 'ready',
-        durationSeconds: 300,
-        transcriptStatus: 'ready',
-        transcriptJson: JSON.stringify(
-          parsedSegments.length > 0
-            ? parsedSegments
-            : [
-                {
-                  start: 0,
-                  end: 60,
-                  text: `Uploaded video lecture: "${cleanTitle}". Overview and presentation.`,
-                  topic: cleanTitle,
-                  subtopic: 'Introduction',
-                },
-                {
-                  start: 60,
-                  end: 240,
-                  text: `Detailed discussion and explanation of concepts in "${cleanTitle}".`,
-                  topic: cleanTitle,
-                  subtopic: 'Main Content',
-                },
-              ]
-        ),
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      };
-
-      if (onProgress) onProgress(100);
-      saveStoredVideo(localVideo);
-      resolve(localVideo);
     };
 
     reader.onerror = () => {
-      // Fallback with object URL if FileReader fails
-      const fallback: VideoRecord = {
-        id: `vid_fallback_${Date.now()}`,
-        userId: 'default_user',
-        title: cleanTitle,
-        sourceType: 'upload',
-        fileUrl: URL.createObjectURL(file),
-        status: 'ready',
-        durationSeconds: 180,
-        transcriptStatus: 'ready',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      saveStoredVideo(fallback);
-      resolve(fallback);
+      reject(new Error('Failed to read selected video file.'));
     };
 
     reader.readAsDataURL(file);
@@ -502,129 +483,226 @@ export async function uploadVideoFile(
 }
 
 export async function deleteVideoById(id: string): Promise<boolean> {
-  removeStoredVideo(id);
-
-  // Also notify server in background
   try {
-    await request<{ success: boolean }>(`/api/videos/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    }, 1500);
+    await request<{ success: boolean }>(
+      `/api/videos/${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+      },
+      3000
+    );
+    removeStoredVideo(id);
+    return true;
   } catch (err: any) {
-    if (err?.message && (/access denied/i.test(err.message) || /not found or access denied/i.test(err.message))) {
+    if (
+      isVideoAuthError(err) ||
+      err instanceof VideoApiError ||
+      (err?.message && (/access denied/i.test(err.message) || /not found or access denied/i.test(err.message)))
+    ) {
       throw err;
     }
+    throw err;
   }
-
-  return true;
 }
 
 export async function processVideoById(
   id: string,
   transcript?: string | TranscriptSegment[]
 ): Promise<VideoRecord> {
-  try {
-    const data = await request<{ success: boolean; video: VideoRecord }>(
-      `/api/videos/${encodeURIComponent(id)}/process`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ transcript }),
-      },
-      3000
-    );
-    if (data?.video) {
-      saveStoredVideo(data.video);
-      return data.video;
-    }
-  } catch {}
-
-  const video = findStoredVideo(id);
-  if (video) {
-    const updated: VideoRecord = {
-      ...video,
-      transcriptStatus: 'ready',
-      status: 'ready',
-      updatedAt: new Date().toISOString(),
-    };
-    saveStoredVideo(updated);
-    return updated;
+  const data = await request<{ success: boolean; video: VideoRecord }>(
+    `/api/videos/${encodeURIComponent(id)}/process`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ transcript }),
+    },
+    60000
+  );
+  if (data?.video) {
+    const { record } = sanitizeStoredVideoRecord(data.video);
+    saveStoredVideo(record);
+    return record;
   }
 
-  throw new Error('Video not found.');
+  throw new Error('Failed to process video or extract verified transcript.');
 }
 
 export async function fetchVideoTranscript(id: string): Promise<TranscriptSegment[]> {
   const localVideo = findStoredVideo(id);
   if (localVideo?.transcriptJson) {
-    try {
-      const parsed = JSON.parse(localVideo.transcriptJson);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    } catch {}
+    const integrity = verifyVideoEvidenceIntegrity(localVideo);
+    if (integrity.valid) {
+      try {
+        const parsed = JSON.parse(localVideo.transcriptJson);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
   }
 
   try {
     const data = await request<{ success: boolean; segments: TranscriptSegment[] }>(
       `/api/videos/${encodeURIComponent(id)}/transcript`,
       {},
-      2000
+      3000
     );
     return data.segments || [];
-  } catch {}
+  } catch (err) {
+    if (isVideoAuthError(err)) {
+      throw err;
+    }
+  }
 
   return [];
+}
+
+function filterCitationsForVideo(
+  citations: VideoCitation[],
+  videoId: string,
+  durationSeconds?: number | null
+): VideoCitation[] {
+  if (!Array.isArray(citations)) return [];
+  const dur = Number(durationSeconds || 0);
+  return citations.filter((c) => {
+    if (!c) return false;
+    const citSource = c.source_id || c.document_id;
+    if (citSource && String(citSource) !== videoId) {
+      return false;
+    }
+    const seek = Number(c.seek_seconds ?? c.timestamp_start ?? 0);
+    if (!isFinite(seek) || seek < 0) return false;
+    if (dur > 0 && seek > dur + CAPTION_CUE_END_TOLERANCE_SECONDS) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export async function askVideoQuestion(
   id: string,
   question: string,
   history: Array<{ role: string; content: string }> = [],
-  language = 'english'
+  language = 'english',
+  signal?: AbortSignal
 ): Promise<VideoAskResponse> {
+  const localVideo = findStoredVideo(id);
+
   // 1. Try server endpoint first
   try {
     const data = await request<VideoAskResponse>(
       `/api/videos/${encodeURIComponent(id)}/ask`,
       {
         method: 'POST',
+        signal,
         body: JSON.stringify({
           question,
           conversationHistory: history,
           language,
         }),
       },
-      3000
+      65000
     );
     if (data && data.response) {
-      return data;
+      const validCitations = filterCitationsForVideo(
+        data.citations || [],
+        id,
+        localVideo?.durationSeconds
+      );
+      if (data.grounded && validCitations.length === 0) {
+        return {
+          ...data,
+          citations: [],
+          grounded: false,
+          insufficient_evidence: true,
+        };
+      }
+      return {
+        ...data,
+        citations: validCitations,
+      };
     }
-  } catch (serverErr) {
-    // Fall back to direct Gemini AI answer grounded in video transcript!
+  } catch (serverErr: any) {
+    if (signal?.aborted || serverErr?.name === 'AbortError') {
+      throw serverErr;
+    }
+    if (isVideoAuthError(serverErr) || serverErr instanceof VideoApiError) {
+      throw serverErr;
+    }
+    const msg = String(serverErr?.message || '');
+    if (/not found|access denied|unauthorized/i.test(msg)) {
+      throw serverErr;
+    }
+    // Network unreachable: continue to integrity-gated local offline fallback
   }
 
-  // 2. Client-side Grounded Gemini Fallback
-  const video = findStoredVideo(id);
-  let transcriptContext = '';
-  let segments: TranscriptSegment[] = [];
+  // 2. Client-side Grounded Gemini Fallback (strictly gated on evidence integrity)
+  const video = localVideo;
+  const videoTitle = video?.title || 'Lecture Video';
+  const integrity = video ? verifyVideoEvidenceIntegrity(video) : { valid: false };
 
-  if (video?.transcriptJson) {
+  let segments: TranscriptSegment[] = [];
+  if (video && integrity.valid && video.transcriptStatus === 'ready' && video.transcriptJson) {
     try {
-      segments = JSON.parse(video.transcriptJson);
-      transcriptContext = segments
-        .map((s) => `[${formatTimestamp(s.start)} - ${formatTimestamp(s.end)}] ${s.text}`)
-        .join('\n');
+      const parsed = JSON.parse(video.transcriptJson);
+      const validation = validateTranscriptSegments(parsed, video.durationSeconds);
+      if (validation.valid && validation.segments) {
+        segments = validation.segments;
+      }
     } catch {}
   }
 
-  const videoTitle = video?.title || 'Lecture Video';
+  // If NO verified transcript is available:
+  if (segments.length === 0) {
+    try {
+      const conceptualPrompt = `You are Ming Video AI Tutor. The student is asking about "${videoTitle}".
+NOTE: A verified transcript is NOT available for this lecture.
+CRITICAL RULES:
+1. Provide helpful conceptual guidance about the topic "${videoTitle}".
+2. STRICTLY DO NOT cite any timestamps or time intervals (do NOT use [mm:ss]).
+3. Explicitly state that this explanation is based on general course concepts rather than verbatim lecture recording evidence.`;
+
+      const geminiRes = await geminiClient.generateContent({
+        message: question,
+        systemPrompt: conceptualPrompt,
+        topic: videoTitle,
+        context: history,
+      });
+
+      return {
+        success: true,
+        videoId: id,
+        question,
+        response: geminiRes.response || `General conceptual guidance for "${videoTitle}": Consult verified course notes for exact definitions.`,
+        citations: [],
+        grounded: false,
+        insufficient_evidence: true,
+      };
+    } catch {
+      return {
+        success: true,
+        videoId: id,
+        question,
+        response: `A verified transcript is not available for "${videoTitle}". I cannot provide timestamp-grounded evidence from this video.`,
+        citations: [],
+        grounded: false,
+        insufficient_evidence: true,
+      };
+    }
+  }
+
+  // Verified transcript IS available:
+  const transcriptContext = segments
+    .map((s) => `[${formatTimestamp(s.start)} - ${formatTimestamp(s.end)}] ${s.text}`)
+    .join('\n');
 
   const systemPrompt = `You are Ming Video AI Tutor, an expert educational tutor.
 The student is watching a video titled: "${videoTitle}".
-Below is the timestamped transcript of this video:
-${transcriptContext || 'No exact transcript available. Provide conceptual guidance on ' + videoTitle}
+Below is the verified timestamped transcript of this video:
+${transcriptContext}
 
 CRITICAL RULES:
-1. Answer the student's question clearly, pedagogically, and accurately based on the video topic.
-2. Whenever referencing a point in time or explaining a topic discussed, include a timestamp citation in the exact format [mm:ss] (for example [03:45]).
-3. Explain complex concepts intuitively and highlight practical takeaways.`;
+1. Answer the student's question clearly and pedagogically, grounded STRICTLY in the transcript excerpt above.
+2. For claims backed by the transcript, cite the exact timestamp in format [mm:ss] corresponding to the segments provided.
+3. NEVER fabricate timestamps outside the transcript time ranges.
+4. If the transcript does not contain sufficient information to answer the question, clearly state that the lecture transcript does not cover that point.`;
 
   try {
     const geminiRes = await geminiClient.generateContent({
@@ -637,27 +715,81 @@ CRITICAL RULES:
     const aiText = geminiRes.response || 'I analyzed the video and here are the key insights.';
     const rawCitations = extractTimestampCitations(aiText);
 
-    const citations: VideoCitation[] = rawCitations.map((c, i) => ({
-      chunk_id: `chunk_${i + 1}`,
-      source_type: 'video',
-      timestamp_start: c.seconds,
-      timestamp_end: c.seconds + 30,
-      seek_seconds: c.seconds,
-      formatted_timestamp: c.label,
-      citation_label: `Video [${c.label}]`,
-      snippet: `Referenced at timestamp ${c.label}`,
-    }));
+    // Revalidate citations against video duration and actual segments
+    const validCitations: VideoCitation[] = [];
+    for (const c of rawCitations) {
+      const sec = c.seconds;
+      if (sec < 0) continue;
+      if (video?.durationSeconds && video.durationSeconds > 0 && sec > video.durationSeconds + CAPTION_CUE_END_TOLERANCE_SECONDS) {
+        continue;
+      }
+      const matchingSegment = segments.find(
+        (s) => sec >= s.start - 2.0 && sec <= s.end + 2.0
+      );
+      if (!matchingSegment) continue;
+
+      validCitations.push({
+        chunk_id: `chunk_${validCitations.length + 1}`,
+        source_id: id,
+        source_type: 'video',
+        timestamp_start: sec,
+        timestamp_end: Math.min(sec + 30, video?.durationSeconds || sec + 30),
+        seek_seconds: sec,
+        formatted_timestamp: c.label,
+        citation_label: `Video [${c.label}]`,
+        snippet: matchingSegment.text.slice(0, 100),
+      });
+    }
+
+    const isGrounded = validCitations.length > 0;
+    let finalResponseText = aiText;
+
+    if (!isGrounded) {
+      finalResponseText = `The lecture "${videoTitle}" does not contain verified transcript evidence to answer this question. The cited references fall outside the verified lecture content.`;
+    } else {
+      const rejectedTimes = new Set(
+        rawCitations
+          .filter((rc) => !validCitations.some((vc) => vc.seek_seconds === rc.seconds))
+          .map((rc) => rc.label)
+      );
+
+      if (rejectedTimes.size > 0) {
+        const blocks = aiText.split(/\n{2,}/);
+        const filteredBlocks = blocks.filter((block) => {
+          for (const label of rejectedTimes) {
+            if (block.includes(`[${label}]`) || block.includes(`(${label})`)) return false;
+          }
+          return true;
+        });
+
+        if (filteredBlocks.length > 0) {
+          finalResponseText = filteredBlocks.join('\n\n');
+        } else {
+          finalResponseText = `The lecture "${videoTitle}" does not contain verified transcript evidence to answer this question. The cited claims fall outside the verified lecture content.`;
+          return {
+            success: true,
+            videoId: id,
+            question,
+            response: finalResponseText,
+            citations: [],
+            grounded: false,
+            insufficient_evidence: true,
+          };
+        }
+      }
+    }
 
     return {
       success: true,
       videoId: id,
       question,
-      response: aiText,
-      citations,
-      grounded: citations.length > 0,
-      evidence_coverage_score: citations.length > 0 ? 0.9 : 0.6,
+      response: finalResponseText,
+      citations: validCitations,
+      grounded: isGrounded,
+      insufficient_evidence: !isGrounded,
+      evidence_coverage_score: isGrounded ? 0.9 : 0.0,
     };
-  } catch (err: any) {
+  } catch {
     return {
       success: true,
       videoId: id,
@@ -665,6 +797,7 @@ CRITICAL RULES:
       response: `This lecture on "${videoTitle}" explains the foundational principles of the topic. Refer to the transcript and video sections to review the key points.`,
       citations: [],
       grounded: false,
+      insufficient_evidence: true,
     };
   }
 }

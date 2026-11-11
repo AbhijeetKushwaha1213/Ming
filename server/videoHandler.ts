@@ -9,8 +9,12 @@ import {
   getUserVideos,
   getVideoById,
   deleteVideo,
+  updateVideoStatus,
   processVideoJob,
   askVideoQuestion,
+  parseYouTubeInput,
+  validateTranscriptSegments,
+  isKnownMismatchedVideoRecord,
   isValidYouTubeUrl,
   extractYouTubeId,
   type VideoRecord,
@@ -70,32 +74,34 @@ export async function videoHandler(req: VideoApiRequest, res: VideoApiResponse):
   if (method === 'POST' && pathname === '/api/videos') {
     try {
       const body = req.body || {};
-      const title = String(body.title || '').trim();
+      const rawTitle = String(body.title || '').trim();
       const sourceType = String(body.sourceType || (body.youtubeUrl ? 'youtube' : 'upload')).toLowerCase();
 
-      if (!title) {
-        res.status(400).json({ error: 'Video title is required' });
-        return;
-      }
-
       if (sourceType === 'youtube') {
-        const youtubeUrl = String(body.youtubeUrl || '').trim();
-        if (!youtubeUrl) {
+        const rawYoutubeUrl = String(body.youtubeUrl || '').trim();
+        if (!rawYoutubeUrl) {
           res.status(400).json({ error: 'YouTube URL is required' });
           return;
         }
 
-        if (!isValidYouTubeUrl(youtubeUrl)) {
-          res.status(400).json({ error: 'Invalid YouTube URL or video ID format' });
+        const parsedYt = parseYouTubeInput(rawYoutubeUrl, { allowBareId: false });
+        if (!parsedYt.valid || !parsedYt.canonicalUrl || !parsedYt.videoId) {
+          res.status(400).json({ error: parsedYt.error || 'Invalid YouTube URL or video ID format' });
           return;
         }
+
+        const ytId = parsedYt.videoId;
+        const youtubeUrl = parsedYt.canonicalUrl;
+        const title = rawTitle || `YouTube Lecture (${ytId || 'Video'})`;
 
         const video = await createVideoRecord({
           userId,
           title,
           sourceType: 'youtube',
           youtubeUrl,
+          youtubeVideoId: ytId,
           thumbnailUrl: body.thumbnailUrl,
+          durationSeconds: body.durationSeconds ? Number(body.durationSeconds) : undefined,
           transcript: body.transcript,
         });
 
@@ -107,6 +113,12 @@ export async function videoHandler(req: VideoApiRequest, res: VideoApiResponse):
         }
 
         res.status(201).json({ success: true, video });
+        return;
+      }
+
+      const title = rawTitle;
+      if (!title) {
+        res.status(400).json({ error: 'Video title is required' });
         return;
       }
 
@@ -175,7 +187,8 @@ export async function videoHandler(req: VideoApiRequest, res: VideoApiResponse):
       return;
     } catch (err: any) {
       console.error('Create video error:', err);
-      res.status(500).json({ error: err.message || 'Failed to create video' });
+      const isClientError = /transcript rejected/i.test(err.message || '') || /invalid/i.test(err.message || '');
+      res.status(isClientError ? 400 : 500).json({ error: err.message || 'Failed to create video' });
       return;
     }
   }
@@ -252,19 +265,41 @@ export async function videoHandler(req: VideoApiRequest, res: VideoApiResponse):
       }
 
       let segments: TranscriptSegment[] = [];
+      let transcriptStatus = video.transcriptStatus;
+      let integrityError: string | undefined;
+
       if (video.transcriptJson) {
         try {
-          segments = JSON.parse(video.transcriptJson);
+          const parsed = JSON.parse(video.transcriptJson);
+          const mismatch = isKnownMismatchedVideoRecord(video, parsed);
+          const validation = mismatch
+            ? { valid: false, error: mismatch }
+            : validateTranscriptSegments(parsed, video.durationSeconds);
+
+          if (validation.valid && validation.segments) {
+            segments = validation.segments;
+          } else {
+            segments = [];
+            transcriptStatus = 'unavailable';
+            integrityError = validation.error;
+            await updateVideoStatus(video.id, userId, {
+              transcriptStatus: 'unavailable',
+              transcriptJson: null,
+            });
+          }
         } catch {
           segments = [];
+          transcriptStatus = 'unavailable';
+          integrityError = 'Transcript JSON could not be parsed';
         }
       }
 
       res.status(200).json({
         success: true,
         videoId: video.id,
-        transcriptStatus: video.transcriptStatus,
+        transcriptStatus,
         segments,
+        ...(integrityError ? { integrityError } : {}),
       });
       return;
     } catch (err: any) {

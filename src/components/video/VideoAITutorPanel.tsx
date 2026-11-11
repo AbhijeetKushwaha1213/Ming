@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { VideoRecord, VideoCitation } from '@/types/video';
-import { askVideoQuestion } from '@/api/videoAPI';
-import { formatTimestamp } from '@/utils/videoUtils';
+import { askVideoQuestion, isVideoAuthError } from '@/api/videoAPI';
+import { formatTimestamp, CAPTION_CUE_END_TOLERANCE_SECONDS } from '@/utils/videoUtils';
 import {
   Bot,
   User,
@@ -32,14 +32,19 @@ interface ChatMessage {
 export interface VideoAITutorPanelProps {
   video: VideoRecord;
   onSeek: (seconds: number) => void;
+  integrityError?: string | null;
+  runtimeDurationSeconds?: number | null;
   className?: string;
 }
 
 // Formatted markdown and timestamp citation renderer for video tutor messages
 const VideoTutorFormattedContent: React.FC<{
   content: string;
+  citations?: VideoCitation[];
+  isGrounded?: boolean;
+  maxDurationSeconds?: number;
   onSeek: (seconds: number) => void;
-}> = ({ content, onSeek }) => {
+}> = ({ content, citations = [], isGrounded = true, maxDurationSeconds = 0, onSeek }) => {
   // 1. Clean raw chunk identifiers
   const cleaned = content
     .replace(/\[CHUNK\s+[^\]]+\]/g, '')
@@ -47,13 +52,28 @@ const VideoTutorFormattedContent: React.FC<{
     .replace(/\[vid_[a-zA-Z0-9_\-]+\]/g, '')
     .trim();
 
+  const isSeekableTimestamp = (secs: number): boolean => {
+    if (!isGrounded) return false;
+    if (!isFinite(secs) || secs < 0) return false;
+    if (maxDurationSeconds > 0 && secs > maxDurationSeconds + CAPTION_CUE_END_TOLERANCE_SECONDS) {
+      return false;
+    }
+    if (citations.length > 0) {
+      return citations.some((c) => {
+        const cSec = c.seek_seconds ?? c.timestamp_start;
+        return typeof cSec === 'number' && Math.abs(cSec - secs) <= 5;
+      });
+    }
+    return true;
+  };
+
   // Split into paragraphs / blocks
   const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
 
   const renderInlineFormatted = (text: string) => {
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
-    const tokenRegex = /(\[?(\d{1,2}):(\d{2})\]?|\(Timestamp\s*(\d+)m(\d+)s\)|\*\*([^*]+)\*\*|`([^`]+)`)/g;
+    const tokenRegex = /(\[(?:EVIDENCE_(\d+))\]|\[?(\d{1,2}):(\d{2})\]?|\(Timestamp\s*(\d+)m(\d+)s\)|\*\*([^*]+)\*\*|`([^`]+)`)/g;
     let match: RegExpExecArray | null;
 
     while ((match = tokenRegex.exec(text)) !== null) {
@@ -61,53 +81,86 @@ const VideoTutorFormattedContent: React.FC<{
         parts.push(text.slice(lastIndex, match.index));
       }
 
-      if (match[2] && match[3]) {
+      if (match[2]) {
+        // [EVIDENCE_n] token mapped to verified citation timestamp
+        const evId = `EVIDENCE_${match[2]}`;
+        const matchedCit = citations.find((c) => c.evidence_id === evId) || citations[parseInt(match[2], 10) - 1];
+        const targetSec = matchedCit
+          ? (matchedCit.seek_seconds ??
+            (matchedCit.timestamp_start !== null && matchedCit.timestamp_start !== undefined && matchedCit.timestamp_start >= 0
+              ? Number(matchedCit.timestamp_start)
+              : null))
+          : null;
+        if (targetSec !== null) {
+          const tsLabel = matchedCit?.formatted_timestamp || formatTimestamp(targetSec);
+          parts.push(
+            <button
+              key={`ev_${match.index}`}
+              type="button"
+              onClick={() => onSeek(targetSec)}
+              title={`Seek video to ${tsLabel}`}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 rounded bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-mono text-[11px] font-semibold transition-colors cursor-pointer border border-primary/20 align-baseline"
+            >
+              <Clock className="w-2.5 h-2.5" />
+              {tsLabel}
+            </button>
+          );
+        }
+      } else if (match[3] && match[4]) {
         // [mm:ss] format
-        const m = parseInt(match[2], 10);
-        const s = parseInt(match[3], 10);
+        const m = parseInt(match[3], 10);
+        const s = parseInt(match[4], 10);
         const secs = m * 60 + s;
-        parts.push(
-          <button
-            key={`ts_${match.index}`}
-            type="button"
-            onClick={() => onSeek(secs)}
-            title={`Seek video to ${match[2]}:${match[3]}`}
-            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 rounded bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-mono text-[11px] font-semibold transition-colors cursor-pointer border border-primary/20 align-baseline"
-          >
-            <Clock className="w-2.5 h-2.5" />
-            {match[2]}:{match[3]}
-          </button>
-        );
-      } else if (match[4] && match[5]) {
+        if (isSeekableTimestamp(secs)) {
+          parts.push(
+            <button
+              key={`ts_${match.index}`}
+              type="button"
+              onClick={() => onSeek(secs)}
+              title={`Seek video to ${match[3]}:${match[4]}`}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 rounded bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-mono text-[11px] font-semibold transition-colors cursor-pointer border border-primary/20 align-baseline"
+            >
+              <Clock className="w-2.5 h-2.5" />
+              {match[3]}:{match[4]}
+            </button>
+          );
+        } else {
+          parts.push(match[0]);
+        }
+      } else if (match[5] && match[6]) {
         // (Timestamp XmYs)
-        const m = parseInt(match[4], 10);
-        const s = parseInt(match[5], 10);
+        const m = parseInt(match[5], 10);
+        const s = parseInt(match[6], 10);
         const secs = m * 60 + s;
         const timeLabel = `${m}:${s < 10 ? '0' : ''}${s}`;
-        parts.push(
-          <button
-            key={`ts_${match.index}`}
-            type="button"
-            onClick={() => onSeek(secs)}
-            title={`Seek video to ${timeLabel}`}
-            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 rounded bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-mono text-[11px] font-semibold transition-colors cursor-pointer border border-primary/20 align-baseline"
-          >
-            <Clock className="w-2.5 h-2.5" />
-            {timeLabel}
-          </button>
-        );
-      } else if (match[6]) {
+        if (isSeekableTimestamp(secs)) {
+          parts.push(
+            <button
+              key={`ts_${match.index}`}
+              type="button"
+              onClick={() => onSeek(secs)}
+              title={`Seek video to ${timeLabel}`}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-1 rounded bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-mono text-[11px] font-semibold transition-colors cursor-pointer border border-primary/20 align-baseline"
+            >
+              <Clock className="w-2.5 h-2.5" />
+              {timeLabel}
+            </button>
+          );
+        } else {
+          parts.push(match[0]);
+        }
+      } else if (match[7]) {
         // **bold**
         parts.push(
           <strong key={`b_${match.index}`} className="font-semibold text-foreground">
-            {match[6]}
+            {match[7]}
           </strong>
         );
-      } else if (match[7]) {
+      } else if (match[8]) {
         // `code`
         parts.push(
           <code key={`c_${match.index}`} className="px-1 py-0.5 rounded bg-muted/80 font-mono text-[11px] text-primary">
-            {match[7]}
+            {match[8]}
           </code>
         );
       }
@@ -188,22 +241,101 @@ const VideoTutorFormattedContent: React.FC<{
 export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
   video,
   onSeek,
+  integrityError = null,
+  runtimeDurationSeconds = null,
   className = '',
 }) => {
+  const isGroundedMode = video.transcriptStatus === 'ready' && !integrityError;
+  const effectiveDuration =
+    runtimeDurationSeconds && runtimeDurationSeconds > 0
+      ? runtimeDurationSeconds
+      : Number(video.durationSeconds || 0);
+
+  const buildWelcomeContent = (ready: boolean, processing: boolean) => {
+    if (integrityError) {
+      return `Hello! I am your AI Video Tutor for **"${video.title}"**. Source verification detected a metadata or transcript mismatch (${integrityError}), so Grounded citations have been withheld.`;
+    }
+    if (ready) {
+      return `Hello! I am your AI Video Tutor for **"${video.title}"**. Ask me anything about this lecture, and I will explain concepts using only verified video transcript evidence with clickable timestamps!`;
+    }
+    if (processing) {
+      return `Extracting verified captions and metadata for **"${video.title}"**... Once ready, I will answer using only verified lecture transcript evidence.`;
+    }
+    return `Hello! I am your AI Video Tutor for **"${video.title}"**. Note: A verified transcript is not available for this lecture. I can provide general conceptual assistance, but claims cannot be grounded in video citations.`;
+  };
+
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
-      id: 'init_welcome',
+      id: `welcome_${video.id}`,
       role: 'assistant',
-      content: `Hello! I am your AI Video Tutor for **"${video.title}"**. Ask me anything about this lecture, and I will explain concepts using only the verified video transcript evidence with clickable timestamps!`,
+      content: buildWelcomeContent(isGroundedMode, video.transcriptStatus === 'processing'),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      grounded: isGroundedMode,
     },
   ]);
   const [inputQuery, setInputQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messageListRef = useRef<HTMLDivElement | null>(null);
+
+  // Active request controller and tracking ref to prevent switching race conditions
+  const activeAbortRef = useRef<AbortController | null>(null);
+  const activeVideoIdRef = useRef<string>(video.id);
+
+  // Clear stale chat, pending queries, and citations when active video switches;
+  // if only metadata/transcriptStatus updates during polling before any user turn, refresh welcome text without wiping chat
+  useEffect(() => {
+    const isVideoSwitch = activeVideoIdRef.current !== video.id;
+    const isReady = video.transcriptStatus === 'ready' && !integrityError;
+    const isProcessing = video.transcriptStatus === 'processing' && !integrityError;
+    const welcomeText = buildWelcomeContent(isReady, isProcessing);
+
+    if (isVideoSwitch) {
+      if (activeAbortRef.current) {
+        activeAbortRef.current.abort();
+        activeAbortRef.current = null;
+      }
+      activeVideoIdRef.current = video.id;
+      setMessages([
+        {
+          id: `welcome_${video.id}`,
+          role: 'assistant',
+          content: welcomeText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          grounded: isReady,
+        },
+      ]);
+      setInputQuery('');
+      setIsLoading(false);
+    } else {
+      setMessages((prev) => {
+        const hasUserTurn = prev.some((m) => m.role === 'user');
+        if (hasUserTurn) return prev;
+        return [
+          {
+            id: `welcome_${video.id}`,
+            role: 'assistant',
+            content: welcomeText,
+            timestamp: prev[0]?.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            grounded: isReady,
+          },
+        ];
+      });
+    }
+  }, [video.id, video.transcriptStatus, video.title, integrityError]);
+
+  // Clean up on component unmount
+  useEffect(() => {
+    return () => {
+      if (activeAbortRef.current) {
+        activeAbortRef.current.abort();
+      }
+    };
+  }, []);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messageListRef.current) {
+      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
@@ -213,6 +345,16 @@ export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
   const handleSend = async (queryText?: string) => {
     const question = (queryText || inputQuery).trim();
     if (!question || isLoading) return;
+
+    // Abort prior in-flight request if still running
+    if (activeAbortRef.current) {
+      activeAbortRef.current.abort();
+      activeAbortRef.current = null;
+    }
+
+    const currentAbort = new AbortController();
+    activeAbortRef.current = currentAbort;
+    const requestVideoId = video.id;
 
     setInputQuery('');
 
@@ -229,37 +371,73 @@ export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
     try {
       // Build conversation history from previous turns
       const history = messages
-        .filter((m) => m.id !== 'init_welcome')
+        .filter((m) => !m.id.startsWith('welcome_'))
         .map((m) => ({
           role: m.role,
           content: m.content,
         }));
 
-      const res = await askVideoQuestion(video.id, question, history);
+      const res = await askVideoQuestion(requestVideoId, question, history, 'english', currentAbort.signal);
+
+      // Race check: if active video changed while waiting or request was aborted, discard response!
+      if (activeVideoIdRef.current !== requestVideoId || currentAbort.signal.aborted) {
+        return;
+      }
+
+      const rawCitations = Array.isArray(res.citations) ? res.citations : [];
+      const verifiedCitations = integrityError
+        ? []
+        : rawCitations.filter((c) => {
+            const cSrc = c.source_id || c.document_id;
+            if (cSrc && String(cSrc) !== requestVideoId) return false;
+            const targetSec = c.seek_seconds ?? c.timestamp_start;
+            if (typeof targetSec !== 'number' || !isFinite(targetSec) || targetSec < 0) return false;
+            if (
+              effectiveDuration > 0 &&
+              targetSec > effectiveDuration + CAPTION_CUE_END_TOLERANCE_SECONDS
+            ) {
+              return false;
+            }
+            return true;
+          });
+
+      const finalGrounded = Boolean(isGroundedMode && res.grounded && verifiedCitations.length > 0);
+      const finalInsufficient = !finalGrounded || Boolean(res.insufficient_evidence);
 
       const aiMsg: ChatMessage = {
         id: `ai_${Date.now()}`,
         role: 'assistant',
-        content: res.response || 'No response generated.',
-        citations: res.citations || [],
-        grounded: res.grounded,
-        insufficientEvidence: res.insufficient_evidence,
-        partialAnswer: res.partial_answer,
+        content: integrityError
+          ? `Source integrity check failed for "${video.title}" (${integrityError}). Transcript-grounded citations have been withheld.`
+          : res.response || 'No response generated.',
+        citations: finalGrounded ? verifiedCitations : [],
+        grounded: finalGrounded,
+        insufficientEvidence: finalInsufficient,
+        partialAnswer: finalGrounded ? res.partial_answer : false,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
+      // If active video changed or request aborted, ignore silently
+      if (activeVideoIdRef.current !== requestVideoId || currentAbort.signal.aborted || err?.name === 'AbortError') {
+        return;
+      }
+
       const errorMsg: ChatMessage = {
         id: `err_${Date.now()}`,
         role: 'assistant',
-        content: `Sorry, I encountered an error while consulting the lecture evidence: ${err.message || 'Server error'}. Please try again.`,
+        content: isVideoAuthError(err)
+          ? 'Your session has expired or you are signed out. Please sign in again to ask questions about this lecture.'
+          : `Sorry, I encountered an error while consulting the lecture evidence: ${err.message || 'Server error'}. Please try again.`,
         grounded: false,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
-      setIsLoading(false);
+      if (activeVideoIdRef.current === requestVideoId) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -289,15 +467,27 @@ export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
           <div>
             <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
               AI Video Tutor
-              <Badge
-                variant="outline"
-                className="text-[10px] px-2 py-0 border-primary/40 text-primary bg-primary/5 font-medium"
-              >
-                <ShieldCheck className="w-3 h-3 mr-1" />
-                Grounded
-              </Badge>
+              {isGroundedMode ? (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-2 py-0 border-primary/40 text-primary bg-primary/5 font-medium"
+                >
+                  <ShieldCheck className="w-3 h-3 mr-1" />
+                  Grounded
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-2 py-0 border-amber-500/40 text-amber-500 bg-amber-500/5 font-medium"
+                >
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                  Ungrounded Mode
+                </Badge>
+              )}
             </h3>
-            <p className="text-xs text-muted-foreground">Answers strictly anchored in video evidence</p>
+            <p className="text-xs text-muted-foreground">
+              {isGroundedMode ? 'Answers strictly anchored in video evidence' : 'Transcript unavailable - conceptual help without citations'}
+            </p>
           </div>
         </div>
 
@@ -307,10 +497,13 @@ export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
           onClick={() =>
             setMessages([
               {
-                id: 'init_welcome',
+                id: `reset_${Date.now()}`,
                 role: 'assistant',
-                content: `Chat history cleared. What would you like to explore in **"${video.title}"**?`,
+                content: isGroundedMode
+                  ? `Chat history cleared. What would you like to explore in **"${video.title}"**?`
+                  : `Chat history cleared. Asking about **"${video.title}"** in conceptual mode (no transcript citations).`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                grounded: isGroundedMode,
               },
             ])
           }
@@ -323,7 +516,7 @@ export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
       </div>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[420px] min-h-[300px]">
+      <div ref={messageListRef} className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[420px] min-h-[300px]">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
 
@@ -364,11 +557,17 @@ export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
                   {isUser ? (
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                   ) : (
-                    <VideoTutorFormattedContent content={msg.content} onSeek={onSeek} />
+                    <VideoTutorFormattedContent
+                      content={msg.content}
+                      citations={msg.citations}
+                      isGrounded={msg.grounded !== false}
+                      maxDurationSeconds={effectiveDuration}
+                      onSeek={onSeek}
+                    />
                   )}
 
                   {/* Render Verified Timestamp Citations */}
-                  {msg.citations && msg.citations.length > 0 && (
+                  {msg.grounded !== false && msg.citations && msg.citations.length > 0 && (
                     <div className="mt-3 pt-2.5 border-t border-border/30 flex flex-wrap gap-1.5 items-center">
                       <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mr-1 flex items-center gap-1">
                         <Clock className="w-3 h-3 text-primary" />
@@ -424,7 +623,6 @@ export const VideoAITutorPanel: React.FC<VideoAITutorPanelProps> = ({
           </div>
         )}
 
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Suggested Quick Questions */}

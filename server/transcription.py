@@ -214,29 +214,9 @@ class LocalFallbackTranscriptionProvider(TranscriptionProvider):
                 )
             ]
 
-        # Read actual media duration
-        duration = self._get_media_duration_seconds(media_path, mime_type)
-        filename = os.path.basename(media_path)
-        base_topic = topic or filename.split(".")[0].replace("_", " ").title()
-
-        # Partition real duration into realistic, un-fabricated segments
-        segment_duration = min(30.0, max(5.0, duration / 3.0))
-        segments: List[TranscriptSegment] = []
-        cur_t = 0.0
-        seg_idx = 1
-
-        while cur_t < duration:
-            end_t = min(duration, round(cur_t + segment_duration, 2))
-            segments.append(TranscriptSegment(
-                timestamp_start=round(cur_t, 2),
-                timestamp_end=end_t,
-                text=f"[{base_topic} Audio Segment {seg_idx}] Spoken instructional content discussing {base_topic.lower()} principles ({round(cur_t, 1)}s - {round(end_t, 1)}s).",
-                subtopic=f"Segment {seg_idx}"
-            ))
-            cur_t = end_t
-            seg_idx += 1
-
-        return segments
+        # No real verbatim transcript or subtitles available.
+        # Do NOT synthesize fake placeholder segments. Return empty list so status is explicitly unavailable.
+        return []
 
 def extract_transcription_blocks(
     media_path: str,
@@ -251,7 +231,36 @@ def extract_transcription_blocks(
     segments: List[TranscriptSegment] = []
     used_provider = "LocalFallbackTranscriptionProvider"
 
-    if os.environ.get("GEMINI_API_KEY") or os.environ.get("VITE_GEMINI_API_KEY"):
+    # 1. Direct custom transcript parsing (JSON, VTT, SRT)
+    if custom_transcript:
+        try:
+            import json
+            data = json.loads(custom_transcript)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict) and ("start" in item or "timestamp_start" in item) and "text" in item:
+                        t_s = float(item.get("start", item.get("timestamp_start", 0.0)))
+                        t_e = float(item.get("end", item.get("timestamp_end", t_s + 10.0)))
+                        sub = item.get("subtopic") or topic or "Lecture Segment"
+                        segments.append(TranscriptSegment(
+                            timestamp_start=t_s,
+                            timestamp_end=t_e,
+                            text=str(item.get("text", "")).strip(),
+                            subtopic=sub
+                        ))
+                if segments:
+                    used_provider = "CustomTranscriptProvider"
+        except Exception:
+            pass
+
+        if not segments:
+            local_p = LocalFallbackTranscriptionProvider()
+            parsed = local_p._parse_vtt_or_srt(custom_transcript)
+            if parsed:
+                segments = parsed
+                used_provider = "CustomTranscriptProvider"
+
+    if not segments and (os.environ.get("GEMINI_API_KEY") or os.environ.get("VITE_GEMINI_API_KEY")):
         try:
             gemini_provider = GeminiTranscriptionProvider()
             segments = gemini_provider.transcribe(media_path, mime_type, custom_transcript, topic)
@@ -273,6 +282,8 @@ def extract_transcription_blocks(
             confidence=0.95,
             timestamp_start=seg.timestamp_start,
             timestamp_end=seg.timestamp_end,
+            timing_precision="SEGMENT",
+            evidence_type="TRANSCRIPT",
             metadata={
                 "subtopic": seg.subtopic,
                 "provider": used_provider,

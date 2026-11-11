@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import type { VideoRecord, TranscriptSegment } from '@/types/video';
-import { addYouTubeVideo, uploadVideoFile } from '@/api/videoAPI';
-import { isValidYouTubeUrl, extractYouTubeId } from '@/utils/videoUtils';
+import React, { useState, useEffect, useContext } from 'react';
+import { UNSAFE_NavigationContext } from 'react-router-dom';
+import type { VideoRecord } from '@/types/video';
+import { addYouTubeVideo, uploadVideoFile, isVideoAuthError } from '@/api/videoAPI';
+import { parseYouTubeInput } from '@/utils/videoUtils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -22,20 +24,45 @@ import {
   AlertCircle,
   Loader2,
   Sparkles,
+  LogIn,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+
+export const PENDING_VIDEO_DRAFT_KEY = 'ming_pending_video_draft';
+
+export interface PendingVideoDraft {
+  activeTab: 'youtube' | 'upload';
+  ytUrl: string;
+  ytTitle: string;
+  ytTranscript: string;
+  uploadTitle: string;
+  uploadTranscript: string;
+  savedAt: number;
+}
+
+export function hasPendingVideoDraft(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return Boolean(sessionStorage.getItem(PENDING_VIDEO_DRAFT_KEY));
+  } catch {
+    return false;
+  }
+}
 
 export interface AddVideoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onVideoAdded: (video: VideoRecord) => void;
+  onSignInRequest?: () => void;
 }
 
 export const AddVideoModal: React.FC<AddVideoModalProps> = ({
   isOpen,
   onClose,
   onVideoAdded,
+  onSignInRequest,
 }) => {
+  const navCtx = useContext(UNSAFE_NavigationContext);
   const [activeTab, setActiveTab] = useState<'youtube' | 'upload'>('youtube');
 
   // YouTube Form State
@@ -43,6 +70,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
   const [ytUrl, setYtUrl] = useState('');
   const [ytTranscript, setYtTranscript] = useState('');
   const [ytError, setYtError] = useState<string | null>(null);
+  const [ytAuthRequired, setYtAuthRequired] = useState(false);
   const [isSubmittingYt, setIsSubmittingYt] = useState(false);
 
   // Upload Form State
@@ -51,13 +79,40 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
   const [uploadTranscript, setUploadTranscript] = useState('');
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadAuthRequired, setUploadAuthRequired] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Restore saved draft if returning from sign-in redirect
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return;
+    try {
+      const raw = sessionStorage.getItem(PENDING_VIDEO_DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as PendingVideoDraft;
+      sessionStorage.removeItem(PENDING_VIDEO_DRAFT_KEY);
+      if (draft.activeTab === 'youtube' || draft.activeTab === 'upload') {
+        setActiveTab(draft.activeTab);
+      }
+      if (typeof draft.ytUrl === 'string') setYtUrl(draft.ytUrl);
+      if (typeof draft.ytTitle === 'string') setYtTitle(draft.ytTitle);
+      if (typeof draft.ytTranscript === 'string') setYtTranscript(draft.ytTranscript);
+      if (typeof draft.uploadTitle === 'string') setUploadTitle(draft.uploadTitle);
+      if (typeof draft.uploadTranscript === 'string') setUploadTranscript(draft.uploadTranscript);
+      setYtError(null);
+      setYtAuthRequired(false);
+      setUploadError(null);
+      setUploadAuthRequired(false);
+    } catch {
+      // Ignore invalid draft JSON
+    }
+  }, [isOpen]);
 
   const resetForm = () => {
     setYtTitle('');
     setYtUrl('');
     setYtTranscript('');
     setYtError(null);
+    setYtAuthRequired(false);
     setIsSubmittingYt(false);
 
     setUploadTitle('');
@@ -65,6 +120,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
     setUploadTranscript('');
     setUploadProgress(0);
     setUploadError(null);
+    setUploadAuthRequired(false);
     setIsUploading(false);
   };
 
@@ -73,34 +129,93 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
     onClose();
   };
 
-  const extractedYtId = ytUrl.trim() ? extractYouTubeId(ytUrl.trim()) : null;
+  const saveDraftAndNavigateToSignIn = async () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const draft: PendingVideoDraft = {
+          activeTab,
+          ytUrl,
+          ytTitle,
+          ytTranscript,
+          uploadTitle,
+          uploadTranscript,
+          savedAt: Date.now(),
+        };
+        sessionStorage.setItem(PENDING_VIDEO_DRAFT_KEY, JSON.stringify(draft));
+        localStorage.removeItem('studymate_cached_profile');
+        localStorage.removeItem('studymate-offline-session');
+      } catch {
+        // Ignore storage warnings
+      }
+    }
+
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Proceed to sign-in route even if remote signOut skipped
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('ming-auth-signout'));
+    }
+
+    if (onSignInRequest) {
+      onSignInRequest();
+      return;
+    }
+
+    const target = '/login?redirect=%2Fdashboard%3Ftab%3Dvideo-learning';
+    if (navCtx?.navigator && typeof navCtx.navigator.push === 'function') {
+      navCtx.navigator.push(target);
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      window.location.assign(target);
+    }
+  };
+
+  const parsedYt = ytUrl.trim() ? parseYouTubeInput(ytUrl, { allowBareId: false }) : null;
+  const extractedYtId = parsedYt?.valid ? parsedYt.videoId : null;
+  const normalizedCanonicalUrl = parsedYt?.valid ? parsedYt.canonicalUrl : null;
 
   const handleAddYouTube = async (e: React.FormEvent) => {
     e.preventDefault();
     setYtError(null);
+    setYtAuthRequired(false);
 
-    const title = ytTitle.trim() || `YouTube Lecture (${extractedYtId || 'Video'})`;
-    const url = ytUrl.trim();
+    const title = ytTitle.trim();
+    const rawUrl = ytUrl.trim();
+    const checked = parseYouTubeInput(rawUrl, { allowBareId: false });
 
-    if (!url) {
-      setYtError('Please enter a YouTube video URL.');
-      return;
-    }
-
-    if (!isValidYouTubeUrl(url)) {
-      setYtError('Invalid YouTube URL. Please provide a standard YouTube video or share link.');
+    if (!checked.valid || !checked.canonicalUrl) {
+      setYtError(
+        checked.error ||
+          'Invalid YouTube URL. Please provide a valid YouTube watch/share link or Markdown link.'
+      );
       return;
     }
 
     setIsSubmittingYt(true);
 
     try {
-      const video = await addYouTubeVideo(title, url, ytTranscript.trim() || undefined);
+      const video = await addYouTubeVideo(
+        title,
+        checked.canonicalUrl,
+        ytTranscript.trim() || undefined
+      );
       onVideoAdded(video);
       handleClose();
     } catch (err: any) {
       console.error('Failed to add YouTube video:', err);
-      setYtError(err.message || 'Failed to add YouTube video. Please try again.');
+      if (isVideoAuthError(err)) {
+        setYtAuthRequired(true);
+        setYtError(
+          'Authentication required: your session has expired or you are signed out. Your video details are preserved—please sign in to continue.'
+        );
+      } else {
+        setYtError(err.message || 'Failed to add YouTube video. Please try again.');
+      }
     } finally {
       setIsSubmittingYt(false);
     }
@@ -108,6 +223,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError(null);
+    setUploadAuthRequired(false);
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -131,7 +247,6 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
 
     setSelectedFile(file);
     if (!uploadTitle.trim()) {
-      // Auto-populate title without extension
       const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
       setUploadTitle(baseName);
     }
@@ -140,6 +255,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
   const handleUploadVideo = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploadError(null);
+    setUploadAuthRequired(false);
 
     if (!selectedFile) {
       setUploadError('Please select a video file to upload.');
@@ -161,7 +277,14 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
       onVideoAdded(video);
       handleClose();
     } catch (err: any) {
-      setUploadError(err.message || 'Failed to upload video.');
+      if (isVideoAuthError(err)) {
+        setUploadAuthRequired(true);
+        setUploadError(
+          'Authentication required: your session has expired or you are signed out. Your selected file details are preserved—please sign in to continue.'
+        );
+      } else {
+        setUploadError(err.message || 'Failed to upload video.');
+      }
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -208,34 +331,53 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
                   <Input
                     id="yt-url"
                     value={ytUrl}
-                    onChange={(e) => setYtUrl(e.target.value)}
+                    onChange={(e) => {
+                      setYtUrl(e.target.value);
+                      if (ytError) {
+                        setYtError(null);
+                        setYtAuthRequired(false);
+                      }
+                    }}
                     placeholder="https://www.youtube.com/watch?v=..."
                     className="text-xs h-9 bg-background/80"
                     disabled={isSubmittingYt}
                     required
                   />
                   {extractedYtId ? (
-                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Valid Video ID: <code className="font-mono bg-muted px-1 rounded">{extractedYtId}</code>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                          Valid Video ID:{' '}
+                          <code className="font-mono bg-muted px-1 rounded">{extractedYtId}</code>
+                        </span>
+                      </div>
+                      {parsedYt?.wasMarkdown && normalizedCanonicalUrl && (
+                        <div className="text-[11px] text-muted-foreground pl-5">
+                          Normalized URL:{' '}
+                          <code className="font-mono bg-muted px-1 rounded">
+                            {normalizedCanonicalUrl}
+                          </code>
+                        </div>
+                      )}
                     </div>
                   ) : ytUrl.trim() ? (
                     <div className="flex items-center gap-1.5 text-[11px] text-destructive">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      Invalid YouTube link format
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{parsedYt?.error || 'Invalid YouTube link format'}</span>
                     </div>
                   ) : null}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="yt-title" className="text-xs font-semibold">
-                    Lecture Title
+                    Lecture Title (optional)
                   </Label>
                   <Input
                     id="yt-title"
                     value={ytTitle}
                     onChange={(e) => setYtTitle(e.target.value)}
-                    placeholder="e.g. Operating Systems: Paging & Virtual Memory"
+                    placeholder="Auto-fetched from YouTube if left blank"
                     className="text-xs h-9 bg-background/80"
                     disabled={isSubmittingYt}
                   />
@@ -260,9 +402,28 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
                 </div>
 
                 {ytError && (
-                  <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{ytError}</span>
+                  <div
+                    role="alert"
+                    className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs space-y-2"
+                  >
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>{ytError}</span>
+                    </div>
+                    {ytAuthRequired && (
+                      <div className="flex items-center justify-end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="default"
+                          onClick={saveDraftAndNavigateToSignIn}
+                          className="h-7 text-xs bg-primary text-primary-foreground"
+                        >
+                          <LogIn className="w-3.5 h-3.5 mr-1.5" />
+                          Sign In
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -273,7 +434,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={isSubmittingYt || !ytUrl.trim() || !isValidYouTubeUrl(ytUrl.trim())}
+                    disabled={isSubmittingYt || !parsedYt?.valid}
                     className="bg-brand-gradient text-white shadow-glow"
                   >
                     {isSubmittingYt ? (
@@ -365,9 +526,28 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({
                 )}
 
                 {uploadError && (
-                  <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{uploadError}</span>
+                  <div
+                    role="alert"
+                    className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs space-y-2"
+                  >
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>{uploadError}</span>
+                    </div>
+                    {uploadAuthRequired && (
+                      <div className="flex items-center justify-end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="default"
+                          onClick={saveDraftAndNavigateToSignIn}
+                          className="h-7 text-xs bg-primary text-primary-foreground"
+                        >
+                          <LogIn className="w-3.5 h-3.5 mr-1.5" />
+                          Sign In
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
 
